@@ -1,0 +1,546 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Production Crew Database</title>
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="brand-mark">PC</div>
+          <div>
+            <h1>Production Crew</h1>
+            <p>Company database</p>
+          </div>
+        </div>
+        <nav class="nav-list" aria-label="Main navigation">
+          <button class="nav-item active" data-view="dashboard" type="button">Dashboard</button>
+          <button class="nav-item" data-view="events" type="button">Events</button>
+          <button class="nav-item" data-view="clock" type="button">Time Clock</button>
+          <button class="nav-item" data-view="workers" type="button">Crew Profiles</button>
+          <button class="nav-item" data-view="timecards" type="button">Timecards</button>
+          <button class="nav-item" data-view="payroll" type="button">Payroll</button>
+          <button class="nav-item" data-view="vehicles" type="button">Vehicles</button>
+          <button class="nav-item" data-view="reports" type="button">Reports</button>
+          <button class="nav-item" data-view="venues" type="button">Venues</button>
+          <button class="nav-item" data-view="promoters" type="button">Promoter Profiles</button>
+          <button class="nav-item" data-view="runner" type="button">Gig Directory</button>
+        </nav>
+        <div class="side-actions">
+          <button id="exportData" class="secondary-action" type="button">Export Data</button>
+          <label class="secondary-action file-action">
+            Import Data
+            <input id="importData" type="file" accept="application/json">
+          </label>
+        </div>
+      </aside>
+
+      <main class="content">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">Entertainment production operations</p>
+            <h2 id="viewTitle">Dashboard</h2>
+          </div>
+          <div class="topbar-tools">
+            <label class="access-control">
+              Access view
+              <select id="accessRole">
+                <option value="owner">Client / Owner</option>
+                <option value="production">Promoter / Production Office</option>
+                <option value="crew">Crew / Runner</option>
+              </select>
+            </label>
+            <label id="crewScopeControl" class="access-control">
+              Crew acting as
+              <select id="activeWorker"></select>
+            </label>
+            <label id="promoterScopeControl" class="access-control">
+              Promoter rep acting as
+              <select id="activePromoter"></select>
+            </label>
+            <input id="globalSearch" class="search-input" type="search" placeholder="Search the database">
+            <button id="seedData" class="ghost-button" type="button">Load sample data</button>
+          </div>
+        </header>
+
+        <section id="dashboard" class="view active-view" aria-labelledby="viewTitle">
+          <div class="metric-grid">
+            <article class="metric">
+              <span>Events</span>
+              <strong id="eventCount">0</strong>
+            </article>
+            <article class="metric">
+              <span>Clocked in</span>
+              <strong id="activeTimecards">0</strong>
+            </article>
+            <article class="metric">
+              <span>Venues</span>
+              <strong id="venueCount">0</strong>
+            </article>
+            <article class="metric">
+              <span>Est. payroll</span>
+              <strong id="payrollCount">$0</strong>
+            </article>
+          </div>
+          <div class="dashboard-grid">
+            <section class="panel">
+              <div class="panel-heading">
+                <h3>Currently Clocked In</h3>
+              </div>
+              <div id="liveCrewList" class="compact-list"></div>
+            </section>
+            <section class="panel">
+              <div class="panel-heading">
+                <h3>Recent Notes</h3>
+              </div>
+              <div id="recentNotes" class="compact-list"></div>
+            </section>
+          </div>
+        </section>
+
+        <section id="clock" class="view">
+          <div class="stack-layout">
+            <section class="panel">
+              <div class="panel-heading">
+                <h3>Time Clock</h3>
+                <span id="clockEventCount" class="muted"></span>
+              </div>
+              <div id="clockCards" class="record-grid"></div>
+            </section>
+          </div>
+        </section>
+
+        <section id="events" class="view">
+          <div class="split-layout">
+            <form id="eventForm" class="panel form-panel admin-form">
+              <div class="panel-heading">
+                <h3>Add Event</h3>
+                <button class="ghost-button clear-form" type="button" data-form="eventForm">Clear</button>
+              </div>
+              <input type="hidden" name="id">
+              <label>Event name<input name="name" required placeholder="Show, festival, corporate event"></label>
+              <label>Type
+                <select name="type">
+                  <option>Concert</option>
+                  <option>Festival</option>
+                  <option>Corporate</option>
+                  <option>Private</option>
+                  <option>Load-in</option>
+                  <option>Strike</option>
+                  <option>Other</option>
+                </select>
+              </label>
+              <label>Production contact<input name="productionContact" placeholder="Name, phone, email"></label>
+              <label>Venue<select name="venueId"></select></label>
+              <label>Promoter<select name="promoterId"></select></label>
+              <label>Assigned crew / runners<select name="workerIds" multiple size="7"></select></label>
+              <label>Start<input name="startDate" type="datetime-local"></label>
+              <label>End<input name="endDate" type="datetime-local"></label>
+              <label>Notes<textarea name="notes" rows="3" placeholder="Call sheet details, client notes, runner instructions"></textarea></label>
+              <button class="primary-action" type="submit">Save Event</button>
+            </form>
+            <section class="panel table-panel">
+              <div class="panel-heading">
+                <h3>Events</h3>
+                <div class="panel-tools">
+                  <span id="eventTableCount" class="muted"></span>
+                  <button class="tiny-button admin-action" data-open-form="eventForm" type="button">Add Event</button>
+                </div>
+              </div>
+              <div id="eventCards" class="record-grid"></div>
+            </section>
+          </div>
+        </section>
+
+        <section id="workers" class="view">
+          <div class="split-layout">
+            <form id="workerForm" class="panel form-panel">
+              <div class="panel-heading">
+                <h3>Crew / Runner Profile</h3>
+                <button class="ghost-button clear-form" type="button" data-form="workerForm">Clear</button>
+              </div>
+              <input type="hidden" name="id">
+              <label>Headshot<input name="headshotPhoto" type="file" accept="image/*" data-photo-key="headshot"></label>
+              <label>Name<input name="name" required placeholder="Full name"></label>
+              <label class="owner-form">Primary role<input name="role" placeholder="Stagehand, audio, lighting"></label>
+              <label>Phone<input name="phone" placeholder="(555) 000-0000"></label>
+              <label>Email<input name="email" type="email" placeholder="name@example.com"></label>
+              <label class="owner-form">Status
+                <select name="status">
+                  <option>Available</option>
+                  <option>Booked</option>
+                  <option>Inactive</option>
+                  <option>Do not call</option>
+                </select>
+              </label>
+              <label class="owner-form">Access
+                <select name="accessLevels" multiple size="2">
+                  <option value="crew">Crew / Runner</option>
+                  <option value="production">Production Office</option>
+                </select>
+              </label>
+              <label class="owner-form">Default day rate<input name="defaultDayRate" type="number" min="0" step="0.01" placeholder="350.00"></label>
+              <label class="owner-form">Included hours<input name="defaultIncludedHours" type="number" min="0" step="0.25" placeholder="10"></label>
+              <label class="owner-form">Additional hourly rate<input name="defaultAdditionalRate" type="number" min="0" step="0.01" placeholder="45.00"></label>
+              <label class="owner-form">Rented vehicle rate<input name="defaultRentedVehicleRate" type="number" min="0" step="0.01" placeholder="25.00"></label>
+              <label class="owner-form">Personal vehicle rate<input name="defaultPersonalVehicleRate" type="number" min="0" step="0.01" placeholder="75.00"></label>
+              <label class="owner-form">Skills<textarea name="skills" rows="3" placeholder="Forklift, backline, rigging, merch"></textarea></label>
+              <label class="owner-form">Emergency contact<input name="emergency" placeholder="Name and phone"></label>
+              <label>Mailing address<textarea name="mailingAddress" rows="3" placeholder="Street, city, state, zip"></textarea></label>
+              <label class="check-label"><input name="hidePhone" type="checkbox" value="yes"> Hide phone from crew public directory</label>
+              <label class="check-label"><input name="hideEmail" type="checkbox" value="yes"> Hide email from crew public directory</label>
+              <label class="check-label"><input name="hideHeadshot" type="checkbox" value="yes"> Hide headshot from crew public directory</label>
+              <label class="owner-form">Notes<textarea name="notes" rows="3" placeholder="Reliability, rates, preferences"></textarea></label>
+              <button class="primary-action" type="submit">Save / Update & Close</button>
+            </form>
+            <section class="panel table-panel">
+              <div class="panel-heading">
+                <h3>Crew / Runner Profiles</h3>
+                <div class="panel-tools">
+                  <span id="workerTableCount" class="muted"></span>
+                  <button class="tiny-button worker-action" data-open-form="workerForm" type="button">Add / Edit Profile</button>
+                </div>
+              </div>
+              <div class="bulk-actions owner-form">
+                <button class="tiny-button" data-select-visible="workers" type="button">Select Visible</button>
+                <button class="tiny-button" data-clear-selected="workers" type="button">Clear</button>
+                <button class="tiny-button danger" data-bulk-delete="workers" type="button">Delete Selected</button>
+              </div>
+              <div class="table-wrap">
+                <table>
+                  <thead><tr><th>Profile</th><th>Role</th><th>Status</th><th>Phone</th><th>Info</th><th></th></tr></thead>
+                  <tbody id="workerTable"></tbody>
+                </table>
+              </div>
+              <div id="myProfileCard" class="record-grid"></div>
+            </section>
+          </div>
+        </section>
+
+        <section id="timecards" class="view">
+          <div class="split-layout">
+            <form id="timecardForm" class="panel form-panel admin-form">
+              <div class="panel-heading">
+                <h3>Clock Worker</h3>
+                <button class="ghost-button clear-form" type="button" data-form="timecardForm">Clear</button>
+              </div>
+              <input type="hidden" name="id">
+              <label>Event<select name="eventId"></select></label>
+              <label>Worker<select name="workerId" required></select></label>
+              <label>Event or shift<input name="eventName" required placeholder="Load-in, show call, strike"></label>
+              <label>Venue<select name="venueId"></select></label>
+              <label>Promoter<select name="promoterId"></select></label>
+              <label>Clock in<input name="clockIn" type="datetime-local" required></label>
+              <label>Clock out<input name="clockOut" type="datetime-local"></label>
+              <label>Lunch out<input name="lunchOut" type="datetime-local"></label>
+              <label>Lunch in<input name="lunchIn" type="datetime-local"></label>
+              <label>Break minutes<input name="breakMinutes" type="number" min="0" step="5" value="0"></label>
+              <label>Day rate<input name="dayRate" type="number" min="0" step="0.01" placeholder="350.00"></label>
+              <label>Included hours<input name="includedHours" type="number" min="0" step="0.25" placeholder="10"></label>
+              <label>Additional hourly rate<input name="additionalRate" type="number" min="0" step="0.01" placeholder="45.00"></label>
+              <label>Vehicle use
+                <select name="vehicleUse">
+                  <option value="">None</option>
+                  <option>Rented Vehicle</option>
+                  <option>Personal Vehicle</option>
+                </select>
+              </label>
+              <label>Vehicle rate<input name="vehicleRate" type="number" min="0" step="0.01" placeholder="75.00"></label>
+              <label>Notes<textarea name="notes" rows="3" placeholder="Meal penalty, late call, department note"></textarea></label>
+              <button class="primary-action" type="submit">Save Timecard</button>
+              <button id="clockInNow" class="secondary-action" type="button">Clock In Now</button>
+            </form>
+            <section class="panel table-panel">
+              <div class="panel-heading">
+                <h3>Timecards</h3>
+                <div class="panel-tools">
+                  <span id="timecardTableCount" class="muted"></span>
+                  <button class="tiny-button admin-action" data-open-form="timecardForm" type="button">Add Timecard</button>
+                </div>
+              </div>
+              <div class="table-wrap">
+                <table>
+                  <thead><tr><th>Worker</th><th>Event</th><th>Venue</th><th>Call</th><th>Lunch</th><th>Wrap</th><th>Hours</th><th>Pay Basis</th><th>Est.</th><th></th></tr></thead>
+                  <tbody id="timecardTable"></tbody>
+                </table>
+              </div>
+            </section>
+          </div>
+        </section>
+
+        <section id="payroll" class="view">
+          <div class="stack-layout">
+            <section class="panel">
+              <div class="panel-heading">
+                <h3>Estimated Payroll</h3>
+                <span id="payrollTableCount" class="muted"></span>
+              </div>
+              <div id="payrollTabs" class="tab-row" role="tablist" aria-label="Payroll summary views"></div>
+              <div class="payroll-view">
+                <h4 id="payrollSummaryTitle">By Individual</h4>
+                <div id="payrollSummary" class="summary-list"></div>
+              </div>
+            </section>
+          </div>
+        </section>
+
+        <section id="directory" class="view">
+          <div class="stack-layout">
+            <section class="panel">
+              <div class="panel-heading">
+                <h3>Crew Directory</h3>
+                <span id="directoryTableCount" class="muted"></span>
+              </div>
+              <div id="directoryTabs" class="tab-row" role="tablist" aria-label="Directory tabs"></div>
+              <div class="table-wrap">
+                <table>
+                  <thead id="directoryHead"></thead>
+                  <tbody id="directoryTable"></tbody>
+                </table>
+              </div>
+            </section>
+          </div>
+        </section>
+
+        <section id="vehicles" class="view">
+          <div class="split-layout">
+            <form id="vehicleForm" class="panel form-panel scoped-form">
+              <div class="panel-heading">
+                <h3>Vehicle Check</h3>
+                <button class="ghost-button clear-form" type="button" data-form="vehicleForm">Clear</button>
+              </div>
+              <input type="hidden" name="id">
+              <label>Event<select name="eventId" required></select></label>
+              <label>Assigned worker<select name="workerId"></select></label>
+              <label>Check type
+                <select name="phase">
+                  <option>Start</option>
+                  <option>End</option>
+                  <option>Scheduled</option>
+                </select>
+              </label>
+              <label>Vehicle type<input name="vehicleType" placeholder="Cargo van, box truck, pickup"></label>
+              <label>Plate number<input name="plateNumber" placeholder="Plate"></label>
+              <label>Gas gauge
+                <select name="gasGauge">
+                  <option>Full</option>
+                  <option>3/4</option>
+                  <option>1/2</option>
+                  <option>1/4</option>
+                  <option>Empty</option>
+                </select>
+              </label>
+              <label>Scheduled date<input name="scheduledDate" type="datetime-local"></label>
+              <div class="photo-fieldset">
+                <span>Vehicle photos</span>
+                <label>Front<input name="frontPhoto" type="file" accept="image/*" data-photo-key="front"></label>
+                <label>Back<input name="backPhoto" type="file" accept="image/*" data-photo-key="back"></label>
+                <label>Driver side<input name="driverSidePhoto" type="file" accept="image/*" data-photo-key="driverSide"></label>
+                <label>Passenger side<input name="passengerSidePhoto" type="file" accept="image/*" data-photo-key="passengerSide"></label>
+                <label>Gas gauge<input name="gasGaugePhoto" type="file" accept="image/*" data-photo-key="gasGauge"></label>
+                <label>Prior damages<input name="priorDamagePhotos" type="file" accept="image/*" multiple data-photo-key="priorDamages"></label>
+              </div>
+              <label>Notes<textarea name="notes" rows="3" placeholder="Mileage, dents, fuel receipt, pickup/dropoff notes"></textarea></label>
+              <button class="primary-action" type="submit">Save Vehicle Check</button>
+            </form>
+            <section class="panel table-panel">
+              <div class="panel-heading">
+                <h3>Vehicle Rentals</h3>
+                <div class="panel-tools">
+                  <span id="vehicleTableCount" class="muted"></span>
+                  <button class="tiny-button scoped-action" data-open-form="vehicleForm" type="button">Add Vehicle Check</button>
+                </div>
+              </div>
+              <div class="table-wrap">
+                <table>
+                  <thead><tr><th>Event</th><th>Worker</th><th>Vehicle</th><th>Gas</th><th>Check</th><th>Photos</th><th></th></tr></thead>
+                  <tbody id="vehicleTable"></tbody>
+                </table>
+              </div>
+            </section>
+          </div>
+        </section>
+
+        <section id="reports" class="view">
+          <div class="split-layout">
+            <form id="reportForm" class="panel form-panel scoped-form">
+              <div class="panel-heading">
+                <h3>Accident Report</h3>
+                <button class="ghost-button clear-form" type="button" data-form="reportForm">Clear</button>
+              </div>
+              <input type="hidden" name="id">
+              <label>Report type
+                <select name="type">
+                  <option>Physical Damage</option>
+                  <option>Vehicle Damage</option>
+                </select>
+              </label>
+              <label>Event<select name="eventId" required></select></label>
+              <label>Assigned worker<select name="workerId"></select></label>
+              <label>Title<input name="title" required placeholder="Brief description"></label>
+              <label>Date / time<input name="reportedAt" type="datetime-local"></label>
+              <label>Photos<input name="photos" type="file" accept="image/*" multiple data-photo-key="photos"></label>
+              <label>Details<textarea name="details" rows="5" placeholder="What happened, who was involved, immediate action taken"></textarea></label>
+              <button class="primary-action" type="submit">Save Report</button>
+            </form>
+            <section class="panel table-panel">
+              <div class="panel-heading">
+                <h3>Accident Reports</h3>
+                <div class="panel-tools">
+                  <span id="reportTableCount" class="muted"></span>
+                  <button class="tiny-button scoped-action" data-open-form="reportForm" type="button">Add Report</button>
+                </div>
+              </div>
+              <div class="table-wrap">
+                <table>
+                  <thead><tr><th>Type</th><th>Event</th><th>Worker</th><th>Title</th><th>Date</th><th>Photos</th><th></th></tr></thead>
+                  <tbody id="reportTable"></tbody>
+                </table>
+              </div>
+            </section>
+          </div>
+        </section>
+
+        <section id="venues" class="view">
+          <div class="split-layout">
+            <form id="venueForm" class="panel form-panel venue-form">
+              <div class="panel-heading">
+                <h3>Add Venue</h3>
+                <button class="ghost-button clear-form" type="button" data-form="venueForm">Clear</button>
+              </div>
+              <input type="hidden" name="id">
+              <label>Venue name<input name="name" required placeholder="Venue"></label>
+              <label>Address<textarea name="address" rows="2" placeholder="Street, city, state, zip"></textarea></label>
+              <label>Main contact<input name="contactName" placeholder="Name"></label>
+              <label>Contact phone<input name="phone" placeholder="(555) 000-0000"></label>
+              <label>Contact email<input name="email" type="email" placeholder="venue@example.com"></label>
+              <label>Parking instructions<textarea name="parking" rows="3" placeholder="Crew parking, dock, load-in gate"></textarea></label>
+              <label>Load-in notes<textarea name="notes" rows="3" placeholder="Dock height, elevator, curfew, restrictions"></textarea></label>
+              <button class="primary-action" type="submit">Save Venue</button>
+            </form>
+            <section class="panel table-panel">
+              <div class="panel-heading">
+                <h3>Venue Book</h3>
+                <div class="panel-tools">
+                  <span id="venueTableCount" class="muted"></span>
+                  <button class="tiny-button venue-action" data-open-form="venueForm" type="button">Add Venue</button>
+                </div>
+              </div>
+              <div class="table-wrap">
+                <table>
+                  <thead><tr><th>Name</th><th>Address</th><th>Contact</th><th>Parking</th><th></th></tr></thead>
+                  <tbody id="venueTable"></tbody>
+                </table>
+              </div>
+            </section>
+          </div>
+        </section>
+
+        <section id="promoters" class="view">
+          <div class="split-layout">
+            <form id="promoterForm" class="panel form-panel">
+              <div class="panel-heading">
+                <h3>Promoter / Production Office Profile</h3>
+                <button class="ghost-button clear-form" type="button" data-form="promoterForm">Clear</button>
+              </div>
+              <input type="hidden" name="id">
+              <label>Headshot<input name="headshotPhoto" type="file" accept="image/*" data-photo-key="headshot"></label>
+              <label>Promoter company<input name="companyName" placeholder="LiveNation, AEG, independent"></label>
+              <label>Local promoter rep<input name="name" required placeholder="Rep name"></label>
+              <label>Rep title / office<input name="contactName" placeholder="Production manager, local rep, office"></label>
+              <label>Phone<input name="phone" placeholder="(555) 000-0000"></label>
+              <label>Email<input name="email" type="email" placeholder="contact@example.com"></label>
+              <label class="owner-form">Access
+                <select name="accessLevels" multiple size="2">
+                  <option value="production">Production Office</option>
+                  <option value="crew">Crew / Runner</option>
+                </select>
+              </label>
+              <label>Company billing notes<textarea name="billing" rows="3" placeholder="PO rules, invoice contact, terms"></textarea></label>
+              <label>Rep / production notes<textarea name="notes" rows="3" placeholder="Preferences, recurring needs"></textarea></label>
+              <button class="primary-action" type="submit">Save Promoter Rep</button>
+            </form>
+            <section class="panel table-panel">
+              <div class="panel-heading">
+                <h3>Promoter Companies & Reps</h3>
+                <div class="panel-tools">
+                  <span id="promoterTableCount" class="muted"></span>
+                  <button class="tiny-button admin-action" data-open-form="promoterForm" type="button">Add Promoter Rep</button>
+                </div>
+              </div>
+              <div class="bulk-actions owner-form">
+                <button class="tiny-button" data-select-visible="promoters" type="button">Select Visible</button>
+                <button class="tiny-button" data-clear-selected="promoters" type="button">Clear</button>
+                <button class="tiny-button danger" data-bulk-delete="promoters" type="button">Delete Selected</button>
+              </div>
+              <div class="table-wrap">
+                <table>
+                  <thead><tr><th>Rep</th><th>Company</th><th>Phone</th><th>Email</th><th>Notes</th><th></th></tr></thead>
+                  <tbody id="promoterTable"></tbody>
+                </table>
+              </div>
+            </section>
+          </div>
+        </section>
+
+        <section id="runner" class="view">
+          <div class="split-layout">
+            <form id="runnerForm" class="panel form-panel">
+              <div class="panel-heading">
+                <h3>Add Runner Stop</h3>
+                <button class="ghost-button clear-form" type="button" data-form="runnerForm">Clear</button>
+              </div>
+              <input type="hidden" name="id">
+              <label>Name<input name="name" required placeholder="Store, shop, service, worker tip"></label>
+              <label>Category
+                <select name="category">
+                  <option>Hardware</option>
+                  <option>Food</option>
+                  <option>Printing</option>
+                  <option>Medical</option>
+                  <option>Rental</option>
+                  <option>Transportation</option>
+                  <option>Other</option>
+                </select>
+              </label>
+              <label>Address<textarea name="address" rows="2" placeholder="Street, city, state, zip"></textarea></label>
+              <label>Phone<input name="phone" placeholder="(555) 000-0000"></label>
+              <label>Hours<input name="hours" placeholder="Mon-Fri 8-6"></label>
+              <label>Best use<textarea name="bestUse" rows="3" placeholder="What to send runners here for"></textarea></label>
+              <label>Notes<textarea name="notes" rows="3" placeholder="Parking, entrance, account number"></textarea></label>
+              <button class="primary-action" type="submit">Save Runner Stop</button>
+            </form>
+            <section class="panel table-panel">
+              <div class="panel-heading">
+                <h3>Gig Directory</h3>
+                <div class="panel-tools">
+                  <span id="runnerTableCount" class="muted"></span>
+                  <button class="tiny-button admin-action" data-open-form="runnerForm" type="button">Add Stop</button>
+                </div>
+              </div>
+              <form id="runnerCategoryForm" class="inline-create-form">
+                <label>New category<input name="name" placeholder="Pharmacy, coffee, weld shop"></label>
+                <button class="secondary-action" type="submit">Add Category</button>
+                <span id="runnerCategoryLimit" class="muted"></span>
+              </form>
+              <div id="runnerTabs" class="tab-row" role="tablist" aria-label="Gig directory categories"></div>
+              <div class="table-wrap">
+                <table>
+                  <thead><tr><th>Name</th><th>Category</th><th>Address</th><th>Hours</th><th>Best use</th><th></th></tr></thead>
+                  <tbody id="runnerTable"></tbody>
+                </table>
+              </div>
+            </section>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <div id="modalBackdrop" class="modal-backdrop" data-close-modal></div>
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+    <script src="app.js?v=20260505-save-close-5"></script>
+  </body>
+</html>
