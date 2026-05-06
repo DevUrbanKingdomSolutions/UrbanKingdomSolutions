@@ -501,7 +501,7 @@ function loginSetupPayload(storeName, record) {
   };
 }
 
-async function applyAuthenticatedSession(session) {
+async function applyAuthenticatedSession(session, preferredView = "") {
   if (!session) {
     authState = { session: null, user: null, roleRecord: null, pendingSetup: false };
     appHasLoaded = false;
@@ -518,7 +518,9 @@ async function applyAuthenticatedSession(session) {
   const roleRecord = await fetchUserRole(session);
   authState.roleRecord = roleRecord;
   state.accessRole = roleRecord.role;
-  state.activeView = roleHomeView();
+  state.activeView = preferredView && ACCESS_PROFILES[roleRecord.role]?.views.includes(preferredView)
+    ? preferredView
+    : roleHomeView();
   if (roleRecord.worker_id) state.activeWorkerId = roleRecord.worker_id;
   if (roleRecord.promoter_id) state.activePromoterId = roleRecord.promoter_id;
 
@@ -634,8 +636,7 @@ async function completeAccountSetup(event) {
   state.accessRole = roleRecord.role;
   const profileView = profileViewForRole(roleRecord.role);
   if (location.hash !== `#${profileView}`) history.replaceState(null, "", `#${profileView}`);
-  await applyAuthenticatedSession({ ...session, user: data.user || session.user });
-  setView(profileView);
+  await applyAuthenticatedSession({ ...session, user: data.user || session.user }, profileView);
 }
 
 async function logout() {
