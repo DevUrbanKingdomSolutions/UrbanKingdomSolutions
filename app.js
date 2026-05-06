@@ -3,6 +3,7 @@ const DB_VERSION = 7;
 const SUPABASE_URL = "https://nnhqrhaltkmymnwxydwr.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5uaHFyaGFsdGtteW1ud3h5ZHdyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgwMjMxNDgsImV4cCI6MjA5MzU5OTE0OH0.X9iGhE61WehM57133LKCWMfXXDHmcb2rhw-ZPCKAJos";
 const LOGIN_SETUP_FUNCTION = "send-login-setup";
+const SMTP_TEST_FUNCTION = "send-smtp-test";
 const STORES = [
   "clients",
   "clientReps",
@@ -1142,6 +1143,7 @@ function renderAdminProfile() {
         <p>${escapeHtml(email)}</p>
       </div>
       <button class="tiny-button system-action" data-open-form="adminProfileForm" type="button">SMTP Settings</button>
+      <button class="tiny-button system-action" data-send-smtp-test="admin" type="button">Send Test Email</button>
     </div>
     <div class="profile-detail-grid">
       <div><span>Access Role</span><strong>ADMIN</strong></div>
@@ -1996,6 +1998,56 @@ async function sendLoginSetup(storeName, id) {
   toast("Login setup sent.");
 }
 
+function smtpTestPayload() {
+  const profile = activeAdminProfile();
+  return {
+    scope: "admin",
+    to: profile.email || authState.user?.email || "",
+    name: profile.name || "System Admin",
+    provider: profile.smtpProvider || "",
+    fromName: profile.smtpFromName || profile.name || "Production Crew",
+    fromEmail: profile.smtpFromEmail || "",
+    replyTo: profile.smtpReplyTo || profile.email || authState.user?.email || "",
+    host: profile.smtpHost || "",
+    port: profile.smtpPort || "",
+    username: profile.smtpUsername || "",
+    secretRef: profile.smtpSecretRef || "",
+    secure: profile.smtpSecure || ""
+  };
+}
+
+async function sendSmtpTest() {
+  if (!canSystemEdit()) {
+    toast("Only ADMIN can send an SMTP test.");
+    return;
+  }
+  if (!initializeSupabaseClient()) {
+    toast("Supabase login is not configured.");
+    return;
+  }
+  const payload = smtpTestPayload();
+  if (!payload.to || !payload.fromEmail || !payload.host || !payload.port || !payload.username || !payload.secretRef) {
+    toast("Finish SMTP settings before sending a test.");
+    return;
+  }
+  const { data, error } = await supabaseClient.functions.invoke(SMTP_TEST_FUNCTION, { body: payload });
+  if (error) {
+    console.error(error);
+    toast(await loginSetupErrorMessage(error));
+    return;
+  }
+  const profile = activeAdminProfile();
+  await put("systemProfiles", {
+    ...profile,
+    emailRoutingStatus: "Test sent",
+    lastSmtpTestAt: new Date().toISOString(),
+    lastSmtpMessageId: data?.messageId || ""
+  });
+  await loadState();
+  setView(state.activeView);
+  toast("Test email sent.");
+}
+
 async function loginSetupErrorMessage(error) {
   const fallback = error?.message || "Login setup failed.";
   try {
@@ -2228,6 +2280,7 @@ function bindEvents() {
     const clearSelectedButton = event.target.closest("[data-clear-selected]");
     const bulkDeleteButton = event.target.closest("[data-bulk-delete]");
     const loginSetupButton = event.target.closest("[data-send-login]");
+    const smtpTestButton = event.target.closest("[data-send-smtp-test]");
     const viewClientCompanyButton = event.target.closest("[data-view-client-company]");
     const editViewedClientButton = event.target.closest("#editViewedClientCompany");
 
@@ -2264,6 +2317,7 @@ function bindEvents() {
 
     if (deleteButton) await deleteRecord(deleteButton.dataset.delete, deleteButton.dataset.id);
     if (viewClientCompanyButton) openClientCompanyView(viewClientCompanyButton.dataset.viewClientCompany);
+    if (smtpTestButton) await sendSmtpTest();
     if (editViewedClientButton?.dataset.editClientId) {
       const client = state.clients.find((item) => item.id === editViewedClientButton.dataset.editClientId);
       if (client) fillForm("clientForm", client);
