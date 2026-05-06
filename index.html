@@ -19,6 +19,7 @@
         <label>Email<input name="email" type="email" required autocomplete="email" placeholder="you@example.com"></label>
         <label>Password<input name="password" type="password" required autocomplete="current-password" placeholder="Password"></label>
         <button class="primary-action" type="submit">Log In</button>
+        <button id="clearSessionButton" class="ghost-button" type="button">Clear Saved Login</button>
         <p id="authMessage" class="auth-message"></p>
       </form>
     </section>
@@ -781,6 +782,6 @@
     <div id="modalBackdrop" class="modal-backdrop" data-close-modal></div>
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js?v=20260506-role-home-fix-1"></script>
+    <script src="app.js?v=20260506-clear-session-1"></script>
   </body>
 </html>

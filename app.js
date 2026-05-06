@@ -370,13 +370,17 @@ function initializeSupabaseClient() {
 }
 
 async function fetchUserRole(session) {
+  const email = session.user?.email || "unknown email";
+  const userId = session.user?.id || "unknown user id";
   const { data, error } = await supabaseClient
     .from("user_roles")
     .select("role, worker_id, promoter_id, client_id")
     .eq("user_id", session.user.id)
     .maybeSingle();
   if (error) throw error;
-  if (!data?.role) throw new Error("No role is assigned to this user.");
+  if (!data?.role) {
+    throw new Error(`No role is assigned to ${email}. Supabase user ID: ${userId}`);
+  }
   return {
     ...data,
     role: normalizeRole(data.role)
@@ -491,7 +495,12 @@ async function initializeAuth() {
     showAuthScreen(error.message);
     return;
   }
-  await applyAuthenticatedSession(data.session);
+  try {
+    await applyAuthenticatedSession(data.session);
+  } catch (error) {
+    console.error(error);
+    showAuthScreen(error.message || "Could not load your assigned role.");
+  }
 
   supabaseClient.auth.onAuthStateChange((_event, session) => {
     window.setTimeout(() => {
@@ -520,7 +529,12 @@ async function loginWithSupabase(event) {
     return;
   }
   form.reset();
-  await applyAuthenticatedSession(data.session);
+  try {
+    await applyAuthenticatedSession(data.session);
+  } catch (error) {
+    console.error(error);
+    setAuthMessage(error.message || "Could not load your assigned role.");
+  }
 }
 
 async function logout() {
@@ -530,6 +544,17 @@ async function logout() {
   showAuthScreen("Logging out...");
   await supabaseClient.auth.signOut();
   showAuthScreen("Logged out. Sign in again when ready.");
+}
+
+async function clearSavedLogin() {
+  initializeSupabaseClient();
+  appHasLoaded = false;
+  authState = { session: null, user: null, roleRecord: null };
+  if (supabaseClient) await supabaseClient.auth.signOut({ scope: "local" });
+  Object.keys(localStorage)
+    .filter((key) => key.startsWith("sb-"))
+    .forEach((key) => localStorage.removeItem(key));
+  showAuthScreen("Saved login cleared. Sign in again.");
 }
 
 function matchesSearch(record, extra = "") {
@@ -1897,6 +1922,7 @@ async function importData(event) {
 
 function bindEvents() {
   $("#loginForm").addEventListener("submit", loginWithSupabase);
+  $("#clearSessionButton").addEventListener("click", clearSavedLogin);
   $("#logoutButton").addEventListener("click", logout);
   $(".nav-list").addEventListener("click", (event) => {
     const button = event.target.closest("[data-view]");
