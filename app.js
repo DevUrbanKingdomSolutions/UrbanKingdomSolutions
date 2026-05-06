@@ -81,7 +81,8 @@ let appHasLoaded = false;
 let authState = {
   session: null,
   user: null,
-  roleRecord: null
+  roleRecord: null,
+  pendingSetup: false
 };
 
 let state = {
@@ -340,14 +341,28 @@ function isSupabaseConfigured() {
 
 function showAuthScreen(message = "") {
   $("#authScreen").hidden = false;
+  $("#setupScreen").hidden = true;
   $("#appShell").hidden = true;
   $("#sessionEmail").textContent = "Not signed in";
   $("#sessionRole").textContent = "ROLE";
   $("#authMessage").textContent = message;
 }
 
+function showSetupScreen(session, message = "Set your password to finish setup.") {
+  $("#authScreen").hidden = true;
+  $("#setupScreen").hidden = false;
+  $("#appShell").hidden = true;
+  $("#setupMessage").textContent = message;
+  const form = $("#setupForm");
+  form.elements.name.value = session?.user?.user_metadata?.name || "";
+  form.elements.phone.value = session?.user?.user_metadata?.phone || "";
+  form.elements.password.value = "";
+  form.elements.confirmPassword.value = "";
+}
+
 function showAppShell() {
   $("#authScreen").hidden = true;
+  $("#setupScreen").hidden = true;
   $("#appShell").hidden = false;
 }
 
@@ -367,6 +382,16 @@ function initializeSupabaseClient() {
     });
   }
   return supabaseClient;
+}
+
+function setupTypeFromUrl() {
+  const values = new URLSearchParams(location.hash.replace(/^#/, ""));
+  const query = new URLSearchParams(location.search);
+  return values.get("type") || query.get("type") || "";
+}
+
+function needsPasswordSetup(type) {
+  return ["invite", "recovery"].includes(String(type || "").toLowerCase());
 }
 
 async function fetchUserRole(session) {
@@ -478,7 +503,7 @@ function loginSetupPayload(storeName, record) {
 
 async function applyAuthenticatedSession(session) {
   if (!session) {
-    authState = { session: null, user: null, roleRecord: null };
+    authState = { session: null, user: null, roleRecord: null, pendingSetup: false };
     appHasLoaded = false;
     showAuthScreen("Log in with your Supabase account.");
     return;
@@ -486,6 +511,10 @@ async function applyAuthenticatedSession(session) {
 
   authState.session = session;
   authState.user = session.user;
+  if (authState.pendingSetup) {
+    showSetupScreen(session);
+    return;
+  }
   const roleRecord = await fetchUserRole(session);
   authState.roleRecord = roleRecord;
   state.accessRole = roleRecord.role;
@@ -499,7 +528,7 @@ async function applyAuthenticatedSession(session) {
   await ensureDatabase();
   await loadState();
   appHasLoaded = true;
-  const homeView = roleHomeView();
+  const homeView = state.activeView && currentProfile().views.includes(state.activeView) ? state.activeView : roleHomeView();
   if (location.hash !== `#${homeView}`) history.replaceState(null, "", `#${homeView}`);
   setView(homeView);
 }
@@ -510,11 +539,13 @@ async function initializeAuth() {
     return;
   }
 
+  const setupType = setupTypeFromUrl();
   const { data, error } = await supabaseClient.auth.getSession();
   if (error) {
     showAuthScreen(error.message);
     return;
   }
+  authState.pendingSetup = Boolean(data.session && needsPasswordSetup(setupType));
   try {
     await applyAuthenticatedSession(data.session);
   } catch (error) {
@@ -524,6 +555,12 @@ async function initializeAuth() {
 
   supabaseClient.auth.onAuthStateChange((_event, session) => {
     window.setTimeout(() => {
+      if (authState.pendingSetup && session) {
+        authState.session = session;
+        authState.user = session.user;
+        showSetupScreen(session);
+        return;
+      }
       applyAuthenticatedSession(session).catch((error) => {
         console.error(error);
         showAuthScreen(error.message || "Could not load your assigned role.");
@@ -557,10 +594,54 @@ async function loginWithSupabase(event) {
   }
 }
 
+function profileViewForRole(role) {
+  const normalized = normalizeRole(role);
+  if (normalized === "ADMIN") return "adminProfile";
+  if (normalized === "CLIENT") return "clientProfile";
+  if (normalized === "PROMOTER_PRODUCTION_OFFICE") return "promoters";
+  if (normalized === "CREW") return "workers";
+  return roleHomeView(normalized);
+}
+
+async function completeAccountSetup(event) {
+  event.preventDefault();
+  if (!initializeSupabaseClient()) return;
+  const form = event.currentTarget;
+  const password = form.elements.password.value;
+  const confirmPassword = form.elements.confirmPassword.value;
+  if (password !== confirmPassword) {
+    $("#setupMessage").textContent = "Passwords do not match.";
+    return;
+  }
+  $("#setupMessage").textContent = "Saving setup...";
+  const { data, error } = await supabaseClient.auth.updateUser({
+    password,
+    data: {
+      name: form.elements.name.value,
+      phone: form.elements.phone.value,
+      setupCompletedAt: new Date().toISOString()
+    }
+  });
+  if (error) {
+    $("#setupMessage").textContent = error.message;
+    return;
+  }
+  authState.pendingSetup = false;
+  const sessionResult = await supabaseClient.auth.getSession();
+  const session = sessionResult.data?.session || authState.session;
+  const roleRecord = await fetchUserRole(session);
+  authState.roleRecord = roleRecord;
+  state.accessRole = roleRecord.role;
+  const profileView = profileViewForRole(roleRecord.role);
+  if (location.hash !== `#${profileView}`) history.replaceState(null, "", `#${profileView}`);
+  await applyAuthenticatedSession({ ...session, user: data.user || session.user });
+  setView(profileView);
+}
+
 async function logout() {
   if (!supabaseClient) return;
   appHasLoaded = false;
-  authState = { session: null, user: null, roleRecord: null };
+  authState = { session: null, user: null, roleRecord: null, pendingSetup: false };
   showAuthScreen("Logging out...");
   await supabaseClient.auth.signOut();
   showAuthScreen("Logged out. Sign in again when ready.");
@@ -569,7 +650,7 @@ async function logout() {
 async function clearSavedLogin() {
   initializeSupabaseClient();
   appHasLoaded = false;
-  authState = { session: null, user: null, roleRecord: null };
+  authState = { session: null, user: null, roleRecord: null, pendingSetup: false };
   if (supabaseClient) await supabaseClient.auth.signOut({ scope: "local" });
   Object.keys(localStorage)
     .filter((key) => key.startsWith("sb-"))
@@ -1942,7 +2023,9 @@ async function importData(event) {
 
 function bindEvents() {
   $("#loginForm").addEventListener("submit", loginWithSupabase);
+  $("#setupForm").addEventListener("submit", completeAccountSetup);
   $("#clearSessionButton").addEventListener("click", clearSavedLogin);
+  $("#setupLogoutButton").addEventListener("click", clearSavedLogin);
   $("#logoutButton").addEventListener("click", logout);
   $(".nav-list").addEventListener("click", (event) => {
     const button = event.target.closest("[data-view]");

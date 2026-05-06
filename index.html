@@ -24,6 +24,25 @@
       </form>
     </section>
 
+    <section id="setupScreen" class="auth-screen" hidden>
+      <form id="setupForm" class="auth-card">
+        <div class="brand">
+          <div class="brand-mark">PC</div>
+          <div>
+            <h1>Complete Setup</h1>
+            <p>Create your password</p>
+          </div>
+        </div>
+        <label>Name<input name="name" autocomplete="name" placeholder="Full name"></label>
+        <label>Phone<input name="phone" autocomplete="tel" placeholder="(555) 000-0000"></label>
+        <label>Password<input name="password" type="password" required autocomplete="new-password" minlength="8" placeholder="New password"></label>
+        <label>Confirm password<input name="confirmPassword" type="password" required autocomplete="new-password" minlength="8" placeholder="Confirm password"></label>
+        <button class="primary-action" type="submit">Save Password & Continue</button>
+        <button id="setupLogoutButton" class="ghost-button" type="button">Use a Different Login</button>
+        <p id="setupMessage" class="auth-message"></p>
+      </form>
+    </section>
+
     <div id="appShell" class="app-shell" hidden>
       <aside class="sidebar">
         <div class="brand">
@@ -782,6 +801,6 @@
     <div id="modalBackdrop" class="modal-backdrop" data-close-modal></div>
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js?v=20260506-role-rpc-fallback-1"></script>
+    <script src="app.js?v=20260506-first-login-setup-1"></script>
   </body>
 </html>
