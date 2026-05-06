@@ -49,8 +49,16 @@ Deno.serve(async (request) => {
         throw new Error("Only crew and production office roles can be invited here.");
       }
     }
+    const targetClientId = profileType === "client" ? body.clientId : callerRole.client_id;
+    if (!targetClientId) throw new Error("Client account connection is required.");
 
-    const { data: inviteData, error: inviteError } = await admin.auth.admin.inviteUserByEmail(email);
+    const requestOrigin = request.headers.get("Origin") || "";
+    const configuredSiteUrl = Deno.env.get("PUBLIC_SITE_URL") || Deno.env.get("SITE_URL") || "";
+    const redirectTo = configuredSiteUrl || (requestOrigin.startsWith("https://") ? requestOrigin : "");
+    const { data: inviteData, error: inviteError } = await admin.auth.admin.inviteUserByEmail(
+      email,
+      redirectTo ? { redirectTo } : undefined
+    );
     if (inviteError) throw inviteError;
 
     const userId = inviteData.user?.id;
@@ -59,9 +67,9 @@ Deno.serve(async (request) => {
     const { error: upsertError } = await admin.from("user_roles").upsert({
       user_id: userId,
       role,
-      client_id: body.clientId || callerRole.client_id,
-      worker_id: body.workerId || null,
-      promoter_id: body.promoterId || null,
+      client_id: targetClientId,
+      worker_id: profileType === "worker" ? body.workerId || null : null,
+      promoter_id: profileType === "promoter" ? body.promoterId || null : null,
       updated_at: new Date().toISOString()
     });
     if (upsertError) throw upsertError;

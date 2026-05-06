@@ -38,6 +38,14 @@ The production records are still stored locally in the browser using IndexedDB w
 
 To send real login setup emails, deploy the Supabase Edge Function in `supabase/functions/send-login-setup`. The function uses Supabase's private service role key on the server side, then creates or updates the matching `user_roles` row for Client, Crew, and Production Office users.
 
+Quick deploy commands for the login setup button:
+
+```bash
+supabase login
+supabase link --project-ref nnhqrhaltkmymnwxydwr
+supabase functions deploy send-login-setup
+```
+
 ## Important next steps
 
 Next, move payroll, profiles, events, timecards, reports, directories, and vehicle logs into Supabase tables with row-level security policies matching the role rules in `supabase-schema.sql`.

@@ -1585,7 +1585,7 @@ async function sendLoginSetup(storeName, id) {
   const { data, error } = await supabaseClient.functions.invoke(LOGIN_SETUP_FUNCTION, { body: payload });
   if (error) {
     console.error(error);
-    toast("Login setup function is not deployed yet.");
+    toast(await loginSetupErrorMessage(error));
     return;
   }
   await put(storeName, {
@@ -1599,6 +1599,22 @@ async function sendLoginSetup(storeName, id) {
   await loadState();
   setView(state.activeView);
   toast("Login setup sent.");
+}
+
+async function loginSetupErrorMessage(error) {
+  const fallback = error?.message || "Login setup failed.";
+  try {
+    if (error?.context && typeof error.context.clone === "function") {
+      const response = error.context.clone();
+      const details = await response.json();
+      if (details?.error) return details.error;
+    }
+  } catch {
+    // Keep the original Supabase error when the response body is not JSON.
+  }
+  if (fallback.includes("FunctionsFetchError")) return "Could not reach the Supabase login setup function.";
+  if (fallback.includes("FunctionsRelayError") || fallback.includes("FunctionsHttpError")) return "Supabase login setup returned an error. Check the function logs.";
+  return fallback;
 }
 
 async function saveProfileNote(workerId) {
