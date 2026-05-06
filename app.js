@@ -133,6 +133,13 @@ const NAV_GROUPS = {
   ]
 };
 
+const ROLE_HOME_VIEWS = {
+  ADMIN: "admin",
+  CLIENT: "dashboard",
+  PROMOTER_PRODUCTION_OFFICE: "productionBoard",
+  CREW: "workers"
+};
+
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => Array.from(document.querySelectorAll(selector));
 
@@ -398,7 +405,7 @@ async function applyAuthenticatedSession(session) {
   await ensureDatabase();
   await loadState();
   appHasLoaded = true;
-  setView(location.hash.replace("#", "") || state.activeView);
+  setView(roleHomeView());
 }
 
 async function initializeAuth() {
@@ -485,6 +492,16 @@ function isCrewRole() {
 
 function currentProfile() {
   return ACCESS_PROFILES[state.accessRole] || ACCESS_PROFILES.CLIENT;
+}
+
+function roleHomeView(role = state.accessRole) {
+  const normalized = normalizeRole(role);
+  return ROLE_HOME_VIEWS[normalized] || ACCESS_PROFILES[normalized]?.views?.[0] || "dashboard";
+}
+
+function protectedViewFor(viewId) {
+  const profile = currentProfile();
+  return profile.views.includes(viewId) ? viewId : roleHomeView();
 }
 
 function assignedAccessForRole(role) {
@@ -1236,13 +1253,12 @@ function applyWorkerPayDefaultsToTimecard(workerId) {
 }
 
 function setView(viewId) {
-  const profile = currentProfile();
   const requestedView = viewId;
   if (!authState.session) {
     showAuthScreen("Log in to continue.");
     return;
   }
-  if (!profile.views.includes(viewId)) viewId = profile.views[0];
+  viewId = protectedViewFor(viewId);
   state.activeView = viewId;
   $$(".view").forEach((view) => view.classList.toggle("active-view", view.id === viewId));
   $$(".nav-item").forEach((button) => button.classList.toggle("active", button.dataset.view === viewId));
