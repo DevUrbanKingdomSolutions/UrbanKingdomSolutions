@@ -231,14 +231,12 @@
           </form>
         </section>
 
-        <section id="clientProfile" class="view" aria-labelledby="viewTitle">
+        <section id="clientCompanyProfile" class="view" aria-labelledby="viewTitle">
           <div class="stack-layout">
             <section class="panel">
               <div class="panel-heading">
-                <h3>My Profile</h3>
-                <button class="tiny-button owner-action" data-open-form="clientProfileForm" type="button">Edit Profile</button>
+                <h3>Client Profile</h3>
               </div>
-              <div id="clientProfileCard" class="record-grid"></div>
               <div id="clientCompanyCard" class="record-grid"></div>
             </section>
           </div>
@@ -255,6 +253,18 @@
             <label>System notes<textarea name="notes" rows="4" placeholder="Company notes"></textarea></label>
             <button class="primary-action" type="submit">Save / Update & Close</button>
           </form>
+        </section>
+
+        <section id="clientProfile" class="view" aria-labelledby="viewTitle">
+          <div class="stack-layout">
+            <section class="panel">
+              <div class="panel-heading">
+                <h3>My Profile</h3>
+                <button class="tiny-button owner-action" data-open-form="clientProfileForm" type="button">Edit Profile</button>
+              </div>
+              <div id="clientProfileCard" class="record-grid"></div>
+            </section>
+          </div>
         </section>
 
         <section id="admin" class="view">
@@ -799,6 +809,6 @@
     <div id="modalBackdrop" class="modal-backdrop" data-close-modal></div>
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js?v=20260506-client-company-reps-1"></script>
+    <script src="app.js?v=20260506-client-profile-nav-1"></script>
   </body>
 </html>

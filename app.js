@@ -46,7 +46,7 @@ const ACCESS_PROFILES = {
   },
   CLIENT: {
     label: "CLIENT",
-    views: ["dashboard", "clientProfile", "workers", "promoters", "venues", "events", "productionBoard", "clock", "timecards", "vehicles", "reports", "payroll", "directory", "runner"],
+    views: ["dashboard", "clientCompanyProfile", "clientProfile", "workers", "promoters", "venues", "events", "productionBoard", "clock", "timecards", "vehicles", "reports", "payroll", "directory", "runner"],
     canAdminEdit: true,
     canOwnerEdit: true,
     canVenueEdit: true,
@@ -117,7 +117,7 @@ const NAV_GROUPS = {
   ],
   CLIENT: [
     { items: [["dashboard", "Dashboard"]] },
-    { items: [["clientProfile", "My Profile"]] },
+    { items: [["clientCompanyProfile", "Client Profile"], ["clientProfile", "My Profile"]] },
     { label: "PROFILES", items: [["workers", "Crew Profiles"], ["promoters", "Promoter Profiles"], ["venues", "Venues"]] },
     { label: "EVENTS", items: [["events", "Events"], ["productionBoard", "Production Board"], ["clock", "TimeClock"], ["timecards", "Timecards"], ["vehicles", "Vehicles"], ["reports", "Reports"]] },
     { label: "PAYROLL", items: [["payroll", "Payroll"]] },
