@@ -39,7 +39,6 @@ const ACCESS_PROFILES = {
     canVenueEdit: false,
     canScopedEdit: false,
     canImportExport: false,
-    canSeed: false,
     canSystemEdit: true
   },
   CLIENT: {
@@ -50,7 +49,6 @@ const ACCESS_PROFILES = {
     canVenueEdit: true,
     canScopedEdit: true,
     canImportExport: true,
-    canSeed: true,
     canSystemEdit: false
   },
   PROMOTER_PRODUCTION_OFFICE: {
@@ -61,7 +59,6 @@ const ACCESS_PROFILES = {
     canVenueEdit: true,
     canScopedEdit: true,
     canImportExport: false,
-    canSeed: false,
     canSystemEdit: false
   },
   CREW: {
@@ -72,7 +69,6 @@ const ACCESS_PROFILES = {
     canVenueEdit: false,
     canScopedEdit: true,
     canImportExport: false,
-    canSeed: false,
     canSystemEdit: false
   }
 };
@@ -1292,7 +1288,6 @@ function applyAccessProfile() {
   $("#promoterScopeControl").hidden = !isProductionRole();
   $("#exportData").hidden = !profile.canImportExport;
   $("#importData").closest(".file-action").hidden = !profile.canImportExport;
-  $("#seedData").hidden = !profile.canSeed;
   $$(".admin-form").forEach((form) => { form.hidden = !profile.canAdminEdit; });
   $$(".owner-form").forEach((form) => { form.hidden = !profile.canOwnerEdit; });
   $$(".rate-field").forEach((form) => { form.hidden = !isClientRole(); });
@@ -1589,38 +1584,6 @@ function toast(message) {
   window.setTimeout(() => element.classList.remove("show"), 2200);
 }
 
-async function seedData() {
-  if (state.workers.length || state.venues.length || state.promoters.length || state.runnerStops.length || state.events.length) {
-    const confirmed = confirm("Sample data will be added to your existing database. Continue?");
-    if (!confirmed) return;
-  }
-
-  const venueId = crypto.randomUUID();
-  const promoterId = crypto.randomUUID();
-  const workerId = crypto.randomUUID();
-  const workerTwoId = crypto.randomUUID();
-  const eventId = crypto.randomUUID();
-
-  await Promise.all([
-    put("clients", { name: "Demo Entertainment Client", contactName: "Keith Richardson", email: "client@example.com", phone: "(555) 100-0000", status: "Active", notes: "Demo client account for ADMIN system view." }),
-    put("workers", { id: workerId, name: "Maya Torres", role: "Audio A2", phone: "(555) 212-0199", email: "maya@example.com", status: "Available", runnerStatus: "Available", accessLevels: ["CREW"], defaultDayRate: "380", defaultIncludedHours: "10", defaultAdditionalRate: "48", defaultRentedVehicleRate: "25", defaultPersonalVehicleRate: "80", skills: "RF coordination, patching, stage comms", emergency: "Luis Torres (555) 212-0101", mailingAddress: "100 Crew Lane, Long Beach, CA", hidePhone: "", hideEmail: "", hideHeadshot: "", notes: "Strong on fast festival changeovers." }),
-    put("workers", { id: workerTwoId, name: "Andre Bell", role: "Lighting tech", phone: "(555) 718-3320", email: "andre@example.com", status: "Booked", runnerStatus: "On a Run", accessLevels: ["CREW", "PROMOTER_PRODUCTION_OFFICE"], defaultDayRate: "420", defaultIncludedHours: "10", defaultAdditionalRate: "55", defaultRentedVehicleRate: "25", defaultPersonalVehicleRate: "90", skills: "Moving lights, dimmers, console prep", emergency: "Renee Bell (555) 718-0022", mailingAddress: "200 Stage Road, Los Angeles, CA", hidePhone: "", hideEmail: "", hideHeadshot: "", notes: "Prefers overnight strike calls with advance notice." }),
-    put("venues", { id: venueId, name: "Harbor Pavilion", address: "100 Pier Road, Long Beach, CA", contactName: "Nina Patel", phone: "(555) 410-9088", email: "nina@harbor.example", parking: "Crew lot B. Enter from Pier Road and show call sheet.", notes: "Dock is stage left. Freight elevator requires venue security key." }),
-    put("promoters", { id: promoterId, companyName: "LiveNation", name: "Cal Reed", contactName: "Local promoter rep", phone: "(555) 300-8001", email: "cal@livenation.example", accessLevels: ["PROMOTER_PRODUCTION_OFFICE"], billing: "Invoices need event code and signed timecard export.", notes: "Usually adds two runners on show day." }),
-    put("events", { id: eventId, name: "Harbor Pavilion Summer Show", type: "Concert", productionContact: "Dana Lee (555) 550-1212", venueId, promoterId, workerIds: [workerId, workerTwoId], startDate: toLocalInputValue(new Date(Date.now() + 86400000)), endDate: toLocalInputValue(new Date(Date.now() + 129600000)), notes: "Two runners, one van, overnight strike likely." }),
-    put("runnerStops", { name: "Ace Pro Hardware", category: "Hardware", address: "44 Market Street, Long Beach, CA", phone: "(555) 444-1515", hours: "6 AM - 9 PM", bestUse: "Gaff tape, batteries, hand tools, last-minute fasteners", notes: "Account at contractor desk under production company name." }),
-    put("timecards", { workerId, eventId, eventName: "Harbor Pavilion Summer Show", venueId, promoterId, clockIn: toLocalInputValue(new Date(Date.now() - 2 * 36e5)), clockOut: "", lunchOut: "", lunchIn: "", breakMinutes: "0", dayRate: "380", includedHours: "10", additionalRate: "48", vehicleUse: "Personal Vehicle", vehicleRate: "80", notes: "Patch support and RF check." })
-  ]);
-
-  state.activeWorkerId = workerId;
-  state.activePromoterId = promoterId;
-  localStorage.setItem("productionCrewActiveWorker", workerId);
-  localStorage.setItem("productionCrewActivePromoter", promoterId);
-  await loadState();
-  setView(state.activeView);
-  toast("Sample data loaded.");
-}
-
 async function exportData() {
   const payload = {};
   STORES.forEach((store) => {
@@ -1698,7 +1661,6 @@ function bindEvents() {
     $("#timecardForm").elements.clockIn.value = toLocalInputValue(new Date());
     $("#timecardForm").elements.clockOut.value = "";
   });
-  $("#seedData").addEventListener("click", seedData);
   $("#exportData").addEventListener("click", exportData);
   $("#importData").addEventListener("change", importData);
 
