@@ -160,7 +160,17 @@ function openDatabase() {
       });
     };
 
-    request.onsuccess = () => resolve(request.result);
+    request.onsuccess = () => {
+      const database = request.result;
+      database.onversionchange = () => {
+        database.close();
+        if (db === database) db = null;
+      };
+      database.onclose = () => {
+        if (db === database) db = null;
+      };
+      resolve(database);
+    };
     request.onerror = () => reject(request.error);
   });
 }
@@ -170,22 +180,34 @@ async function ensureDatabase() {
   return db;
 }
 
-function transaction(storeName, mode = "readonly") {
-  return db.transaction(storeName, mode).objectStore(storeName);
+async function storeTransaction(storeName, mode = "readonly") {
+  await ensureDatabase();
+  try {
+    return db.transaction(storeName, mode).objectStore(storeName);
+  } catch (error) {
+    if (String(error?.message || "").includes("connection is closing")) {
+      db = null;
+      await ensureDatabase();
+      return db.transaction(storeName, mode).objectStore(storeName);
+    }
+    throw error;
+  }
 }
 
-function getAll(storeName) {
+async function getAll(storeName) {
+  const store = await storeTransaction(storeName);
   return new Promise((resolve, reject) => {
-    const request = transaction(storeName).getAll();
+    const request = store.getAll();
     request.onsuccess = () => resolve(request.result || []);
     request.onerror = () => reject(request.error);
   });
 }
 
-function put(storeName, record) {
+async function put(storeName, record) {
+  const store = await storeTransaction(storeName, "readwrite");
   return new Promise((resolve, reject) => {
     const now = new Date().toISOString();
-    const request = transaction(storeName, "readwrite").put({
+    const request = store.put({
       ...record,
       id: record.id || crypto.randomUUID(),
       updatedAt: now,
@@ -196,9 +218,10 @@ function put(storeName, record) {
   });
 }
 
-function remove(storeName, id) {
+async function remove(storeName, id) {
+  const store = await storeTransaction(storeName, "readwrite");
   return new Promise((resolve, reject) => {
-    const request = transaction(storeName, "readwrite").delete(id);
+    const request = store.delete(id);
     request.onsuccess = () => resolve();
     request.onerror = () => reject(request.error);
   });
