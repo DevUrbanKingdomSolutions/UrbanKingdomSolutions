@@ -36,6 +36,8 @@ This is a first working version of a private entertainment production database a
 
 Open `index.html` in a browser. Supabase is configured in `app.js`; run `supabase-schema.sql` in Supabase SQL Editor, then use `supabase-admin-bootstrap.sql` once with your first admin Auth user ID.
 
+If a user lands on the wrong access page, run `supabase-role-check.sql` in Supabase SQL Editor to confirm that their `user_roles` row has the expected role and client/worker/promoter connection.
+
 The production records are still stored locally in the browser using IndexedDB while the app screens are being finalized. Authentication and roles now come from Supabase so the production tables can move over module by module.
 
 To send real login setup emails, deploy the Supabase Edge Function in `supabase/functions/send-login-setup`. The function uses Supabase's private service role key on the server side, then creates or updates the matching `user_roles` row for Client, Crew, and Production Office users.

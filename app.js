@@ -475,7 +475,9 @@ async function applyAuthenticatedSession(session) {
   await ensureDatabase();
   await loadState();
   appHasLoaded = true;
-  setView(roleHomeView());
+  const homeView = roleHomeView();
+  if (location.hash !== `#${homeView}`) history.replaceState(null, "", `#${homeView}`);
+  setView(homeView);
 }
 
 async function initializeAuth() {

@@ -23,6 +23,10 @@ create table if not exists public.user_roles (
 
 alter table public.user_roles enable row level security;
 
+create index if not exists user_roles_client_id_idx on public.user_roles (client_id);
+create index if not exists user_roles_worker_id_idx on public.user_roles (worker_id);
+create index if not exists user_roles_promoter_id_idx on public.user_roles (promoter_id);
+
 do $$
 declare
   policy_record record;
