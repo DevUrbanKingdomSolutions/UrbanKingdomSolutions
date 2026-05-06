@@ -24,6 +24,7 @@ This is a first working version of a private entertainment production database a
 - JSON export and import for backup or moving data.
 - Four access views for planning permissions: Admin, Client, Promoter / Production Office, and Crew / Runner.
 - Supabase Auth login with database-backed roles: ADMIN, CLIENT, PROMOTER_PRODUCTION_OFFICE, and CREW.
+- Client-visible profile login fields for login email, login role, Supabase user ID, and sending login setup.
 - ADMIN can manage client accounts and system setup without production data, payroll, timecards, crew personal data, promoter records, or reports.
 - Production Board for CLIENT and PROMOTER_PRODUCTION_OFFICE to view assigned production details and mark runners Available, On a Run, or At Production Office.
 - Hash-based route protection redirects restricted direct links like `#payroll` when the signed-in role cannot access that view.
@@ -33,6 +34,8 @@ This is a first working version of a private entertainment production database a
 Open `index.html` in a browser. Supabase is configured in `app.js`; run `supabase-schema.sql` in Supabase SQL Editor, then use `supabase-admin-bootstrap.sql` once with your first admin Auth user ID.
 
 The production records are still stored locally in the browser using IndexedDB while the app screens are being finalized. Authentication and roles now come from Supabase so the production tables can move over module by module.
+
+To send real login setup emails, deploy the Supabase Edge Function in `supabase/functions/send-login-setup`. The function uses Supabase's private service role key on the server side, then creates or updates the matching `user_roles` row for Crew and Production Office users.
 
 ## Important next steps
 

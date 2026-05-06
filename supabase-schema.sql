@@ -128,6 +128,41 @@ for delete
 to authenticated
 using (public.current_app_role() = 'ADMIN');
 
+create policy "Clients can insert crew and promoter login roles"
+on public.user_roles
+for insert
+to authenticated
+with check (
+  public.current_app_role() = 'CLIENT'
+  and client_id = public.current_client_id()
+  and role in ('PROMOTER_PRODUCTION_OFFICE', 'CREW')
+);
+
+create policy "Clients can update crew and promoter login roles"
+on public.user_roles
+for update
+to authenticated
+using (
+  public.current_app_role() = 'CLIENT'
+  and client_id = public.current_client_id()
+  and role in ('PROMOTER_PRODUCTION_OFFICE', 'CREW')
+)
+with check (
+  public.current_app_role() = 'CLIENT'
+  and client_id = public.current_client_id()
+  and role in ('PROMOTER_PRODUCTION_OFFICE', 'CREW')
+);
+
+create policy "Clients can remove crew and promoter login roles"
+on public.user_roles
+for delete
+to authenticated
+using (
+  public.current_app_role() = 'CLIENT'
+  and client_id = public.current_client_id()
+  and role in ('PROMOTER_PRODUCTION_OFFICE', 'CREW')
+);
+
 create table if not exists public.clients (
   id uuid primary key default gen_random_uuid(),
   name text not null,

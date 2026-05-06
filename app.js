@@ -2,6 +2,7 @@ const DB_NAME = "productionCrewDatabase";
 const DB_VERSION = 5;
 const SUPABASE_URL = "https://nnhqrhaltkmymnwxydwr.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5uaHFyaGFsdGtteW1ud3h5ZHdyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgwMjMxNDgsImV4cCI6MjA5MzU5OTE0OH0.X9iGhE61WehM57133LKCWMfXXDHmcb2rhw-ZPCKAJos";
+const LOGIN_SETUP_FUNCTION = "send-login-setup";
 const STORES = [
   "clients",
   "workers",
@@ -374,6 +375,45 @@ async function fetchUserRole(session) {
   return {
     ...data,
     role: normalizeRole(data.role)
+  };
+}
+
+function profileLoginRole(storeName, record) {
+  const fallback = storeName === "promoters" ? "PROMOTER_PRODUCTION_OFFICE" : "CREW";
+  return normalizeRole(record.loginRole || normalizeAccessLevels(record.accessLevels, fallback)[0] || fallback);
+}
+
+function profileRolePayload(storeName, record) {
+  const role = profileLoginRole(storeName, record);
+  return {
+    user_id: record.authUserId,
+    role,
+    client_id: authState.roleRecord?.client_id || null,
+    worker_id: storeName === "workers" ? record.id : null,
+    promoter_id: storeName === "promoters" ? record.id : null,
+    updated_at: new Date().toISOString()
+  };
+}
+
+async function syncSupabaseRoleForProfile(storeName, record) {
+  if (!["workers", "promoters"].includes(storeName) || !canOwnerEdit() || !record.authUserId) return "";
+  const { error } = await supabaseClient
+    .from("user_roles")
+    .upsert(profileRolePayload(storeName, record), { onConflict: "user_id" });
+  if (error) throw error;
+  return "Supabase login role connected.";
+}
+
+function loginSetupPayload(storeName, record) {
+  const email = (record.loginEmail || record.email || "").trim();
+  return {
+    profileType: storeName === "workers" ? "worker" : "promoter",
+    profileId: record.id,
+    email,
+    role: profileLoginRole(storeName, record),
+    clientId: authState.roleRecord?.client_id || null,
+    workerId: storeName === "workers" ? record.id : null,
+    promoterId: storeName === "promoters" ? record.id : null
   };
 }
 
@@ -908,6 +948,20 @@ function actionButtons(store, id, formId, extra = "", allowed = canAdminEdit()) 
   return `<div class="row-actions">${extra}<button class="tiny-button" data-edit="${store}" data-id="${id}" data-form="${formId}" type="button">Edit</button><button class="tiny-button danger" data-delete="${store}" data-id="${id}" type="button">Delete</button></div>`;
 }
 
+function loginSetupButton(store, profile) {
+  if (!canOwnerEdit()) return "";
+  const email = profile.loginEmail || profile.email;
+  if (!email) return "";
+  return `<button class="tiny-button" data-send-login="${store}" data-id="${profile.id}" type="button">Send Login Setup</button>`;
+}
+
+function loginStatus(profile) {
+  if (!canOwnerEdit()) return "";
+  if (profile.inviteStatus) return `<p>${escapeHtml(profile.inviteStatus)}</p>`;
+  if (profile.authUserId) return `<p>Login connected</p>`;
+  return `<p>Login not connected</p>`;
+}
+
 function renderWorkers() {
   const heading = document.querySelector("#workers .panel-heading h3");
   const nav = document.querySelector('.nav-item[data-view="workers"]');
@@ -989,7 +1043,7 @@ function workerProfileRow(worker) {
   const canViewRates = isClientRole();
   const info = showLimited
     ? `${publicEmail ? `<p>${escapeHtml(publicEmail)}</p>` : ""}`
-    : `${escapeHtml(worker.skills)}${canViewRates ? `<p>${currency(worker.defaultDayRate || worker.defaultRate || 0)}/${worker.defaultIncludedHours || 10} hrs</p><p>${accessBadges(worker.accessLevels, "CREW")}</p>` : ""}`;
+    : `${escapeHtml(worker.skills)}${canViewRates ? `<p>${currency(worker.defaultDayRate || worker.defaultRate || 0)}/${worker.defaultIncludedHours || 10} hrs</p><p>${accessBadges(worker.accessLevels, "CREW")}</p>${loginStatus(worker)}` : ""}`;
   const note = isProductionRole() ? promoterNoteBox(worker.id) : "";
   return `<tr>
     <td>${profileSelect("workers", worker.id)}${profileCell(worker, showLimited && worker.hideHeadshot && worker.id !== state.activeWorkerId, publicEmail)}</td>
@@ -997,7 +1051,7 @@ function workerProfileRow(worker) {
     <td>${showLimited ? "" : `<span class="status-pill ${worker.status === "Booked" ? "warn" : ""}">${escapeHtml(worker.status)}</span>`}</td>
     <td>${escapeHtml(publicPhone)}</td>
     <td>${info}${note}</td>
-    <td>${actionButtons("workers", worker.id, "workerForm", "", canEditWorker(worker))}</td>
+    <td>${actionButtons("workers", worker.id, "workerForm", loginSetupButton("workers", worker), canEditWorker(worker))}</td>
   </tr>`;
 }
 
@@ -1188,7 +1242,7 @@ function renderPromoters() {
   const rows = visiblePromoters().filter((promoter) => matchesSearch(promoter));
   $("#promoterTableCount").textContent = `${rows.length} shown`;
   $("#promoterTable").innerHTML = rows.length
-    ? rows.map((promoter) => `<tr><td>${profileSelect("promoters", promoter.id)}${profileCell(promoter, false, promoter.contactName)}</td><td><strong>${escapeHtml(promoter.companyName || "Independent")}</strong><p>${escapeHtml(promoter.contactName)}</p></td><td>${escapeHtml(promoter.phone)}</td><td>${escapeHtml(promoter.email)}</td><td>${escapeHtml(promoter.notes || promoter.billing)}<p>${accessBadges(promoter.accessLevels, "PROMOTER_PRODUCTION_OFFICE")}</p></td><td>${actionButtons("promoters", promoter.id, "promoterForm", "", canEditPromoter(promoter))}</td></tr>`).join("")
+    ? rows.map((promoter) => `<tr><td>${profileSelect("promoters", promoter.id)}${profileCell(promoter, false, promoter.contactName)}</td><td><strong>${escapeHtml(promoter.companyName || "Independent")}</strong><p>${escapeHtml(promoter.contactName)}</p></td><td>${escapeHtml(promoter.phone)}</td><td>${escapeHtml(promoter.email)}</td><td>${escapeHtml(promoter.notes || promoter.billing)}<p>${accessBadges(promoter.accessLevels, "PROMOTER_PRODUCTION_OFFICE")}</p>${loginStatus(promoter)}</td><td>${actionButtons("promoters", promoter.id, "promoterForm", loginSetupButton("promoters", promoter), canEditPromoter(promoter))}</td></tr>`).join("")
     : `<tr><td colspan="6" class="empty">No promoter profiles match this search.</td></tr>`;
 }
 
@@ -1402,12 +1456,25 @@ async function saveForm(event, storeName) {
     }
   }
 
+  if (["workers", "promoters"].includes(storeName)) {
+    merged.id = merged.id || crypto.randomUUID();
+    merged.loginEmail = merged.loginEmail || merged.email || "";
+    merged.loginRole = merged.loginRole || profileLoginRole(storeName, merged);
+  }
+
+  let loginSyncMessage = "";
   await put(storeName, merged);
+  try {
+    loginSyncMessage = await syncSupabaseRoleForProfile(storeName, merged);
+  } catch (error) {
+    console.error(error);
+    loginSyncMessage = "Profile saved. Supabase role sync needs attention.";
+  }
   closeForm(formId);
   await loadState();
   setView(state.activeView);
   closeForm(formId);
-  toast("Saved and closed.");
+  toast(loginSyncMessage || "Saved and closed.");
   window.setTimeout(() => closeForm(formId), 0);
 }
 
@@ -1467,6 +1534,41 @@ async function bulkDeleteProfiles(storeName) {
   await loadState();
   setView(state.activeView);
   toast("Selected profiles deleted.");
+}
+
+async function sendLoginSetup(storeName, id) {
+  if (!canOwnerEdit()) {
+    toast("Only Client can send login setup.");
+    return;
+  }
+  if (!initializeSupabaseClient()) {
+    toast("Supabase login is not configured.");
+    return;
+  }
+  const record = state[storeName]?.find((item) => item.id === id);
+  if (!record) return;
+  const payload = loginSetupPayload(storeName, record);
+  if (!payload.email) {
+    toast("Add a login email first.");
+    return;
+  }
+  const { data, error } = await supabaseClient.functions.invoke(LOGIN_SETUP_FUNCTION, { body: payload });
+  if (error) {
+    console.error(error);
+    toast("Login setup function is not deployed yet.");
+    return;
+  }
+  await put(storeName, {
+    ...record,
+    loginEmail: payload.email,
+    loginRole: payload.role,
+    authUserId: data?.userId || data?.user_id || record.authUserId || "",
+    inviteStatus: "Login setup sent",
+    inviteSentAt: new Date().toISOString()
+  });
+  await loadState();
+  setView(state.activeView);
+  toast("Login setup sent.");
 }
 
 async function saveProfileNote(workerId) {
@@ -1678,6 +1780,7 @@ function bindEvents() {
     const selectVisibleButton = event.target.closest("[data-select-visible]");
     const clearSelectedButton = event.target.closest("[data-clear-selected]");
     const bulkDeleteButton = event.target.closest("[data-bulk-delete]");
+    const loginSetupButton = event.target.closest("[data-send-login]");
 
     if (openButton) {
       clearForm(openButton.dataset.openForm);
@@ -1704,6 +1807,7 @@ function bindEvents() {
     if (selectVisibleButton) setVisibleProfileSelection(selectVisibleButton.dataset.selectVisible, true);
     if (clearSelectedButton) setVisibleProfileSelection(clearSelectedButton.dataset.clearSelected, false);
     if (bulkDeleteButton) await bulkDeleteProfiles(bulkDeleteButton.dataset.bulkDelete);
+    if (loginSetupButton) await sendLoginSetup(loginSetupButton.dataset.sendLogin, loginSetupButton.dataset.id);
     if (payrollTab) {
       state.payrollView = payrollTab.dataset.payrollView;
       localStorage.setItem("productionCrewPayrollView", state.payrollView);
