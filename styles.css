@@ -434,6 +434,21 @@ body.modal-open {
   margin: 0;
 }
 
+.smtp-helper {
+  margin: 0;
+  padding: 10px;
+  border: 1px solid #d9e4df;
+  border-radius: 8px;
+  background: #f4faf7;
+  color: #334046;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.smtp-detail-field.is-hidden {
+  display: none;
+}
+
 .form-panel .primary-action,
 .form-panel .secondary-action {
   width: calc(100% - 32px);

@@ -153,16 +153,25 @@
             <label>Mailing address<textarea name="mailingAddress" rows="3" placeholder="Street, city, state, zip"></textarea></label>
             <div class="photo-fieldset">
               <span>SMTP Email Routing</span>
-              <label>Provider<input name="smtpProvider" placeholder="Resend, SendGrid, Postmark, Gmail SMTP"></label>
-              <label>From name<input name="smtpFromName" placeholder="Production Office"></label>
-              <label>From email<input name="smtpFromEmail" type="email" placeholder="production@example.com"></label>
-              <label>Reply-to email<input name="smtpReplyTo" type="email" placeholder="reply@example.com"></label>
-              <label>SMTP host<input name="smtpHost" placeholder="smtp.example.com"></label>
-              <label>SMTP port<input name="smtpPort" type="number" min="1" placeholder="587"></label>
-              <label>SMTP username<input name="smtpUsername" placeholder="username or API user"></label>
+              <label>Email service
+                <select name="smtpProvider" data-smtp-provider>
+                  <option value="">Choose email service</option>
+                  <option value="google">Google / Gmail</option>
+                  <option value="apple">Apple / iCloud Mail</option>
+                  <option value="microsoft">Microsoft / Outlook</option>
+                  <option value="other">Other SMTP</option>
+                </select>
+              </label>
+              <p class="smtp-helper" data-smtp-helper>Choose an email service to see the setup fields.</p>
+              <label class="smtp-detail-field">From name<input name="smtpFromName" placeholder="Production Office"></label>
+              <label class="smtp-detail-field">From email<input name="smtpFromEmail" type="email" placeholder="production@example.com"></label>
+              <label class="smtp-detail-field">Reply-to email<input name="smtpReplyTo" type="email" placeholder="reply@example.com"></label>
+              <label class="smtp-detail-field">SMTP host<input name="smtpHost" placeholder="smtp.example.com"></label>
+              <label class="smtp-detail-field">SMTP port<input name="smtpPort" type="number" min="1" placeholder="587"></label>
+              <label class="smtp-detail-field">SMTP username<input name="smtpUsername" placeholder="username or API user"></label>
               <input type="hidden" name="smtpSecretRef">
-              <label>Google App Password<input name="smtpAppPassword" type="password" autocomplete="new-password" placeholder="16-character app password"></label>
-              <label>Security
+              <label class="smtp-detail-field"><span data-smtp-password-label>App Password</span><input name="smtpAppPassword" type="password" autocomplete="new-password" placeholder="App password"></label>
+              <label class="smtp-detail-field">Security
                 <select name="smtpSecure">
                   <option value="">Select security</option>
                   <option value="tls">TLS / STARTTLS</option>
@@ -203,16 +212,25 @@
             <label>Admin email<input name="email" type="email" placeholder="admin@example.com"></label>
             <div class="photo-fieldset">
               <span>SMTP Settings</span>
-              <label>Provider<input name="smtpProvider" placeholder="Resend, SendGrid, Postmark, Gmail SMTP"></label>
-              <label>From name<input name="smtpFromName" placeholder="System Admin"></label>
-              <label>From email<input name="smtpFromEmail" type="email" placeholder="admin@example.com"></label>
-              <label>Reply-to email<input name="smtpReplyTo" type="email" placeholder="support@example.com"></label>
-              <label>SMTP host<input name="smtpHost" placeholder="smtp.example.com"></label>
-              <label>SMTP port<input name="smtpPort" type="number" min="1" placeholder="587"></label>
-              <label>SMTP username<input name="smtpUsername" placeholder="username or API user"></label>
+              <label>Email service
+                <select name="smtpProvider" data-smtp-provider>
+                  <option value="">Choose email service</option>
+                  <option value="google">Google / Gmail</option>
+                  <option value="apple">Apple / iCloud Mail</option>
+                  <option value="microsoft">Microsoft / Outlook</option>
+                  <option value="other">Other SMTP</option>
+                </select>
+              </label>
+              <p class="smtp-helper" data-smtp-helper>Choose an email service to see the setup fields.</p>
+              <label class="smtp-detail-field">From name<input name="smtpFromName" placeholder="System Admin"></label>
+              <label class="smtp-detail-field">From email<input name="smtpFromEmail" type="email" placeholder="admin@example.com"></label>
+              <label class="smtp-detail-field">Reply-to email<input name="smtpReplyTo" type="email" placeholder="support@example.com"></label>
+              <label class="smtp-detail-field">SMTP host<input name="smtpHost" placeholder="smtp.example.com"></label>
+              <label class="smtp-detail-field">SMTP port<input name="smtpPort" type="number" min="1" placeholder="587"></label>
+              <label class="smtp-detail-field">SMTP username<input name="smtpUsername" placeholder="username or API user"></label>
               <input type="hidden" name="smtpSecretRef">
-              <label>Google App Password<input name="smtpAppPassword" type="password" autocomplete="new-password" placeholder="16-character app password"></label>
-              <label>Security
+              <label class="smtp-detail-field"><span data-smtp-password-label>App Password</span><input name="smtpAppPassword" type="password" autocomplete="new-password" placeholder="App password"></label>
+              <label class="smtp-detail-field">Security
                 <select name="smtpSecure">
                   <option value="">Select security</option>
                   <option value="tls">TLS / STARTTLS</option>
@@ -811,6 +829,6 @@
     <div id="modalBackdrop" class="modal-backdrop" data-close-modal></div>
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js?v=20260506-smtp-route-1"></script>
+    <script src="app.js?v=20260506-smtp-provider-1"></script>
   </body>
 </html>

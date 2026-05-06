@@ -144,6 +144,41 @@ const ROLE_HOME_VIEWS = {
   CREW: "workers"
 };
 
+const SMTP_PROVIDER_SETTINGS = {
+  google: {
+    host: "smtp.gmail.com",
+    port: "587",
+    secure: "tls",
+    passwordLabel: "Google App Password",
+    passwordPlaceholder: "16-character Google app password",
+    helper: "Google/Gmail: turn on 2-Step Verification, then create an App Password in your Google Account. Use the 16-character password here, not your normal Google password."
+  },
+  apple: {
+    host: "smtp.mail.me.com",
+    port: "587",
+    secure: "tls",
+    passwordLabel: "Apple App-Specific Password",
+    passwordPlaceholder: "Apple app-specific password",
+    helper: "Apple/iCloud Mail: sign in at account.apple.com, open Sign-In and Security, choose App-Specific Passwords, then generate one for this app."
+  },
+  microsoft: {
+    host: "smtp.office365.com",
+    port: "587",
+    secure: "tls",
+    passwordLabel: "Microsoft App Password",
+    passwordPlaceholder: "Microsoft app password",
+    helper: "Microsoft/Outlook: create an app password from Advanced security options after two-step verification is enabled. Some work accounts may need their admin to allow app passwords or SMTP AUTH."
+  },
+  other: {
+    host: "",
+    port: "587",
+    secure: "tls",
+    passwordLabel: "SMTP Password or App Key",
+    passwordPlaceholder: "SMTP password, app password, or API key",
+    helper: "Other SMTP: use the SMTP host, port, username, and app password/API key from your email provider. If they offer TLS/STARTTLS, keep port 587 and TLS selected."
+  }
+};
+
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => Array.from(document.querySelectorAll(selector));
 
@@ -301,6 +336,7 @@ function fillForm(formId, record) {
   const form = document.getElementById(formId);
   Object.entries(record).forEach(([key, value]) => {
     if (!form.elements[key] || form.elements[key].type === "file") return;
+    if (key === "smtpProvider") value = normalizeSmtpProvider(value);
     if (form.elements[key].type === "checkbox") {
       form.elements[key].checked = value === "yes" || value === true;
     } else if (form.elements[key].multiple && Array.isArray(value)) {
@@ -313,6 +349,7 @@ function fillForm(formId, record) {
     }
   });
   openForm(formId);
+  updateSmtpForm(form);
 }
 
 function clearForm(formId) {
@@ -328,6 +365,7 @@ function clearForm(formId) {
   if ((formId === "vehicleForm" || formId === "reportForm") && state.activeWorkerId) {
     form.elements.workerId.value = state.activeWorkerId;
   }
+  updateSmtpForm(form);
 }
 
 function openForm(formId) {
@@ -356,6 +394,53 @@ function closeForm(formId) {
 function closeActiveForm() {
   const active = document.querySelector(".form-panel.modal-form");
   if (active) closeForm(active.id);
+}
+
+function normalizeSmtpProvider(value) {
+  const provider = String(value || "").toLowerCase();
+  if (provider.includes("gmail") || provider.includes("google")) return "google";
+  if (provider.includes("icloud") || provider.includes("apple")) return "apple";
+  if (provider.includes("outlook") || provider.includes("office") || provider.includes("microsoft")) return "microsoft";
+  if (provider) return provider;
+  return "";
+}
+
+function updateSmtpForm(form, applyDefaults = false) {
+  if (!form?.elements?.smtpProvider) return;
+  const provider = normalizeSmtpProvider(form.elements.smtpProvider.value);
+  const settings = SMTP_PROVIDER_SETTINGS[provider];
+  if (form.elements.smtpProvider.value !== provider) form.elements.smtpProvider.value = provider;
+
+  form.querySelectorAll(".smtp-detail-field").forEach((field) => {
+    field.classList.toggle("is-hidden", !settings);
+  });
+
+  const helper = form.querySelector("[data-smtp-helper]");
+  if (helper) helper.textContent = settings?.helper || "Choose an email service to see the setup fields.";
+
+  const passwordLabel = form.querySelector("[data-smtp-password-label]");
+  if (passwordLabel) passwordLabel.textContent = settings?.passwordLabel || "App Password";
+
+  if (form.elements.smtpAppPassword) {
+    form.elements.smtpAppPassword.placeholder = settings?.passwordPlaceholder || "App password";
+  }
+
+  if (!settings || !applyDefaults) return;
+  if (form.elements.smtpHost) form.elements.smtpHost.value = settings.host;
+  if (form.elements.smtpPort) form.elements.smtpPort.value = settings.port;
+  if (form.elements.smtpSecure) form.elements.smtpSecure.value = settings.secure;
+  if (form.elements.smtpUsername && form.elements.smtpFromEmail?.value) {
+    form.elements.smtpUsername.value = form.elements.smtpUsername.value || form.elements.smtpFromEmail.value;
+  }
+}
+
+function smtpProviderLabel(value) {
+  const provider = normalizeSmtpProvider(value);
+  if (provider === "google") return "Google / Gmail";
+  if (provider === "apple") return "Apple / iCloud Mail";
+  if (provider === "microsoft") return "Microsoft / Outlook";
+  if (provider === "other") return "Other SMTP";
+  return value || "Not selected";
 }
 
 function isSupabaseConfigured() {
@@ -1245,7 +1330,7 @@ function clientEmailRoutingSummary(rep) {
   if (!rep) return `<div class="compact-item empty">No rep profile connected yet.</div>`;
   return `<div class="compact-item">
     <strong>${escapeHtml(rep.name || "My profile")}</strong>
-    <span>${escapeHtml(rep.smtpProvider || "No SMTP provider selected")} · ${escapeHtml(rep.emailRoutingStatus || "Not configured")}</span>
+    <span>${escapeHtml(smtpProviderLabel(rep.smtpProvider))} · ${escapeHtml(rep.emailRoutingStatus || "Not configured")}</span>
     <p>${escapeHtml(rep.smtpFromEmail || rep.email || "")}</p>
   </div>`;
 }
@@ -1271,7 +1356,7 @@ function renderClientProfile() {
     <div class="profile-detail-grid">
       <div><span>Email</span><strong>${escapeHtml(profile.email || "")}</strong></div>
       <div><span>Phone</span><strong>${escapeHtml(profile.phone || "")}</strong></div>
-      <div><span>Email Provider</span><strong>${escapeHtml(profile.smtpProvider || "Not selected")}</strong></div>
+      <div><span>Email Provider</span><strong>${escapeHtml(smtpProviderLabel(profile.smtpProvider))}</strong></div>
       <div><span>Routing Status</span><strong>${escapeHtml(profile.emailRoutingStatus || "Not configured")}</strong></div>
       <div><span>From Email</span><strong>${escapeHtml(profile.smtpFromEmail || "")}</strong></div>
       <div><span>Reply-To</span><strong>${escapeHtml(profile.smtpReplyTo || "")}</strong></div>
@@ -1318,7 +1403,7 @@ function renderAdminProfile() {
     <div class="profile-detail-grid">
       <div><span>Access Role</span><strong>ADMIN</strong></div>
       <div><span>System Access</span><strong>Client setup and troubleshooting</strong></div>
-      <div><span>Email Provider</span><strong>${escapeHtml(profile.smtpProvider || "Not selected")}</strong></div>
+      <div><span>Email Provider</span><strong>${escapeHtml(smtpProviderLabel(profile.smtpProvider))}</strong></div>
       <div><span>Routing Status</span><strong>${escapeHtml(profile.emailRoutingStatus || "Not configured")}</strong></div>
       <div><span>From Email</span><strong>${escapeHtml(profile.smtpFromEmail || "")}</strong></div>
       <div><span>Reply-To</span><strong>${escapeHtml(profile.smtpReplyTo || "")}</strong></div>
@@ -2450,6 +2535,16 @@ function bindEvents() {
   $("#timecardForm").addEventListener("submit", (event) => saveForm(event, "timecards"));
   $("#vehicleForm").addEventListener("submit", (event) => saveForm(event, "vehicleLogs"));
   $("#reportForm").addEventListener("submit", (event) => saveForm(event, "accidentReports"));
+  $$("[data-smtp-provider]").forEach((select) => {
+    select.addEventListener("change", () => updateSmtpForm(select.form, true));
+  });
+  $$("input[name='smtpFromEmail']").forEach((input) => {
+    input.addEventListener("input", () => {
+      if (input.form?.elements?.smtpUsername && !input.form.elements.smtpUsername.value) {
+        input.form.elements.smtpUsername.value = input.value;
+      }
+    });
+  });
 
   $$(".clear-form").forEach((button) => button.addEventListener("click", () => closeForm(button.dataset.form)));
   $("#clockInNow").addEventListener("click", () => {
