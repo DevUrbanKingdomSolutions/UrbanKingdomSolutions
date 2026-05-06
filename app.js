@@ -34,7 +34,7 @@ const ROLE_ALIASES = {
 const ACCESS_PROFILES = {
   ADMIN: {
     label: "ADMIN",
-    views: ["admin"],
+    views: ["adminProfile", "admin"],
     canAdminEdit: false,
     canOwnerEdit: false,
     canVenueEdit: false,
@@ -44,7 +44,7 @@ const ACCESS_PROFILES = {
   },
   CLIENT: {
     label: "CLIENT",
-    views: ["dashboard", "workers", "promoters", "venues", "events", "productionBoard", "clock", "timecards", "vehicles", "reports", "payroll", "directory", "runner"],
+    views: ["dashboard", "clientProfile", "workers", "promoters", "venues", "events", "productionBoard", "clock", "timecards", "vehicles", "reports", "payroll", "directory", "runner"],
     canAdminEdit: true,
     canOwnerEdit: true,
     canVenueEdit: true,
@@ -107,10 +107,12 @@ let state = {
 
 const NAV_GROUPS = {
   ADMIN: [
+    { items: [["adminProfile", "My Profile"]] },
     { items: [["admin", "Admin Console"]] }
   ],
   CLIENT: [
     { items: [["dashboard", "Dashboard"]] },
+    { items: [["clientProfile", "Client Profile"]] },
     { label: "PROFILES", items: [["workers", "Crew Profiles"], ["promoters", "Promoter Profiles"], ["venues", "Venues"]] },
     { label: "EVENTS", items: [["events", "Events"], ["productionBoard", "Production Board"], ["clock", "TimeClock"], ["timecards", "Timecards"], ["vehicles", "Vehicles"], ["reports", "Reports"]] },
     { label: "PAYROLL", items: [["payroll", "Payroll"]] },
@@ -129,7 +131,7 @@ const NAV_GROUPS = {
 };
 
 const ROLE_HOME_VIEWS = {
-  ADMIN: "admin",
+  ADMIN: "adminProfile",
   CLIENT: "dashboard",
   PROMOTER_PRODUCTION_OFFICE: "productionBoard",
   CREW: "workers"
@@ -805,6 +807,7 @@ function render() {
   renderAdmin();
   renderDashboard();
   renderClientProfile();
+  renderAdminProfile();
   renderEvents();
   renderProductionBoard();
   renderClock();
@@ -842,8 +845,61 @@ function clientEmailRoutingSummary(client) {
 
 function renderClientProfile() {
   const summary = $("#clientProfileSummary");
-  if (!summary) return;
-  summary.innerHTML = clientEmailRoutingSummary(activeClientRecord());
+  const card = $("#clientProfileCard");
+  const client = activeClientRecord();
+  if (summary) summary.innerHTML = clientEmailRoutingSummary(client);
+  if (!card) return;
+  if (!client) {
+    card.innerHTML = `<div class="compact-item empty">No client profile connected yet.</div>`;
+    return;
+  }
+  card.innerHTML = `<article class="profile-page-card">
+    <div class="profile-page-header">
+      <div class="profile-avatar-large placeholder">${escapeHtml(initialsFor(client.name || "Client"))}</div>
+      <div>
+        <h3>${escapeHtml(client.name || "Client account")}</h3>
+        <p>${escapeHtml(client.contactName || authState.user?.email || "")}</p>
+      </div>
+      <button class="tiny-button owner-action" data-open-form="clientProfileForm" type="button">Edit Profile</button>
+    </div>
+    <div class="profile-detail-grid">
+      <div><span>Email</span><strong>${escapeHtml(client.email || "")}</strong></div>
+      <div><span>Phone</span><strong>${escapeHtml(client.phone || "")}</strong></div>
+      <div><span>Email Provider</span><strong>${escapeHtml(client.smtpProvider || "Not selected")}</strong></div>
+      <div><span>Routing Status</span><strong>${escapeHtml(client.emailRoutingStatus || "Not configured")}</strong></div>
+      <div><span>From Email</span><strong>${escapeHtml(client.smtpFromEmail || "")}</strong></div>
+      <div><span>Reply-To</span><strong>${escapeHtml(client.smtpReplyTo || "")}</strong></div>
+    </div>
+    <div class="profile-section"><span>SMTP Host</span><p>${escapeHtml(client.smtpHost || "")}${client.smtpPort ? ":" + escapeHtml(client.smtpPort) : ""}</p></div>
+    <div class="profile-section"><span>Secret Reference</span><p>${escapeHtml(client.smtpSecretRef || "No secret reference saved")}</p></div>
+  </article>`;
+}
+
+function renderAdminProfile() {
+  const card = $("#adminProfileCard");
+  if (!card) return;
+  const name = authState.user?.user_metadata?.name || "System Admin";
+  const email = authState.user?.email || "";
+  card.innerHTML = `<article class="profile-page-card">
+    <div class="profile-page-header">
+      <div class="profile-avatar-large placeholder">${escapeHtml(initialsFor(name || email || "Admin"))}</div>
+      <div>
+        <h3>${escapeHtml(name)}</h3>
+        <p>${escapeHtml(email)}</p>
+      </div>
+    </div>
+    <div class="profile-detail-grid">
+      <div><span>Access Role</span><strong>ADMIN</strong></div>
+      <div><span>System Access</span><strong>Client setup and troubleshooting</strong></div>
+      <div><span>Production Data</span><strong>Restricted</strong></div>
+      <div><span>Payroll Data</span><strong>Restricted</strong></div>
+    </div>
+    <div class="profile-section"><span>Security Boundary</span><p>ADMIN can manage system setup and client accounts, but does not load sensitive production records, payroll, timecards, crew personal data, promoter records, or reports.</p></div>
+  </article>`;
+}
+
+function initialsFor(value) {
+  return String(value || "?").split(/\s+/).map((part) => part[0]).join("").slice(0, 2).toUpperCase();
 }
 
 function renderSelects() {
@@ -1065,7 +1121,7 @@ function renderMyProfile() {
 }
 
 function profileAvatarLarge(worker, hideHeadshot = false) {
-  const initials = String(worker.name || "?").split(/\s+/).map((part) => part[0]).join("").slice(0, 2).toUpperCase();
+  const initials = initialsFor(worker.name || "?");
   return worker.headshotData && !hideHeadshot
     ? `<img class="profile-avatar-large" src="${worker.headshotData}" alt="${escapeHtml(worker.name)} headshot">`
     : `<div class="profile-avatar-large placeholder">${escapeHtml(initials)}</div>`;
@@ -1107,7 +1163,7 @@ function workerProfileRow(worker) {
 }
 
 function profileCell(profile, hideHeadshot = false, subtitle = profile.email) {
-  const initials = String(profile.name || profile.contactName || "?").split(/\s+/).map((part) => part[0]).join("").slice(0, 2).toUpperCase();
+  const initials = initialsFor(profile.name || profile.contactName || "?");
   const image = profile.headshotData && !hideHeadshot
     ? `<img class="profile-headshot" src="${profile.headshotData}" alt="${escapeHtml(profile.name || profile.contactName)} headshot">`
     : `<div class="profile-headshot placeholder">${escapeHtml(initials)}</div>`;
