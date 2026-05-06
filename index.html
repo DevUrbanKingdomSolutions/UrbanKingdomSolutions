@@ -164,10 +164,48 @@
             <section class="panel">
               <div class="panel-heading">
                 <h3>Admin Profile</h3>
+                <button class="tiny-button system-action" data-open-form="adminProfileForm" type="button">SMTP Settings</button>
               </div>
               <div id="adminProfileCard" class="record-grid"></div>
             </section>
           </div>
+          <form id="adminProfileForm" class="panel form-panel system-form">
+            <div class="panel-heading">
+              <h3>Admin Profile & SMTP Settings</h3>
+              <button class="ghost-button clear-form" type="button" data-form="adminProfileForm">Clear</button>
+            </div>
+            <input type="hidden" name="id" value="adminProfile">
+            <label>Admin name<input name="name" placeholder="System admin"></label>
+            <label>Admin email<input name="email" type="email" placeholder="admin@example.com"></label>
+            <div class="photo-fieldset">
+              <span>SMTP Settings</span>
+              <label>Provider<input name="smtpProvider" placeholder="Resend, SendGrid, Postmark, Gmail SMTP"></label>
+              <label>From name<input name="smtpFromName" placeholder="System Admin"></label>
+              <label>From email<input name="smtpFromEmail" type="email" placeholder="admin@example.com"></label>
+              <label>Reply-to email<input name="smtpReplyTo" type="email" placeholder="support@example.com"></label>
+              <label>SMTP host<input name="smtpHost" placeholder="smtp.example.com"></label>
+              <label>SMTP port<input name="smtpPort" type="number" min="1" placeholder="587"></label>
+              <label>SMTP username<input name="smtpUsername" placeholder="username or API user"></label>
+              <label>SMTP secret reference<input name="smtpSecretRef" placeholder="Supabase secret name, not the password"></label>
+              <label>Security
+                <select name="smtpSecure">
+                  <option value="">Select security</option>
+                  <option value="tls">TLS / STARTTLS</option>
+                  <option value="ssl">SSL</option>
+                  <option value="none">None</option>
+                </select>
+              </label>
+              <label>Status
+                <select name="emailRoutingStatus">
+                  <option>Not configured</option>
+                  <option>Ready for testing</option>
+                  <option>Active</option>
+                  <option>Needs attention</option>
+                </select>
+              </label>
+            </div>
+            <button class="primary-action" type="submit">Save / Update & Close</button>
+          </form>
         </section>
 
         <section id="clientProfile" class="view" aria-labelledby="viewTitle">
@@ -743,6 +781,6 @@
     <div id="modalBackdrop" class="modal-backdrop" data-close-modal></div>
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js?v=20260506-profile-pages-1"></script>
+    <script src="app.js?v=20260506-admin-client-smtp-1"></script>
   </body>
 </html>

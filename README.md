@@ -27,7 +27,7 @@ This is a first working version of a private entertainment production database a
 - Dedicated ADMIN and CLIENT profile pages.
 - Client-visible profile login fields for login email, login role, Supabase user ID, and sending login setup.
 - Admin-visible client login fields for login email, CLIENT role connection, Supabase user ID, and sending client login setup.
-- Admin and Client profile fields for SMTP email routing details, including provider, sender, reply-to, host, port, username, secret reference, security mode, and routing status.
+- Admin My Profile and Client Profile fields for SMTP email routing details, including provider, sender, reply-to, host, port, username, secret reference, security mode, and routing status.
 - ADMIN can manage client accounts and system setup without production data, payroll, timecards, crew personal data, promoter records, or reports.
 - Production Board for CLIENT and PROMOTER_PRODUCTION_OFFICE to view assigned production details and mark runners Available, On a Run, or At Production Office.
 - Hash-based route protection redirects restricted direct links like `#payroll` when the signed-in role cannot access that view.

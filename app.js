@@ -1,5 +1,5 @@
 const DB_NAME = "productionCrewDatabase";
-const DB_VERSION = 5;
+const DB_VERSION = 6;
 const SUPABASE_URL = "https://nnhqrhaltkmymnwxydwr.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5uaHFyaGFsdGtteW1ud3h5ZHdyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgwMjMxNDgsImV4cCI6MjA5MzU5OTE0OH0.X9iGhE61WehM57133LKCWMfXXDHmcb2rhw-ZPCKAJos";
 const LOGIN_SETUP_FUNCTION = "send-login-setup";
@@ -13,6 +13,7 @@ const STORES = [
   "timecards",
   "runnerStops",
   "runnerCategories",
+  "systemProfiles",
   "vehicleLogs",
   "accidentReports"
 ];
@@ -92,6 +93,7 @@ let state = {
   timecards: [],
   runnerStops: [],
   runnerCategories: [],
+  systemProfiles: [],
   vehicleLogs: [],
   accidentReports: [],
   clients: [],
@@ -202,7 +204,7 @@ function remove(storeName, id) {
 }
 
 async function loadState() {
-  const [clients, workers, venues, promoters, profileNotes, events, timecards, runnerStops, runnerCategories, vehicleLogs, accidentReports] = await Promise.all(STORES.map(getAll));
+  const [clients, workers, venues, promoters, profileNotes, events, timecards, runnerStops, runnerCategories, systemProfiles, vehicleLogs, accidentReports] = await Promise.all(STORES.map(getAll));
   state = {
     ...state,
     clients: sortByName(clients),
@@ -214,6 +216,7 @@ async function loadState() {
     timecards: timecards.sort((a, b) => new Date(b.clockIn || b.createdAt || 0) - new Date(a.clockIn || a.createdAt || 0)),
     runnerStops: sortByName(runnerStops),
     runnerCategories: sortByName(runnerCategories),
+    systemProfiles: sortByName(systemProfiles),
     vehicleLogs: vehicleLogs.sort((a, b) => new Date(b.scheduledDate || b.createdAt || 0) - new Date(a.scheduledDate || a.createdAt || 0)),
     accidentReports: accidentReports.sort((a, b) => new Date(b.reportedAt || b.createdAt || 0) - new Date(a.reportedAt || a.createdAt || 0))
   };
@@ -869,6 +872,8 @@ function renderClientProfile() {
       <div><span>Routing Status</span><strong>${escapeHtml(client.emailRoutingStatus || "Not configured")}</strong></div>
       <div><span>From Email</span><strong>${escapeHtml(client.smtpFromEmail || "")}</strong></div>
       <div><span>Reply-To</span><strong>${escapeHtml(client.smtpReplyTo || "")}</strong></div>
+      <div><span>SMTP Username</span><strong>${escapeHtml(client.smtpUsername || "")}</strong></div>
+      <div><span>Security</span><strong>${escapeHtml(client.smtpSecure || "Not selected")}</strong></div>
     </div>
     <div class="profile-section"><span>SMTP Host</span><p>${escapeHtml(client.smtpHost || "")}${client.smtpPort ? ":" + escapeHtml(client.smtpPort) : ""}</p></div>
     <div class="profile-section"><span>Secret Reference</span><p>${escapeHtml(client.smtpSecretRef || "No secret reference saved")}</p></div>
@@ -878,8 +883,9 @@ function renderClientProfile() {
 function renderAdminProfile() {
   const card = $("#adminProfileCard");
   if (!card) return;
-  const name = authState.user?.user_metadata?.name || "System Admin";
-  const email = authState.user?.email || "";
+  const profile = activeAdminProfile();
+  const name = profile.name || authState.user?.user_metadata?.name || "System Admin";
+  const email = profile.email || authState.user?.email || "";
   card.innerHTML = `<article class="profile-page-card">
     <div class="profile-page-header">
       <div class="profile-avatar-large placeholder">${escapeHtml(initialsFor(name || email || "Admin"))}</div>
@@ -887,15 +893,29 @@ function renderAdminProfile() {
         <h3>${escapeHtml(name)}</h3>
         <p>${escapeHtml(email)}</p>
       </div>
+      <button class="tiny-button system-action" data-open-form="adminProfileForm" type="button">SMTP Settings</button>
     </div>
     <div class="profile-detail-grid">
       <div><span>Access Role</span><strong>ADMIN</strong></div>
       <div><span>System Access</span><strong>Client setup and troubleshooting</strong></div>
-      <div><span>Production Data</span><strong>Restricted</strong></div>
-      <div><span>Payroll Data</span><strong>Restricted</strong></div>
+      <div><span>Email Provider</span><strong>${escapeHtml(profile.smtpProvider || "Not selected")}</strong></div>
+      <div><span>Routing Status</span><strong>${escapeHtml(profile.emailRoutingStatus || "Not configured")}</strong></div>
+      <div><span>From Email</span><strong>${escapeHtml(profile.smtpFromEmail || "")}</strong></div>
+      <div><span>Reply-To</span><strong>${escapeHtml(profile.smtpReplyTo || "")}</strong></div>
     </div>
+    <div class="profile-section"><span>SMTP Host</span><p>${escapeHtml(profile.smtpHost || "")}${profile.smtpPort ? ":" + escapeHtml(profile.smtpPort) : ""}</p></div>
+    <div class="profile-section"><span>Secret Reference</span><p>${escapeHtml(profile.smtpSecretRef || "No secret reference saved")}</p></div>
     <div class="profile-section"><span>Security Boundary</span><p>ADMIN can manage system setup and client accounts, but does not load sensitive production records, payroll, timecards, crew personal data, promoter records, or reports.</p></div>
   </article>`;
+}
+
+function activeAdminProfile() {
+  return state.systemProfiles.find((profile) => profile.id === "adminProfile") || {
+    id: "adminProfile",
+    name: authState.user?.user_metadata?.name || "System Admin",
+    email: authState.user?.email || "",
+    emailRoutingStatus: "Not configured"
+  };
 }
 
 function initialsFor(value) {
@@ -1484,7 +1504,11 @@ async function saveForm(event, storeName) {
     toast("Only ADMIN or CLIENT can save client accounts.");
     return;
   }
-  if (isAdminRole() && storeName !== "clients") {
+  if (storeName === "systemProfiles" && !canSystemEdit()) {
+    toast("Only ADMIN can save system profile settings.");
+    return;
+  }
+  if (isAdminRole() && !["clients", "systemProfiles"].includes(storeName)) {
     toast("ADMIN cannot access production records in this demo.");
     return;
   }
@@ -1523,6 +1547,10 @@ async function saveForm(event, storeName) {
   const record = await formRecord(form);
   const existing = record.id ? state[storeName].find((item) => item.id === record.id) : null;
   let merged = { ...(existing || {}), ...record };
+  if (storeName === "systemProfiles") {
+    merged.id = "adminProfile";
+    merged.emailRoutingStatus = merged.emailRoutingStatus || "Not configured";
+  }
   if (storeName === "clients" && isClientRole()) {
     const clientId = authState.roleRecord?.client_id || "";
     if (!clientId || (record.id && record.id !== clientId)) {
@@ -1897,6 +1925,7 @@ function bindEvents() {
   $("#timecardForm select[name='vehicleUse']").addEventListener("change", () => applyWorkerPayDefaultsToTimecard($("#timecardForm").elements.workerId.value));
 
   $("#eventForm").addEventListener("submit", (event) => saveForm(event, "events"));
+  $("#adminProfileForm").addEventListener("submit", (event) => saveForm(event, "systemProfiles"));
   $("#clientForm").addEventListener("submit", (event) => saveForm(event, "clients"));
   $("#clientProfileForm").addEventListener("submit", (event) => saveForm(event, "clients"));
   $("#workerForm").addEventListener("submit", (event) => saveForm(event, "workers"));
@@ -1934,7 +1963,9 @@ function bindEvents() {
 
   if (openButton) {
       clearForm(openButton.dataset.openForm);
-      if (openButton.dataset.openForm === "clientProfileForm" && isClientRole()) {
+      if (openButton.dataset.openForm === "adminProfileForm" && isAdminRole()) {
+        fillForm("adminProfileForm", activeAdminProfile());
+      } else if (openButton.dataset.openForm === "clientProfileForm" && isClientRole()) {
         const active = activeClientRecord() || {
           id: authState.roleRecord?.client_id || "",
           name: authState.user?.user_metadata?.company || "",
