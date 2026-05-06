@@ -396,7 +396,8 @@ function profileRolePayload(storeName, record) {
 }
 
 async function syncSupabaseClientAccount(record) {
-  if (!canSystemEdit()) return "";
+  const canSyncClient = canSystemEdit() || (isClientRole() && record.id === authState.roleRecord?.client_id);
+  if (!canSyncClient) return "";
   const { error } = await supabaseClient.from("clients").upsert({
     id: record.id,
     name: record.name,
@@ -405,6 +406,16 @@ async function syncSupabaseClientAccount(record) {
     phone: record.phone || "",
     status: record.status || "Active",
     notes: record.notes || "",
+    smtp_provider: record.smtpProvider || "",
+    smtp_from_name: record.smtpFromName || "",
+    smtp_from_email: record.smtpFromEmail || "",
+    smtp_reply_to: record.smtpReplyTo || "",
+    smtp_host: record.smtpHost || "",
+    smtp_port: record.smtpPort || "",
+    smtp_username: record.smtpUsername || "",
+    smtp_secret_ref: record.smtpSecretRef || "",
+    smtp_secure: record.smtpSecure || "",
+    email_routing_status: record.emailRoutingStatus || "Not configured",
     updated_at: new Date().toISOString()
   });
   if (error) throw error;
@@ -793,6 +804,7 @@ function render() {
   renderSelects();
   renderAdmin();
   renderDashboard();
+  renderClientProfile();
   renderEvents();
   renderProductionBoard();
   renderClock();
@@ -812,6 +824,26 @@ function renderAdmin() {
   $("#clientTable").innerHTML = state.clients.length
     ? state.clients.map((client) => `<tr><td><strong>${escapeHtml(client.name)}</strong><p>${escapeHtml(client.email)}</p></td><td>${escapeHtml(client.contactName)}<p>${escapeHtml(client.phone)}</p></td><td><span class="status-pill">${escapeHtml(client.status || "Active")}</span></td><td>${escapeHtml(client.notes)}${loginStatus(client)}</td><td>${actionButtons("clients", client.id, "clientForm", loginSetupButton("clients", client), canSystemEdit())}</td></tr>`).join("")
     : `<tr><td colspan="5" class="empty">No client accounts yet.</td></tr>`;
+}
+
+function activeClientRecord() {
+  const clientId = authState.roleRecord?.client_id || "";
+  return state.clients.find((client) => client.id === clientId) || null;
+}
+
+function clientEmailRoutingSummary(client) {
+  if (!client) return `<div class="compact-item empty">No client profile connected yet.</div>`;
+  return `<div class="compact-item">
+    <strong>${escapeHtml(client.name || "Client account")}</strong>
+    <span>${escapeHtml(client.smtpProvider || "No SMTP provider selected")} · ${escapeHtml(client.emailRoutingStatus || "Not configured")}</span>
+    <p>${escapeHtml(client.smtpFromEmail || client.email || "")}</p>
+  </div>`;
+}
+
+function renderClientProfile() {
+  const summary = $("#clientProfileSummary");
+  if (!summary) return;
+  summary.innerHTML = clientEmailRoutingSummary(activeClientRecord());
 }
 
 function renderSelects() {
@@ -1392,8 +1424,8 @@ async function saveForm(event, storeName) {
   event.preventDefault();
   const form = event.currentTarget;
   const formId = form.id;
-  if (storeName === "clients" && !canSystemEdit()) {
-    toast("Only ADMIN can save client accounts.");
+  if (storeName === "clients" && !(canSystemEdit() || isClientRole())) {
+    toast("Only ADMIN or CLIENT can save client accounts.");
     return;
   }
   if (isAdminRole() && storeName !== "clients") {
@@ -1435,6 +1467,21 @@ async function saveForm(event, storeName) {
   const record = await formRecord(form);
   const existing = record.id ? state[storeName].find((item) => item.id === record.id) : null;
   let merged = { ...(existing || {}), ...record };
+  if (storeName === "clients" && isClientRole()) {
+    const clientId = authState.roleRecord?.client_id || "";
+    if (!clientId || (record.id && record.id !== clientId)) {
+      toast("Client can only save their own profile.");
+      return;
+    }
+    const current = activeClientRecord() || {};
+    merged = {
+      ...current,
+      ...record,
+      id: clientId,
+      status: current.status || record.status || "Active",
+      notes: current.notes || record.notes || ""
+    };
+  }
   if (storeName === "workers" && isCrewRole()) {
     const current = getWorker(state.activeWorkerId) || {};
     merged = {
@@ -1795,6 +1842,7 @@ function bindEvents() {
 
   $("#eventForm").addEventListener("submit", (event) => saveForm(event, "events"));
   $("#clientForm").addEventListener("submit", (event) => saveForm(event, "clients"));
+  $("#clientProfileForm").addEventListener("submit", (event) => saveForm(event, "clients"));
   $("#workerForm").addEventListener("submit", (event) => saveForm(event, "workers"));
   $("#venueForm").addEventListener("submit", (event) => saveForm(event, "venues"));
   $("#promoterForm").addEventListener("submit", (event) => saveForm(event, "promoters"));
@@ -1828,9 +1876,18 @@ function bindEvents() {
     const bulkDeleteButton = event.target.closest("[data-bulk-delete]");
     const loginSetupButton = event.target.closest("[data-send-login]");
 
-    if (openButton) {
+  if (openButton) {
       clearForm(openButton.dataset.openForm);
-      if (openButton.dataset.openForm === "workerForm" && isCrewRole()) {
+      if (openButton.dataset.openForm === "clientProfileForm" && isClientRole()) {
+        const active = activeClientRecord() || {
+          id: authState.roleRecord?.client_id || "",
+          name: authState.user?.user_metadata?.company || "",
+          contactName: authState.user?.user_metadata?.name || "",
+          email: authState.user?.email || "",
+          emailRoutingStatus: "Not configured"
+        };
+        fillForm("clientProfileForm", active);
+      } else if (openButton.dataset.openForm === "workerForm" && isCrewRole()) {
         const active = getWorker(state.activeWorkerId);
         if (active) fillForm("workerForm", active);
         else openForm("workerForm");

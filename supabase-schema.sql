@@ -175,6 +175,18 @@ create table if not exists public.clients (
   updated_at timestamptz not null default now()
 );
 
+alter table public.clients
+  add column if not exists smtp_provider text,
+  add column if not exists smtp_from_name text,
+  add column if not exists smtp_from_email text,
+  add column if not exists smtp_reply_to text,
+  add column if not exists smtp_host text,
+  add column if not exists smtp_port text,
+  add column if not exists smtp_username text,
+  add column if not exists smtp_secret_ref text,
+  add column if not exists smtp_secure text,
+  add column if not exists email_routing_status text not null default 'Not configured';
+
 alter table public.clients enable row level security;
 
 do $$
