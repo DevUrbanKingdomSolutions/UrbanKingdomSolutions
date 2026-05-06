@@ -45,7 +45,7 @@ To send real login setup emails, deploy the Supabase Edge Function in `supabase/
 
 SMTP routing fields are stored as configuration metadata. Keep actual SMTP passwords/API keys in Supabase secrets or provider settings, then reference the secret name in the app.
 
-To test ADMIN SMTP settings, deploy `supabase/functions/send-smtp-test` and add the SMTP password/API key as a Supabase secret whose name matches the profile's SMTP secret reference.
+To test ADMIN SMTP settings, deploy `supabase/functions/send-smtp-test` and add the SMTP password/API key as a Supabase Edge Function secret whose name matches the profile's SMTP secret reference exactly. The secret reference should be a simple secret name such as `ADMIN_SMTP_PASSWORD`, not the actual password.
 
 Quick deploy commands for the login setup button:
 

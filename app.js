@@ -1142,8 +1142,6 @@ function renderAdminProfile() {
         <h3>${escapeHtml(name)}</h3>
         <p>${escapeHtml(email)}</p>
       </div>
-      <button class="tiny-button system-action" data-open-form="adminProfileForm" type="button">SMTP Settings</button>
-      <button class="tiny-button system-action" data-send-smtp-test="admin" type="button">Send Test Email</button>
     </div>
     <div class="profile-detail-grid">
       <div><span>Access Role</span><strong>ADMIN</strong></div>
@@ -1154,7 +1152,7 @@ function renderAdminProfile() {
       <div><span>Reply-To</span><strong>${escapeHtml(profile.smtpReplyTo || "")}</strong></div>
     </div>
     <div class="profile-section"><span>SMTP Host</span><p>${escapeHtml(profile.smtpHost || "")}${profile.smtpPort ? ":" + escapeHtml(profile.smtpPort) : ""}</p></div>
-    <div class="profile-section"><span>Secret Reference</span><p>${escapeHtml(profile.smtpSecretRef || "No secret reference saved")}</p></div>
+    <div class="profile-section"><span>Secret Reference</span><p>${escapeHtml(profile.smtpSecretRef || "No secret reference saved")}</p><div class="row-actions"><button class="tiny-button system-action" data-open-form="adminProfileForm" type="button">SMTP Settings</button><button class="tiny-button system-action" data-send-smtp-test="admin" type="button">Send Test Email</button></div></div>
     <div class="profile-section"><span>Security Boundary</span><p>ADMIN can manage system setup and client accounts, but does not load sensitive production records, payroll, timecards, crew personal data, promoter records, or reports.</p></div>
   </article>`;
 }
@@ -2033,7 +2031,10 @@ async function sendSmtpTest() {
   const { data, error } = await supabaseClient.functions.invoke(SMTP_TEST_FUNCTION, { body: payload });
   if (error) {
     console.error(error);
-    toast(await loginSetupErrorMessage(error));
+    const message = await loginSetupErrorMessage(error);
+    toast(message.includes("No Supabase secret found")
+      ? "SMTP secret not found in Supabase. Add it under Edge Function secrets."
+      : message);
     return;
   }
   const profile = activeAdminProfile();
