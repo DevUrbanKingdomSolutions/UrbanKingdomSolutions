@@ -438,7 +438,7 @@ async function loginWithSupabase(event) {
   }
   const form = event.currentTarget;
   setAuthMessage("Signing in...");
-  const { error } = await supabaseClient.auth.signInWithPassword({
+  const { data, error } = await supabaseClient.auth.signInWithPassword({
     email: form.elements.email.value,
     password: form.elements.password.value
   });
@@ -447,6 +447,7 @@ async function loginWithSupabase(event) {
     return;
   }
   form.reset();
+  await applyAuthenticatedSession(data.session);
 }
 
 async function logout() {
