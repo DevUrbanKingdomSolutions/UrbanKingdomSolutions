@@ -535,6 +535,7 @@ async function syncSupabaseRoleForProfile(storeName, record) {
 function loginSetupPayload(storeName, record) {
   const email = (record.loginEmail || record.email || "").trim();
   const profileType = storeName === "clients" ? "client" : storeName === "workers" ? "worker" : "promoter";
+  const route = smtpRouteForInvite(storeName);
   return {
     profileType,
     profileId: record.id,
@@ -542,7 +543,23 @@ function loginSetupPayload(storeName, record) {
     role: profileLoginRole(storeName, record),
     clientId: storeName === "clients" ? record.id : authState.roleRecord?.client_id || null,
     workerId: storeName === "workers" ? record.id : null,
-    promoterId: storeName === "promoters" ? record.id : null
+    promoterId: storeName === "promoters" ? record.id : null,
+    emailRoute: route
+  };
+}
+
+function smtpRouteForInvite(storeName) {
+  const profile = storeName === "clients" ? activeAdminProfile() : activeClientRepRecord();
+  if (!profile) return null;
+  return {
+    fromName: profile.smtpFromName || profile.name || "Production Crew",
+    fromEmail: profile.smtpFromEmail || "",
+    replyTo: profile.smtpReplyTo || profile.email || authState.user?.email || "",
+    host: profile.smtpHost || "",
+    port: profile.smtpPort || "",
+    username: profile.smtpUsername || "",
+    secretRef: profile.smtpSecretRef || "",
+    secure: profile.smtpSecure || ""
   };
 }
 
@@ -1966,6 +1983,10 @@ async function sendLoginSetup(storeName, id) {
   const payload = loginSetupPayload(storeName, record);
   if (!payload.email) {
     toast("Add a login email first.");
+    return;
+  }
+  if (!payload.emailRoute?.fromEmail || !payload.emailRoute?.host || !payload.emailRoute?.port || !payload.emailRoute?.username || !payload.emailRoute?.secretRef) {
+    toast("Finish SMTP settings before sending login setup.");
     return;
   }
   if (storeName === "clients") {

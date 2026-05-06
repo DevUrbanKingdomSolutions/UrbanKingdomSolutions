@@ -41,7 +41,7 @@ If a user lands on the wrong access page, run `supabase-role-check.sql` in Supab
 
 The production records are still stored locally in the browser using IndexedDB while the app screens are being finalized. Authentication and roles now come from Supabase so the production tables can move over module by module.
 
-To send real login setup emails, deploy the Supabase Edge Function in `supabase/functions/send-login-setup`. The function uses Supabase's private service role key on the server side, then creates or updates the matching `user_roles` row for Client, Crew, and Production Office users.
+To send real login setup emails, deploy the Supabase Edge Function in `supabase/functions/send-login-setup`. The function uses Supabase's private service role key to generate the invite link and sends the setup email through the saved SMTP routing settings.
 
 SMTP routing fields are stored as configuration metadata. Keep actual SMTP passwords/API keys in Supabase secrets or provider settings, then reference the secret name in the app.
 
