@@ -378,12 +378,32 @@ async function fetchUserRole(session) {
     .eq("user_id", session.user.id)
     .maybeSingle();
   if (error) throw error;
-  if (!data?.role) {
-    throw new Error(`No role is assigned to ${email}. Supabase user ID: ${userId}`);
+  if (data?.role) {
+    return {
+      ...data,
+      role: normalizeRole(data.role)
+    };
   }
+
+  const fallback = await fetchUserRoleFromHelpers();
+  if (fallback?.role) return fallback;
+
+  throw new Error(`No role is assigned to ${email}. Supabase user ID: ${userId}`);
+}
+
+async function fetchUserRoleFromHelpers() {
+  const [{ data: role }, { data: clientId }, { data: workerId }, { data: promoterId }] = await Promise.all([
+    supabaseClient.rpc("current_app_role"),
+    supabaseClient.rpc("current_client_id"),
+    supabaseClient.rpc("current_worker_id"),
+    supabaseClient.rpc("current_promoter_id")
+  ]);
+  if (!role) return null;
   return {
-    ...data,
-    role: normalizeRole(data.role)
+    role: normalizeRole(role),
+    client_id: clientId || null,
+    worker_id: workerId || null,
+    promoter_id: promoterId || null
   };
 }
 
