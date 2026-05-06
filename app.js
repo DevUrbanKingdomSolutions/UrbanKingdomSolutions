@@ -55,7 +55,7 @@ const ACCESS_PROFILES = {
   },
   PROMOTER_PRODUCTION_OFFICE: {
     label: "PROMOTER_PRODUCTION_OFFICE",
-    views: ["dashboard", "productionBoard", "workers", "promoters", "venues", "events", "vehicles", "reports", "directory"],
+    views: ["productionBoard", "events", "workers", "promoters", "venues", "vehicles", "reports", "directory"],
     canAdminEdit: true,
     canOwnerEdit: false,
     canVenueEdit: true,
@@ -66,7 +66,7 @@ const ACCESS_PROFILES = {
   },
   CREW: {
     label: "CREW",
-    views: ["workers", "clock", "events", "timecards", "vehicles", "reports", "payroll", "directory", "runner"],
+    views: ["workers", "clock", "events", "timecards"],
     canAdminEdit: false,
     canOwnerEdit: false,
     canVenueEdit: false,
@@ -120,16 +120,14 @@ const NAV_GROUPS = {
     { label: "DIRECTORIES", items: [["directory", "Crew Directory"], ["runner", "Gig Directory"]] }
   ],
   PROMOTER_PRODUCTION_OFFICE: [
-    { items: [["dashboard", "Dashboard"]] },
+    { items: [["productionBoard", "Production Board"]] },
     { label: "PROFILES", items: [["workers", "Crew Profiles"], ["promoters", "Promoter Profiles"], ["venues", "Venues"]] },
-    { label: "EVENTS", items: [["events", "Events"], ["productionBoard", "Production Board"], ["vehicles", "Vehicles"], ["reports", "Reports"]] },
+    { label: "EVENTS", items: [["events", "Events"], ["vehicles", "Vehicles"], ["reports", "Reports"]] },
     { label: "DIRECTORIES", items: [["directory", "Crew Directory"]] }
   ],
   CREW: [
     { items: [["workers", "My Profile"], ["clock", "Time Clock"]] },
-    { label: "EVENTS", items: [["events", "Events"], ["timecards", "Timecards"], ["vehicles", "Vehicles"], ["reports", "Reports"]] },
-    { label: "PAYROLL", items: [["payroll", "Payroll"]] },
-    { label: "DIRECTORIES", items: [["directory", "Crew Directory"], ["runner", "Gig Directory"]] }
+    { label: "EVENTS", items: [["events", "Events"], ["timecards", "Timecards"]] }
   ]
 };
 
@@ -396,6 +394,7 @@ async function applyAuthenticatedSession(session) {
   const roleRecord = await fetchUserRole(session);
   authState.roleRecord = roleRecord;
   state.accessRole = roleRecord.role;
+  state.activeView = roleHomeView();
   if (roleRecord.worker_id) state.activeWorkerId = roleRecord.worker_id;
   if (roleRecord.promoter_id) state.activePromoterId = roleRecord.promoter_id;
 
