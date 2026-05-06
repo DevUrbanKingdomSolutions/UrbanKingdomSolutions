@@ -24,11 +24,11 @@ This is a first working version of a private entertainment production database a
 - JSON export and import for backup or moving data.
 - Four access views for planning permissions: Admin, Client, Promoter / Production Office, and Crew / Runner.
 - Supabase Auth login with database-backed roles: ADMIN, CLIENT, PROMOTER_PRODUCTION_OFFICE, and CREW.
-- Dedicated ADMIN and CLIENT profile pages.
+- Dedicated ADMIN profile, Client Company profile, and Client Rep/My Profile pages.
 - First-login invite setup screen for creating a password before entering the app.
 - Client-visible profile login fields for login email, login role, Supabase user ID, and sending login setup.
 - Admin-visible client login fields for login email, CLIENT role connection, Supabase user ID, and sending client login setup.
-- Admin My Profile and Client Profile fields for SMTP email routing details, including provider, sender, reply-to, host, port, username, secret reference, security mode, and routing status.
+- Admin My Profile and Client Rep/My Profile fields for SMTP email routing details, including provider, sender, reply-to, host, port, username, secret reference, security mode, and routing status.
 - ADMIN can manage client accounts and system setup without production data, payroll, timecards, crew personal data, promoter records, or reports.
 - Production Board for CLIENT and PROMOTER_PRODUCTION_OFFICE to view assigned production details and mark runners Available, On a Run, or At Production Office.
 - Hash-based route protection redirects restricted direct links like `#payroll` when the signed-in role cannot access that view.

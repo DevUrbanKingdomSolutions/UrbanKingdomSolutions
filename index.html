@@ -132,22 +132,25 @@
             </section>
             <section class="panel owner-form">
               <div class="panel-heading">
-                <h3>Client Profile</h3>
-                <button class="tiny-button owner-action" data-open-form="clientProfileForm" type="button">Email Routing</button>
+                <h3>My Profile</h3>
+                <button class="tiny-button owner-action" data-open-form="clientProfileForm" type="button">Edit Profile</button>
               </div>
               <div id="clientProfileSummary" class="compact-list"></div>
             </section>
           </div>
           <form id="clientProfileForm" class="panel form-panel owner-form">
             <div class="panel-heading">
-              <h3>Client Profile & Email Routing</h3>
+              <h3>My Client Rep Profile & Email Routing</h3>
               <button class="ghost-button clear-form" type="button" data-form="clientProfileForm">Clear</button>
             </div>
             <input type="hidden" name="id">
-            <label>Client company<input name="name" required placeholder="Company name"></label>
-            <label>Primary contact<input name="contactName" placeholder="Name"></label>
-            <label>Email<input name="email" type="email" placeholder="client@example.com"></label>
+            <input type="hidden" name="clientId">
+            <input type="hidden" name="authUserId">
+            <label>Name<input name="name" required placeholder="Your name"></label>
+            <label>Title / department<input name="title" placeholder="Owner, production manager, payroll"></label>
+            <label>Email<input name="email" type="email" placeholder="you@example.com"></label>
             <label>Phone<input name="phone" placeholder="(555) 000-0000"></label>
+            <label>Mailing address<textarea name="mailingAddress" rows="3" placeholder="Street, city, state, zip"></textarea></label>
             <div class="photo-fieldset">
               <span>SMTP Email Routing</span>
               <label>Provider<input name="smtpProvider" placeholder="Resend, SendGrid, Postmark, Gmail SMTP"></label>
@@ -232,16 +235,38 @@
           <div class="stack-layout">
             <section class="panel">
               <div class="panel-heading">
-                <h3>Client Profile</h3>
+                <h3>My Profile</h3>
                 <button class="tiny-button owner-action" data-open-form="clientProfileForm" type="button">Edit Profile</button>
               </div>
               <div id="clientProfileCard" class="record-grid"></div>
+              <div id="clientCompanyCard" class="record-grid"></div>
             </section>
           </div>
+          <form id="clientCompanyProfileForm" class="panel form-panel owner-form">
+            <div class="panel-heading">
+              <h3>Client Company Profile</h3>
+              <button class="ghost-button clear-form" type="button" data-form="clientCompanyProfileForm">Clear</button>
+            </div>
+            <input type="hidden" name="id">
+            <label>Client company<input name="name" required placeholder="Company name"></label>
+            <label>Main contact<input name="contactName" placeholder="Name"></label>
+            <label>Email<input name="email" type="email" placeholder="client@example.com"></label>
+            <label>Phone<input name="phone" placeholder="(555) 000-0000"></label>
+            <label>System notes<textarea name="notes" rows="4" placeholder="Company notes"></textarea></label>
+            <button class="primary-action" type="submit">Save / Update & Close</button>
+          </form>
         </section>
 
         <section id="admin" class="view">
           <div class="split-layout">
+            <section id="clientCompanyView" class="panel form-panel system-form">
+              <div class="panel-heading">
+                <h3>Client Company Profile</h3>
+                <button class="ghost-button clear-form" type="button" data-form="clientCompanyView">Close</button>
+              </div>
+              <div id="clientCompanyViewBody" class="record-grid"></div>
+              <button id="editViewedClientCompany" class="primary-action" type="button">Edit Information</button>
+            </section>
             <form id="clientForm" class="panel form-panel system-form">
               <div class="panel-heading">
                 <h3>Client Account</h3>
@@ -266,33 +291,6 @@
                   <option>Setup Needed</option>
                 </select>
               </label>
-              <div class="photo-fieldset">
-                <span>SMTP Email Routing</span>
-                <label>Provider<input name="smtpProvider" placeholder="Resend, SendGrid, Postmark, Gmail SMTP"></label>
-                <label>From name<input name="smtpFromName" placeholder="Production Office"></label>
-                <label>From email<input name="smtpFromEmail" type="email" placeholder="production@example.com"></label>
-                <label>Reply-to email<input name="smtpReplyTo" type="email" placeholder="reply@example.com"></label>
-                <label>SMTP host<input name="smtpHost" placeholder="smtp.example.com"></label>
-                <label>SMTP port<input name="smtpPort" type="number" min="1" placeholder="587"></label>
-                <label>SMTP username<input name="smtpUsername" placeholder="username or API user"></label>
-                <label>SMTP secret reference<input name="smtpSecretRef" placeholder="Supabase secret name, not the password"></label>
-                <label>Security
-                  <select name="smtpSecure">
-                    <option value="">Select security</option>
-                    <option value="tls">TLS / STARTTLS</option>
-                    <option value="ssl">SSL</option>
-                    <option value="none">None</option>
-                  </select>
-                </label>
-                <label>Status
-                  <select name="emailRoutingStatus">
-                    <option>Not configured</option>
-                    <option>Ready for testing</option>
-                    <option>Active</option>
-                    <option>Needs attention</option>
-                  </select>
-                </label>
-              </div>
               <label>System notes<textarea name="notes" rows="4" placeholder="Configuration notes, support details, onboarding status"></textarea></label>
               <button class="primary-action" type="submit">Save Client</button>
             </form>
@@ -801,6 +799,6 @@
     <div id="modalBackdrop" class="modal-backdrop" data-close-modal></div>
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js?v=20260506-idb-reopen-1"></script>
+    <script src="app.js?v=20260506-client-company-reps-1"></script>
   </body>
 </html>

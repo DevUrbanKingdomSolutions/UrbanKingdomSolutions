@@ -180,16 +180,8 @@ create table if not exists public.clients (
 );
 
 alter table public.clients
-  add column if not exists smtp_provider text,
-  add column if not exists smtp_from_name text,
-  add column if not exists smtp_from_email text,
-  add column if not exists smtp_reply_to text,
-  add column if not exists smtp_host text,
-  add column if not exists smtp_port text,
-  add column if not exists smtp_username text,
-  add column if not exists smtp_secret_ref text,
-  add column if not exists smtp_secure text,
-  add column if not exists email_routing_status text not null default 'Not configured';
+  add column if not exists company_type text,
+  add column if not exists address text;
 
 alter table public.clients enable row level security;
 
@@ -237,6 +229,65 @@ using (
 with check (
   public.current_app_role() = 'CLIENT'
   and id = public.current_client_id()
+);
+
+create table if not exists public.client_reps (
+  id text primary key,
+  client_id uuid not null references public.clients(id) on delete cascade,
+  auth_user_id uuid references auth.users(id) on delete set null,
+  name text not null,
+  title text,
+  email text,
+  phone text,
+  mailing_address text,
+  smtp_provider text,
+  smtp_from_name text,
+  smtp_from_email text,
+  smtp_reply_to text,
+  smtp_host text,
+  smtp_port text,
+  smtp_username text,
+  smtp_secret_ref text,
+  smtp_secure text,
+  email_routing_status text not null default 'Not configured',
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+alter table public.client_reps enable row level security;
+
+do $$
+declare
+  policy_record record;
+begin
+  for policy_record in
+    select policyname
+    from pg_policies
+    where schemaname = 'public'
+      and tablename = 'client_reps'
+  loop
+    execute format('drop policy if exists %I on public.client_reps', policy_record.policyname);
+  end loop;
+end
+$$;
+
+create policy "Admins can read client rep routing setup"
+on public.client_reps
+for select
+to authenticated
+using (public.current_app_role() = 'ADMIN');
+
+create policy "Clients can manage reps for their client"
+on public.client_reps
+for all
+to authenticated
+using (
+  public.current_app_role() = 'CLIENT'
+  and client_id = public.current_client_id()
+)
+with check (
+  public.current_app_role() = 'CLIENT'
+  and client_id = public.current_client_id()
 );
 
 -- Future production tables should use the helper functions above instead of

@@ -134,6 +134,16 @@ button {
   color: #d7dddd;
 }
 
+.link-button {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
 .nav-item:hover,
 .nav-item.active {
   background: rgba(255, 255, 255, 0.11);

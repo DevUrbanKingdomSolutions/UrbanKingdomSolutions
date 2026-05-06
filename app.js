@@ -1,10 +1,11 @@
 const DB_NAME = "productionCrewDatabase";
-const DB_VERSION = 6;
+const DB_VERSION = 7;
 const SUPABASE_URL = "https://nnhqrhaltkmymnwxydwr.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5uaHFyaGFsdGtteW1ud3h5ZHdyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgwMjMxNDgsImV4cCI6MjA5MzU5OTE0OH0.X9iGhE61WehM57133LKCWMfXXDHmcb2rhw-ZPCKAJos";
 const LOGIN_SETUP_FUNCTION = "send-login-setup";
 const STORES = [
   "clients",
+  "clientReps",
   "workers",
   "venues",
   "promoters",
@@ -98,6 +99,7 @@ let state = {
   vehicleLogs: [],
   accidentReports: [],
   clients: [],
+  clientReps: [],
   search: "",
   activeView: "dashboard",
   accessRole: "CLIENT",
@@ -115,7 +117,7 @@ const NAV_GROUPS = {
   ],
   CLIENT: [
     { items: [["dashboard", "Dashboard"]] },
-    { items: [["clientProfile", "Client Profile"]] },
+    { items: [["clientProfile", "My Profile"]] },
     { label: "PROFILES", items: [["workers", "Crew Profiles"], ["promoters", "Promoter Profiles"], ["venues", "Venues"]] },
     { label: "EVENTS", items: [["events", "Events"], ["productionBoard", "Production Board"], ["clock", "TimeClock"], ["timecards", "Timecards"], ["vehicles", "Vehicles"], ["reports", "Reports"]] },
     { label: "PAYROLL", items: [["payroll", "Payroll"]] },
@@ -228,10 +230,11 @@ async function remove(storeName, id) {
 }
 
 async function loadState() {
-  const [clients, workers, venues, promoters, profileNotes, events, timecards, runnerStops, runnerCategories, systemProfiles, vehicleLogs, accidentReports] = await Promise.all(STORES.map(getAll));
+  const [clients, clientReps, workers, venues, promoters, profileNotes, events, timecards, runnerStops, runnerCategories, systemProfiles, vehicleLogs, accidentReports] = await Promise.all(STORES.map(getAll));
   state = {
     ...state,
     clients: sortByName(clients),
+    clientReps: sortByName(clientReps),
     workers: sortByName(workers),
     venues: sortByName(venues),
     promoters: sortByName(promoters),
@@ -312,6 +315,7 @@ function fillForm(formId, record) {
 
 function clearForm(formId) {
   const form = document.getElementById(formId);
+  if (!form?.reset) return;
   form.reset();
   if (form.elements.id) form.elements.id.value = "";
   if (formId === "timecardForm") {
@@ -483,6 +487,23 @@ async function syncSupabaseClientAccount(record) {
     phone: record.phone || "",
     status: record.status || "Active",
     notes: record.notes || "",
+    updated_at: new Date().toISOString()
+  });
+  if (error) throw error;
+  return "Supabase client account connected.";
+}
+
+async function syncSupabaseClientRep(record) {
+  if (!isClientRole() || record.clientId !== authState.roleRecord?.client_id) return "";
+  const { error } = await supabaseClient.from("client_reps").upsert({
+    id: record.id,
+    client_id: record.clientId,
+    auth_user_id: record.authUserId || authState.user?.id || null,
+    name: record.name,
+    title: record.title || "",
+    email: record.email || "",
+    phone: record.phone || "",
+    mailing_address: record.mailingAddress || "",
     smtp_provider: record.smtpProvider || "",
     smtp_from_name: record.smtpFromName || "",
     smtp_from_email: record.smtpFromEmail || "",
@@ -496,7 +517,7 @@ async function syncSupabaseClientAccount(record) {
     updated_at: new Date().toISOString()
   });
   if (error) throw error;
-  return "Supabase client account connected.";
+  return "Client rep profile connected.";
 }
 
 async function syncSupabaseRoleForProfile(storeName, record) {
@@ -657,6 +678,20 @@ async function completeAccountSetup(event) {
   const roleRecord = await fetchUserRole(session);
   authState.roleRecord = roleRecord;
   state.accessRole = roleRecord.role;
+  if (roleRecord.role === "CLIENT") {
+    await ensureDatabase();
+    const existingRep = state.clientReps.find((rep) => rep.authUserId === session.user.id || rep.email === session.user.email);
+    await put("clientReps", {
+      ...(existingRep || {}),
+      id: existingRep?.id || session.user.id,
+      clientId: roleRecord.client_id || "",
+      authUserId: session.user.id,
+      name: form.elements.name.value,
+      email: session.user.email || "",
+      phone: form.elements.phone.value,
+      emailRoutingStatus: existingRep?.emailRoutingStatus || "Not configured"
+    });
+  }
   const profileView = profileViewForRole(roleRecord.role);
   if (location.hash !== `#${profileView}`) history.replaceState(null, "", `#${profileView}`);
   await applyAuthenticatedSession({ ...session, user: data.user || session.user }, profileView);
@@ -980,8 +1015,31 @@ function render() {
 function renderAdmin() {
   $("#clientTableCount").textContent = `${state.clients.length} clients`;
   $("#clientTable").innerHTML = state.clients.length
-    ? state.clients.map((client) => `<tr><td><strong>${escapeHtml(client.name)}</strong><p>${escapeHtml(client.email)}</p></td><td>${escapeHtml(client.contactName)}<p>${escapeHtml(client.phone)}</p></td><td><span class="status-pill">${escapeHtml(client.status || "Active")}</span></td><td>${escapeHtml(client.notes)}${loginStatus(client)}</td><td>${actionButtons("clients", client.id, "clientForm", loginSetupButton("clients", client), canSystemEdit())}</td></tr>`).join("")
+    ? state.clients.map((client) => `<tr><td><button class="link-button" data-view-client-company="${client.id}" type="button"><strong>${escapeHtml(client.name)}</strong></button><p>${escapeHtml(client.email)}</p></td><td>${escapeHtml(client.contactName)}<p>${escapeHtml(client.phone)}</p></td><td><span class="status-pill">${escapeHtml(client.status || "Active")}</span></td><td>${escapeHtml(client.notes)}${loginStatus(client)}</td><td>${actionButtons("clients", client.id, "clientForm", loginSetupButton("clients", client), canSystemEdit())}</td></tr>`).join("")
     : `<tr><td colspan="5" class="empty">No client accounts yet.</td></tr>`;
+}
+
+function openClientCompanyView(clientId) {
+  const client = state.clients.find((item) => item.id === clientId);
+  if (!client || !canSystemEdit()) return;
+  $("#clientCompanyViewBody").innerHTML = `<article class="profile-page-card">
+    <div class="profile-page-header">
+      <div class="profile-avatar-large placeholder">${escapeHtml(initialsFor(client.name || "Company"))}</div>
+      <div>
+        <h3>${escapeHtml(client.name || "Client company")}</h3>
+        <p>${escapeHtml(client.status || "Active")}</p>
+      </div>
+      <button class="tiny-button system-action" data-edit="clients" data-id="${client.id}" data-form="clientForm" type="button">Edit Information</button>
+    </div>
+    <div class="profile-detail-grid">
+      <div><span>Main Contact</span><strong>${escapeHtml(client.contactName || "")}</strong></div>
+      <div><span>Email</span><strong>${escapeHtml(client.email || "")}</strong></div>
+      <div><span>Phone</span><strong>${escapeHtml(client.phone || "")}</strong></div>
+    </div>
+    <div class="profile-section"><span>System Notes</span><p>${escapeHtml(client.notes || "")}</p></div>
+  </article>`;
+  $("#editViewedClientCompany").dataset.editClientId = client.id;
+  openForm("clientCompanyView");
 }
 
 function activeClientRecord() {
@@ -989,47 +1047,85 @@ function activeClientRecord() {
   return state.clients.find((client) => client.id === clientId) || null;
 }
 
-function clientEmailRoutingSummary(client) {
-  if (!client) return `<div class="compact-item empty">No client profile connected yet.</div>`;
+function activeClientRepRecord() {
+  const clientId = authState.roleRecord?.client_id || "";
+  const userId = authState.user?.id || "";
+  const email = authState.user?.email || "";
+  return state.clientReps.find((rep) => rep.authUserId === userId)
+    || state.clientReps.find((rep) => rep.clientId === clientId && rep.email === email)
+    || null;
+}
+
+function clientRepDefaults() {
+  return {
+    id: authState.user?.id || crypto.randomUUID(),
+    clientId: authState.roleRecord?.client_id || "",
+    authUserId: authState.user?.id || "",
+    name: authState.user?.user_metadata?.name || "",
+    email: authState.user?.email || "",
+    phone: authState.user?.user_metadata?.phone || "",
+    emailRoutingStatus: "Not configured"
+  };
+}
+
+function clientEmailRoutingSummary(rep) {
+  if (!rep) return `<div class="compact-item empty">No rep profile connected yet.</div>`;
   return `<div class="compact-item">
-    <strong>${escapeHtml(client.name || "Client account")}</strong>
-    <span>${escapeHtml(client.smtpProvider || "No SMTP provider selected")} · ${escapeHtml(client.emailRoutingStatus || "Not configured")}</span>
-    <p>${escapeHtml(client.smtpFromEmail || client.email || "")}</p>
+    <strong>${escapeHtml(rep.name || "My profile")}</strong>
+    <span>${escapeHtml(rep.smtpProvider || "No SMTP provider selected")} · ${escapeHtml(rep.emailRoutingStatus || "Not configured")}</span>
+    <p>${escapeHtml(rep.smtpFromEmail || rep.email || "")}</p>
   </div>`;
 }
 
 function renderClientProfile() {
   const summary = $("#clientProfileSummary");
   const card = $("#clientProfileCard");
+  const companyCard = $("#clientCompanyCard");
   const client = activeClientRecord();
-  if (summary) summary.innerHTML = clientEmailRoutingSummary(client);
+  const rep = activeClientRepRecord();
+  if (summary) summary.innerHTML = clientEmailRoutingSummary(rep);
   if (!card) return;
-  if (!client) {
-    card.innerHTML = `<div class="compact-item empty">No client profile connected yet.</div>`;
-    return;
-  }
+  const profile = rep || clientRepDefaults();
   card.innerHTML = `<article class="profile-page-card">
     <div class="profile-page-header">
-      <div class="profile-avatar-large placeholder">${escapeHtml(initialsFor(client.name || "Client"))}</div>
+      <div class="profile-avatar-large placeholder">${escapeHtml(initialsFor(profile.name || authState.user?.email || "Me"))}</div>
       <div>
-        <h3>${escapeHtml(client.name || "Client account")}</h3>
-        <p>${escapeHtml(client.contactName || authState.user?.email || "")}</p>
+        <h3>${escapeHtml(profile.name || "My profile")}</h3>
+        <p>${escapeHtml(profile.title || "Client rep")}</p>
       </div>
       <button class="tiny-button owner-action" data-open-form="clientProfileForm" type="button">Edit Profile</button>
     </div>
     <div class="profile-detail-grid">
-      <div><span>Email</span><strong>${escapeHtml(client.email || "")}</strong></div>
-      <div><span>Phone</span><strong>${escapeHtml(client.phone || "")}</strong></div>
-      <div><span>Email Provider</span><strong>${escapeHtml(client.smtpProvider || "Not selected")}</strong></div>
-      <div><span>Routing Status</span><strong>${escapeHtml(client.emailRoutingStatus || "Not configured")}</strong></div>
-      <div><span>From Email</span><strong>${escapeHtml(client.smtpFromEmail || "")}</strong></div>
-      <div><span>Reply-To</span><strong>${escapeHtml(client.smtpReplyTo || "")}</strong></div>
-      <div><span>SMTP Username</span><strong>${escapeHtml(client.smtpUsername || "")}</strong></div>
-      <div><span>Security</span><strong>${escapeHtml(client.smtpSecure || "Not selected")}</strong></div>
+      <div><span>Email</span><strong>${escapeHtml(profile.email || "")}</strong></div>
+      <div><span>Phone</span><strong>${escapeHtml(profile.phone || "")}</strong></div>
+      <div><span>Email Provider</span><strong>${escapeHtml(profile.smtpProvider || "Not selected")}</strong></div>
+      <div><span>Routing Status</span><strong>${escapeHtml(profile.emailRoutingStatus || "Not configured")}</strong></div>
+      <div><span>From Email</span><strong>${escapeHtml(profile.smtpFromEmail || "")}</strong></div>
+      <div><span>Reply-To</span><strong>${escapeHtml(profile.smtpReplyTo || "")}</strong></div>
+      <div><span>SMTP Username</span><strong>${escapeHtml(profile.smtpUsername || "")}</strong></div>
+      <div><span>Security</span><strong>${escapeHtml(profile.smtpSecure || "Not selected")}</strong></div>
     </div>
-    <div class="profile-section"><span>SMTP Host</span><p>${escapeHtml(client.smtpHost || "")}${client.smtpPort ? ":" + escapeHtml(client.smtpPort) : ""}</p></div>
-    <div class="profile-section"><span>Secret Reference</span><p>${escapeHtml(client.smtpSecretRef || "No secret reference saved")}</p></div>
+    <div class="profile-section"><span>SMTP Host</span><p>${escapeHtml(profile.smtpHost || "")}${profile.smtpPort ? ":" + escapeHtml(profile.smtpPort) : ""}</p></div>
+    <div class="profile-section"><span>Secret Reference</span><p>${escapeHtml(profile.smtpSecretRef || "No secret reference saved")}</p></div>
   </article>`;
+  if (companyCard) {
+    companyCard.innerHTML = client ? `<article class="profile-page-card">
+      <div class="profile-page-header">
+        <div class="profile-avatar-large placeholder">${escapeHtml(initialsFor(client.name || "Company"))}</div>
+        <div>
+          <h3>${escapeHtml(client.name || "Client company")}</h3>
+          <p>${escapeHtml(client.status || "Active")}</p>
+        </div>
+        <button class="tiny-button owner-action" data-open-form="clientCompanyProfileForm" type="button">Edit Company</button>
+      </div>
+      <div class="profile-detail-grid">
+        <div><span>Main Contact</span><strong>${escapeHtml(client.contactName || "")}</strong></div>
+        <div><span>Email</span><strong>${escapeHtml(client.email || "")}</strong></div>
+        <div><span>Phone</span><strong>${escapeHtml(client.phone || "")}</strong></div>
+      </div>
+      <div class="profile-section"><span>Company Notes</span><p>${escapeHtml(client.notes || "")}</p></div>
+    </article>` : `<div class="compact-item empty">No company profile connected yet.</div>`;
+  }
 }
 
 function renderAdminProfile() {
@@ -1656,6 +1752,10 @@ async function saveForm(event, storeName) {
     toast("Only ADMIN or CLIENT can save client accounts.");
     return;
   }
+  if (storeName === "clientReps" && !isClientRole()) {
+    toast("Only CLIENT can save client rep profiles.");
+    return;
+  }
   if (storeName === "systemProfiles" && !canSystemEdit()) {
     toast("Only ADMIN can save system profile settings.");
     return;
@@ -1699,6 +1799,17 @@ async function saveForm(event, storeName) {
   const record = await formRecord(form);
   const existing = record.id ? state[storeName].find((item) => item.id === record.id) : null;
   let merged = { ...(existing || {}), ...record };
+  if (storeName === "clientReps") {
+    merged = {
+      ...activeClientRepRecord(),
+      ...record,
+      id: record.id || authState.user?.id || crypto.randomUUID(),
+      clientId: authState.roleRecord?.client_id || record.clientId || "",
+      authUserId: authState.user?.id || record.authUserId || "",
+      email: record.email || authState.user?.email || "",
+      emailRoutingStatus: record.emailRoutingStatus || "Not configured"
+    };
+  }
   if (storeName === "systemProfiles") {
     merged.id = "adminProfile";
     merged.emailRoutingStatus = merged.emailRoutingStatus || "Not configured";
@@ -1715,7 +1826,7 @@ async function saveForm(event, storeName) {
       ...record,
       id: clientId,
       status: current.status || record.status || "Active",
-      notes: current.notes || record.notes || ""
+      notes: record.notes || current.notes || ""
     };
   }
   if (storeName === "workers" && isCrewRole()) {
@@ -1768,6 +1879,7 @@ async function saveForm(event, storeName) {
   await put(storeName, merged);
   try {
     if (storeName === "clients") loginSyncMessage = await syncSupabaseClientAccount(merged);
+    if (storeName === "clientReps") loginSyncMessage = await syncSupabaseClientRep(merged);
     loginSyncMessage = await syncSupabaseRoleForProfile(storeName, merged) || loginSyncMessage;
   } catch (error) {
     console.error(error);
@@ -2082,7 +2194,8 @@ function bindEvents() {
   $("#eventForm").addEventListener("submit", (event) => saveForm(event, "events"));
   $("#adminProfileForm").addEventListener("submit", (event) => saveForm(event, "systemProfiles"));
   $("#clientForm").addEventListener("submit", (event) => saveForm(event, "clients"));
-  $("#clientProfileForm").addEventListener("submit", (event) => saveForm(event, "clients"));
+  $("#clientCompanyProfileForm").addEventListener("submit", (event) => saveForm(event, "clients"));
+  $("#clientProfileForm").addEventListener("submit", (event) => saveForm(event, "clientReps"));
   $("#workerForm").addEventListener("submit", (event) => saveForm(event, "workers"));
   $("#venueForm").addEventListener("submit", (event) => saveForm(event, "venues"));
   $("#promoterForm").addEventListener("submit", (event) => saveForm(event, "promoters"));
@@ -2115,20 +2228,25 @@ function bindEvents() {
     const clearSelectedButton = event.target.closest("[data-clear-selected]");
     const bulkDeleteButton = event.target.closest("[data-bulk-delete]");
     const loginSetupButton = event.target.closest("[data-send-login]");
+    const viewClientCompanyButton = event.target.closest("[data-view-client-company]");
+    const editViewedClientButton = event.target.closest("#editViewedClientCompany");
 
   if (openButton) {
       clearForm(openButton.dataset.openForm);
       if (openButton.dataset.openForm === "adminProfileForm" && isAdminRole()) {
         fillForm("adminProfileForm", activeAdminProfile());
       } else if (openButton.dataset.openForm === "clientProfileForm" && isClientRole()) {
+        const active = activeClientRepRecord() || clientRepDefaults();
+        fillForm("clientProfileForm", active);
+      } else if (openButton.dataset.openForm === "clientCompanyProfileForm" && isClientRole()) {
         const active = activeClientRecord() || {
           id: authState.roleRecord?.client_id || "",
-          name: authState.user?.user_metadata?.company || "",
+          name: "",
           contactName: authState.user?.user_metadata?.name || "",
           email: authState.user?.email || "",
-          emailRoutingStatus: "Not configured"
+          status: "Setup Needed"
         };
-        fillForm("clientProfileForm", active);
+        fillForm("clientCompanyProfileForm", active);
       } else if (openButton.dataset.openForm === "workerForm" && isCrewRole()) {
         const active = getWorker(state.activeWorkerId);
         if (active) fillForm("workerForm", active);
@@ -2145,6 +2263,11 @@ function bindEvents() {
     }
 
     if (deleteButton) await deleteRecord(deleteButton.dataset.delete, deleteButton.dataset.id);
+    if (viewClientCompanyButton) openClientCompanyView(viewClientCompanyButton.dataset.viewClientCompany);
+    if (editViewedClientButton?.dataset.editClientId) {
+      const client = state.clients.find((item) => item.id === editViewedClientButton.dataset.editClientId);
+      if (client) fillForm("clientForm", client);
+    }
     if (clockButton) await clockOutNow(clockButton.dataset.clockOut);
     if (punchButton) await crewPunch(punchButton.dataset.eventId, punchButton.dataset.timePunch);
     if (profileNoteButton) await saveProfileNote(profileNoteButton.dataset.saveProfileNote);
