@@ -7,7 +7,23 @@
     <link rel="stylesheet" href="styles.css">
   </head>
   <body>
-    <div class="app-shell">
+    <section id="authScreen" class="auth-screen">
+      <form id="loginForm" class="auth-card">
+        <div class="brand">
+          <div class="brand-mark">PC</div>
+          <div>
+            <h1>Production Crew</h1>
+            <p>Secure sign in</p>
+          </div>
+        </div>
+        <label>Email<input name="email" type="email" required autocomplete="email" placeholder="you@example.com"></label>
+        <label>Password<input name="password" type="password" required autocomplete="current-password" placeholder="Password"></label>
+        <button class="primary-action" type="submit">Log In</button>
+        <p id="authMessage" class="auth-message"></p>
+      </form>
+    </section>
+
+    <div id="appShell" class="app-shell" hidden>
       <aside class="sidebar">
         <div class="brand">
           <div class="brand-mark">PC</div>
@@ -45,14 +61,10 @@
             <h2 id="viewTitle">Dashboard</h2>
           </div>
           <div class="topbar-tools">
-            <label class="access-control">
-              Access view
-              <select id="accessRole">
-                <option value="owner">Client / Owner</option>
-                <option value="production">Promoter / Production Office</option>
-                <option value="crew">Crew / Runner</option>
-              </select>
-            </label>
+            <div class="session-pill">
+              <span id="sessionEmail">Not signed in</span>
+              <strong id="sessionRole">ROLE</strong>
+            </div>
             <label id="crewScopeControl" class="access-control">
               Crew acting as
               <select id="activeWorker"></select>
@@ -63,6 +75,7 @@
             </label>
             <input id="globalSearch" class="search-input" type="search" placeholder="Search the database">
             <button id="seedData" class="ghost-button" type="button">Load sample data</button>
+            <button id="logoutButton" class="ghost-button" type="button">Log Out</button>
           </div>
         </header>
 
@@ -97,6 +110,52 @@
                 <h3>Recent Notes</h3>
               </div>
               <div id="recentNotes" class="compact-list"></div>
+            </section>
+          </div>
+        </section>
+
+        <section id="admin" class="view">
+          <div class="split-layout">
+            <form id="clientForm" class="panel form-panel system-form">
+              <div class="panel-heading">
+                <h3>Client Account</h3>
+                <button class="ghost-button clear-form" type="button" data-form="clientForm">Clear</button>
+              </div>
+              <input type="hidden" name="id">
+              <label>Client company<input name="name" required placeholder="Company name"></label>
+              <label>Primary contact<input name="contactName" placeholder="Name"></label>
+              <label>Email<input name="email" type="email" placeholder="client@example.com"></label>
+              <label>Phone<input name="phone" placeholder="(555) 000-0000"></label>
+              <label>Status
+                <select name="status">
+                  <option>Active</option>
+                  <option>Paused</option>
+                  <option>Setup Needed</option>
+                </select>
+              </label>
+              <label>System notes<textarea name="notes" rows="4" placeholder="Configuration notes, support details, onboarding status"></textarea></label>
+              <button class="primary-action" type="submit">Save Client</button>
+            </form>
+            <section class="panel table-panel">
+              <div class="panel-heading">
+                <h3>Admin Console</h3>
+                <div class="panel-tools">
+                  <span id="clientTableCount" class="muted"></span>
+                  <button class="tiny-button system-action" data-open-form="clientForm" type="button">Add Client</button>
+                </div>
+              </div>
+              <div class="compact-list">
+                <div class="compact-item">
+                  <strong>System-only access</strong>
+                  <p>Admin can manage client accounts, role setup, app configuration, and troubleshooting tools without opening production data, payroll, timecards, reports, or crew personal details.</p>
+                </div>
+              </div>
+              <div class="table-wrap">
+                <table>
+                  <thead><tr><th>Client</th><th>Contact</th><th>Status</th><th>System Notes</th><th></th></tr></thead>
+                  <tbody id="clientTable"></tbody>
+                </table>
+              </div>
             </section>
           </div>
         </section>
@@ -155,6 +214,30 @@
           </div>
         </section>
 
+        <section id="productionBoard" class="view">
+          <div class="stack-layout">
+            <section class="panel">
+              <div class="panel-heading">
+                <h3>Production Board</h3>
+                <span id="productionBoardCount" class="muted"></span>
+              </div>
+              <div id="productionBoardCards" class="record-grid"></div>
+            </section>
+            <section class="panel table-panel">
+              <div class="panel-heading">
+                <h3>Runner Status</h3>
+                <span class="muted">Future: text / email production-office call notifications</span>
+              </div>
+              <div class="table-wrap">
+                <table>
+                  <thead><tr><th>Runner</th><th>Assigned Events</th><th>Status</th><th>Contact</th><th></th></tr></thead>
+                  <tbody id="runnerStatusTable"></tbody>
+                </table>
+              </div>
+            </section>
+          </div>
+        </section>
+
         <section id="workers" class="view">
           <div class="split-layout">
             <form id="workerForm" class="panel form-panel">
@@ -178,15 +261,15 @@
               </label>
               <label class="owner-form">Access
                 <select name="accessLevels" multiple size="2">
-                  <option value="crew">Crew / Runner</option>
-                  <option value="production">Production Office</option>
+                  <option value="CREW">Crew / Runner</option>
+                  <option value="PROMOTER_PRODUCTION_OFFICE">Production Office</option>
                 </select>
               </label>
-              <label class="owner-form">Default day rate<input name="defaultDayRate" type="number" min="0" step="0.01" placeholder="350.00"></label>
-              <label class="owner-form">Included hours<input name="defaultIncludedHours" type="number" min="0" step="0.25" placeholder="10"></label>
-              <label class="owner-form">Additional hourly rate<input name="defaultAdditionalRate" type="number" min="0" step="0.01" placeholder="45.00"></label>
-              <label class="owner-form">Rented vehicle rate<input name="defaultRentedVehicleRate" type="number" min="0" step="0.01" placeholder="25.00"></label>
-              <label class="owner-form">Personal vehicle rate<input name="defaultPersonalVehicleRate" type="number" min="0" step="0.01" placeholder="75.00"></label>
+              <label class="owner-form rate-field">Default day rate<input name="defaultDayRate" type="number" min="0" step="0.01" placeholder="350.00"></label>
+              <label class="owner-form rate-field">Included hours<input name="defaultIncludedHours" type="number" min="0" step="0.25" placeholder="10"></label>
+              <label class="owner-form rate-field">Additional hourly rate<input name="defaultAdditionalRate" type="number" min="0" step="0.01" placeholder="45.00"></label>
+              <label class="owner-form rate-field">Rented vehicle rate<input name="defaultRentedVehicleRate" type="number" min="0" step="0.01" placeholder="25.00"></label>
+              <label class="owner-form rate-field">Personal vehicle rate<input name="defaultPersonalVehicleRate" type="number" min="0" step="0.01" placeholder="75.00"></label>
               <label class="owner-form">Skills<textarea name="skills" rows="3" placeholder="Forklift, backline, rigging, merch"></textarea></label>
               <label class="owner-form">Emergency contact<input name="emergency" placeholder="Name and phone"></label>
               <label>Mailing address<textarea name="mailingAddress" rows="3" placeholder="Street, city, state, zip"></textarea></label>
@@ -455,8 +538,8 @@
               <label>Email<input name="email" type="email" placeholder="contact@example.com"></label>
               <label class="owner-form">Access
                 <select name="accessLevels" multiple size="2">
-                  <option value="production">Production Office</option>
-                  <option value="crew">Crew / Runner</option>
+                  <option value="PROMOTER_PRODUCTION_OFFICE">Production Office</option>
+                  <option value="CREW">Crew / Runner</option>
                 </select>
               </label>
               <label>Company billing notes<textarea name="billing" rows="3" placeholder="PO rules, invoice contact, terms"></textarea></label>
@@ -541,6 +624,7 @@
 
     <div id="modalBackdrop" class="modal-backdrop" data-close-modal></div>
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
-    <script src="app.js?v=20260505-save-close-5"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="app.js?v=20260505-auth-logout-1"></script>
   </body>
 </html>

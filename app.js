@@ -1,6 +1,9 @@
 const DB_NAME = "productionCrewDatabase";
-const DB_VERSION = 4;
+const DB_VERSION = 5;
+const SUPABASE_URL = "https://nnhqrhaltkmymnwxydwr.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5uaHFyaGFsdGtteW1ud3h5ZHdyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgwMjMxNDgsImV4cCI6MjA5MzU5OTE0OH0.X9iGhE61WehM57133LKCWMfXXDHmcb2rhw-ZPCKAJos";
 const STORES = [
+  "clients",
   "workers",
   "venues",
   "promoters",
@@ -13,40 +16,76 @@ const STORES = [
   "accidentReports"
 ];
 
+const ROLE_ALIASES = {
+  admin: "ADMIN",
+  owner: "CLIENT",
+  client: "CLIENT",
+  production: "PROMOTER_PRODUCTION_OFFICE",
+  promoter: "PROMOTER_PRODUCTION_OFFICE",
+  promoter_production_office: "PROMOTER_PRODUCTION_OFFICE",
+  crew: "CREW",
+  ADMIN: "ADMIN",
+  CLIENT: "CLIENT",
+  PROMOTER_PRODUCTION_OFFICE: "PROMOTER_PRODUCTION_OFFICE",
+  CREW: "CREW"
+};
+
 const ACCESS_PROFILES = {
-  owner: {
-    label: "Client / Owner",
-    views: ["dashboard", "workers", "promoters", "venues", "events", "clock", "timecards", "vehicles", "reports", "payroll", "directory", "runner"],
+  ADMIN: {
+    label: "ADMIN",
+    views: ["admin"],
+    canAdminEdit: false,
+    canOwnerEdit: false,
+    canVenueEdit: false,
+    canScopedEdit: false,
+    canImportExport: false,
+    canSeed: false,
+    canSystemEdit: true
+  },
+  CLIENT: {
+    label: "CLIENT",
+    views: ["dashboard", "workers", "promoters", "venues", "events", "productionBoard", "clock", "timecards", "vehicles", "reports", "payroll", "directory", "runner"],
     canAdminEdit: true,
     canOwnerEdit: true,
     canVenueEdit: true,
     canScopedEdit: true,
     canImportExport: true,
-    canSeed: true
+    canSeed: true,
+    canSystemEdit: false
   },
-  production: {
-    label: "Promoter / Production Office",
-    views: ["dashboard", "workers", "promoters", "venues", "events", "vehicles", "reports", "directory"],
+  PROMOTER_PRODUCTION_OFFICE: {
+    label: "PROMOTER_PRODUCTION_OFFICE",
+    views: ["dashboard", "productionBoard", "workers", "promoters", "venues", "events", "vehicles", "reports", "directory"],
     canAdminEdit: true,
     canOwnerEdit: false,
     canVenueEdit: true,
     canScopedEdit: true,
     canImportExport: false,
-    canSeed: false
+    canSeed: false,
+    canSystemEdit: false
   },
-  crew: {
-    label: "Crew / Runner",
+  CREW: {
+    label: "CREW",
     views: ["workers", "clock", "events", "timecards", "vehicles", "reports", "payroll", "directory", "runner"],
     canAdminEdit: false,
     canOwnerEdit: false,
     canVenueEdit: false,
     canScopedEdit: true,
     canImportExport: false,
-    canSeed: false
+    canSeed: false,
+    canSystemEdit: false
   }
 };
 
 let db;
+let supabaseClient;
+let appHasLoaded = false;
+let authState = {
+  session: null,
+  user: null,
+  roleRecord: null
+};
+
 let state = {
   workers: [],
   venues: [],
@@ -58,9 +97,10 @@ let state = {
   runnerCategories: [],
   vehicleLogs: [],
   accidentReports: [],
+  clients: [],
   search: "",
   activeView: "dashboard",
-  accessRole: localStorage.getItem("productionCrewAccessRole") || "owner",
+  accessRole: "CLIENT",
   activeWorkerId: localStorage.getItem("productionCrewActiveWorker") || "",
   activePromoterId: localStorage.getItem("productionCrewActivePromoter") || "",
   runnerCategory: "All",
@@ -69,20 +109,23 @@ let state = {
 };
 
 const NAV_GROUPS = {
-  owner: [
+  ADMIN: [
+    { items: [["admin", "Admin Console"]] }
+  ],
+  CLIENT: [
     { items: [["dashboard", "Dashboard"]] },
     { label: "PROFILES", items: [["workers", "Crew Profiles"], ["promoters", "Promoter Profiles"], ["venues", "Venues"]] },
-    { label: "EVENTS", items: [["events", "Events"], ["clock", "TimeClock"], ["timecards", "Timecards"], ["vehicles", "Vehicles"], ["reports", "Reports"]] },
+    { label: "EVENTS", items: [["events", "Events"], ["productionBoard", "Production Board"], ["clock", "TimeClock"], ["timecards", "Timecards"], ["vehicles", "Vehicles"], ["reports", "Reports"]] },
     { label: "PAYROLL", items: [["payroll", "Payroll"]] },
     { label: "DIRECTORIES", items: [["directory", "Crew Directory"], ["runner", "Gig Directory"]] }
   ],
-  production: [
+  PROMOTER_PRODUCTION_OFFICE: [
     { items: [["dashboard", "Dashboard"]] },
     { label: "PROFILES", items: [["workers", "Crew Profiles"], ["promoters", "Promoter Profiles"], ["venues", "Venues"]] },
-    { label: "EVENTS", items: [["events", "Events"], ["vehicles", "Vehicles"], ["reports", "Reports"]] },
+    { label: "EVENTS", items: [["events", "Events"], ["productionBoard", "Production Board"], ["vehicles", "Vehicles"], ["reports", "Reports"]] },
     { label: "DIRECTORIES", items: [["directory", "Crew Directory"]] }
   ],
-  crew: [
+  CREW: [
     { items: [["workers", "My Profile"], ["clock", "Time Clock"]] },
     { label: "EVENTS", items: [["events", "Events"], ["timecards", "Timecards"], ["vehicles", "Vehicles"], ["reports", "Reports"]] },
     { label: "PAYROLL", items: [["payroll", "Payroll"]] },
@@ -95,6 +138,10 @@ const $$ = (selector) => Array.from(document.querySelectorAll(selector));
 
 function openDatabase() {
   return new Promise((resolve, reject) => {
+    if (!window.indexedDB) {
+      reject(new Error("This browser does not allow local database storage here."));
+      return;
+    }
     const request = indexedDB.open(DB_NAME, DB_VERSION);
 
     request.onupgradeneeded = () => {
@@ -109,6 +156,11 @@ function openDatabase() {
     request.onsuccess = () => resolve(request.result);
     request.onerror = () => reject(request.error);
   });
+}
+
+async function ensureDatabase() {
+  if (!db) db = await openDatabase();
+  return db;
 }
 
 function transaction(storeName, mode = "readonly") {
@@ -146,9 +198,10 @@ function remove(storeName, id) {
 }
 
 async function loadState() {
-  const [workers, venues, promoters, profileNotes, events, timecards, runnerStops, runnerCategories, vehicleLogs, accidentReports] = await Promise.all(STORES.map(getAll));
+  const [clients, workers, venues, promoters, profileNotes, events, timecards, runnerStops, runnerCategories, vehicleLogs, accidentReports] = await Promise.all(STORES.map(getAll));
   state = {
     ...state,
+    clients: sortByName(clients),
     workers: sortByName(workers),
     venues: sortByName(venues),
     promoters: sortByName(promoters),
@@ -215,8 +268,9 @@ function fillForm(formId, record) {
     if (form.elements[key].type === "checkbox") {
       form.elements[key].checked = value === "yes" || value === true;
     } else if (form.elements[key].multiple && Array.isArray(value)) {
+      const selectedValues = key === "accessLevels" ? normalizeAccessLevels(value, "") : value;
       Array.from(form.elements[key].options).forEach((option) => {
-        option.selected = value.includes(option.value);
+        option.selected = selectedValues.includes(option.value);
       });
     } else {
       form.elements[key].value = value || "";
@@ -267,32 +321,190 @@ function closeActiveForm() {
   if (active) closeForm(active.id);
 }
 
+function isSupabaseConfigured() {
+  return Boolean(
+    window.supabase
+    && SUPABASE_URL.startsWith("https://")
+    && !SUPABASE_URL.includes("YOUR_PROJECT_REF")
+    && SUPABASE_ANON_KEY
+    && !SUPABASE_ANON_KEY.includes("YOUR_SUPABASE_ANON_KEY")
+  );
+}
+
+function showAuthScreen(message = "") {
+  $("#authScreen").hidden = false;
+  $("#appShell").hidden = true;
+  $("#sessionEmail").textContent = "Not signed in";
+  $("#sessionRole").textContent = "ROLE";
+  $("#authMessage").textContent = message;
+}
+
+function showAppShell() {
+  $("#authScreen").hidden = true;
+  $("#appShell").hidden = false;
+}
+
+function setAuthMessage(message) {
+  $("#authMessage").textContent = message;
+}
+
+function initializeSupabaseClient() {
+  if (!isSupabaseConfigured()) return null;
+  if (!supabaseClient) {
+    supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: true
+      }
+    });
+  }
+  return supabaseClient;
+}
+
+async function fetchUserRole(session) {
+  const { data, error } = await supabaseClient
+    .from("user_roles")
+    .select("role, worker_id, promoter_id, client_id")
+    .eq("user_id", session.user.id)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data?.role) throw new Error("No role is assigned to this user.");
+  return {
+    ...data,
+    role: normalizeRole(data.role)
+  };
+}
+
+async function applyAuthenticatedSession(session) {
+  if (!session) {
+    authState = { session: null, user: null, roleRecord: null };
+    appHasLoaded = false;
+    showAuthScreen("Log in with your Supabase account.");
+    return;
+  }
+
+  authState.session = session;
+  authState.user = session.user;
+  const roleRecord = await fetchUserRole(session);
+  authState.roleRecord = roleRecord;
+  state.accessRole = roleRecord.role;
+  if (roleRecord.worker_id) state.activeWorkerId = roleRecord.worker_id;
+  if (roleRecord.promoter_id) state.activePromoterId = roleRecord.promoter_id;
+
+  $("#sessionEmail").textContent = session.user.email || "Signed in";
+  $("#sessionRole").textContent = state.accessRole;
+  showAppShell();
+  await ensureDatabase();
+  await loadState();
+  appHasLoaded = true;
+  setView(location.hash.replace("#", "") || state.activeView);
+}
+
+async function initializeAuth() {
+  if (!initializeSupabaseClient()) {
+    showAuthScreen("Add your Supabase URL and anon key in app.js to enable login.");
+    return;
+  }
+
+  const { data, error } = await supabaseClient.auth.getSession();
+  if (error) {
+    showAuthScreen(error.message);
+    return;
+  }
+  await applyAuthenticatedSession(data.session);
+
+  supabaseClient.auth.onAuthStateChange((_event, session) => {
+    window.setTimeout(() => {
+      applyAuthenticatedSession(session).catch((error) => {
+        console.error(error);
+        showAuthScreen(error.message || "Could not load your assigned role.");
+      });
+    }, 0);
+  });
+}
+
+async function loginWithSupabase(event) {
+  event.preventDefault();
+  if (!initializeSupabaseClient()) {
+    setAuthMessage("Add your Supabase URL and anon key in app.js first.");
+    return;
+  }
+  const form = event.currentTarget;
+  setAuthMessage("Signing in...");
+  const { error } = await supabaseClient.auth.signInWithPassword({
+    email: form.elements.email.value,
+    password: form.elements.password.value
+  });
+  if (error) {
+    setAuthMessage(error.message);
+    return;
+  }
+  form.reset();
+}
+
+async function logout() {
+  if (!supabaseClient) return;
+  appHasLoaded = false;
+  authState = { session: null, user: null, roleRecord: null };
+  showAuthScreen("Logging out...");
+  await supabaseClient.auth.signOut();
+  showAuthScreen("Logged out. Sign in again when ready.");
+}
+
 function matchesSearch(record, extra = "") {
   const haystack = `${Object.values(record).flat().join(" ")} ${extra}`.toLowerCase();
   return haystack.includes(state.search);
 }
 
+function normalizeRole(role) {
+  const value = String(role || "").trim();
+  return ROLE_ALIASES[value] || ROLE_ALIASES[value.toLowerCase()] || "CLIENT";
+}
+
+function normalizeAccessLevel(level) {
+  const value = String(level || "").trim();
+  return value ? normalizeRole(value) : "";
+}
+
+function isAdminRole() {
+  return state.accessRole === "ADMIN";
+}
+
+function isClientRole() {
+  return state.accessRole === "CLIENT";
+}
+
+function isProductionRole() {
+  return state.accessRole === "PROMOTER_PRODUCTION_OFFICE";
+}
+
+function isCrewRole() {
+  return state.accessRole === "CREW";
+}
+
 function currentProfile() {
-  return ACCESS_PROFILES[state.accessRole] || ACCESS_PROFILES.owner;
+  return ACCESS_PROFILES[state.accessRole] || ACCESS_PROFILES.CLIENT;
 }
 
 function assignedAccessForRole(role) {
-  if (role === "owner") return ["owner", "production", "crew"];
-  if (role === "crew") {
+  const normalized = normalizeRole(role);
+  if (normalized === "CLIENT") return ["CLIENT", "PROMOTER_PRODUCTION_OFFICE", "CREW"];
+  if (normalized === "CREW") {
     const worker = getWorker(state.activeWorkerId);
-    return normalizeAccessLevels(worker?.accessLevels, "crew");
+    return normalizeAccessLevels(worker?.accessLevels, "CREW");
   }
-  if (role === "production") {
+  if (normalized === "PROMOTER_PRODUCTION_OFFICE") {
     const promoter = getPromoter(state.activePromoterId);
-    return normalizeAccessLevels(promoter?.accessLevels, "production");
+    return normalizeAccessLevels(promoter?.accessLevels, "PROMOTER_PRODUCTION_OFFICE");
   }
-  return [role];
+  return [normalized];
 }
 
 function normalizeAccessLevels(levels, fallback) {
   const values = Array.isArray(levels) ? levels : String(levels || "").split(",");
-  const clean = values.map((level) => level.trim()).filter(Boolean);
-  return clean.length ? Array.from(new Set(clean)) : [fallback];
+  const clean = values.map((level) => normalizeAccessLevel(level)).filter(Boolean);
+  return clean.length ? Array.from(new Set(clean)) : [normalizeAccessLevel(fallback)].filter(Boolean);
 }
 
 function canAdminEdit() {
@@ -309,6 +521,10 @@ function canVenueEdit() {
 
 function canScopedEdit() {
   return currentProfile().canScopedEdit;
+}
+
+function canSystemEdit() {
+  return currentProfile().canSystemEdit;
 }
 
 function getWorker(id) {
@@ -339,31 +555,34 @@ function eventWorkerIds(event) {
 }
 
 function visibleEvents() {
-  if (state.accessRole === "production") {
+  if (isAdminRole()) return [];
+  if (isProductionRole()) {
     return state.events.filter((event) => !state.activePromoterId || event.promoterId === state.activePromoterId);
   }
-  if (state.accessRole !== "crew") return state.events;
+  if (!isCrewRole()) return state.events;
   return state.events.filter((event) => eventWorkerIds(event).includes(state.activeWorkerId));
 }
 
 function isEventVisible(eventId) {
-  if (state.accessRole === "production") {
+  if (isAdminRole()) return false;
+  if (isProductionRole()) {
     const event = getEvent(eventId);
     return !!event && (!state.activePromoterId || event.promoterId === state.activePromoterId);
   }
-  if (state.accessRole !== "crew") return true;
+  if (!isCrewRole()) return true;
   const event = getEvent(eventId);
   return !!event && eventWorkerIds(event).includes(state.activeWorkerId);
 }
 
 function visibleRecords(records) {
-  if (state.accessRole === "production") {
+  if (isAdminRole()) return [];
+  if (isProductionRole()) {
     return records.filter((record) => {
       if (record.promoterId && state.activePromoterId && record.promoterId !== state.activePromoterId) return false;
       return !record.eventId || isEventVisible(record.eventId);
     });
   }
-  if (state.accessRole !== "crew") return records;
+  if (!isCrewRole()) return records;
   return records.filter((record) => {
     if (record.workerId !== state.activeWorkerId) return false;
     return !!record.eventId && isEventVisible(record.eventId);
@@ -375,15 +594,17 @@ function assignedWorkerIdsForVisibleEvents() {
 }
 
 function visibleWorkers() {
-  if (state.accessRole === "owner") return state.workers;
-  if (state.accessRole === "crew") return state.workers;
+  if (isAdminRole()) return [];
+  if (isClientRole()) return state.workers;
+  if (isCrewRole()) return state.workers;
   const ids = assignedWorkerIdsForVisibleEvents();
   return state.workers.filter((worker) => ids.has(worker.id));
 }
 
 function visiblePromoters() {
-  if (state.accessRole === "owner") return state.promoters;
-  if (state.accessRole !== "production") return [];
+  if (isAdminRole()) return [];
+  if (isClientRole()) return state.promoters;
+  if (!isProductionRole()) return [];
   const active = getPromoter(state.activePromoterId);
   return state.promoters.filter((promoter) => {
     if (!active?.companyName) return promoter.id === state.activePromoterId;
@@ -392,19 +613,20 @@ function visiblePromoters() {
 }
 
 function visibleVenues() {
-  if (state.accessRole === "owner" || state.accessRole === "production") return state.venues;
+  if (isAdminRole()) return [];
+  if (isClientRole() || isProductionRole()) return state.venues;
   const venueIds = new Set(visibleEvents().map((event) => event.venueId).filter(Boolean));
   return state.venues.filter((venue) => venueIds.has(venue.id));
 }
 
 function canEditWorker(worker) {
-  if (state.accessRole === "owner") return true;
-  return state.accessRole === "crew" && worker.id === state.activeWorkerId;
+  if (isClientRole()) return true;
+  return isCrewRole() && worker.id === state.activeWorkerId;
 }
 
 function canEditPromoter(promoter) {
-  if (state.accessRole === "owner") return true;
-  return state.accessRole === "production" && promoter.id === state.activePromoterId;
+  if (isClientRole()) return true;
+  return isProductionRole() && promoter.id === state.activePromoterId;
 }
 
 function promoterNoteFor(workerId) {
@@ -412,7 +634,7 @@ function promoterNoteFor(workerId) {
 }
 
 function publicWorkerValue(worker, key) {
-  if (worker.id === state.activeWorkerId || state.accessRole !== "crew") return worker[key] || "";
+  if (worker.id === state.activeWorkerId || !isCrewRole()) return worker[key] || "";
   if (key === "phone" && worker.hidePhone) return "";
   if (key === "email" && worker.hideEmail) return "";
   return worker[key] || "";
@@ -497,8 +719,10 @@ function escapeHtml(value) {
 function render() {
   applyAccessProfile();
   renderSelects();
+  renderAdmin();
   renderDashboard();
   renderEvents();
+  renderProductionBoard();
   renderClock();
   renderWorkers();
   renderTimecards();
@@ -511,17 +735,26 @@ function render() {
   renderRunnerStops();
 }
 
+function renderAdmin() {
+  $("#clientTableCount").textContent = `${state.clients.length} clients`;
+  $("#clientTable").innerHTML = state.clients.length
+    ? state.clients.map((client) => `<tr><td><strong>${escapeHtml(client.name)}</strong><p>${escapeHtml(client.email)}</p></td><td>${escapeHtml(client.contactName)}<p>${escapeHtml(client.phone)}</p></td><td><span class="status-pill">${escapeHtml(client.status || "Active")}</span></td><td>${escapeHtml(client.notes)}</td><td>${actionButtons("clients", client.id, "clientForm", "", canSystemEdit())}</td></tr>`).join("")
+    : `<tr><td colspan="5" class="empty">No client accounts yet.</td></tr>`;
+}
+
 function renderSelects() {
-  const workers = state.workers;
+  const workers = isAdminRole() ? [] : state.workers;
   const events = visibleEvents();
+  const venues = isAdminRole() ? [] : state.venues;
+  const promoters = isAdminRole() ? [] : state.promoters;
   const workerOptions = `<option value="">Select worker</option>${workers.map((worker) => `<option value="${worker.id}">${escapeHtml(worker.name)}</option>`).join("")}`;
-  const venueOptions = `<option value="">No venue selected</option>${state.venues.map((venue) => `<option value="${venue.id}">${escapeHtml(venue.name)}</option>`).join("")}`;
-  const promoterOptions = `<option value="">No promoter rep selected</option>${state.promoters.map((promoter) => `<option value="${promoter.id}">${escapeHtml(promoterLabel(promoter))}</option>`).join("")}`;
+  const venueOptions = `<option value="">No venue selected</option>${venues.map((venue) => `<option value="${venue.id}">${escapeHtml(venue.name)}</option>`).join("")}`;
+  const promoterOptions = `<option value="">No promoter rep selected</option>${promoters.map((promoter) => `<option value="${promoter.id}">${escapeHtml(promoterLabel(promoter))}</option>`).join("")}`;
   const eventOptions = `<option value="">Select event</option>${events.map((event) => `<option value="${event.id}">${escapeHtml(event.name)}</option>`).join("")}`;
 
   $("#activeWorker").innerHTML = workers.length ? workers.map((worker) => `<option value="${worker.id}">${escapeHtml(worker.name)}</option>`).join("") : `<option value="">No workers yet</option>`;
   $("#activeWorker").value = state.activeWorkerId;
-  $("#activePromoter").innerHTML = state.promoters.length ? state.promoters.map((promoter) => `<option value="${promoter.id}">${escapeHtml(promoterLabel(promoter))}</option>`).join("") : `<option value="">No promoter reps yet</option>`;
+  $("#activePromoter").innerHTML = promoters.length ? promoters.map((promoter) => `<option value="${promoter.id}">${escapeHtml(promoterLabel(promoter))}</option>`).join("") : `<option value="">No promoter reps yet</option>`;
   $("#activePromoter").value = state.activePromoterId;
 
   $("#eventForm select[name='venueId']").innerHTML = venueOptions;
@@ -541,6 +774,15 @@ function renderSelects() {
 }
 
 function renderDashboard() {
+  if (isAdminRole()) {
+    $("#eventCount").textContent = "0";
+    $("#activeTimecards").textContent = "0";
+    $("#venueCount").textContent = "0";
+    $("#payrollCount").textContent = "$0";
+    $("#liveCrewList").innerHTML = `<div class="compact-item empty">ADMIN does not load production timecard data.</div>`;
+    $("#recentNotes").innerHTML = `<div class="compact-item empty">ADMIN does not load production notes.</div>`;
+    return;
+  }
   const cards = visibleRecords(state.timecards);
   const liveCards = cards.filter((card) => !card.clockOut);
   $("#eventCount").textContent = visibleEvents().length;
@@ -558,14 +800,37 @@ function renderDashboard() {
 
   const noteItems = [
     ...visibleEvents().map((item) => ({ type: "Event", name: item.name, text: item.notes, updatedAt: item.updatedAt })),
-    ...((state.accessRole === "owner" || state.accessRole === "production") ? state.venues.map((item) => ({ type: "Venue", name: item.name, text: item.notes || item.parking, updatedAt: item.updatedAt })) : []),
-    ...(state.accessRole === "crew" ? [] : state.promoters.map((item) => ({ type: "Promoter", name: promoterLabel(item), text: item.notes, updatedAt: item.updatedAt }))),
-    ...(state.accessRole === "crew" ? [] : state.runnerStops.map((item) => ({ type: "Runner", name: item.name, text: item.notes || item.bestUse, updatedAt: item.updatedAt })))
+    ...((isClientRole() || isProductionRole()) ? state.venues.map((item) => ({ type: "Venue", name: item.name, text: item.notes || item.parking, updatedAt: item.updatedAt })) : []),
+    ...((isClientRole() || isProductionRole()) ? visiblePromoters().map((item) => ({ type: "Promoter", name: promoterLabel(item), text: item.notes, updatedAt: item.updatedAt })) : []),
+    ...((isClientRole() || isProductionRole()) ? state.runnerStops.map((item) => ({ type: "Runner", name: item.name, text: item.notes || item.bestUse, updatedAt: item.updatedAt })) : [])
   ].filter((item) => item.text).sort((a, b) => new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0));
 
   $("#recentNotes").innerHTML = noteItems.length
     ? noteItems.slice(0, 8).map((item) => `<div class="compact-item"><strong>${escapeHtml(item.type)}: ${escapeHtml(item.name)}</strong><span>${escapeHtml(item.text)}</span></div>`).join("")
     : `<div class="compact-item empty">Notes will appear here as you add them.</div>`;
+}
+
+function renderProductionBoard() {
+  const events = visibleEvents().filter((event) => matchesSearch(event, `${getVenue(event.venueId)?.name || ""} ${getPromoter(event.promoterId)?.name || ""}`));
+  const runnerIds = assignedWorkerIdsForVisibleEvents();
+  const runners = state.workers.filter((worker) => runnerIds.has(worker.id));
+  $("#productionBoardCount").textContent = `${events.length} events / ${runners.length} runners`;
+  $("#productionBoardCards").innerHTML = events.length
+    ? events.map((event) => {
+        const venue = getVenue(event.venueId);
+        const promoter = getPromoter(event.promoterId);
+        const crew = eventWorkerIds(event).map((id) => getWorker(id)?.name).filter(Boolean).join(", ");
+        return `<article class="record-card"><div><span>${escapeHtml(event.type || "Event")}</span><strong>${escapeHtml(event.name)}</strong><p>${escapeHtml(venue?.name || "")}</p><p>${escapeHtml(promoterLabel(promoter))}</p><p>${escapeHtml(crew || "No runners assigned")}</p></div><div><span>${formatDate(event.startDate)}</span><span>${formatDate(event.endDate)}</span></div></article>`;
+      }).join("")
+    : `<div class="compact-item empty">No production-board events match this view.</div>`;
+
+  $("#runnerStatusTable").innerHTML = runners.length
+    ? runners.map((worker) => {
+        const eventsForWorker = events.filter((event) => eventWorkerIds(event).includes(worker.id)).map((event) => event.name).join(", ");
+        const status = worker.runnerStatus || "Available";
+        return `<tr><td>${profileCell(worker, worker.hideHeadshot, worker.email)}</td><td>${escapeHtml(eventsForWorker)}</td><td><span class="status-pill ${status === "On a Run" ? "warn" : ""}">${escapeHtml(status)}</span></td><td>${escapeHtml(worker.phone)}<p>${escapeHtml(worker.email)}</p></td><td><div class="row-actions"><button class="tiny-button" data-runner-status="${worker.id}" data-status="Available" type="button">Available</button><button class="tiny-button" data-runner-status="${worker.id}" data-status="On a Run" type="button">On a Run</button><button class="tiny-button" data-runner-status="${worker.id}" data-status="At Production Office" type="button">At Office</button></div></td></tr>`;
+      }).join("")
+    : `<tr><td colspan="5" class="empty">Assigned runners will appear here.</td></tr>`;
 }
 
 function renderEvents() {
@@ -585,7 +850,7 @@ function eventCard(event) {
   const venue = getVenue(event.venueId);
   const promoter = getPromoter(event.promoterId);
   const crew = eventWorkerIds(event).map((id) => getWorker(id)?.name).filter(Boolean);
-  const crewLine = state.accessRole === "crew" ? "Assigned to you" : (crew.join(", ") || "No crew assigned");
+  const crewLine = isCrewRole() ? "Assigned to you" : (crew.join(", ") || "No crew assigned");
   return `<article class="record-card">
     <div class="record-card-main">
       <strong>${escapeHtml(event.name)}</strong>
@@ -633,10 +898,10 @@ function actionButtons(store, id, formId, extra = "", allowed = canAdminEdit()) 
 function renderWorkers() {
   const heading = document.querySelector("#workers .panel-heading h3");
   const nav = document.querySelector('.nav-item[data-view="workers"]');
-  if (heading) heading.textContent = state.accessRole === "crew" ? "My Profile" : "Crew / Runner Profiles";
-  if (nav) nav.textContent = state.accessRole === "crew" ? "My Profile" : "Crew Profiles";
+  if (heading) heading.textContent = isCrewRole() ? "My Profile" : "Crew / Runner Profiles";
+  if (nav) nav.textContent = isCrewRole() ? "My Profile" : "Crew Profiles";
 
-  if (state.accessRole === "crew") {
+  if (isCrewRole()) {
     renderMyProfile();
     return;
   }
@@ -707,11 +972,12 @@ function fillOwnProfileQuietly() {
 function workerProfileRow(worker) {
   const publicPhone = publicWorkerValue(worker, "phone");
   const publicEmail = publicWorkerValue(worker, "email");
-  const showLimited = state.accessRole === "crew";
+  const showLimited = isCrewRole();
+  const canViewRates = isClientRole();
   const info = showLimited
     ? `${publicEmail ? `<p>${escapeHtml(publicEmail)}</p>` : ""}`
-    : `${escapeHtml(worker.skills)}<p>${currency(worker.defaultDayRate || worker.defaultRate || 0)}/${worker.defaultIncludedHours || 10} hrs</p><p>${accessBadges(worker.accessLevels, "crew")}</p>`;
-  const note = state.accessRole === "production" ? promoterNoteBox(worker.id) : "";
+    : `${escapeHtml(worker.skills)}${canViewRates ? `<p>${currency(worker.defaultDayRate || worker.defaultRate || 0)}/${worker.defaultIncludedHours || 10} hrs</p><p>${accessBadges(worker.accessLevels, "CREW")}</p>` : ""}`;
+  const note = isProductionRole() ? promoterNoteBox(worker.id) : "";
   return `<tr>
     <td>${profileSelect("workers", worker.id)}${profileCell(worker, showLimited && worker.hideHeadshot && worker.id !== state.activeWorkerId, publicEmail)}</td>
     <td>${escapeHtml(showLimited ? "" : worker.role)}</td>
@@ -731,13 +997,13 @@ function profileCell(profile, hideHeadshot = false, subtitle = profile.email) {
 }
 
 function profileSelect(store, id) {
-  if (state.accessRole !== "owner") return "";
+  if (!isClientRole()) return "";
   return `<label class="profile-select"><input type="checkbox" data-profile-select="${store}" value="${id}"> Select</label>`;
 }
 
 function accessBadges(levels, fallback) {
   return normalizeAccessLevels(levels, fallback)
-    .map((level) => level === "production" ? "Production Office" : level === "crew" ? "Crew / Runner" : "Client / Owner")
+    .map((level) => level === "PROMOTER_PRODUCTION_OFFICE" ? "Production Office" : level === "CREW" ? "Crew / Runner" : level === "CLIENT" ? "Client" : "Admin")
     .map((label) => `<span class="status-pill">${escapeHtml(label)}</span>`)
     .join(" ");
 }
@@ -787,7 +1053,7 @@ function renderPayroll() {
 }
 
 function renderDirectory() {
-  const tabs = state.accessRole === "crew"
+  const tabs = isCrewRole()
     ? [["crew", "Crew"]]
     : [
         ["crew", "Crew"],
@@ -909,11 +1175,17 @@ function renderPromoters() {
   const rows = visiblePromoters().filter((promoter) => matchesSearch(promoter));
   $("#promoterTableCount").textContent = `${rows.length} shown`;
   $("#promoterTable").innerHTML = rows.length
-    ? rows.map((promoter) => `<tr><td>${profileSelect("promoters", promoter.id)}${profileCell(promoter, false, promoter.contactName)}</td><td><strong>${escapeHtml(promoter.companyName || "Independent")}</strong><p>${escapeHtml(promoter.contactName)}</p></td><td>${escapeHtml(promoter.phone)}</td><td>${escapeHtml(promoter.email)}</td><td>${escapeHtml(promoter.notes || promoter.billing)}<p>${accessBadges(promoter.accessLevels, "production")}</p></td><td>${actionButtons("promoters", promoter.id, "promoterForm", "", canEditPromoter(promoter))}</td></tr>`).join("")
+    ? rows.map((promoter) => `<tr><td>${profileSelect("promoters", promoter.id)}${profileCell(promoter, false, promoter.contactName)}</td><td><strong>${escapeHtml(promoter.companyName || "Independent")}</strong><p>${escapeHtml(promoter.contactName)}</p></td><td>${escapeHtml(promoter.phone)}</td><td>${escapeHtml(promoter.email)}</td><td>${escapeHtml(promoter.notes || promoter.billing)}<p>${accessBadges(promoter.accessLevels, "PROMOTER_PRODUCTION_OFFICE")}</p></td><td>${actionButtons("promoters", promoter.id, "promoterForm", "", canEditPromoter(promoter))}</td></tr>`).join("")
     : `<tr><td colspan="6" class="empty">No promoter profiles match this search.</td></tr>`;
 }
 
 function renderRunnerStops() {
+  if (isAdminRole()) {
+    $("#runnerTableCount").textContent = "0 shown";
+    $("#runnerTabs").innerHTML = "";
+    $("#runnerTable").innerHTML = `<tr><td colspan="6" class="empty">ADMIN does not load gig directory data.</td></tr>`;
+    return;
+  }
   const categories = runnerCategories();
   if (!categories.includes(state.runnerCategory)) state.runnerCategory = "All";
   renderRunnerCategoryCreator();
@@ -942,7 +1214,7 @@ function runnerCategoriesAddedThisYear(workerId = state.activeWorkerId) {
 function renderRunnerCategoryCreator() {
   const form = $("#runnerCategoryForm");
   const limit = $("#runnerCategoryLimit");
-  const visible = state.accessRole === "crew";
+  const visible = isCrewRole();
   form.hidden = !visible;
   if (!visible) return;
   const used = runnerCategoriesAddedThisYear();
@@ -965,16 +1237,23 @@ function applyWorkerPayDefaultsToTimecard(workerId) {
 
 function setView(viewId) {
   const profile = currentProfile();
+  const requestedView = viewId;
+  if (!authState.session) {
+    showAuthScreen("Log in to continue.");
+    return;
+  }
   if (!profile.views.includes(viewId)) viewId = profile.views[0];
   state.activeView = viewId;
   $$(".view").forEach((view) => view.classList.toggle("active-view", view.id === viewId));
   $$(".nav-item").forEach((button) => button.classList.toggle("active", button.dataset.view === viewId));
   const label = (NAV_GROUPS[state.accessRole] || []).flatMap((group) => group.items).find(([view]) => view === viewId)?.[1];
   $("#viewTitle").textContent = label || $(`.nav-item[data-view="${viewId}"]`)?.textContent || "Dashboard";
+  if (location.hash !== `#${viewId}`) history.replaceState(null, "", `#${viewId}`);
+  if (requestedView !== viewId) toast("That view is restricted for your role.");
 }
 
 function renderNavigation() {
-  const groups = NAV_GROUPS[state.accessRole] || NAV_GROUPS.owner;
+  const groups = NAV_GROUPS[state.accessRole] || NAV_GROUPS.CLIENT;
   $(".nav-list").innerHTML = groups.map((group) => {
     const heading = group.label ? `<div class="nav-group-label">${group.label}</div>` : "";
     const items = group.items
@@ -987,71 +1266,81 @@ function renderNavigation() {
 
 function applyAccessProfile() {
   const profile = currentProfile();
-  document.body.classList.toggle("crew-mode", state.accessRole === "crew");
-  $("#accessRole").value = state.accessRole;
+  document.body.classList.toggle("admin-mode", isAdminRole());
+  document.body.classList.toggle("owner-mode", isClientRole());
+  document.body.classList.toggle("production-mode", isProductionRole());
+  document.body.classList.toggle("crew-mode", isCrewRole());
   renderAccessRoleOptions();
   renderNavigation();
-  $("#crewScopeControl").hidden = state.accessRole !== "crew";
-  $("#promoterScopeControl").hidden = state.accessRole !== "production";
+  $("#crewScopeControl").hidden = !isCrewRole();
+  $("#promoterScopeControl").hidden = !isProductionRole();
   $("#exportData").hidden = !profile.canImportExport;
   $("#importData").closest(".file-action").hidden = !profile.canImportExport;
   $("#seedData").hidden = !profile.canSeed;
   $$(".admin-form").forEach((form) => { form.hidden = !profile.canAdminEdit; });
   $$(".owner-form").forEach((form) => { form.hidden = !profile.canOwnerEdit; });
+  $$(".rate-field").forEach((form) => { form.hidden = !isClientRole(); });
   $$(".venue-form").forEach((form) => { form.hidden = !profile.canVenueEdit; });
   $$(".scoped-form").forEach((form) => { form.hidden = !profile.canScopedEdit; });
+  $$(".system-form").forEach((form) => { form.hidden = !profile.canSystemEdit; });
   $$(".admin-action").forEach((button) => { button.hidden = !profile.canAdminEdit; });
   $$(".owner-action").forEach((button) => { button.hidden = !profile.canOwnerEdit; });
   $$(".venue-action").forEach((button) => { button.hidden = !profile.canVenueEdit; });
   $$(".scoped-action").forEach((button) => { button.hidden = !profile.canScopedEdit; });
-  $$(".worker-action").forEach((button) => { button.hidden = !(state.accessRole === "owner" || state.accessRole === "crew"); });
+  $$(".system-action").forEach((button) => { button.hidden = !profile.canSystemEdit; });
+  $$(".worker-action").forEach((button) => { button.hidden = !(isClientRole() || isCrewRole()); });
   if (!profile.views.includes(state.activeView)) setView(profile.views[0]);
 }
 
 function renderAccessRoleOptions() {
-  const select = $("#accessRole");
-  Array.from(select.options).forEach((option) => {
-    option.hidden = false;
-  });
-  select.value = state.accessRole;
+  $("#sessionRole").textContent = state.accessRole;
+  $("#sessionEmail").textContent = authState.user?.email || "Signed in";
 }
 
 function setAccessRole(role) {
-  state.accessRole = ACCESS_PROFILES[role] ? role : "owner";
-  localStorage.setItem("productionCrewAccessRole", state.accessRole);
+  const nextRole = normalizeRole(role);
+  if (!ACCESS_PROFILES[nextRole]) return;
+  state.accessRole = nextRole;
   render();
-  toast(`${currentProfile().label} view active.`);
 }
 
 async function saveForm(event, storeName) {
   event.preventDefault();
   const form = event.currentTarget;
   const formId = form.id;
+  if (storeName === "clients" && !canSystemEdit()) {
+    toast("Only ADMIN can save client accounts.");
+    return;
+  }
+  if (isAdminRole() && storeName !== "clients") {
+    toast("ADMIN cannot access production records in this demo.");
+    return;
+  }
   if (storeName === "venues" && !canVenueEdit()) {
     toast("This access view cannot save venues.");
     return;
   }
-  if (storeName === "workers" && state.accessRole === "crew" && form.elements.id.value && form.elements.id.value !== state.activeWorkerId) {
+  if (storeName === "workers" && isCrewRole() && form.elements.id.value && form.elements.id.value !== state.activeWorkerId) {
     toast("Crew can only save their own profile.");
     return;
   }
-  if (storeName === "workers" && !canAdminEdit() && state.accessRole !== "crew") {
+  if (storeName === "workers" && !canAdminEdit() && !isCrewRole()) {
     toast("This access view cannot save crew profiles.");
     return;
   }
-  if (storeName === "promoters" && state.accessRole === "production") {
+  if (storeName === "promoters" && isProductionRole()) {
     const id = form.elements.id.value;
     if (id && id !== state.activePromoterId) {
       toast("Promoters can only edit their own profile.");
       return;
     }
   }
-  if (storeName === "promoters" && !canAdminEdit() && state.accessRole !== "production") {
+  if (storeName === "promoters" && !canAdminEdit() && !isProductionRole()) {
     toast("This access view cannot save promoter profiles.");
     return;
   }
   if (["events", "runnerStops", "timecards"].includes(storeName) && !canAdminEdit()) {
-    toast("Switch to Client / Owner or Promoter / Production Office to save this.");
+    toast("Switch to CLIENT or PROMOTER_PRODUCTION_OFFICE to save this.");
     return;
   }
   if (["vehicleLogs", "accidentReports"].includes(storeName) && !canScopedEdit()) {
@@ -1062,7 +1351,7 @@ async function saveForm(event, storeName) {
   const record = await formRecord(form);
   const existing = record.id ? state[storeName].find((item) => item.id === record.id) : null;
   let merged = { ...(existing || {}), ...record };
-  if (storeName === "workers" && state.accessRole === "crew") {
+  if (storeName === "workers" && isCrewRole()) {
     const current = getWorker(state.activeWorkerId) || {};
     merged = {
       ...current,
@@ -1077,7 +1366,7 @@ async function saveForm(event, storeName) {
       hideHeadshot: record.hideHeadshot
     };
   }
-  if (storeName === "promoters" && state.accessRole === "production") {
+  if (storeName === "promoters" && isProductionRole()) {
     const active = getPromoter(state.activePromoterId);
     merged.companyName = active?.companyName || merged.companyName;
   }
@@ -1093,8 +1382,8 @@ async function saveForm(event, storeName) {
     if (merged.vehicleUse === "Rented Vehicle") merged.vehicleRate = merged.vehicleRate || worker?.defaultRentedVehicleRate || "";
     if (merged.vehicleUse === "Personal Vehicle") merged.vehicleRate = merged.vehicleRate || worker?.defaultPersonalVehicleRate || "";
   }
-  if (state.accessRole === "crew") merged.workerId = state.activeWorkerId;
-  if (state.accessRole === "production") {
+  if (isCrewRole()) merged.workerId = state.activeWorkerId;
+  if (isProductionRole()) {
     if (storeName === "events" || storeName === "timecards") merged.promoterId = state.activePromoterId || merged.promoterId;
     if (["vehicleLogs", "accidentReports"].includes(storeName) && merged.eventId && !isEventVisible(merged.eventId)) {
       toast("Promoters can only save records for their events.");
@@ -1112,6 +1401,7 @@ async function saveForm(event, storeName) {
 }
 
 async function deleteRecord(storeName, id) {
+  if (storeName === "clients" && !canSystemEdit()) return;
   if (storeName === "venues" && !canVenueEdit()) return;
   const adminStores = ["events", "workers", "promoters", "runnerStops", "timecards"];
   if (adminStores.includes(storeName) && !canAdminEdit()) return;
@@ -1135,7 +1425,7 @@ function setVisibleProfileSelection(storeName, checked) {
 }
 
 async function bulkDeleteProfiles(storeName) {
-  if (state.accessRole !== "owner") {
+  if (!isClientRole()) {
     toast("Only Client / Owner can bulk delete profiles.");
     return;
   }
@@ -1169,7 +1459,7 @@ async function bulkDeleteProfiles(storeName) {
 }
 
 async function saveProfileNote(workerId) {
-  if (state.accessRole !== "production" || !assignedWorkerIdsForVisibleEvents().has(workerId)) return;
+  if (!isProductionRole() || !assignedWorkerIdsForVisibleEvents().has(workerId)) return;
   const textarea = document.querySelector(`[data-profile-note="${workerId}"]`);
   const existing = promoterNoteFor(workerId);
   await put("profileNotes", {
@@ -1183,9 +1473,22 @@ async function saveProfileNote(workerId) {
   toast("Profile note saved.");
 }
 
+async function updateRunnerStatus(workerId, status) {
+  if (!(isClientRole() || isProductionRole())) return;
+  const worker = getWorker(workerId);
+  if (!worker || (isProductionRole() && !assignedWorkerIdsForVisibleEvents().has(workerId))) {
+    toast("That runner is not assigned to this production view.");
+    return;
+  }
+  await put("workers", { ...worker, runnerStatus: status });
+  await loadState();
+  setView(state.activeView);
+  toast(`Runner marked ${status}.`);
+}
+
 async function addRunnerCategory(event) {
   event.preventDefault();
-  if (state.accessRole !== "crew" || !state.activeWorkerId) return;
+  if (!isCrewRole() || !state.activeWorkerId) return;
   const input = event.currentTarget.elements.name;
   const name = normalizeCategoryName(input.value);
   if (!name) {
@@ -1283,10 +1586,11 @@ async function seedData() {
   const eventId = crypto.randomUUID();
 
   await Promise.all([
-    put("workers", { id: workerId, name: "Maya Torres", role: "Audio A2", phone: "(555) 212-0199", email: "maya@example.com", status: "Available", accessLevels: ["crew"], defaultDayRate: "380", defaultIncludedHours: "10", defaultAdditionalRate: "48", defaultRentedVehicleRate: "25", defaultPersonalVehicleRate: "80", skills: "RF coordination, patching, stage comms", emergency: "Luis Torres (555) 212-0101", mailingAddress: "100 Crew Lane, Long Beach, CA", hidePhone: "", hideEmail: "", hideHeadshot: "", notes: "Strong on fast festival changeovers." }),
-    put("workers", { id: workerTwoId, name: "Andre Bell", role: "Lighting tech", phone: "(555) 718-3320", email: "andre@example.com", status: "Booked", accessLevels: ["crew", "production"], defaultDayRate: "420", defaultIncludedHours: "10", defaultAdditionalRate: "55", defaultRentedVehicleRate: "25", defaultPersonalVehicleRate: "90", skills: "Moving lights, dimmers, console prep", emergency: "Renee Bell (555) 718-0022", mailingAddress: "200 Stage Road, Los Angeles, CA", hidePhone: "", hideEmail: "", hideHeadshot: "", notes: "Prefers overnight strike calls with advance notice." }),
+    put("clients", { name: "Demo Entertainment Client", contactName: "Keith Richardson", email: "client@example.com", phone: "(555) 100-0000", status: "Active", notes: "Demo client account for ADMIN system view." }),
+    put("workers", { id: workerId, name: "Maya Torres", role: "Audio A2", phone: "(555) 212-0199", email: "maya@example.com", status: "Available", runnerStatus: "Available", accessLevels: ["CREW"], defaultDayRate: "380", defaultIncludedHours: "10", defaultAdditionalRate: "48", defaultRentedVehicleRate: "25", defaultPersonalVehicleRate: "80", skills: "RF coordination, patching, stage comms", emergency: "Luis Torres (555) 212-0101", mailingAddress: "100 Crew Lane, Long Beach, CA", hidePhone: "", hideEmail: "", hideHeadshot: "", notes: "Strong on fast festival changeovers." }),
+    put("workers", { id: workerTwoId, name: "Andre Bell", role: "Lighting tech", phone: "(555) 718-3320", email: "andre@example.com", status: "Booked", runnerStatus: "On a Run", accessLevels: ["CREW", "PROMOTER_PRODUCTION_OFFICE"], defaultDayRate: "420", defaultIncludedHours: "10", defaultAdditionalRate: "55", defaultRentedVehicleRate: "25", defaultPersonalVehicleRate: "90", skills: "Moving lights, dimmers, console prep", emergency: "Renee Bell (555) 718-0022", mailingAddress: "200 Stage Road, Los Angeles, CA", hidePhone: "", hideEmail: "", hideHeadshot: "", notes: "Prefers overnight strike calls with advance notice." }),
     put("venues", { id: venueId, name: "Harbor Pavilion", address: "100 Pier Road, Long Beach, CA", contactName: "Nina Patel", phone: "(555) 410-9088", email: "nina@harbor.example", parking: "Crew lot B. Enter from Pier Road and show call sheet.", notes: "Dock is stage left. Freight elevator requires venue security key." }),
-    put("promoters", { id: promoterId, companyName: "LiveNation", name: "Cal Reed", contactName: "Local promoter rep", phone: "(555) 300-8001", email: "cal@livenation.example", accessLevels: ["production"], billing: "Invoices need event code and signed timecard export.", notes: "Usually adds two runners on show day." }),
+    put("promoters", { id: promoterId, companyName: "LiveNation", name: "Cal Reed", contactName: "Local promoter rep", phone: "(555) 300-8001", email: "cal@livenation.example", accessLevels: ["PROMOTER_PRODUCTION_OFFICE"], billing: "Invoices need event code and signed timecard export.", notes: "Usually adds two runners on show day." }),
     put("events", { id: eventId, name: "Harbor Pavilion Summer Show", type: "Concert", productionContact: "Dana Lee (555) 550-1212", venueId, promoterId, workerIds: [workerId, workerTwoId], startDate: toLocalInputValue(new Date(Date.now() + 86400000)), endDate: toLocalInputValue(new Date(Date.now() + 129600000)), notes: "Two runners, one van, overnight strike likely." }),
     put("runnerStops", { name: "Ace Pro Hardware", category: "Hardware", address: "44 Market Street, Long Beach, CA", phone: "(555) 444-1515", hours: "6 AM - 9 PM", bestUse: "Gaff tape, batteries, hand tools, last-minute fasteners", notes: "Account at contractor desk under production company name." }),
     put("timecards", { workerId, eventId, eventName: "Harbor Pavilion Summer Show", venueId, promoterId, clockIn: toLocalInputValue(new Date(Date.now() - 2 * 36e5)), clockOut: "", lunchOut: "", lunchIn: "", breakMinutes: "0", dayRate: "380", includedHours: "10", additionalRate: "48", vehicleUse: "Personal Vehicle", vehicleRate: "80", notes: "Patch support and RF check." })
@@ -1332,11 +1636,12 @@ async function importData(event) {
 }
 
 function bindEvents() {
+  $("#loginForm").addEventListener("submit", loginWithSupabase);
+  $("#logoutButton").addEventListener("click", logout);
   $(".nav-list").addEventListener("click", (event) => {
     const button = event.target.closest("[data-view]");
     if (button) setView(button.dataset.view);
   });
-  $("#accessRole").addEventListener("change", (event) => setAccessRole(event.target.value));
   $("#activeWorker").addEventListener("change", (event) => {
     state.activeWorkerId = event.target.value;
     localStorage.setItem("productionCrewActiveWorker", state.activeWorkerId);
@@ -1362,6 +1667,7 @@ function bindEvents() {
   $("#timecardForm select[name='vehicleUse']").addEventListener("change", () => applyWorkerPayDefaultsToTimecard($("#timecardForm").elements.workerId.value));
 
   $("#eventForm").addEventListener("submit", (event) => saveForm(event, "events"));
+  $("#clientForm").addEventListener("submit", (event) => saveForm(event, "clients"));
   $("#workerForm").addEventListener("submit", (event) => saveForm(event, "workers"));
   $("#venueForm").addEventListener("submit", (event) => saveForm(event, "venues"));
   $("#promoterForm").addEventListener("submit", (event) => saveForm(event, "promoters"));
@@ -1390,13 +1696,14 @@ function bindEvents() {
     const directoryTab = event.target.closest("[data-directory-tab]");
     const payrollTab = event.target.closest("[data-payroll-view]");
     const profileNoteButton = event.target.closest("[data-save-profile-note]");
+    const runnerStatusButton = event.target.closest("[data-runner-status]");
     const selectVisibleButton = event.target.closest("[data-select-visible]");
     const clearSelectedButton = event.target.closest("[data-clear-selected]");
     const bulkDeleteButton = event.target.closest("[data-bulk-delete]");
 
     if (openButton) {
       clearForm(openButton.dataset.openForm);
-      if (openButton.dataset.openForm === "workerForm" && state.accessRole === "crew") {
+      if (openButton.dataset.openForm === "workerForm" && isCrewRole()) {
         const active = getWorker(state.activeWorkerId);
         if (active) fillForm("workerForm", active);
         else openForm("workerForm");
@@ -1415,6 +1722,7 @@ function bindEvents() {
     if (clockButton) await clockOutNow(clockButton.dataset.clockOut);
     if (punchButton) await crewPunch(punchButton.dataset.eventId, punchButton.dataset.timePunch);
     if (profileNoteButton) await saveProfileNote(profileNoteButton.dataset.saveProfileNote);
+    if (runnerStatusButton) await updateRunnerStatus(runnerStatusButton.dataset.runnerStatus, runnerStatusButton.dataset.status);
     if (selectVisibleButton) setVisibleProfileSelection(selectVisibleButton.dataset.selectVisible, true);
     if (clearSelectedButton) setVisibleProfileSelection(clearSelectedButton.dataset.clearSelected, false);
     if (bulkDeleteButton) await bulkDeleteProfiles(bulkDeleteButton.dataset.bulkDelete);
@@ -1437,17 +1745,21 @@ function bindEvents() {
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape") closeActiveForm();
   });
+  window.addEventListener("hashchange", () => {
+    const requested = location.hash.replace("#", "");
+    if (requested) setView(requested);
+  });
 }
 
 async function init() {
+  showAuthScreen("Checking session...");
   bindEvents();
   clearForm("timecardForm");
   clearForm("reportForm");
-  db = await openDatabase();
-  await loadState();
+  await initializeAuth();
 }
 
 init().catch((error) => {
   console.error(error);
-  toast("Something went wrong opening the database.");
+  showAuthScreen(error.message || "Something went wrong starting the app.");
 });

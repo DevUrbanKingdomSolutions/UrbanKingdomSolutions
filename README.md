@@ -22,12 +22,18 @@ This is a first working version of a private entertainment production database a
 - Accident reports for physical damage and vehicle damage with event, assigned worker, multiple photo uploads, and details.
 - Search across the database.
 - JSON export and import for backup or moving data.
-- Three access views for planning permissions: Client / Owner, Promoter / Production Office, and Crew / Runner.
+- Four access views for planning permissions: Admin, Client, Promoter / Production Office, and Crew / Runner.
+- Supabase Auth login with database-backed roles: ADMIN, CLIENT, PROMOTER_PRODUCTION_OFFICE, and CREW.
+- ADMIN can manage client accounts and system setup without production data, payroll, timecards, crew personal data, promoter records, or reports.
+- Production Board for CLIENT and PROMOTER_PRODUCTION_OFFICE to view assigned production details and mark runners Available, On a Run, or At Production Office.
+- Hash-based route protection redirects restricted direct links like `#payroll` when the signed-in role cannot access that view.
 
 ## How to open it
 
-Open `index.html` in a browser. The data is stored in the browser using IndexedDB, so it persists on the same computer and browser.
+Open `index.html` in a browser. Supabase is configured in `app.js`; run `supabase-schema.sql` in Supabase SQL Editor, then use `supabase-admin-bootstrap.sql` once with your first admin Auth user ID.
+
+The production records are still stored locally in the browser using IndexedDB while the app screens are being finalized. Authentication and roles now come from Supabase so the production tables can move over module by module.
 
 ## Important next steps
 
-For one-company internal use, this is a good local prototype. The access view selectors are planning tools, not real security, because there is no login yet. For multiple people sharing the same live data, the next version should move the database to AppSheet, PostgreSQL, or Supabase and add user accounts, permissions, audit logs, and cloud backups.
+Next, move payroll, profiles, events, timecards, reports, directories, and vehicle logs into Supabase tables with row-level security policies matching the role rules in `supabase-schema.sql`.
