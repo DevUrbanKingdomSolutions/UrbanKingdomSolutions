@@ -124,6 +124,13 @@
               <label>Client company<input name="name" required placeholder="Company name"></label>
               <label>Primary contact<input name="contactName" placeholder="Name"></label>
               <label>Email<input name="email" type="email" placeholder="client@example.com"></label>
+              <label>Login email<input name="loginEmail" type="email" placeholder="owner-login@example.com"></label>
+              <label>Login role
+                <select name="loginRole">
+                  <option value="CLIENT">Client</option>
+                </select>
+              </label>
+              <label>Supabase user ID<input name="authUserId" placeholder="Paste user ID after setup"></label>
               <label>Phone<input name="phone" placeholder="(555) 000-0000"></label>
               <label>Status
                 <select name="status">
@@ -640,6 +647,6 @@
     <div id="modalBackdrop" class="modal-backdrop" data-close-modal></div>
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js?v=20260506-login-setup-1"></script>
+    <script src="app.js?v=20260506-client-login-setup-1"></script>
   </body>
 </html>

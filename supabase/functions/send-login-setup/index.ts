@@ -34,16 +34,20 @@ Deno.serve(async (request) => {
       .eq("user_id", callerData.user.id)
       .maybeSingle();
     if (roleError) throw roleError;
-    if (callerRole?.role !== "CLIENT") {
-      throw new Error("Only CLIENT users can send login setup.");
-    }
 
     const body = await request.json();
     const email = String(body.email || "").trim().toLowerCase();
     const role = String(body.role || "");
+    const profileType = String(body.profileType || "");
     if (!email) throw new Error("Email is required.");
-    if (!["PROMOTER_PRODUCTION_OFFICE", "CREW"].includes(role)) {
-      throw new Error("Only crew and production office roles can be invited here.");
+    if (profileType === "client") {
+      if (callerRole?.role !== "ADMIN") throw new Error("Only ADMIN users can send client login setup.");
+      if (role !== "CLIENT") throw new Error("Client setup must use the CLIENT role.");
+    } else {
+      if (callerRole?.role !== "CLIENT") throw new Error("Only CLIENT users can send crew and production office login setup.");
+      if (!["PROMOTER_PRODUCTION_OFFICE", "CREW"].includes(role)) {
+        throw new Error("Only crew and production office roles can be invited here.");
+      }
     }
 
     const { data: inviteData, error: inviteError } = await admin.auth.admin.inviteUserByEmail(email);

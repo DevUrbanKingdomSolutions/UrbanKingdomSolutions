@@ -379,7 +379,7 @@ async function fetchUserRole(session) {
 }
 
 function profileLoginRole(storeName, record) {
-  const fallback = storeName === "promoters" ? "PROMOTER_PRODUCTION_OFFICE" : "CREW";
+  const fallback = storeName === "clients" ? "CLIENT" : storeName === "promoters" ? "PROMOTER_PRODUCTION_OFFICE" : "CREW";
   return normalizeRole(record.loginRole || normalizeAccessLevels(record.accessLevels, fallback)[0] || fallback);
 }
 
@@ -388,15 +388,33 @@ function profileRolePayload(storeName, record) {
   return {
     user_id: record.authUserId,
     role,
-    client_id: authState.roleRecord?.client_id || null,
+    client_id: storeName === "clients" ? record.id : authState.roleRecord?.client_id || null,
     worker_id: storeName === "workers" ? record.id : null,
     promoter_id: storeName === "promoters" ? record.id : null,
     updated_at: new Date().toISOString()
   };
 }
 
+async function syncSupabaseClientAccount(record) {
+  if (!canSystemEdit()) return "";
+  const { error } = await supabaseClient.from("clients").upsert({
+    id: record.id,
+    name: record.name,
+    contact_name: record.contactName || "",
+    email: record.email || "",
+    phone: record.phone || "",
+    status: record.status || "Active",
+    notes: record.notes || "",
+    updated_at: new Date().toISOString()
+  });
+  if (error) throw error;
+  return "Supabase client account connected.";
+}
+
 async function syncSupabaseRoleForProfile(storeName, record) {
-  if (!["workers", "promoters"].includes(storeName) || !canOwnerEdit() || !record.authUserId) return "";
+  if (!["clients", "workers", "promoters"].includes(storeName) || !record.authUserId) return "";
+  if (storeName === "clients" && !canSystemEdit()) return "";
+  if (storeName !== "clients" && !canOwnerEdit()) return "";
   const { error } = await supabaseClient
     .from("user_roles")
     .upsert(profileRolePayload(storeName, record), { onConflict: "user_id" });
@@ -406,12 +424,13 @@ async function syncSupabaseRoleForProfile(storeName, record) {
 
 function loginSetupPayload(storeName, record) {
   const email = (record.loginEmail || record.email || "").trim();
+  const profileType = storeName === "clients" ? "client" : storeName === "workers" ? "worker" : "promoter";
   return {
-    profileType: storeName === "workers" ? "worker" : "promoter",
+    profileType,
     profileId: record.id,
     email,
     role: profileLoginRole(storeName, record),
-    clientId: authState.roleRecord?.client_id || null,
+    clientId: storeName === "clients" ? record.id : authState.roleRecord?.client_id || null,
     workerId: storeName === "workers" ? record.id : null,
     promoterId: storeName === "promoters" ? record.id : null
   };
@@ -791,7 +810,7 @@ function render() {
 function renderAdmin() {
   $("#clientTableCount").textContent = `${state.clients.length} clients`;
   $("#clientTable").innerHTML = state.clients.length
-    ? state.clients.map((client) => `<tr><td><strong>${escapeHtml(client.name)}</strong><p>${escapeHtml(client.email)}</p></td><td>${escapeHtml(client.contactName)}<p>${escapeHtml(client.phone)}</p></td><td><span class="status-pill">${escapeHtml(client.status || "Active")}</span></td><td>${escapeHtml(client.notes)}</td><td>${actionButtons("clients", client.id, "clientForm", "", canSystemEdit())}</td></tr>`).join("")
+    ? state.clients.map((client) => `<tr><td><strong>${escapeHtml(client.name)}</strong><p>${escapeHtml(client.email)}</p></td><td>${escapeHtml(client.contactName)}<p>${escapeHtml(client.phone)}</p></td><td><span class="status-pill">${escapeHtml(client.status || "Active")}</span></td><td>${escapeHtml(client.notes)}${loginStatus(client)}</td><td>${actionButtons("clients", client.id, "clientForm", loginSetupButton("clients", client), canSystemEdit())}</td></tr>`).join("")
     : `<tr><td colspan="5" class="empty">No client accounts yet.</td></tr>`;
 }
 
@@ -949,14 +968,14 @@ function actionButtons(store, id, formId, extra = "", allowed = canAdminEdit()) 
 }
 
 function loginSetupButton(store, profile) {
-  if (!canOwnerEdit()) return "";
+  if (store === "clients" ? !canSystemEdit() : !canOwnerEdit()) return "";
   const email = profile.loginEmail || profile.email;
   if (!email) return "";
   return `<button class="tiny-button" data-send-login="${store}" data-id="${profile.id}" type="button">Send Login Setup</button>`;
 }
 
 function loginStatus(profile) {
-  if (!canOwnerEdit()) return "";
+  if (!(canOwnerEdit() || canSystemEdit())) return "";
   if (profile.inviteStatus) return `<p>${escapeHtml(profile.inviteStatus)}</p>`;
   if (profile.authUserId) return `<p>Login connected</p>`;
   return `<p>Login not connected</p>`;
@@ -1456,7 +1475,7 @@ async function saveForm(event, storeName) {
     }
   }
 
-  if (["workers", "promoters"].includes(storeName)) {
+  if (["clients", "workers", "promoters"].includes(storeName)) {
     merged.id = merged.id || crypto.randomUUID();
     merged.loginEmail = merged.loginEmail || merged.email || "";
     merged.loginRole = merged.loginRole || profileLoginRole(storeName, merged);
@@ -1465,7 +1484,8 @@ async function saveForm(event, storeName) {
   let loginSyncMessage = "";
   await put(storeName, merged);
   try {
-    loginSyncMessage = await syncSupabaseRoleForProfile(storeName, merged);
+    if (storeName === "clients") loginSyncMessage = await syncSupabaseClientAccount(merged);
+    loginSyncMessage = await syncSupabaseRoleForProfile(storeName, merged) || loginSyncMessage;
   } catch (error) {
     console.error(error);
     loginSyncMessage = "Profile saved. Supabase role sync needs attention.";
@@ -1537,8 +1557,9 @@ async function bulkDeleteProfiles(storeName) {
 }
 
 async function sendLoginSetup(storeName, id) {
-  if (!canOwnerEdit()) {
-    toast("Only Client can send login setup.");
+  const canSendSetup = storeName === "clients" ? canSystemEdit() : canOwnerEdit();
+  if (!canSendSetup) {
+    toast(storeName === "clients" ? "Only ADMIN can send client login setup." : "Only Client can send login setup.");
     return;
   }
   if (!initializeSupabaseClient()) {
@@ -1551,6 +1572,15 @@ async function sendLoginSetup(storeName, id) {
   if (!payload.email) {
     toast("Add a login email first.");
     return;
+  }
+  if (storeName === "clients") {
+    try {
+      await syncSupabaseClientAccount(record);
+    } catch (error) {
+      console.error(error);
+      toast("Client account needs to sync with Supabase first.");
+      return;
+    }
   }
   const { data, error } = await supabaseClient.functions.invoke(LOGIN_SETUP_FUNCTION, { body: payload });
   if (error) {
