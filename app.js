@@ -521,6 +521,70 @@ async function syncSupabaseClientRep(record) {
   return "Client rep profile connected.";
 }
 
+function mapSupabaseClient(record) {
+  return {
+    id: record.id,
+    name: record.name || "",
+    contactName: record.contact_name || "",
+    email: record.email || "",
+    phone: record.phone || "",
+    status: record.status || "Active",
+    notes: record.notes || "",
+    createdAt: record.created_at || record.createdAt,
+    updatedAt: record.updated_at || record.updatedAt
+  };
+}
+
+function mapSupabaseClientRep(record) {
+  return {
+    id: record.id,
+    clientId: record.client_id || "",
+    authUserId: record.auth_user_id || "",
+    name: record.name || "",
+    title: record.title || "",
+    email: record.email || "",
+    phone: record.phone || "",
+    mailingAddress: record.mailing_address || "",
+    smtpProvider: record.smtp_provider || "",
+    smtpFromName: record.smtp_from_name || "",
+    smtpFromEmail: record.smtp_from_email || "",
+    smtpReplyTo: record.smtp_reply_to || "",
+    smtpHost: record.smtp_host || "",
+    smtpPort: record.smtp_port || "",
+    smtpUsername: record.smtp_username || "",
+    smtpSecretRef: record.smtp_secret_ref || "",
+    smtpSecure: record.smtp_secure || "",
+    emailRoutingStatus: record.email_routing_status || "Not configured",
+    createdAt: record.created_at || record.createdAt,
+    updatedAt: record.updated_at || record.updatedAt
+  };
+}
+
+async function hydrateClientSetupData(roleRecord, user) {
+  if (!supabaseClient || roleRecord.role !== "CLIENT" || !roleRecord.client_id) return { client: null, repCount: 0 };
+  try {
+    const { data: client, error: clientError } = await supabaseClient
+      .from("clients")
+      .select("id,name,contact_name,email,phone,status,notes,created_at,updated_at")
+      .eq("id", roleRecord.client_id)
+      .maybeSingle();
+    if (clientError) throw clientError;
+    if (client) await put("clients", mapSupabaseClient(client));
+
+    const { data: reps, error: repsError } = await supabaseClient
+      .from("client_reps")
+      .select("id,client_id,auth_user_id,name,title,email,phone,mailing_address,smtp_provider,smtp_from_name,smtp_from_email,smtp_reply_to,smtp_host,smtp_port,smtp_username,smtp_secret_ref,smtp_secure,email_routing_status,created_at,updated_at")
+      .eq("client_id", roleRecord.client_id);
+    if (repsError) throw repsError;
+    const matchingReps = (reps || []).filter((rep) => rep.auth_user_id === user.id || rep.email === user.email);
+    for (const rep of matchingReps) await put("clientReps", mapSupabaseClientRep(rep));
+    return { client, repCount: (reps || []).length };
+  } catch (error) {
+    console.warn("Could not hydrate client setup data.", error);
+    return { client: null, repCount: 0 };
+  }
+}
+
 async function syncSupabaseRoleForProfile(storeName, record) {
   if (!["clients", "workers", "promoters"].includes(storeName) || !record.authUserId) return "";
   if (storeName === "clients" && !canSystemEdit()) return "";
@@ -563,6 +627,52 @@ function smtpRouteForInvite(storeName) {
   };
 }
 
+function setupStepKey(userId = authState.user?.id) {
+  return `productionCrewSetupStep:${userId || "unknown"}`;
+}
+
+function setClientSetupStep(step, userId = authState.user?.id) {
+  if (!userId) return;
+  if (step) localStorage.setItem(setupStepKey(userId), step);
+  else localStorage.removeItem(setupStepKey(userId));
+}
+
+function clientSetupStep(userId = authState.user?.id) {
+  return userId ? localStorage.getItem(setupStepKey(userId)) || "" : "";
+}
+
+function clientCompanyNeedsSetup(client) {
+  return !client || !client.name || client.status === "Setup Needed";
+}
+
+function clientCompanyDefaults() {
+  return {
+    id: authState.roleRecord?.client_id || "",
+    name: "",
+    contactName: authState.user?.user_metadata?.name || "",
+    email: authState.user?.email || "",
+    phone: authState.user?.user_metadata?.phone || "",
+    status: "Setup Needed"
+  };
+}
+
+function openClientCompanySetupForm() {
+  fillForm("clientCompanyProfileForm", activeClientRecord() || clientCompanyDefaults());
+}
+
+function openClientRepSetupForm() {
+  fillForm("clientProfileForm", activeClientRepRecord() || clientRepDefaults());
+}
+
+function openCurrentClientSetupStep() {
+  if (!isClientRole()) return;
+  window.setTimeout(() => {
+    const step = clientSetupStep();
+    if (step === "company") openClientCompanySetupForm();
+    if (step === "rep") openClientRepSetupForm();
+  }, 0);
+}
+
 async function applyAuthenticatedSession(session, preferredView = "") {
   if (!session) {
     authState = { session: null, user: null, roleRecord: null, pendingSetup: false };
@@ -590,11 +700,13 @@ async function applyAuthenticatedSession(session, preferredView = "") {
   $("#sessionRole").textContent = state.accessRole;
   showAppShell();
   await ensureDatabase();
+  await hydrateClientSetupData(roleRecord, session.user);
   await loadState();
   appHasLoaded = true;
   const homeView = state.activeView && currentProfile().views.includes(state.activeView) ? state.activeView : roleHomeView();
   if (location.hash !== `#${homeView}`) history.replaceState(null, "", `#${homeView}`);
   setView(homeView);
+  openCurrentClientSetupStep();
 }
 
 async function initializeAuth() {
@@ -698,6 +810,8 @@ async function completeAccountSetup(event) {
   state.accessRole = roleRecord.role;
   if (roleRecord.role === "CLIENT") {
     await ensureDatabase();
+    const hydratedSetup = await hydrateClientSetupData(roleRecord, session.user);
+    await loadState();
     const existingRep = state.clientReps.find((rep) => rep.authUserId === session.user.id || rep.email === session.user.email);
     await put("clientReps", {
       ...(existingRep || {}),
@@ -709,8 +823,12 @@ async function completeAccountSetup(event) {
       phone: form.elements.phone.value,
       emailRoutingStatus: existingRep?.emailRoutingStatus || "Not configured"
     });
+    await loadState();
+    setClientSetupStep(clientCompanyNeedsSetup(activeClientRecord()) || hydratedSetup.repCount === 0 ? "company" : "rep", session.user.id);
   }
-  const profileView = profileViewForRole(roleRecord.role);
+  const profileView = roleRecord.role === "CLIENT" && clientSetupStep(session.user.id) === "company"
+    ? "clientCompanyProfile"
+    : profileViewForRole(roleRecord.role);
   if (location.hash !== `#${profileView}`) history.replaceState(null, "", `#${profileView}`);
   await applyAuthenticatedSession({ ...session, user: data.user || session.user }, profileView);
 }
@@ -1842,7 +1960,7 @@ async function saveForm(event, storeName) {
       ...current,
       ...record,
       id: clientId,
-      status: current.status || record.status || "Active",
+      status: clientSetupStep() === "company" ? "Active" : current.status || record.status || "Active",
       notes: record.notes || current.notes || ""
     };
   }
@@ -1904,6 +2022,19 @@ async function saveForm(event, storeName) {
   }
   closeForm(formId);
   await loadState();
+  if (isClientRole() && storeName === "clients" && clientSetupStep() === "company") {
+    setClientSetupStep("rep");
+    setView("clientProfile");
+    toast("Company profile saved. Finish your profile next.");
+    openCurrentClientSetupStep();
+    return;
+  }
+  if (isClientRole() && storeName === "clientReps" && clientSetupStep() === "rep") {
+    setClientSetupStep("");
+    setView("dashboard");
+    toast("Profile saved. Welcome in.");
+    return;
+  }
   setView(state.activeView);
   closeForm(formId);
   toast(loginSyncMessage || "Saved and closed.");
@@ -2314,14 +2445,7 @@ function bindEvents() {
         const active = activeClientRepRecord() || clientRepDefaults();
         fillForm("clientProfileForm", active);
       } else if (openButton.dataset.openForm === "clientCompanyProfileForm" && isClientRole()) {
-        const active = activeClientRecord() || {
-          id: authState.roleRecord?.client_id || "",
-          name: "",
-          contactName: authState.user?.user_metadata?.name || "",
-          email: authState.user?.email || "",
-          status: "Setup Needed"
-        };
-        fillForm("clientCompanyProfileForm", active);
+        fillForm("clientCompanyProfileForm", activeClientRecord() || clientCompanyDefaults());
       } else if (openButton.dataset.openForm === "workerForm" && isCrewRole()) {
         const active = getWorker(state.activeWorkerId);
         if (active) fillForm("workerForm", active);
