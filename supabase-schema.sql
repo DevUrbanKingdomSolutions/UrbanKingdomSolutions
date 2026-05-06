@@ -290,6 +290,45 @@ with check (
   and client_id = public.current_client_id()
 );
 
+create table if not exists public.smtp_routes (
+  id text primary key,
+  scope text not null,
+  owner_user_id uuid not null references auth.users(id) on delete cascade,
+  client_id uuid references public.clients(id) on delete cascade,
+  profile_id text,
+  provider text,
+  from_name text,
+  from_email text,
+  reply_to text,
+  host text,
+  port text,
+  username text,
+  secure_mode text,
+  encrypted_password text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+alter table public.smtp_routes enable row level security;
+
+do $$
+declare
+  policy_record record;
+begin
+  for policy_record in
+    select policyname
+    from pg_policies
+    where schemaname = 'public'
+      and tablename = 'smtp_routes'
+  loop
+    execute format('drop policy if exists %I on public.smtp_routes', policy_record.policyname);
+  end loop;
+end
+$$;
+
+-- SMTP passwords are written/read only by Edge Functions using the service role.
+-- The browser app never selects this table directly.
+
 -- Future production tables should use the helper functions above instead of
 -- directly querying user_roles inside policies.
 --

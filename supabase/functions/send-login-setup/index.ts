@@ -80,7 +80,7 @@ Deno.serve(async (request) => {
     });
     if (upsertError) throw upsertError;
 
-    await sendInviteEmail(body.emailRoute, email, inviteLink, profileType);
+    await sendInviteEmail(admin, body.emailRoute, email, inviteLink, profileType);
 
     return new Response(JSON.stringify({ userId, status: "sent" }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" }
@@ -93,13 +93,13 @@ Deno.serve(async (request) => {
   }
 });
 
-async function sendInviteEmail(route, to, inviteLink, profileType) {
+async function sendInviteEmail(admin: any, route, to, inviteLink, profileType) {
   if (!route) throw new Error("SMTP routing settings are required.");
   const host = String(route.host || "").trim();
   const port = Number(route.port || 587);
   const username = String(route.username || "").trim();
   const secretRef = String(route.secretRef || "").trim();
-  const password = Deno.env.get(secretRef) || "";
+  const password = await smtpPasswordForRoute(admin, secretRef);
   const fromEmail = String(route.fromEmail || "").trim();
   const fromName = String(route.fromName || "Production Crew").trim();
   const replyTo = String(route.replyTo || fromEmail).trim();
@@ -108,7 +108,7 @@ async function sendInviteEmail(route, to, inviteLink, profileType) {
   if (!host || !port || !username || !secretRef || !fromEmail) {
     throw new Error("Missing SMTP routing settings.");
   }
-  if (!password) throw new Error(`No Supabase secret found for ${secretRef}.`);
+  if (!password) throw new Error(`No SMTP route found for ${secretRef}.`);
 
   const transporter = nodemailer.createTransport({
     host,
@@ -127,4 +127,39 @@ async function sendInviteEmail(route, to, inviteLink, profileType) {
     text: `You have been invited to create your ${label}. Use this secure link to finish setup: ${inviteLink}`,
     html: `<p>You have been invited to create your ${label}.</p><p><a href="${inviteLink}">Set up your account</a></p>`
   });
+}
+
+async function smtpPasswordForRoute(admin: any, routeId: string) {
+  const secretPassword = Deno.env.get(routeId) || "";
+  if (secretPassword) return secretPassword;
+  const { data, error } = await admin
+    .from("smtp_routes")
+    .select("encrypted_password")
+    .eq("id", routeId)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data?.encrypted_password) return "";
+  return decryptText(String(data.encrypted_password), Deno.env.get("SMTP_ENCRYPTION_KEY") || "");
+}
+
+async function decryptionCryptoKey(secret: string) {
+  if (!secret) throw new Error("SMTP encryption key is not configured.");
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(secret));
+  return crypto.subtle.importKey("raw", digest, "AES-GCM", false, ["decrypt"]);
+}
+
+async function decryptText(value: string, secret: string) {
+  const [ivText, encryptedText] = value.split(":");
+  if (!ivText || !encryptedText) throw new Error("SMTP route is not readable.");
+  const key = await decryptionCryptoKey(secret);
+  const decrypted = await crypto.subtle.decrypt(
+    { name: "AES-GCM", iv: base64Decode(ivText) },
+    key,
+    base64Decode(encryptedText)
+  );
+  return new TextDecoder().decode(decrypted);
+}
+
+function base64Decode(value: string) {
+  return Uint8Array.from(atob(value), (char) => char.charCodeAt(0));
 }

@@ -4,6 +4,7 @@ const SUPABASE_URL = "https://nnhqrhaltkmymnwxydwr.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5uaHFyaGFsdGtteW1ud3h5ZHdyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgwMjMxNDgsImV4cCI6MjA5MzU5OTE0OH0.X9iGhE61WehM57133LKCWMfXXDHmcb2rhw-ZPCKAJos";
 const LOGIN_SETUP_FUNCTION = "send-login-setup";
 const SMTP_TEST_FUNCTION = "send-smtp-test";
+const SAVE_SMTP_ROUTE_FUNCTION = "save-smtp-route";
 const STORES = [
   "clients",
   "clientReps",
@@ -627,6 +628,42 @@ function smtpRouteForInvite(storeName) {
   };
 }
 
+function smtpRoutePayload(storeName, record, password = "") {
+  const scope = storeName === "systemProfiles" ? "admin" : "client_rep";
+  return {
+    scope,
+    profileId: record.id || "",
+    clientId: record.clientId || authState.roleRecord?.client_id || null,
+    routeId: record.smtpSecretRef || "",
+    password,
+    provider: record.smtpProvider || "",
+    fromName: record.smtpFromName || record.name || "Production Crew",
+    fromEmail: record.smtpFromEmail || "",
+    replyTo: record.smtpReplyTo || record.email || authState.user?.email || "",
+    host: record.smtpHost || "",
+    port: record.smtpPort || "",
+    username: record.smtpUsername || "",
+    secure: record.smtpSecure || ""
+  };
+}
+
+async function saveSupabaseSmtpRoute(storeName, record, password) {
+  if (!["systemProfiles", "clientReps"].includes(storeName)) return "";
+  if (storeName === "systemProfiles" && !canSystemEdit()) return "";
+  if (storeName === "clientReps" && !isClientRole()) return "";
+  const payload = smtpRoutePayload(storeName, record, password);
+  if (!payload.password && !payload.routeId) return "";
+  if (!payload.fromEmail || !payload.host || !payload.port || !payload.username) {
+    return "Profile saved. Finish SMTP fields before saving the app password.";
+  }
+  const { data, error } = await supabaseClient.functions.invoke(SAVE_SMTP_ROUTE_FUNCTION, { body: payload });
+  if (error) throw error;
+  record.smtpSecretRef = data?.routeId || record.smtpSecretRef || "";
+  record.emailRoutingStatus = "Active";
+  await put(storeName, record);
+  return "SMTP route saved securely.";
+}
+
 function setupStepKey(userId = authState.user?.id) {
   return `productionCrewSetupStep:${userId || "unknown"}`;
 }
@@ -1242,7 +1279,7 @@ function renderClientProfile() {
       <div><span>Security</span><strong>${escapeHtml(profile.smtpSecure || "Not selected")}</strong></div>
     </div>
     <div class="profile-section"><span>SMTP Host</span><p>${escapeHtml(profile.smtpHost || "")}${profile.smtpPort ? ":" + escapeHtml(profile.smtpPort) : ""}</p></div>
-    <div class="profile-section"><span>Secret Reference</span><p>${escapeHtml(profile.smtpSecretRef || "No secret reference saved")}</p></div>
+    <div class="profile-section"><span>SMTP Route</span><p>${escapeHtml(profile.smtpSecretRef ? "Saved securely" : "No app password saved")}</p></div>
   </article>`;
   if (companyCard) {
     companyCard.innerHTML = client ? `<article class="profile-page-card">
@@ -1287,7 +1324,7 @@ function renderAdminProfile() {
       <div><span>Reply-To</span><strong>${escapeHtml(profile.smtpReplyTo || "")}</strong></div>
     </div>
     <div class="profile-section"><span>SMTP Host</span><p>${escapeHtml(profile.smtpHost || "")}${profile.smtpPort ? ":" + escapeHtml(profile.smtpPort) : ""}</p></div>
-    <div class="profile-section"><span>Secret Reference</span><p>${escapeHtml(profile.smtpSecretRef || "No secret reference saved")}</p><div class="row-actions"><button class="tiny-button system-action" data-open-form="adminProfileForm" type="button">SMTP Settings</button><button class="tiny-button system-action" data-send-smtp-test="admin" type="button">Send Test Email</button></div></div>
+    <div class="profile-section"><span>SMTP Route</span><p>${escapeHtml(profile.smtpSecretRef ? "Saved securely" : "No app password saved")}</p><div class="row-actions"><button class="tiny-button system-action" data-open-form="adminProfileForm" type="button">SMTP Settings</button><button class="tiny-button system-action" data-send-smtp-test="admin" type="button">Send Test Email</button></div></div>
     <div class="profile-section"><span>Security Boundary</span><p>ADMIN can manage system setup and client accounts, but does not load sensitive production records, payroll, timecards, crew personal data, promoter records, or reports.</p></div>
   </article>`;
 }
@@ -1932,6 +1969,8 @@ async function saveForm(event, storeName) {
   }
 
   const record = await formRecord(form);
+  const smtpAppPassword = record.smtpAppPassword || "";
+  delete record.smtpAppPassword;
   const existing = record.id ? state[storeName].find((item) => item.id === record.id) : null;
   let merged = { ...(existing || {}), ...record };
   if (storeName === "clientReps") {
@@ -2015,6 +2054,8 @@ async function saveForm(event, storeName) {
   try {
     if (storeName === "clients") loginSyncMessage = await syncSupabaseClientAccount(merged);
     if (storeName === "clientReps") loginSyncMessage = await syncSupabaseClientRep(merged);
+    const smtpMessage = await saveSupabaseSmtpRoute(storeName, merged, smtpAppPassword);
+    if (smtpMessage) loginSyncMessage = smtpMessage;
     loginSyncMessage = await syncSupabaseRoleForProfile(storeName, merged) || loginSyncMessage;
   } catch (error) {
     console.error(error);
@@ -2177,15 +2218,15 @@ async function sendSmtpTest() {
   }
   const payload = smtpTestPayload();
   if (!payload.to || !payload.fromEmail || !payload.host || !payload.port || !payload.username || !payload.secretRef) {
-    toast("Finish SMTP settings before sending a test.");
+    toast("Save SMTP settings with the Google App Password before sending a test.");
     return;
   }
   const { data, error } = await supabaseClient.functions.invoke(SMTP_TEST_FUNCTION, { body: payload });
   if (error) {
     console.error(error);
     const message = await loginSetupErrorMessage(error);
-    toast(message.includes("No Supabase secret found")
-      ? "SMTP secret not found in Supabase. Add it under Edge Function secrets."
+    toast(message.includes("No SMTP route found") || message.includes("No Supabase secret found")
+      ? "Save SMTP settings with the Google App Password first."
       : message);
     return;
   }

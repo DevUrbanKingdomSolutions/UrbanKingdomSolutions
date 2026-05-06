@@ -160,7 +160,8 @@
               <label>SMTP host<input name="smtpHost" placeholder="smtp.example.com"></label>
               <label>SMTP port<input name="smtpPort" type="number" min="1" placeholder="587"></label>
               <label>SMTP username<input name="smtpUsername" placeholder="username or API user"></label>
-              <label>SMTP secret reference<input name="smtpSecretRef" placeholder="Supabase secret name, not the password"></label>
+              <input type="hidden" name="smtpSecretRef">
+              <label>Google App Password<input name="smtpAppPassword" type="password" autocomplete="new-password" placeholder="16-character app password"></label>
               <label>Security
                 <select name="smtpSecure">
                   <option value="">Select security</option>
@@ -209,7 +210,8 @@
               <label>SMTP host<input name="smtpHost" placeholder="smtp.example.com"></label>
               <label>SMTP port<input name="smtpPort" type="number" min="1" placeholder="587"></label>
               <label>SMTP username<input name="smtpUsername" placeholder="username or API user"></label>
-              <label>SMTP secret reference<input name="smtpSecretRef" placeholder="Supabase secret name, not the password"></label>
+              <input type="hidden" name="smtpSecretRef">
+              <label>Google App Password<input name="smtpAppPassword" type="password" autocomplete="new-password" placeholder="16-character app password"></label>
               <label>Security
                 <select name="smtpSecure">
                   <option value="">Select security</option>
@@ -809,6 +811,6 @@
     <div id="modalBackdrop" class="modal-backdrop" data-close-modal></div>
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js?v=20260506-smtp-test-layout-1"></script>
+    <script src="app.js?v=20260506-smtp-route-1"></script>
   </body>
 </html>
