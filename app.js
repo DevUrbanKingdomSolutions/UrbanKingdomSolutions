@@ -608,7 +608,8 @@ async function syncSupabaseClientAccount(record) {
 }
 
 async function syncSupabaseClientRep(record) {
-  if (!isClientRole() || record.clientId !== authState.roleRecord?.client_id) return "";
+  const canSyncRep = canSystemEdit() || (isClientRole() && record.clientId === authState.roleRecord?.client_id);
+  if (!canSyncRep || !record.clientId) return "";
   const { error } = await supabaseClient.from("client_reps").upsert({
     id: record.id,
     client_id: record.clientId,
@@ -1375,6 +1376,48 @@ function clientRepDefaults() {
     phone: authState.user?.user_metadata?.phone || "",
     emailRoutingStatus: "Not configured"
   };
+}
+
+function normalizedMatchValue(value) {
+  return String(value || "").trim().toLowerCase();
+}
+
+function findMatchingClientAccount(record) {
+  const company = normalizedMatchValue(record.name);
+  const email = normalizedMatchValue(record.email);
+  const loginEmail = normalizedMatchValue(record.loginEmail);
+  return state.clients.find((client) => {
+    if (record.id && client.id === record.id) return true;
+    const sameCompany = company && normalizedMatchValue(client.name) === company;
+    const sameLogin = loginEmail && normalizedMatchValue(client.loginEmail || client.email) === loginEmail;
+    const sameEmail = email && normalizedMatchValue(client.email) === email;
+    return sameCompany || sameLogin || sameEmail;
+  }) || null;
+}
+
+function clientRepFromClientAccount(client) {
+  const email = client.loginEmail || client.email || "";
+  const existing = state.clientReps.find((rep) => rep.clientId === client.id && normalizedMatchValue(rep.email) === normalizedMatchValue(email))
+    || state.clientReps.find((rep) => rep.clientId === client.id)
+    || null;
+  return {
+    ...(existing || {}),
+    id: existing?.id || client.authUserId || `client-rep-${client.id}`,
+    clientId: client.id,
+    authUserId: client.authUserId || existing?.authUserId || "",
+    name: client.contactName || existing?.name || client.name || "Client Rep",
+    title: existing?.title || "Client Rep",
+    email,
+    phone: client.phone || existing?.phone || "",
+    mailingAddress: existing?.mailingAddress || "",
+    emailRoutingStatus: existing?.emailRoutingStatus || "Not configured"
+  };
+}
+
+async function upsertClientRepForClientAccount(client) {
+  const rep = clientRepFromClientAccount(client);
+  await put("clientReps", rep);
+  return rep;
 }
 
 function clientEmailRoutingSummary(rep) {
@@ -2197,7 +2240,10 @@ async function saveForm(event, storeName) {
   const record = await formRecord(form);
   const smtpAppPassword = record.smtpAppPassword || "";
   delete record.smtpAppPassword;
-  const existing = record.id ? state[storeName].find((item) => item.id === record.id) : null;
+  let existing = record.id ? state[storeName].find((item) => item.id === record.id) : null;
+  if (storeName === "clients" && canSystemEdit() && !existing) {
+    existing = findMatchingClientAccount(record);
+  }
   let merged = { ...(existing || {}), ...record };
   if (storeName === "clientReps") {
     merged = {
@@ -2278,7 +2324,13 @@ async function saveForm(event, storeName) {
   let loginSyncMessage = "";
   await put(storeName, merged);
   try {
-    if (storeName === "clients") loginSyncMessage = await syncSupabaseClientAccount(merged);
+    if (storeName === "clients") {
+      loginSyncMessage = await syncSupabaseClientAccount(merged);
+      if (canSystemEdit()) {
+        const clientRep = await upsertClientRepForClientAccount(merged);
+        loginSyncMessage = await syncSupabaseClientRep(clientRep) || loginSyncMessage;
+      }
+    }
     if (storeName === "clientReps") loginSyncMessage = await syncSupabaseClientRep(merged);
     const smtpMessage = await saveSupabaseSmtpRoute(storeName, merged, smtpAppPassword);
     if (smtpMessage) loginSyncMessage = smtpMessage;
@@ -2316,10 +2368,34 @@ async function deleteRecord(storeName, id) {
   if (["vehicleLogs", "accidentReports"].includes(storeName) && !canScopedEdit()) return;
   const confirmed = confirm("Delete this record?");
   if (!confirmed) return;
+  try {
+    await deleteSupabaseRecord(storeName, id);
+  } catch (error) {
+    console.error(error);
+    toast("Could not delete from Supabase. Local record was not removed.");
+    return;
+  }
+  if (storeName === "clients") {
+    for (const rep of state.clientReps.filter((item) => item.clientId === id)) {
+      await remove("clientReps", rep.id);
+    }
+  }
   await remove(storeName, id);
   await loadState();
   setView(state.activeView);
   toast("Deleted.");
+}
+
+async function deleteSupabaseRecord(storeName, id) {
+  if (!initializeSupabaseClient()) return;
+  if (storeName === "clients") {
+    const roleDelete = await supabaseClient.from("user_roles").delete().eq("client_id", id);
+    if (roleDelete.error) throw roleDelete.error;
+    const repDelete = await supabaseClient.from("client_reps").delete().eq("client_id", id);
+    if (repDelete.error) throw repDelete.error;
+    const clientDelete = await supabaseClient.from("clients").delete().eq("id", id);
+    if (clientDelete.error) throw clientDelete.error;
+  }
 }
 
 function selectedProfileIds(storeName) {
@@ -2390,6 +2466,8 @@ async function sendLoginSetup(storeName, id) {
   if (storeName === "clients") {
     try {
       await syncSupabaseClientAccount(record);
+      const clientRep = await upsertClientRepForClientAccount(record);
+      await syncSupabaseClientRep(clientRep);
     } catch (error) {
       console.error(error);
       toast("Client account needs to sync with Supabase first.");
@@ -2402,14 +2480,23 @@ async function sendLoginSetup(storeName, id) {
     toast(await loginSetupErrorMessage(error));
     return;
   }
-  await put(storeName, {
+  const updatedRecord = {
     ...record,
     loginEmail: payload.email,
     loginRole: payload.role,
     authUserId: data?.userId || data?.user_id || record.authUserId || "",
     inviteStatus: "Login setup sent",
     inviteSentAt: new Date().toISOString()
-  });
+  };
+  await put(storeName, updatedRecord);
+  if (storeName === "clients") {
+    const clientRep = await upsertClientRepForClientAccount(updatedRecord);
+    try {
+      await syncSupabaseClientRep(clientRep);
+    } catch (error) {
+      console.error(error);
+    }
+  }
   await loadState();
   setView(state.activeView);
   toast("Login setup sent.");

@@ -311,14 +311,14 @@
             </section>
             <form id="clientForm" class="panel form-panel system-form">
               <div class="panel-heading">
-                <h3>Client Account</h3>
+                <h3>Client Company & First Rep</h3>
                 <button class="ghost-button clear-form" type="button" data-form="clientForm">Clear</button>
               </div>
               <input type="hidden" name="id">
               <label>Client company<input name="name" required placeholder="Company name"></label>
-              <label>Primary contact<input name="contactName" placeholder="Name"></label>
-              <label>Email<input name="email" type="email" placeholder="client@example.com"></label>
-              <label>Login email<input name="loginEmail" type="email" placeholder="owner-login@example.com"></label>
+              <label>First client rep<input name="contactName" placeholder="Name"></label>
+              <label>Company email<input name="email" type="email" placeholder="client@example.com"></label>
+              <label>Rep login email<input name="loginEmail" type="email" placeholder="owner-login@example.com"></label>
               <label>Login role
                 <select name="loginRole">
                   <option value="CLIENT">Client</option>
@@ -334,7 +334,7 @@
                 </select>
               </label>
               <label>System notes<textarea name="notes" rows="4" placeholder="Configuration notes, support details, onboarding status"></textarea></label>
-              <button class="primary-action" type="submit">Save Client</button>
+              <button class="primary-action" type="submit">Save Company & Rep</button>
             </form>
             <section class="panel table-panel">
               <div class="panel-heading">

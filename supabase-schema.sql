@@ -271,11 +271,12 @@ begin
 end
 $$;
 
-create policy "Admins can read client rep routing setup"
+create policy "Admins can manage client rep setup"
 on public.client_reps
-for select
+for all
 to authenticated
-using (public.current_app_role() = 'ADMIN');
+using (public.current_app_role() = 'ADMIN')
+with check (public.current_app_role() = 'ADMIN');
 
 create policy "Clients can manage reps for their client"
 on public.client_reps
