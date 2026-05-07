@@ -51,6 +51,7 @@ The app uses these Supabase Edge Functions:
 - `create-event-access-link`: creates and optionally emails event-specific production team links.
 - `public-event-access`: loads public event-link data and updates runner status for that event.
 - `user-access-management`: lists scoped login users and lets ADMIN delete non-admin login accounts.
+- `send-rental-photo-notification`: sends rental vehicle photo reminder and urgent follow-up emails.
 
 Run `supabase-schema.sql` in Supabase SQL Editor before testing backend-backed settings. The project needs these Supabase secrets:
 
@@ -68,6 +69,7 @@ supabase functions deploy send-smtp-test
 supabase functions deploy create-event-access-link
 supabase functions deploy public-event-access
 supabase functions deploy user-access-management
+supabase functions deploy send-rental-photo-notification
 ```
 
 ## Important next steps

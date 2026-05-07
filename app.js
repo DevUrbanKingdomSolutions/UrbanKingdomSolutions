@@ -8,6 +8,7 @@ const SAVE_SMTP_ROUTE_FUNCTION = "save-smtp-route";
 const CREATE_EVENT_ACCESS_FUNCTION = "create-event-access-link";
 const PUBLIC_EVENT_ACCESS_FUNCTION = "public-event-access";
 const USER_ACCESS_FUNCTION = "user-access-management";
+const RENTAL_PHOTO_NOTIFICATION_FUNCTION = "send-rental-photo-notification";
 const STORES = [
   "clients",
   "clientReps",
@@ -96,6 +97,7 @@ let authState = {
   roleRecord: null,
   pendingSetup: false
 };
+const pendingRentalUrgencyIds = new Set();
 
 let state = {
   workers: [],
@@ -863,6 +865,24 @@ function smtpRouteForInvite(storeName) {
 
 function smtpRouteForEventAccess() {
   const profile = isProductionRole() ? activePromoterRecord() : activeClientRepRecord();
+  if (!profile) return null;
+  return {
+    fromName: profile.smtpFromName || profile.name || "Production Office",
+    fromEmail: profile.smtpFromEmail || "",
+    replyTo: profile.smtpReplyTo || profile.email || authState.user?.email || "",
+    host: profile.smtpHost || "",
+    port: profile.smtpPort || "",
+    username: profile.smtpUsername || "",
+    secretRef: profile.smtpSecretRef || "",
+    secure: profile.smtpSecure || ""
+  };
+}
+
+function smtpRouteForRentalNotifications() {
+  const clientId = authState.roleRecord?.client_id || activeClientRecord()?.id || "";
+  const profile = activeClientRepRecord()
+    || state.clientReps.find((rep) => rep.clientId === clientId && smtpRouteIsReady(rep))
+    || state.clientReps.find((rep) => smtpRouteIsReady(rep));
   if (!profile) return null;
   return {
     fromName: profile.smtpFromName || profile.name || "Production Office",
@@ -1687,6 +1707,7 @@ function render() {
   renderVenues();
   renderPromoters();
   renderRunnerStops();
+  checkRentalPhotoUrgencies();
 }
 
 function renderAdmin() {
@@ -3357,6 +3378,80 @@ async function saveRunnerNote(stopId) {
   toast("Directory note added.");
 }
 
+function rentalPhotoNotificationPayload(event, worker, card, type) {
+  const route = smtpRouteForRentalNotifications();
+  if (!route?.fromEmail || !route?.host || !route?.port || !route?.username || !route?.secretRef) return null;
+  return {
+    type,
+    to: worker?.email || authState.user?.email || "",
+    workerName: worker?.name || "Crew member",
+    eventName: event?.name || card?.eventName || "Assigned event",
+    eventStart: event?.startDate || "",
+    eventEnd: event?.endDate || "",
+    vehiclePageUrl: `${location.origin}${location.pathname}#vehicles`,
+    emailRoute: route
+  };
+}
+
+async function sendRentalPhotoNotification(event, worker, card, type) {
+  if (!initializeSupabaseClient()) return { ok: false, message: "Supabase login is not configured." };
+  const payload = rentalPhotoNotificationPayload(event, worker, card, type);
+  if (!payload?.to) return { ok: false, message: "No crew email is available for rental photo notification." };
+  if (!payload.emailRoute) return { ok: false, message: "Client SMTP settings are needed for rental photo notifications." };
+  const { data, error } = await supabaseClient.functions.invoke(RENTAL_PHOTO_NOTIFICATION_FUNCTION, { body: payload });
+  if (error) {
+    console.error(error);
+    return { ok: false, message: await loginSetupErrorMessage(error) };
+  }
+  return { ok: true, message: data?.messageId ? "Rental photo email sent." : "Rental photo notification sent." };
+}
+
+function scheduleRentalUrgentCheck(cardId) {
+  if (!cardId || pendingRentalUrgencyIds.has(cardId)) return;
+  pendingRentalUrgencyIds.add(cardId);
+  window.setTimeout(() => {
+    pendingRentalUrgencyIds.delete(cardId);
+    checkRentalPhotoUrgencies();
+  }, 15 * 60000);
+}
+
+function checkRentalPhotoUrgencies() {
+  if (!isCrewRole()) return;
+  state.timecards
+    .filter((card) => card.workerId === state.activeWorkerId && card.clockIn && !card.clockOut && card.rentalStartReminderAt && !card.rentalUrgentNotificationSentAt)
+    .forEach((card) => {
+      const elapsed = Date.now() - new Date(card.rentalStartReminderAt).getTime();
+      if (elapsed < 15 * 60000) {
+        scheduleRentalUrgentCheck(card.id);
+        return;
+      }
+      const event = getEvent(card.eventId);
+      if (!rentalVehicleRequired(event, card)) return;
+      const startLog = vehicleLogForEventWorker(card.eventId, card.workerId, "Start");
+      if (vehicleStartCheckStarted(startLog)) return;
+      sendRentalUrgentNotification(card).catch((error) => console.error(error));
+    });
+}
+
+async function sendRentalUrgentNotification(card) {
+  if (!card?.id || pendingRentalUrgencyIds.has(`send-${card.id}`)) return;
+  pendingRentalUrgencyIds.add(`send-${card.id}`);
+  const event = getEvent(card.eventId);
+  const worker = getWorker(card.workerId);
+  const result = await sendRentalPhotoNotification(event, worker, card, "urgent_start_missing");
+  if (result.ok) {
+    await put("timecards", {
+      ...card,
+      rentalUrgentNotificationSentAt: new Date().toISOString(),
+      notes: appendTimecardNote(card, "Urgent rental vehicle start-photo reminder was sent because start photos and plate number were still missing after 15 minutes.")
+    });
+    await loadState();
+    setView(state.activeView);
+  }
+  pendingRentalUrgencyIds.delete(`send-${card.id}`);
+  if (result.message) toast(result.message);
+}
+
 async function addRunnerCategory(event) {
   event.preventDefault();
   if (!isCrewRole() || !state.activeWorkerId) return;
@@ -3418,6 +3513,7 @@ async function crewPunch(eventId, field) {
   if (!card) {
     const worker = getWorker(state.activeWorkerId);
     card = {
+      id: crypto.randomUUID(),
       workerId: state.activeWorkerId,
       eventId,
       eventName: event?.name || "",
@@ -3429,6 +3525,7 @@ async function crewPunch(eventId, field) {
       additionalRate: worker?.defaultAdditionalRate || ""
     };
   }
+  card.id = card.id || crypto.randomUUID();
   if (field === "clockOut" && rentalVehicleRequired(event, card)) {
     const endLog = vehicleLogForEventWorker(eventId, state.activeWorkerId, "End");
     if (!vehicleEndPhotosComplete(endLog)) {
@@ -3459,7 +3556,18 @@ async function crewPunch(eventId, field) {
     const startLog = vehicleLogForEventWorker(eventId, state.activeWorkerId, "Start");
     if (!vehicleStartCheckStarted(startLog)) {
       card.rentalStartReminderAt = new Date().toISOString();
-      toast("Reminder: submit rental vehicle start photos and plate number within 15 minutes.");
+      if (!card.rentalStartNotificationSentAt) {
+        const worker = getWorker(state.activeWorkerId);
+        const result = await sendRentalPhotoNotification(event, worker, card, "start_reminder");
+        if (result.ok) {
+          card.rentalStartNotificationSentAt = new Date().toISOString();
+          card.notes = appendTimecardNote(card, "Rental vehicle start-photo reminder was sent at Call Time.");
+        }
+        if (result.message) toast(result.message);
+      } else {
+        toast("Reminder: submit rental vehicle start photos and plate number within 15 minutes.");
+      }
+      scheduleRentalUrgentCheck(card.id);
     }
   }
   await put("timecards", card);
