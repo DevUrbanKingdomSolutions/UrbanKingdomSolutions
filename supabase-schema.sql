@@ -329,6 +329,48 @@ $$;
 -- SMTP passwords are written/read only by Edge Functions using the service role.
 -- The browser app never selects this table directly.
 
+create table if not exists public.event_access_links (
+  id uuid primary key default gen_random_uuid(),
+  token_hash text not null unique,
+  client_id uuid references public.clients(id) on delete cascade,
+  event_id text not null,
+  promoter_id text,
+  created_by uuid references auth.users(id) on delete set null,
+  recipient_email text,
+  recipient_name text,
+  notes text,
+  snapshot jsonb not null default '{}'::jsonb,
+  status text not null default 'Active',
+  expires_at timestamptz,
+  last_opened_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index if not exists event_access_links_token_hash_idx on public.event_access_links (token_hash);
+create index if not exists event_access_links_event_id_idx on public.event_access_links (event_id);
+create index if not exists event_access_links_client_id_idx on public.event_access_links (client_id);
+
+alter table public.event_access_links enable row level security;
+
+do $$
+declare
+  policy_record record;
+begin
+  for policy_record in
+    select policyname
+    from pg_policies
+    where schemaname = 'public'
+      and tablename = 'event_access_links'
+  loop
+    execute format('drop policy if exists %I on public.event_access_links', policy_record.policyname);
+  end loop;
+end
+$$;
+
+-- Event links are created/read by Edge Functions using the service role.
+-- Public visitors only receive data after presenting the secure token.
+
 -- Future production tables should use the helper functions above instead of
 -- directly querying user_roles inside policies.
 --

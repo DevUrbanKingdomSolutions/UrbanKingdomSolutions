@@ -1,13 +1,16 @@
 const DB_NAME = "productionCrewDatabase";
-const DB_VERSION = 7;
+const DB_VERSION = 8;
 const SUPABASE_URL = "https://nnhqrhaltkmymnwxydwr.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5uaHFyaGFsdGtteW1ud3h5ZHdyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgwMjMxNDgsImV4cCI6MjA5MzU5OTE0OH0.X9iGhE61WehM57133LKCWMfXXDHmcb2rhw-ZPCKAJos";
 const LOGIN_SETUP_FUNCTION = "send-login-setup";
 const SMTP_TEST_FUNCTION = "send-smtp-test";
 const SAVE_SMTP_ROUTE_FUNCTION = "save-smtp-route";
+const CREATE_EVENT_ACCESS_FUNCTION = "create-event-access-link";
+const PUBLIC_EVENT_ACCESS_FUNCTION = "public-event-access";
 const STORES = [
   "clients",
   "clientReps",
+  "eventAccessLinks",
   "workers",
   "venues",
   "promoters",
@@ -102,6 +105,7 @@ let state = {
   accidentReports: [],
   clients: [],
   clientReps: [],
+  eventAccessLinks: [],
   search: "",
   activeView: "dashboard",
   accessRole: "CLIENT",
@@ -267,11 +271,12 @@ async function remove(storeName, id) {
 }
 
 async function loadState() {
-  const [clients, clientReps, workers, venues, promoters, profileNotes, events, timecards, runnerStops, runnerCategories, systemProfiles, vehicleLogs, accidentReports] = await Promise.all(STORES.map(getAll));
+  const [clients, clientReps, eventAccessLinks, workers, venues, promoters, profileNotes, events, timecards, runnerStops, runnerCategories, systemProfiles, vehicleLogs, accidentReports] = await Promise.all(STORES.map(getAll));
   state = {
     ...state,
     clients: sortByName(clients),
     clientReps: sortByName(clientReps),
+    eventAccessLinks: eventAccessLinks.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0)),
     workers: sortByName(workers),
     venues: sortByName(venues),
     promoters: sortByName(promoters),
@@ -456,6 +461,7 @@ function isSupabaseConfigured() {
 function showAuthScreen(message = "") {
   $("#authScreen").hidden = false;
   $("#setupScreen").hidden = true;
+  $("#publicEventScreen").hidden = true;
   $("#appShell").hidden = true;
   $("#sessionEmail").textContent = "Not signed in";
   $("#sessionRole").textContent = "ROLE";
@@ -465,6 +471,7 @@ function showAuthScreen(message = "") {
 function showSetupScreen(session, message = "Set your password to finish setup.") {
   $("#authScreen").hidden = true;
   $("#setupScreen").hidden = false;
+  $("#publicEventScreen").hidden = true;
   $("#appShell").hidden = true;
   $("#setupMessage").textContent = message;
   const form = $("#setupForm");
@@ -474,9 +481,18 @@ function showSetupScreen(session, message = "Set your password to finish setup."
   form.elements.confirmPassword.value = "";
 }
 
+function showPublicEventScreen(message = "Loading event access...") {
+  $("#authScreen").hidden = true;
+  $("#setupScreen").hidden = true;
+  $("#publicEventScreen").hidden = false;
+  $("#appShell").hidden = true;
+  $("#publicEventContent").innerHTML = `<p class="auth-message">${escapeHtml(message)}</p>`;
+}
+
 function showAppShell() {
   $("#authScreen").hidden = true;
   $("#setupScreen").hidden = true;
+  $("#publicEventScreen").hidden = true;
   $("#appShell").hidden = false;
 }
 
@@ -502,6 +518,17 @@ function setupTypeFromUrl() {
   const values = new URLSearchParams(location.hash.replace(/^#/, ""));
   const query = new URLSearchParams(location.search);
   return values.get("type") || query.get("type") || "";
+}
+
+function publicEventTokenFromUrl() {
+  const hash = location.hash.replace(/^#/, "");
+  if (!hash.startsWith("public-event")) return "";
+  const query = hash.includes("?") ? hash.slice(hash.indexOf("?") + 1) : "";
+  return new URLSearchParams(query).get("token") || "";
+}
+
+function isPublicEventRoute() {
+  return Boolean(publicEventTokenFromUrl());
 }
 
 function needsPasswordSetup(type) {
@@ -713,8 +740,23 @@ function smtpRouteForInvite(storeName) {
   };
 }
 
+function smtpRouteForEventAccess() {
+  const profile = isProductionRole() ? activePromoterRecord() : activeClientRepRecord();
+  if (!profile) return null;
+  return {
+    fromName: profile.smtpFromName || profile.name || "Production Office",
+    fromEmail: profile.smtpFromEmail || "",
+    replyTo: profile.smtpReplyTo || profile.email || authState.user?.email || "",
+    host: profile.smtpHost || "",
+    port: profile.smtpPort || "",
+    username: profile.smtpUsername || "",
+    secretRef: profile.smtpSecretRef || "",
+    secure: profile.smtpSecure || ""
+  };
+}
+
 function smtpRoutePayload(storeName, record, password = "") {
-  const scope = storeName === "systemProfiles" ? "admin" : "client_rep";
+  const scope = storeName === "systemProfiles" ? "admin" : storeName === "promoters" ? "promoter" : "client_rep";
   return {
     scope,
     profileId: record.id || "",
@@ -733,9 +775,10 @@ function smtpRoutePayload(storeName, record, password = "") {
 }
 
 async function saveSupabaseSmtpRoute(storeName, record, password) {
-  if (!["systemProfiles", "clientReps"].includes(storeName)) return "";
+  if (!["systemProfiles", "clientReps", "promoters"].includes(storeName)) return "";
   if (storeName === "systemProfiles" && !canSystemEdit()) return "";
   if (storeName === "clientReps" && !isClientRole()) return "";
+  if (storeName === "promoters" && !(isClientRole() || (isProductionRole() && record.id === state.activePromoterId))) return "";
   const payload = smtpRoutePayload(storeName, record, password);
   if (!payload.password && !payload.routeId) return "";
   if (!payload.fromEmail || !payload.host || !payload.port || !payload.username) {
@@ -834,6 +877,10 @@ async function applyAuthenticatedSession(session, preferredView = "") {
 async function initializeAuth() {
   if (!initializeSupabaseClient()) {
     showAuthScreen("Add your Supabase URL and anon key in app.js to enable login.");
+    return;
+  }
+  if (isPublicEventRoute()) {
+    await loadPublicEventAccess();
     return;
   }
 
@@ -1314,6 +1361,10 @@ function activeClientRepRecord() {
     || null;
 }
 
+function activePromoterRecord() {
+  return getPromoter(state.activePromoterId) || null;
+}
+
 function clientRepDefaults() {
   return {
     id: authState.user?.id || crypto.randomUUID(),
@@ -1505,7 +1556,8 @@ function renderProductionBoard() {
         const venue = getVenue(event.venueId);
         const promoter = getPromoter(event.promoterId);
         const crew = eventWorkerIds(event).map((id) => getWorker(id)?.name).filter(Boolean).join(", ");
-        return `<article class="record-card"><div><span>${escapeHtml(event.type || "Event")}</span><strong>${escapeHtml(event.name)}</strong><p>${escapeHtml(venue?.name || "")}</p><p>${escapeHtml(promoterLabel(promoter))}</p><p>${escapeHtml(crew || "No runners assigned")}</p></div><div><span>${formatDate(event.startDate)}</span><span>${formatDate(event.endDate)}</span></div></article>`;
+        const publicAccessButton = `<button class="tiny-button" data-event-access="${event.id}" type="button">Production Link</button>`;
+        return `<article class="record-card"><div><span>${escapeHtml(event.type || "Event")}</span><strong>${escapeHtml(event.name)}</strong><p>${escapeHtml(venue?.name || "")}</p><p>${escapeHtml(promoterLabel(promoter))}</p><p>${escapeHtml(crew || "No runners assigned")}</p></div><div><span>${formatDate(event.startDate)}</span><span>${formatDate(event.endDate)}</span><div class="row-actions">${publicAccessButton}</div></div></article>`;
       }).join("")
     : `<div class="compact-item empty">No production-board events match this view.</div>`;
 
@@ -1516,6 +1568,89 @@ function renderProductionBoard() {
         return `<tr><td>${profileCell(worker, worker.hideHeadshot, worker.email)}</td><td>${escapeHtml(eventsForWorker)}</td><td><span class="status-pill ${status === "On a Run" ? "warn" : ""}">${escapeHtml(status)}</span></td><td>${escapeHtml(worker.phone)}<p>${escapeHtml(worker.email)}</p></td><td><div class="row-actions"><button class="tiny-button" data-runner-status="${worker.id}" data-status="Available" type="button">Available</button><button class="tiny-button" data-runner-status="${worker.id}" data-status="On a Run" type="button">On a Run</button><button class="tiny-button" data-runner-status="${worker.id}" data-status="At Production Office" type="button">At Office</button></div></td></tr>`;
       }).join("")
     : `<tr><td colspan="5" class="empty">Assigned runners will appear here.</td></tr>`;
+}
+
+function renderPublicEventAccess(data) {
+  const event = data.event || {};
+  const venue = data.venue || {};
+  const promoter = data.promoter || {};
+  const crew = data.crew || [];
+  $("#publicEventContent").innerHTML = `<div class="public-event-summary">
+    <span>${escapeHtml(event.type || "Event")}</span>
+    <h1>${escapeHtml(event.name || "Production Event")}</h1>
+    <p>${escapeHtml(formatDate(event.startDate))}${event.endDate ? " - " + escapeHtml(formatDate(event.endDate)) : ""}</p>
+    <p>${escapeHtml(venue.name || "Venue not listed")}</p>
+  </div>
+  <div class="public-event-grid">
+    <section>
+      <h3>Event Details</h3>
+      <p><strong>Production contact</strong><br>${escapeHtml(event.productionContact || "")}</p>
+      <p><strong>Promoter rep</strong><br>${escapeHtml(promoterLabel(promoter) || "")}</p>
+      <p><strong>Notes</strong><br>${escapeHtml(event.notes || "")}</p>
+    </section>
+    <section>
+      <h3>Venue</h3>
+      <p>${escapeHtml(venue.address || "")}</p>
+      <p><strong>Parking</strong><br>${escapeHtml(venue.parking || "")}</p>
+      <p><strong>Contact</strong><br>${escapeHtml(venue.contactName || "")} ${escapeHtml(venue.phone || "")} ${escapeHtml(venue.email || "")}</p>
+    </section>
+  </div>
+  <section class="public-runner-panel">
+    <h3>Runner Status</h3>
+    <div class="public-runner-list">
+      ${crew.length ? crew.map((worker) => publicRunnerCard(worker)).join("") : `<div class="compact-item empty">No runners are assigned to this event.</div>`}
+    </div>
+  </section>`;
+}
+
+function publicRunnerCard(worker) {
+  const status = worker.runnerStatus || "Available";
+  return `<article class="compact-item">
+    <strong>${escapeHtml(worker.name || "Runner")}</strong>
+    <span>${escapeHtml(worker.phone || "")} ${escapeHtml(worker.email || "")}</span>
+    <p><span class="status-pill ${status === "On a Run" ? "warn" : ""}">${escapeHtml(status)}</span></p>
+    <div class="row-actions">
+      <button class="tiny-button" data-public-runner-status="${worker.id}" data-status="Available" type="button">Available</button>
+      <button class="tiny-button" data-public-runner-status="${worker.id}" data-status="On a Run" type="button">On a Run</button>
+      <button class="tiny-button" data-public-runner-status="${worker.id}" data-status="At Production Office" type="button">At Office</button>
+    </div>
+  </article>`;
+}
+
+async function loadPublicEventAccess() {
+  if (!initializeSupabaseClient()) {
+    showPublicEventScreen("Public event access is not configured.");
+    return;
+  }
+  const token = publicEventTokenFromUrl();
+  if (!token) {
+    showPublicEventScreen("This event link is missing its access token.");
+    return;
+  }
+  showPublicEventScreen();
+  const { data, error } = await supabaseClient.functions.invoke(PUBLIC_EVENT_ACCESS_FUNCTION, {
+    body: { action: "get", token }
+  });
+  if (error) {
+    console.error(error);
+    showPublicEventScreen(await loginSetupErrorMessage(error));
+    return;
+  }
+  renderPublicEventAccess(data || {});
+}
+
+async function updatePublicRunnerStatus(workerId, status) {
+  const token = publicEventTokenFromUrl();
+  if (!token || !workerId) return;
+  const { data, error } = await supabaseClient.functions.invoke(PUBLIC_EVENT_ACCESS_FUNCTION, {
+    body: { action: "runnerStatus", token, workerId, status }
+  });
+  if (error) {
+    console.error(error);
+    toast(await loginSetupErrorMessage(error));
+    return;
+  }
+  renderPublicEventAccess(data || {});
 }
 
 function renderEvents() {
@@ -1536,6 +1671,9 @@ function eventCard(event) {
   const promoter = getPromoter(event.promoterId);
   const crew = eventWorkerIds(event).map((id) => getWorker(id)?.name).filter(Boolean);
   const crewLine = isCrewRole() ? "Assigned to you" : (crew.join(", ") || "No crew assigned");
+  const publicAccessButton = (isClientRole() || isProductionRole())
+    ? `<button class="tiny-button" data-event-access="${event.id}" type="button">Production Link</button>`
+    : "";
   return `<article class="record-card">
     <div class="record-card-main">
       <strong>${escapeHtml(event.name)}</strong>
@@ -1544,7 +1682,7 @@ function eventCard(event) {
       <p>${escapeHtml(event.productionContact)}</p>
       <p>${escapeHtml(crewLine)}</p>
     </div>
-    ${actionButtons("events", event.id, "eventForm", "", canAdminEdit())}
+    <div class="row-actions">${publicAccessButton}${actionButtons("events", event.id, "eventForm", "", canAdminEdit())}</div>
   </article>`;
 }
 
@@ -1874,7 +2012,10 @@ function renderPromoters() {
   const rows = visiblePromoters().filter((promoter) => matchesSearch(promoter));
   $("#promoterTableCount").textContent = `${rows.length} shown`;
   $("#promoterTable").innerHTML = rows.length
-    ? rows.map((promoter) => `<tr><td>${profileSelect("promoters", promoter.id)}${profileCell(promoter, false, promoter.contactName)}</td><td><strong>${escapeHtml(promoter.companyName || "Independent")}</strong><p>${escapeHtml(promoter.contactName)}</p></td><td>${escapeHtml(promoter.phone)}</td><td>${escapeHtml(promoter.email)}</td><td>${escapeHtml(promoter.notes || promoter.billing)}<p>${accessBadges(promoter.accessLevels, "PROMOTER_PRODUCTION_OFFICE")}</p>${loginStatus(promoter)}</td><td>${actionButtons("promoters", promoter.id, "promoterForm", loginSetupButton("promoters", promoter), canEditPromoter(promoter))}</td></tr>`).join("")
+    ? rows.map((promoter) => {
+        const smtpStatus = promoter.smtpSecretRef ? `<p><span class="status-pill">SMTP saved</span></p>` : "";
+        return `<tr><td>${profileSelect("promoters", promoter.id)}${profileCell(promoter, false, promoter.contactName)}</td><td><strong>${escapeHtml(promoter.companyName || "Independent")}</strong><p>${escapeHtml(promoter.contactName)}</p></td><td>${escapeHtml(promoter.phone)}</td><td>${escapeHtml(promoter.email)}</td><td>${escapeHtml(promoter.notes || promoter.billing)}<p>${accessBadges(promoter.accessLevels, "PROMOTER_PRODUCTION_OFFICE")}</p>${smtpStatus}${loginStatus(promoter)}</td><td>${actionButtons("promoters", promoter.id, "promoterForm", loginSetupButton("promoters", promoter), canEditPromoter(promoter))}</td></tr>`;
+      }).join("")
     : `<tr><td colspan="6" class="empty">No promoter profiles match this search.</td></tr>`;
 }
 
@@ -2274,6 +2415,92 @@ async function sendLoginSetup(storeName, id) {
   toast("Login setup sent.");
 }
 
+function eventAccessSnapshot(event) {
+  const venue = getVenue(event.venueId) || {};
+  const promoter = getPromoter(event.promoterId) || {};
+  const crew = eventWorkerIds(event).map((id) => {
+    const worker = getWorker(id) || {};
+    return {
+      id,
+      name: worker.name || "",
+      phone: worker.phone || "",
+      email: worker.email || "",
+      runnerStatus: worker.runnerStatus || "Available"
+    };
+  });
+  return { event, venue, promoter, crew };
+}
+
+function publicEventUrl(token) {
+  return `${location.origin}${location.pathname}#public-event?token=${encodeURIComponent(token)}`;
+}
+
+async function createEventAccessLink(event) {
+  clearForm("eventAccessForm");
+  const form = $("#eventAccessForm");
+  const expires = new Date();
+  expires.setDate(expires.getDate() + 7);
+  form.elements.eventId.value = event.id;
+  form.elements.recipientName.value = "Production team";
+  form.elements.expiresAt.value = expires.toISOString().slice(0, 10);
+  openForm("eventAccessForm");
+}
+
+async function saveEventAccessLink(event) {
+  if (!initializeSupabaseClient()) {
+    toast("Supabase login is not configured.");
+    return;
+  }
+  if (!(isClientRole() || isProductionRole())) {
+    toast("Only Client or Production Office can create event links.");
+    return;
+  }
+  if (isProductionRole() && event.promoterId !== state.activePromoterId) {
+    toast("Production Office can only create links for their events.");
+    return;
+  }
+  const form = $("#eventAccessForm");
+  const record = await formRecord(form);
+  const route = smtpRouteForEventAccess();
+  if (record.recipientEmail && (!route?.fromEmail || !route?.host || !route?.port || !route?.username || !route?.secretRef)) {
+    toast("Save SMTP settings before sending event links.");
+    return;
+  }
+  const { data, error } = await supabaseClient.functions.invoke(CREATE_EVENT_ACCESS_FUNCTION, {
+    body: {
+      eventId: event.id,
+      clientId: authState.roleRecord?.client_id || "",
+      promoterId: event.promoterId || "",
+      recipientEmail: record.recipientEmail || "",
+      recipientName: record.recipientName || "Production team",
+      expiresAt: record.expiresAt || "",
+      notes: record.notes || "",
+      snapshot: eventAccessSnapshot(event),
+      emailRoute: route
+    }
+  });
+  if (error) {
+    console.error(error);
+    toast(await loginSetupErrorMessage(error));
+    return;
+  }
+  const link = publicEventUrl(data.token);
+  await put("eventAccessLinks", {
+    id: data.linkId,
+    eventId: event.id,
+    recipientEmail: record.recipientEmail || "",
+    recipientName: record.recipientName || "Production team",
+    expiresAt: record.expiresAt || "",
+    publicUrl: link,
+    status: "Active"
+  });
+  closeForm("eventAccessForm");
+  await loadState();
+  setView("events");
+  navigator.clipboard?.writeText(link).catch(() => {});
+  toast(record.recipientEmail ? "Production event link sent and copied." : "Production event link created and copied.");
+}
+
 function smtpTestPayload() {
   const profile = activeAdminProfile();
   return {
@@ -2523,6 +2750,12 @@ function bindEvents() {
   $("#timecardForm select[name='vehicleUse']").addEventListener("change", () => applyWorkerPayDefaultsToTimecard($("#timecardForm").elements.workerId.value));
 
   $("#eventForm").addEventListener("submit", (event) => saveForm(event, "events"));
+  $("#eventAccessForm").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const eventId = event.currentTarget.elements.eventId.value;
+    const productionEvent = getEvent(eventId);
+    if (productionEvent) await saveEventAccessLink(productionEvent);
+  });
   $("#adminProfileForm").addEventListener("submit", (event) => saveForm(event, "systemProfiles"));
   $("#clientForm").addEventListener("submit", (event) => saveForm(event, "clients"));
   $("#clientCompanyProfileForm").addEventListener("submit", (event) => saveForm(event, "clients"));
@@ -2572,6 +2805,13 @@ function bindEvents() {
     const smtpTestButton = event.target.closest("[data-send-smtp-test]");
     const viewClientCompanyButton = event.target.closest("[data-view-client-company]");
     const editViewedClientButton = event.target.closest("#editViewedClientCompany");
+    const eventAccessButton = event.target.closest("[data-event-access]");
+    const publicRunnerStatusButton = event.target.closest("[data-public-runner-status]");
+
+    if (publicRunnerStatusButton) {
+      await updatePublicRunnerStatus(publicRunnerStatusButton.dataset.publicRunnerStatus, publicRunnerStatusButton.dataset.status);
+      return;
+    }
 
   if (openButton) {
       clearForm(openButton.dataset.openForm);
@@ -2598,6 +2838,10 @@ function bindEvents() {
     }
 
     if (deleteButton) await deleteRecord(deleteButton.dataset.delete, deleteButton.dataset.id);
+    if (eventAccessButton) {
+      const eventRecord = getEvent(eventAccessButton.dataset.eventAccess);
+      if (eventRecord) await createEventAccessLink(eventRecord);
+    }
     if (viewClientCompanyButton) openClientCompanyView(viewClientCompanyButton.dataset.viewClientCompany);
     if (smtpTestButton) await sendSmtpTest();
     if (editViewedClientButton?.dataset.editClientId) {
@@ -2632,6 +2876,13 @@ function bindEvents() {
     if (event.key === "Escape") closeActiveForm();
   });
   window.addEventListener("hashchange", () => {
+    if (isPublicEventRoute()) {
+      loadPublicEventAccess().catch((error) => {
+        console.error(error);
+        showPublicEventScreen(error.message || "Could not load event access.");
+      });
+      return;
+    }
     const requested = location.hash.replace("#", "");
     if (requested) setView(requested);
   });

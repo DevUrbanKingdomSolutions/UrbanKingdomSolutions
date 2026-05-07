@@ -43,6 +43,18 @@
       </form>
     </section>
 
+    <section id="publicEventScreen" class="auth-screen" hidden>
+      <div class="auth-card public-event-card">
+        <div class="brand-mark">
+          <span>Production Crew</span>
+          <small>Event Access</small>
+        </div>
+        <div id="publicEventContent">
+          <p class="auth-message">Loading event access...</p>
+        </div>
+      </div>
+    </section>
+
     <div id="appShell" class="app-shell" hidden>
       <aside class="sidebar">
         <div class="brand">
@@ -388,6 +400,18 @@
               <label>End<input name="endDate" type="datetime-local"></label>
               <label>Notes<textarea name="notes" rows="3" placeholder="Call sheet details, client notes, runner instructions"></textarea></label>
               <button class="primary-action" type="submit">Save Event</button>
+            </form>
+            <form id="eventAccessForm" class="panel form-panel admin-form">
+              <div class="panel-heading">
+                <h3>Production Team Event Link</h3>
+                <button class="ghost-button clear-form" type="button" data-form="eventAccessForm">Clear</button>
+              </div>
+              <input type="hidden" name="eventId">
+              <label>Send to email<input name="recipientEmail" type="email" placeholder="production@example.com"></label>
+              <label>Team / contact name<input name="recipientName" placeholder="Production team"></label>
+              <label>Expires on<input name="expiresAt" type="date"></label>
+              <label>Notes<textarea name="notes" rows="3" placeholder="Optional note for this access link"></textarea></label>
+              <button class="primary-action" type="submit">Create & Send Link</button>
             </form>
             <section class="panel table-panel">
               <div class="panel-heading">
@@ -748,6 +772,43 @@
               </label>
               <label>Company billing notes<textarea name="billing" rows="3" placeholder="PO rules, invoice contact, terms"></textarea></label>
               <label>Rep / production notes<textarea name="notes" rows="3" placeholder="Preferences, recurring needs"></textarea></label>
+              <div class="photo-fieldset">
+                <span>SMTP Email Routing</span>
+                <label>Email service
+                  <select name="smtpProvider" data-smtp-provider>
+                    <option value="">Choose email service</option>
+                    <option value="google">Google / Gmail</option>
+                    <option value="apple">Apple / iCloud Mail</option>
+                    <option value="microsoft">Microsoft / Outlook</option>
+                    <option value="other">Other SMTP</option>
+                  </select>
+                </label>
+                <p class="smtp-helper" data-smtp-helper>Choose an email service to see the setup fields.</p>
+                <label class="smtp-detail-field">From name<input name="smtpFromName" placeholder="Production Office"></label>
+                <label class="smtp-detail-field">From email<input name="smtpFromEmail" type="email" placeholder="production@example.com"></label>
+                <label class="smtp-detail-field">Reply-to email<input name="smtpReplyTo" type="email" placeholder="reply@example.com"></label>
+                <label class="smtp-detail-field">SMTP host<input name="smtpHost" placeholder="smtp.example.com"></label>
+                <label class="smtp-detail-field">SMTP port<input name="smtpPort" type="number" min="1" placeholder="587"></label>
+                <label class="smtp-detail-field">SMTP username<input name="smtpUsername" placeholder="username or API user"></label>
+                <input type="hidden" name="smtpSecretRef">
+                <label class="smtp-detail-field"><span data-smtp-password-label>App Password</span><input name="smtpAppPassword" type="password" autocomplete="new-password" placeholder="App password"></label>
+                <label class="smtp-detail-field">Security
+                  <select name="smtpSecure">
+                    <option value="">Select security</option>
+                    <option value="tls">TLS / STARTTLS</option>
+                    <option value="ssl">SSL</option>
+                    <option value="none">None</option>
+                  </select>
+                </label>
+                <label>Status
+                  <select name="emailRoutingStatus">
+                    <option>Not configured</option>
+                    <option>Ready for testing</option>
+                    <option>Active</option>
+                    <option>Needs attention</option>
+                  </select>
+                </label>
+              </div>
               <button class="primary-action" type="submit">Save Promoter Rep</button>
             </form>
             <section class="panel table-panel">
@@ -829,6 +890,6 @@
     <div id="modalBackdrop" class="modal-backdrop" data-close-modal></div>
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js?v=20260506-smtp-provider-1"></script>
+    <script src="app.js?v=20260506-event-access-1"></script>
   </body>
 </html>

@@ -51,6 +51,51 @@ button {
   padding: 24px;
 }
 
+.public-event-card {
+  width: min(960px, 100%);
+}
+
+.public-event-summary {
+  margin-top: 18px;
+}
+
+.public-event-summary h1 {
+  margin: 8px 0;
+  color: #172126;
+  font-size: 30px;
+  letter-spacing: 0;
+}
+
+.public-event-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.public-event-grid section,
+.public-runner-panel {
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfaf6;
+}
+
+.public-event-grid h3,
+.public-runner-panel h3 {
+  margin: 0 0 10px;
+  color: #172126;
+}
+
+.public-runner-panel {
+  margin-top: 12px;
+}
+
+.public-runner-list {
+  display: grid;
+  gap: 10px;
+}
+
 .auth-message {
   min-height: 20px;
   margin: 0;
@@ -922,7 +967,8 @@ body:not(.owner-mode) .rate-field {
   }
 
   .profile-page-header,
-  .profile-detail-grid {
+  .profile-detail-grid,
+  .public-event-grid {
     grid-template-columns: 1fr;
   }
 }

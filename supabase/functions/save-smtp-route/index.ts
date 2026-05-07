@@ -30,7 +30,7 @@ Deno.serve(async (request) => {
 
     const { data: callerRole, error: roleError } = await admin
       .from("user_roles")
-      .select("role, client_id")
+      .select("role, client_id, promoter_id")
       .eq("user_id", callerData.user.id)
       .maybeSingle();
     if (roleError) throw roleError;
@@ -49,7 +49,12 @@ Deno.serve(async (request) => {
       if (callerRole?.role !== "CLIENT") throw new Error("Only CLIENT can save client SMTP settings.");
       if (!clientId || clientId !== callerRole.client_id) throw new Error("Client SMTP settings must stay inside your client account.");
     }
-    if (!["admin", "client_rep"].includes(scope)) throw new Error("Unsupported SMTP route scope.");
+    if (scope === "promoter") {
+      const isOwnPromoter = callerRole?.role === "PROMOTER_PRODUCTION_OFFICE" && profileId === callerRole.promoter_id;
+      const isClientForPromoter = callerRole?.role === "CLIENT" && clientId === callerRole.client_id;
+      if (!isOwnPromoter && !isClientForPromoter) throw new Error("Only the assigned Production Office or Client can save promoter SMTP settings.");
+    }
+    if (!["admin", "client_rep", "promoter"].includes(scope)) throw new Error("Unsupported SMTP route scope.");
 
     const encryptedPassword = password ? await encryptText(password, encryptionKey) : undefined;
     const record = {
@@ -91,6 +96,7 @@ Deno.serve(async (request) => {
 
 function routeIdFor(scope: string, userId: string, clientId: string | null, profileId: string) {
   if (scope === "admin") return `admin:${userId}`;
+  if (scope === "promoter") return `promoter:${clientId || "none"}:${profileId || userId}`;
   return `client_rep:${clientId || "none"}:${profileId || userId}`;
 }
 
