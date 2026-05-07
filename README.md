@@ -22,17 +22,17 @@ This is a first working version of a private entertainment production database a
 - Accident reports for physical damage and vehicle damage with event, assigned worker, multiple photo uploads, and details.
 - Search across the database.
 - JSON export and import for backup or moving data.
-- Four access views for planning permissions: Admin, Client, Promoter / Production Office, and Crew / Runner.
-- Supabase Auth login with database-backed roles: ADMIN, CLIENT, PROMOTER_PRODUCTION_OFFICE, and CREW.
+- Access views for planning permissions: Admin, Client Admin, Client Rep, Promoter Admin, Promoter Rep, Production Team Access, and Crew / Runner.
+- Supabase Auth login with database-backed base roles: ADMIN, CLIENT, PROMOTER_PRODUCTION_OFFICE, and CREW, with app-level access levels layered on top.
 - Dedicated ADMIN profile, Client Company profile, and Client Rep/My Profile pages.
 - First-login invite setup screen for creating a password before entering the app.
-- Client-visible profile login fields for login email, login role, Supabase user ID, and sending login setup.
-- Admin-visible client login fields for login email, CLIENT role connection, Supabase user ID, and sending client login setup.
+- Client-visible profile login fields for login email, access level selection, Supabase user ID, and sending login setup.
+- Admin-visible client login fields for login email, CLIENT ADMIN role connection, Supabase user ID, and sending client login setup.
 - Admin My Profile, Client Rep/My Profile, and Promoter Profile fields for SMTP email routing details, including provider, sender, reply-to, host, port, username, app password/key capture, security mode, and routing status.
 - Admin-managed access levels with selectable app pages, backed by Supabase.
 - Event-specific production team links that can be sent by email and opened without a full login.
 - ADMIN can manage client accounts and system setup without production data, payroll, timecards, crew personal data, promoter records, or reports.
-- Production Board for CLIENT and PROMOTER_PRODUCTION_OFFICE to view assigned production details and mark runners Available, On a Run, or At Production Office.
+- Production Board for Client Admin, Client Rep, Promoter Admin, Promoter Rep, and Production Team Access to view assigned production details and mark runners Available, On a Run, or At Production Office.
 - Hash-based route protection redirects restricted direct links like `#payroll` when the signed-in role cannot access that view.
 
 ## How to open it

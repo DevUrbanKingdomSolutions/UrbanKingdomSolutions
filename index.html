@@ -160,6 +160,10 @@
             <label>Email<input name="email" type="email" placeholder="you@example.com"></label>
             <label>Phone<input name="phone" placeholder="(555) 000-0000"></label>
             <label>Mailing address<textarea name="mailingAddress" rows="3" placeholder="Street, city, state, zip"></textarea></label>
+            <div class="photo-fieldset rate-field">
+              <span>Client Access</span>
+              <div class="checkbox-grid" data-access-level-options data-checkbox-group data-name="accessLevels"></div>
+            </div>
             <div class="photo-fieldset">
               <span>SMTP Email Routing</span>
               <label>Email service
@@ -326,7 +330,7 @@
               <label>Rep login email<input name="loginEmail" type="email" placeholder="owner-login@example.com"></label>
               <label>Login role
                 <select name="loginRole">
-                  <option value="CLIENT">Client</option>
+                  <option value="CLIENT">Client Admin</option>
                 </select>
               </label>
               <label>Supabase user ID<input name="authUserId" placeholder="Paste user ID after setup"></label>
@@ -351,7 +355,9 @@
               <label>Security foundation
                 <select name="baseRole">
                   <option value="CREW">Crew / Runner</option>
-                  <option value="PROMOTER_PRODUCTION_OFFICE">Production Office</option>
+                  <option value="PROMOTER_ADMIN">Promoter Admin</option>
+                  <option value="PROMOTER_REP">Promoter Rep</option>
+                  <option value="PRODUCTION_TEAM_ACCESS">Production Team Access</option>
                 </select>
               </label>
               <label>Allowed pages
@@ -621,7 +627,7 @@
               <label class="owner-form">Login role
                 <select name="loginRole">
                   <option value="CREW">Crew / Runner</option>
-                  <option value="PROMOTER_PRODUCTION_OFFICE">Production Office</option>
+                  <option value="PROMOTER_PRODUCTION_OFFICE">Promoter Admin</option>
                 </select>
               </label>
               <label class="owner-form">Supabase user ID<input name="authUserId" placeholder="Paste user ID after setup"></label>
@@ -983,7 +989,7 @@
               <label class="promoter-login-field">Login email<input name="loginEmail" type="email" placeholder="login@example.com"></label>
               <label class="promoter-login-field">Login role
                 <select name="loginRole">
-                  <option value="PROMOTER_PRODUCTION_OFFICE">Production Office</option>
+                  <option value="PROMOTER_PRODUCTION_OFFICE">Promoter Admin</option>
                   <option value="CREW">Crew / Runner</option>
                 </select>
               </label>
@@ -1127,6 +1133,6 @@
     <div id="modalHost"></div>
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js?v=V1.01.010-novu-sendbird-install"></script>
+    <script src="app.js?v=V1.01.011-access-level-updates"></script>
   </body>
 </html>

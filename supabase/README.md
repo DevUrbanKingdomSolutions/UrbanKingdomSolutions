@@ -38,8 +38,8 @@ Required Supabase secrets:
 
 After deployment:
 
-1. Log in as `ADMIN` to send login setup to a new `CLIENT`.
-2. Log in as `CLIENT` to send login setup to `CREW` and `PROMOTER_PRODUCTION_OFFICE`.
+1. Log in as `ADMIN` to send login setup to a new Client Admin.
+2. Log in as a Client Admin to send login setup to Crew / Runner, Promoter Admin, Promoter Rep, Client Rep, or Production Team Access users.
 3. The profile's Supabase user ID will fill in after Supabase returns the invited user.
 
 ## Test SMTP

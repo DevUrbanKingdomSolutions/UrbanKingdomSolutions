@@ -50,8 +50,8 @@ Deno.serve(async (request) => {
       if (callerRole?.role !== "CLIENT" && !promoterInvitingPromoter) {
         throw new Error("Only CLIENT users can send crew and production office login setup.");
       }
-      if (callerRole?.role === "CLIENT" && !["PROMOTER_PRODUCTION_OFFICE", "CREW"].includes(role)) {
-        throw new Error("Only crew and production office roles can be invited here.");
+      if (callerRole?.role === "CLIENT" && !["CLIENT", "PROMOTER_PRODUCTION_OFFICE", "CREW"].includes(role)) {
+        throw new Error("Only client rep, crew, and production office roles can be invited here.");
       }
       if (callerRole?.role === "PROMOTER_PRODUCTION_OFFICE" && role !== "PROMOTER_PRODUCTION_OFFICE") {
         throw new Error("Production Office can only invite other promoter users.");
@@ -124,7 +124,7 @@ async function sendInviteEmail(admin: any, route, to, inviteLink, profileType) {
     requireTLS: secureMode === "tls"
   });
 
-  const label = profileType === "client" ? "client account" : profileType === "promoter" ? "production office account" : "crew account";
+  const label = profileType === "client" || profileType === "clientRep" ? "client account" : profileType === "promoter" ? "production office account" : "crew account";
   const result = await transporter.sendMail({
     to,
     from: `${fromName} <${fromEmail}>`,

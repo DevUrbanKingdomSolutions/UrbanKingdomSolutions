@@ -46,19 +46,30 @@ const ROLE_ALIASES = {
   admin: "ADMIN",
   owner: "CLIENT",
   client: "CLIENT",
+  client_admin: "CLIENT",
+  client_rep: "CLIENT",
   production: "PROMOTER_PRODUCTION_OFFICE",
   promoter: "PROMOTER_PRODUCTION_OFFICE",
+  promoter_admin: "PROMOTER_PRODUCTION_OFFICE",
+  promoter_rep: "PROMOTER_PRODUCTION_OFFICE",
+  production_team_access: "PROMOTER_PRODUCTION_OFFICE",
   promoter_production_office: "PROMOTER_PRODUCTION_OFFICE",
   crew: "CREW",
   ADMIN: "ADMIN",
   CLIENT: "CLIENT",
+  CLIENT_ADMIN: "CLIENT",
+  CLIENT_REP: "CLIENT",
   PROMOTER_PRODUCTION_OFFICE: "PROMOTER_PRODUCTION_OFFICE",
+  PROMOTER_ADMIN: "PROMOTER_PRODUCTION_OFFICE",
+  PROMOTER_REP: "PROMOTER_PRODUCTION_OFFICE",
+  PRODUCTION_TEAM_ACCESS: "PROMOTER_PRODUCTION_OFFICE",
   CREW: "CREW"
 };
 
 const ACCESS_PROFILES = {
   ADMIN: {
     label: "ADMIN",
+    baseRole: "ADMIN",
     views: ["adminProfile", "admin"],
     canAdminEdit: false,
     canOwnerEdit: false,
@@ -67,37 +78,81 @@ const ACCESS_PROFILES = {
     canImportExport: false,
     canSystemEdit: true
   },
-  CLIENT: {
-    label: "CLIENT",
+  CLIENT_ADMIN: {
+    label: "CLIENT ADMIN",
+    baseRole: "CLIENT",
     views: ["dashboard", "clientCompanyProfile", "clientProfile", "workers", "promoters", "venues", "events", "productionBoard", "clock", "timecards", "vehicles", "reports", "payroll", "directory", "runner", "messages", "dataTools"],
     canAdminEdit: true,
     canOwnerEdit: true,
     canVenueEdit: true,
     canScopedEdit: true,
     canImportExport: true,
+    canViewRates: true,
     canSystemEdit: false
   },
-  PROMOTER_PRODUCTION_OFFICE: {
-    label: "PROMOTER_PRODUCTION_OFFICE",
+  CLIENT_REP: {
+    label: "CLIENT REP",
+    baseRole: "CLIENT",
+    views: ["dashboard", "clientProfile", "workers", "promoters", "venues", "events", "productionBoard", "clock", "timecards", "vehicles", "reports", "directory", "runner", "messages", "dataTools"],
+    canAdminEdit: true,
+    canOwnerEdit: true,
+    canVenueEdit: true,
+    canScopedEdit: true,
+    canImportExport: true,
+    canViewRates: false,
+    canSystemEdit: false
+  },
+  PROMOTER_ADMIN: {
+    label: "PROMOTER ADMIN",
+    baseRole: "PROMOTER_PRODUCTION_OFFICE",
     views: ["productionBoard", "events", "workers", "promoters", "venues", "vehicles", "reports", "directory", "messages", "dataTools"],
     canAdminEdit: true,
     canOwnerEdit: false,
     canVenueEdit: true,
     canScopedEdit: true,
     canImportExport: true,
+    canViewRates: false,
+    canSystemEdit: false
+  },
+  PROMOTER_REP: {
+    label: "PROMOTER REP",
+    baseRole: "PROMOTER_PRODUCTION_OFFICE",
+    views: ["productionBoard", "events", "workers", "promoters", "venues", "vehicles", "reports", "directory", "messages"],
+    canAdminEdit: true,
+    canOwnerEdit: false,
+    canVenueEdit: true,
+    canScopedEdit: true,
+    canImportExport: false,
+    canViewRates: false,
+    canSystemEdit: false
+  },
+  PRODUCTION_TEAM_ACCESS: {
+    label: "PRODUCTION TEAM ACCESS",
+    baseRole: "PROMOTER_PRODUCTION_OFFICE",
+    views: ["productionBoard", "events", "vehicles", "reports", "directory", "messages"],
+    canAdminEdit: false,
+    canOwnerEdit: false,
+    canVenueEdit: false,
+    canScopedEdit: true,
+    canImportExport: false,
+    canViewRates: false,
     canSystemEdit: false
   },
   CREW: {
-    label: "CREW",
+    label: "CREW / RUNNER",
+    baseRole: "CREW",
     views: ["workers", "clock", "productionResponse", "events", "timecards", "vehicles", "reports", "directory", "runner", "messages"],
     canAdminEdit: false,
     canOwnerEdit: false,
     canVenueEdit: false,
     canScopedEdit: true,
     canImportExport: false,
+    canViewRates: false,
     canSystemEdit: false
   }
 };
+ACCESS_PROFILES.CLIENT = ACCESS_PROFILES.CLIENT_ADMIN;
+ACCESS_PROFILES.PROMOTER_PRODUCTION_OFFICE = ACCESS_PROFILES.PROMOTER_ADMIN;
 
 let db;
 let supabaseClient;
@@ -149,7 +204,7 @@ const NAV_GROUPS = {
     { items: [["adminProfile", "My Profile"]] },
     { items: [["admin", "Admin Console"]] }
   ],
-  CLIENT: [
+  CLIENT_ADMIN: [
     { items: [["dashboard", "Dashboard"]] },
     { items: [["clientCompanyProfile", "Client Profile"], ["clientProfile", "My Profile"]] },
     { label: "PROFILES", items: [["workers", "Crew Profiles"], ["promoters", "Promoter Profiles"], ["venues", "Venues"]] },
@@ -158,12 +213,31 @@ const NAV_GROUPS = {
     { label: "DIRECTORIES", items: [["directory", "Crew Directory"], ["runner", "Gig Directory"], ["messages", "Messages"]] },
     { label: "TOOLS", items: [["dataTools", "Import / Export"]] }
   ],
-  PROMOTER_PRODUCTION_OFFICE: [
+  CLIENT_REP: [
+    { items: [["dashboard", "Dashboard"]] },
+    { items: [["clientProfile", "My Profile"]] },
+    { label: "PROFILES", items: [["workers", "Crew Profiles"], ["promoters", "Promoter Profiles"], ["venues", "Venues"]] },
+    { label: "EVENTS", items: [["events", "Events"], ["productionBoard", "Production Board"], ["clock", "TimeClock"], ["timecards", "Timecards"], ["vehicles", "Vehicles"], ["reports", "Reports"]] },
+    { label: "DIRECTORIES", items: [["directory", "Crew Directory"], ["runner", "Gig Directory"], ["messages", "Messages"]] },
+    { label: "TOOLS", items: [["dataTools", "Import / Export"]] }
+  ],
+  PROMOTER_ADMIN: [
     { items: [["productionBoard", "Production Board"]] },
     { label: "PROFILES", items: [["workers", "Crew Profiles"], ["promoters", "Promoter Profiles"], ["venues", "Venues"]] },
     { label: "EVENTS", items: [["events", "Events"], ["vehicles", "Vehicles"], ["reports", "Reports"]] },
     { label: "DIRECTORIES", items: [["directory", "Crew Directory"], ["messages", "Messages"]] },
     { label: "TOOLS", items: [["dataTools", "Import / Export"]] }
+  ],
+  PROMOTER_REP: [
+    { items: [["productionBoard", "Production Board"]] },
+    { label: "PROFILES", items: [["workers", "Crew Profiles"], ["promoters", "Promoter Profiles"], ["venues", "Venues"]] },
+    { label: "EVENTS", items: [["events", "Events"], ["vehicles", "Vehicles"], ["reports", "Reports"]] },
+    { label: "DIRECTORIES", items: [["directory", "Crew Directory"], ["messages", "Messages"]] }
+  ],
+  PRODUCTION_TEAM_ACCESS: [
+    { items: [["productionBoard", "Production Board"]] },
+    { label: "EVENTS", items: [["events", "Events"], ["vehicles", "Vehicles"], ["reports", "Reports"]] },
+    { label: "DIRECTORIES", items: [["directory", "Crew Directory"], ["messages", "Messages"]] }
   ],
   CREW: [
     { items: [["workers", "My Profile"], ["clock", "Time Clock"]] },
@@ -171,18 +245,30 @@ const NAV_GROUPS = {
     { label: "DIRECTORIES", items: [["directory", "Crew Directory"], ["runner", "Gig Directory"], ["messages", "Messages"]] }
   ]
 };
+NAV_GROUPS.CLIENT = NAV_GROUPS.CLIENT_ADMIN;
+NAV_GROUPS.PROMOTER_PRODUCTION_OFFICE = NAV_GROUPS.PROMOTER_ADMIN;
 
 const ROLE_HOME_VIEWS = {
   ADMIN: "adminProfile",
   CLIENT: "dashboard",
+  CLIENT_ADMIN: "dashboard",
+  CLIENT_REP: "dashboard",
   PROMOTER_PRODUCTION_OFFICE: "productionBoard",
+  PROMOTER_ADMIN: "productionBoard",
+  PROMOTER_REP: "productionBoard",
+  PRODUCTION_TEAM_ACCESS: "productionBoard",
   CREW: "workers"
 };
 
 const ACCESS_LEVEL_LABELS = {
   ADMIN: "Admin",
-  CLIENT: "Client",
-  PROMOTER_PRODUCTION_OFFICE: "Production Office",
+  CLIENT: "Client Admin",
+  CLIENT_ADMIN: "Client Admin",
+  CLIENT_REP: "Client Rep",
+  PROMOTER_PRODUCTION_OFFICE: "Promoter Admin",
+  PROMOTER_ADMIN: "Promoter Admin",
+  PROMOTER_REP: "Promoter Rep",
+  PRODUCTION_TEAM_ACCESS: "Production Team Access",
   CREW: "Crew / Runner"
 };
 
@@ -715,6 +801,7 @@ async function syncSupabaseClientRep(record) {
     email: record.email || "",
     phone: record.phone || "",
     mailing_address: record.mailingAddress || "",
+    access_levels: normalizeAccessLevels(record.accessLevels, "CLIENT_REP"),
     smtp_provider: record.smtpProvider || "",
     smtp_from_name: record.smtpFromName || "",
     smtp_from_email: record.smtpFromEmail || "",
@@ -760,6 +847,7 @@ function mapSupabaseClientRep(record) {
     email: record.email || "",
     phone: record.phone || "",
     mailingAddress: record.mailing_address || "",
+    accessLevels: normalizeAccessLevels(record.access_levels, "CLIENT_REP"),
     smtpProvider: record.smtp_provider || "",
     smtpFromName: record.smtp_from_name || "",
     smtpFromEmail: record.smtp_from_email || "",
@@ -832,7 +920,7 @@ async function hydrateClientSetupData(roleRecord, user) {
 
     const { data: reps, error: repsError } = await supabaseClient
       .from("client_reps")
-      .select("id,client_id,auth_user_id,name,title,email,phone,mailing_address,smtp_provider,smtp_from_name,smtp_from_email,smtp_reply_to,smtp_host,smtp_port,smtp_username,smtp_secret_ref,smtp_secure,email_routing_status,created_at,updated_at")
+      .select("id,client_id,auth_user_id,name,title,email,phone,mailing_address,access_levels,smtp_provider,smtp_from_name,smtp_from_email,smtp_reply_to,smtp_host,smtp_port,smtp_username,smtp_secret_ref,smtp_secure,email_routing_status,created_at,updated_at")
       .eq("client_id", roleRecord.client_id);
     if (repsError) throw repsError;
     const matchingReps = (reps || []).filter((rep) => rep.auth_user_id === user.id || rep.email === user.email);
@@ -1267,8 +1355,9 @@ function currentProfile() {
 
 function roleHomeView(role = state.accessRole) {
   const profile = accessProfileFor(role);
-  return ROLE_HOME_VIEWS[profile.effectiveRole] && profile.views.includes(ROLE_HOME_VIEWS[profile.effectiveRole])
-    ? ROLE_HOME_VIEWS[profile.effectiveRole]
+  const preferred = ROLE_HOME_VIEWS[role] || ROLE_HOME_VIEWS[profile.effectiveRole];
+  return preferred && profile.views.includes(preferred)
+    ? preferred
     : profile.views[0] || "dashboard";
 }
 
@@ -1279,14 +1368,14 @@ function protectedViewFor(viewId) {
 
 function assignedAccessForRole(role) {
   const normalized = normalizeRole(role);
-  if (normalized === "CLIENT") return ["CLIENT", "PROMOTER_PRODUCTION_OFFICE", "CREW"];
+  if (normalized === "CLIENT") return ["CLIENT_ADMIN", "CLIENT_REP", "PROMOTER_ADMIN", "PROMOTER_REP", "PRODUCTION_TEAM_ACCESS", "CREW"];
   if (normalized === "CREW") {
     const worker = getWorker(state.activeWorkerId);
     return normalizeAccessLevels(worker?.accessLevels, "CREW");
   }
   if (normalized === "PROMOTER_PRODUCTION_OFFICE") {
     const promoter = getPromoter(state.activePromoterId);
-    return normalizeAccessLevels(promoter?.accessLevels, "PROMOTER_PRODUCTION_OFFICE");
+    return normalizeAccessLevels(promoter?.accessLevels, "PROMOTER_ADMIN");
   }
   return [normalized];
 }
@@ -1294,12 +1383,17 @@ function assignedAccessForRole(role) {
 function assignedAccessForCurrentUser() {
   const baseRole = normalizeRole(authState.roleRecord?.role || state.accessRole);
   if (baseRole === "ADMIN") return ["ADMIN"];
-  if (baseRole === "CLIENT") return ["CLIENT"];
+  if (baseRole === "CLIENT") {
+    const rep = activeClientRepRecord();
+    return normalizeAccessLevels(rep?.accessLevels, "CLIENT_ADMIN").filter((role) => accessProfileFor(role));
+  }
   return assignedAccessForRole(baseRole).filter((role) => accessProfileFor(role));
 }
 
 function accessLevelOptionsForForm(form) {
-  let roles = accessLevelDefinitions().map((level) => level.id).filter((role) => !["ADMIN", "CLIENT"].includes(baseRoleForAccess(role)));
+  let roles = accessLevelDefinitions().map((level) => level.id).filter((role) => role !== "ADMIN");
+  if (form?.id === "clientProfileForm") return roles.filter((role) => baseRoleForAccess(role) === "CLIENT");
+  if (form?.id !== "clientForm") roles = roles.filter((role) => baseRoleForAccess(role) !== "CLIENT");
   if (form?.id === "promoterForm" && isProductionRole()) roles = roles.filter((role) => baseRoleForAccess(role) === "PROMOTER_PRODUCTION_OFFICE");
   return roles;
 }
@@ -1327,17 +1421,18 @@ function renderViewOptionControls(root = document) {
   root.querySelectorAll?.("[data-view-options]").forEach((group) => {
     const selected = Array.from(group.querySelectorAll("input[type='checkbox']:checked")).map((input) => input.value);
     const form = group.closest("form");
-    const baseRole = normalizeRole(form?.elements?.baseRole?.value || "CREW");
-    const views = ACCESS_PROFILES[baseRole]?.views || [];
+    const baseRole = normalizeAccessLevel(form?.elements?.baseRole?.value || "CREW");
+    const views = accessProfileFor(baseRole)?.views || [];
     group.innerHTML = views.map((view) => `<label class="checkbox-option"><input name="${escapeHtml(group.dataset.name || "views")}" type="checkbox" value="${escapeHtml(view)}" ${selected.includes(view) ? "checked" : ""}>${escapeHtml(viewLabel(view))}</label>`).join("");
   });
 }
 
 function builtInAccessLevelDefinitions() {
-  return Object.keys(ACCESS_PROFILES).map((id) => ({
+  const legacyAliases = new Set(["CLIENT", "PROMOTER_PRODUCTION_OFFICE"]);
+  return Object.keys(ACCESS_PROFILES).filter((id) => !legacyAliases.has(id)).map((id) => ({
     id,
     name: ACCESS_LEVEL_LABELS[id] || id,
-    baseRole: id,
+    baseRole: ACCESS_PROFILES[id].baseRole || id,
     views: ACCESS_PROFILES[id].views,
     builtIn: true
   }));
@@ -1365,7 +1460,7 @@ function accessProfileFor(id) {
   const baseRole = baseRoleForAccess(id);
   const baseProfile = ACCESS_PROFILES[baseRole] || ACCESS_PROFILES.CLIENT;
   if (!definition || definition.builtIn) {
-    return { ...baseProfile, effectiveRole: baseRole };
+    return { ...(ACCESS_PROFILES[id] || baseProfile), effectiveRole: baseRole };
   }
   const allowedViews = (definition.views || []).filter((view) => baseProfile.views.includes(view));
   return {
@@ -1400,6 +1495,10 @@ function canScopedEdit() {
 
 function canSystemEdit() {
   return currentProfile().canSystemEdit;
+}
+
+function canViewRates() {
+  return currentProfile().canViewRates;
 }
 
 function getWorker(id) {
@@ -1918,6 +2017,7 @@ function clientRepDefaults() {
     name: authState.user?.user_metadata?.name || "",
     email: authState.user?.email || "",
     phone: authState.user?.user_metadata?.phone || "",
+    accessLevels: ["CLIENT_REP"],
     emailRoutingStatus: "Not configured"
   };
 }
@@ -1954,6 +2054,7 @@ function clientRepFromClientAccount(client) {
     email,
     phone: client.phone || existing?.phone || "",
     mailingAddress: existing?.mailingAddress || "",
+    accessLevels: normalizeAccessLevels(existing?.accessLevels, "CLIENT_ADMIN"),
     emailRoutingStatus: existing?.emailRoutingStatus || "Not configured"
   };
 }
@@ -2303,7 +2404,7 @@ function assignmentTable(event) {
     const actions = canAdminEdit()
       ? `<div class="row-actions"><button class="tiny-button" data-edit="eventAssignments" data-id="${assignment.id}" data-form="eventAssignmentForm" type="button">Edit</button><button class="tiny-button danger" data-delete="eventAssignments" data-id="${assignment.id}" type="button">Delete</button></div>`
       : "";
-    return `<tr><td>${escapeHtml(worker?.name || "Unassigned")}</td><td>${formatDate(assignment.startDate)}<p>${formatDate(assignment.endDate)}</p></td><td>${escapeHtml(assignment.vehicleUse || "No Vehicle")}<p>${escapeHtml(assignment.vehicleType || "")}</p></td><td>${isClientRole() ? assignmentPayLine(assignment, event) : ""}</td><td>${actions}</td></tr>`;
+    return `<tr><td>${escapeHtml(worker?.name || "Unassigned")}</td><td>${formatDate(assignment.startDate)}<p>${formatDate(assignment.endDate)}</p></td><td>${escapeHtml(assignment.vehicleUse || "No Vehicle")}<p>${escapeHtml(assignment.vehicleType || "")}</p></td><td>${canViewRates() ? assignmentPayLine(assignment, event) : ""}</td><td>${actions}</td></tr>`;
   }).join("")}</tbody></table>`;
 }
 
@@ -2469,10 +2570,10 @@ function workerProfileRow(worker) {
   const publicPhone = publicWorkerValue(worker, "phone");
   const publicEmail = publicWorkerValue(worker, "email");
   const showLimited = isCrewRole();
-  const canViewRates = isClientRole();
+  const showRates = canViewRates();
   const info = showLimited
     ? `${publicEmail ? `<p>${escapeHtml(publicEmail)}</p>` : ""}`
-    : `${escapeHtml(worker.skills)}${canViewRates ? `<p>${currency(worker.defaultDayRate || worker.defaultRate || 0)}/${worker.defaultIncludedHours || 10} hrs</p><p>${accessBadges(worker.accessLevels, "CREW")}</p>${loginStatus(worker)}` : ""}`;
+    : `${escapeHtml(worker.skills)}${showRates ? `<p>${currency(worker.defaultDayRate || worker.defaultRate || 0)}/${worker.defaultIncludedHours || 10} hrs</p><p>${accessBadges(worker.accessLevels, "CREW")}</p>${loginStatus(worker)}` : ""}`;
   const note = isProductionRole() ? promoterNoteBox(worker.id) : "";
   return `<tr>
     <td>${profileSelect("workers", worker.id)}${profileCell(worker, showLimited && worker.hideHeadshot && worker.id !== state.activeWorkerId, publicEmail)}</td>
@@ -2914,7 +3015,7 @@ function setView(viewId) {
 }
 
 function renderNavigation() {
-  const groups = NAV_GROUPS[effectiveAccessRole()] || NAV_GROUPS.CLIENT;
+  const groups = NAV_GROUPS[state.accessRole] || NAV_GROUPS[effectiveAccessRole()] || NAV_GROUPS.CLIENT_ADMIN;
   $(".nav-list").innerHTML = groups.map((group) => {
     const heading = group.label ? `<div class="nav-group-label">${group.label}</div>` : "";
     const items = group.items
@@ -2949,7 +3050,7 @@ function applyAccessProfile() {
   $$("#promoterForm select[name='loginRole'] option[value='CREW']").forEach((option) => { option.hidden = isProductionRole(); });
   $$(".admin-form").forEach((form) => { form.hidden = !profile.canAdminEdit; });
   $$(".owner-form").forEach((form) => { form.hidden = !profile.canOwnerEdit; });
-  $$(".rate-field").forEach((form) => { form.hidden = !isClientRole(); });
+  $$(".rate-field").forEach((form) => { form.hidden = !profile.canViewRates; });
   $$(".venue-form").forEach((form) => { form.hidden = !profile.canVenueEdit; });
   $$(".scoped-form").forEach((form) => { form.hidden = !profile.canScopedEdit; });
   $$(".system-form").forEach((form) => { form.hidden = !profile.canSystemEdit; });
@@ -3063,6 +3164,7 @@ async function saveForm(event, storeName) {
       clientId: authState.roleRecord?.client_id || record.clientId || "",
       authUserId: authState.user?.id || record.authUserId || "",
       email: record.email || authState.user?.email || "",
+      accessLevels: normalizeAccessLevels(record.accessLevels || activeClientRepRecord()?.accessLevels, clientSetupStep() === "rep" ? "CLIENT_ADMIN" : "CLIENT_REP"),
       emailRoutingStatus: record.emailRoutingStatus || "Not configured"
     };
   }
@@ -3077,8 +3179,8 @@ async function saveForm(event, storeName) {
       toast("Use a different name. Built-in access levels cannot be replaced.");
       return;
     }
-    merged.baseRole = normalizeRole(merged.baseRole || "CREW");
-    merged.views = Array.isArray(merged.views) ? merged.views.filter((view) => ACCESS_PROFILES[merged.baseRole]?.views.includes(view)) : [];
+    merged.baseRole = baseRoleForAccess(normalizeAccessLevel(merged.baseRole || "CREW"));
+    merged.views = Array.isArray(merged.views) ? merged.views.filter((view) => (ACCESS_PROFILES[merged.baseRole]?.views || []).includes(view)) : [];
     if (!merged.views.length) {
       toast("Select at least one page for this access level.");
       return;
@@ -3155,7 +3257,7 @@ async function saveForm(event, storeName) {
     const active = getPromoter(state.activePromoterId);
     merged.companyName = active?.companyName || merged.companyName;
     merged.loginRole = "PROMOTER_PRODUCTION_OFFICE";
-    merged.accessLevels = ["PROMOTER_PRODUCTION_OFFICE"];
+    merged.accessLevels = ["PROMOTER_ADMIN"];
   }
   if (storeName === "timecards" && merged.eventId) {
     const relatedEvent = getEvent(merged.eventId);

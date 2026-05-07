@@ -132,39 +132,39 @@ for delete
 to authenticated
 using (public.current_app_role() = 'ADMIN');
 
-create policy "Clients can insert crew and promoter login roles"
+create policy "Clients can insert scoped login roles"
 on public.user_roles
 for insert
 to authenticated
 with check (
   public.current_app_role() = 'CLIENT'
   and client_id = public.current_client_id()
-  and role in ('PROMOTER_PRODUCTION_OFFICE', 'CREW')
+  and role in ('CLIENT', 'PROMOTER_PRODUCTION_OFFICE', 'CREW')
 );
 
-create policy "Clients can update crew and promoter login roles"
+create policy "Clients can update scoped login roles"
 on public.user_roles
 for update
 to authenticated
 using (
   public.current_app_role() = 'CLIENT'
   and client_id = public.current_client_id()
-  and role in ('PROMOTER_PRODUCTION_OFFICE', 'CREW')
+  and role in ('CLIENT', 'PROMOTER_PRODUCTION_OFFICE', 'CREW')
 )
 with check (
   public.current_app_role() = 'CLIENT'
   and client_id = public.current_client_id()
-  and role in ('PROMOTER_PRODUCTION_OFFICE', 'CREW')
+  and role in ('CLIENT', 'PROMOTER_PRODUCTION_OFFICE', 'CREW')
 );
 
-create policy "Clients can remove crew and promoter login roles"
+create policy "Clients can remove scoped login roles"
 on public.user_roles
 for delete
 to authenticated
 using (
   public.current_app_role() = 'CLIENT'
   and client_id = public.current_client_id()
-  and role in ('PROMOTER_PRODUCTION_OFFICE', 'CREW')
+  and role in ('CLIENT', 'PROMOTER_PRODUCTION_OFFICE', 'CREW')
 );
 
 create table if not exists public.clients (
@@ -315,6 +315,9 @@ create table if not exists public.client_reps (
 );
 
 alter table public.client_reps enable row level security;
+
+alter table public.client_reps
+  add column if not exists access_levels text[] not null default array['CLIENT_REP']::text[];
 
 do $$
 declare
