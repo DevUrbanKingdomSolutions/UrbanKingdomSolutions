@@ -141,6 +141,18 @@ const ACCESS_PROFILES = {
     canViewRates: false,
     canSystemEdit: false
   },
+  PRODUCTION_TEAM_ACCESS: {
+    label: "PRODUCTION TEAM ACCESS",
+    baseRole: "PRODUCTION",
+    views: ["productionBoard", "events", "vehicles", "reports", "directory", "messages"],
+    canAdminEdit: false,
+    canOwnerEdit: false,
+    canVenueEdit: false,
+    canScopedEdit: true,
+    canImportExport: false,
+    canViewRates: false,
+    canSystemEdit: false
+  },
   CREW: {
     label: "CREW / RUNNER",
     baseRole: "CREW",
@@ -157,7 +169,6 @@ const ACCESS_PROFILES = {
 ACCESS_PROFILES.CLIENT = ACCESS_PROFILES.CLIENT_ADMIN;
 ACCESS_PROFILES.PROMOTER = ACCESS_PROFILES.PROMOTER_ADMIN;
 ACCESS_PROFILES.PROMOTER_PRODUCTION_OFFICE = ACCESS_PROFILES.PROMOTER_ADMIN;
-ACCESS_PROFILES.PRODUCTION_TEAM_ACCESS = ACCESS_PROFILES.PRODUCTION;
 
 let db;
 let supabaseClient;
@@ -279,7 +290,7 @@ const ACCESS_LEVEL_LABELS = {
   PROMOTER_PRODUCTION_OFFICE: "Promoter Admin",
   PROMOTER_ADMIN: "Promoter Admin",
   PROMOTER_REP: "Promoter Rep",
-  PRODUCTION: "Production Team Access",
+  PRODUCTION: "Production",
   PRODUCTION_TEAM_ACCESS: "Production Team Access",
   CREW: "Crew / Runner"
 };
@@ -1385,7 +1396,7 @@ function protectedViewFor(viewId) {
 
 function assignedAccessForRole(role) {
   const normalized = normalizeRole(role);
-  if (normalized === "CLIENT") return ["CLIENT_ADMIN", "CLIENT_REP", "PROMOTER_ADMIN", "PROMOTER_REP", "CREW", "PRODUCTION"];
+  if (normalized === "CLIENT") return ["CLIENT_ADMIN", "CLIENT_REP", "PROMOTER_ADMIN", "PROMOTER_REP", "CREW", "PRODUCTION_TEAM_ACCESS"];
   if (normalized === "CREW") {
     const worker = getWorker(state.activeWorkerId);
     return normalizeAccessLevels(worker?.accessLevels, "CREW");
@@ -1394,7 +1405,7 @@ function assignedAccessForRole(role) {
     const promoter = getPromoter(state.activePromoterId);
     return normalizeAccessLevels(promoter?.accessLevels, "PROMOTER_ADMIN");
   }
-  if (normalized === "PRODUCTION") return ["PRODUCTION"];
+  if (normalized === "PRODUCTION") return ["PRODUCTION_TEAM_ACCESS"];
   return [normalized];
 }
 
@@ -1447,7 +1458,7 @@ function renderViewOptionControls(root = document) {
 }
 
 function builtInAccessLevelDefinitions() {
-  const legacyAliases = new Set(["CLIENT", "PROMOTER", "PROMOTER_PRODUCTION_OFFICE", "PRODUCTION_TEAM_ACCESS"]);
+  const legacyAliases = new Set(["CLIENT", "PROMOTER", "PROMOTER_PRODUCTION_OFFICE", "PRODUCTION"]);
   return Object.keys(ACCESS_PROFILES).filter((id) => !legacyAliases.has(id)).map((id) => ({
     id,
     name: ACCESS_LEVEL_LABELS[id] || id,
@@ -1937,7 +1948,7 @@ function renderAccessLevels() {
   const table = $("#accessLevelTable");
   const count = $("#accessLevelTableCount");
   if (!table || !count) return;
-  const rows = accessLevelDefinitions().filter((level) => !["ADMIN", "PRODUCTION"].includes(level.baseRole));
+  const rows = accessLevelDefinitions().filter((level) => level.id !== "ADMIN");
   count.textContent = `${rows.length} levels`;
   table.innerHTML = rows.length
     ? rows.map((level) => {
@@ -2621,7 +2632,7 @@ function profileSelect(store, id) {
 
 function accessBadges(levels, fallback) {
   return normalizeAccessLevels(levels, fallback)
-    .map((level) => level === "PROMOTER" || level === "PROMOTER_PRODUCTION_OFFICE" ? "Promoter" : level === "PRODUCTION" ? "Production" : level === "CREW" ? "Crew / Runner" : level === "CLIENT" ? "Client" : "Admin")
+    .map((level) => accessLevelLabel(level))
     .map((label) => `<span class="status-pill">${escapeHtml(label)}</span>`)
     .join(" ");
 }
