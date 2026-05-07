@@ -338,6 +338,26 @@ button {
   margin: 0 0 4px;
 }
 
+.mini-table {
+  border-collapse: collapse;
+  font-size: 0.82rem;
+  margin-top: 10px;
+  width: 100%;
+}
+
+.mini-table th,
+.mini-table td {
+  border-bottom: 1px solid var(--border);
+  padding: 6px 4px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.report-fields[hidden],
+.locked-assignment-field[hidden] {
+  display: none;
+}
+
 .search-input,
 label input,
 label select,

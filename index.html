@@ -467,6 +467,76 @@
               <label>Notes<textarea name="notes" rows="3" placeholder="Call sheet details, client notes, runner instructions"></textarea></label>
               <button class="primary-action" type="submit">Save Event</button>
             </form>
+            <form id="eventAssignmentForm" class="panel form-panel admin-form">
+              <div class="panel-heading">
+                <h3>Runner Assignment</h3>
+                <button class="ghost-button clear-form" type="button" data-form="eventAssignmentForm">Clear</button>
+              </div>
+              <input type="hidden" name="id">
+              <input type="hidden" name="eventId">
+              <label>Runner / Crew<select name="workerId" required></select></label>
+              <label>Start<input name="startDate" type="datetime-local"></label>
+              <label>End<input name="endDate" type="datetime-local"></label>
+              <div class="photo-fieldset rate-field">
+                <span>Pay Rate</span>
+                <label>Day rate<input name="dayRate" type="number" min="0" step="0.01"></label>
+                <label>Included hours<input name="includedHours" type="number" min="0" step="0.25"></label>
+                <label>Additional hourly rate<input name="additionalRate" type="number" min="0" step="0.01"></label>
+              </div>
+              <label>Vehicle use
+                <select name="vehicleUse">
+                  <option>No Vehicle</option>
+                  <option>Rented Vehicle</option>
+                  <option>Personal Vehicle</option>
+                  <option>Other</option>
+                </select>
+              </label>
+              <label>Vehicle type<input name="vehicleType" list="vehicleTypeOptions" placeholder="Cargo van, box truck, pickup"></label>
+              <datalist id="vehicleTypeOptions">
+                <option value="Cargo Van"></option>
+                <option value="Box Truck"></option>
+                <option value="Pickup"></option>
+                <option value="Passenger Van"></option>
+                <option value="SUV"></option>
+              </datalist>
+              <label>Status
+                <select name="status">
+                  <option>Confirmed</option>
+                  <option>Standby</option>
+                  <option>Swapped</option>
+                  <option>Cancelled</option>
+                </select>
+              </label>
+              <label>Notes<textarea name="notes" rows="3" placeholder="Assignment notes"></textarea></label>
+              <button class="primary-action" type="submit">Save Assignment</button>
+            </form>
+            <form id="crewSwapForm" class="panel form-panel admin-form">
+              <div class="panel-heading">
+                <h3>Swap Crew / Runner</h3>
+                <button class="ghost-button clear-form" type="button" data-form="crewSwapForm">Clear</button>
+              </div>
+              <input type="hidden" name="eventId">
+              <input type="hidden" name="mode" value="swap">
+              <label>Swap date<input name="swapDate" type="datetime-local" required></label>
+              <label>Leaving crew<div class="checkbox-grid" data-swap-leaving></div></label>
+              <label>Replacement crew<div class="checkbox-grid" data-swap-replacement></div></label>
+              <label>Notes<textarea name="notes" rows="3" placeholder="Reason for swap"></textarea></label>
+              <button class="primary-action" type="submit">Finalize Swap</button>
+            </form>
+            <form id="substitutionSwapForm" class="panel form-panel admin-form">
+              <div class="panel-heading">
+                <h3>Substitution Swap</h3>
+                <button class="ghost-button clear-form" type="button" data-form="substitutionSwapForm">Clear</button>
+              </div>
+              <input type="hidden" name="eventId">
+              <input type="hidden" name="mode" value="substitution">
+              <label>Runner needing coverage<select name="assignmentId" required></select></label>
+              <label>Coverage start<input name="startDate" type="datetime-local" required></label>
+              <label>Coverage end<input name="endDate" type="datetime-local" required></label>
+              <label>Substitute runner<select name="replacementWorkerId" required></select></label>
+              <label>Notes<textarea name="notes" rows="3" placeholder="Time off / substitution notes"></textarea></label>
+              <button class="primary-action" type="submit">Finalize Substitution</button>
+            </form>
             <form id="eventAccessForm" class="panel form-panel admin-form">
               <div class="panel-heading">
                 <h3>Production Team Event Link</h3>
@@ -695,6 +765,7 @@
               <input type="hidden" name="id">
               <label>Event<select name="eventId" required></select></label>
               <label>Assigned worker<select name="workerId"></select></label>
+              <label class="locked-assignment-field">Assignment<input name="assignmentLabel" readonly placeholder="Auto-filled from event assignment"></label>
               <label>Check type
                 <select name="phase">
                   <option>Start</option>
@@ -779,8 +850,8 @@
               </div>
               <input type="hidden" name="id">
               <label>Report type
-                <select name="type">
-                  <option>Physical Damage</option>
+                <select name="type" data-report-type>
+                  <option>Injury Report</option>
                   <option>Vehicle Damage</option>
                 </select>
               </label>
@@ -788,6 +859,34 @@
               <label>Assigned worker<select name="workerId"></select></label>
               <label>Title<input name="title" required placeholder="Brief description"></label>
               <label>Date / time<input name="reportedAt" type="datetime-local"></label>
+              <div class="report-fields" data-report-section="Injury Report">
+                <label>Medical assistance needed?
+                  <select name="medicalAssistanceNeeded"><option>No</option><option>Yes</option></select>
+                </label>
+                <label>Emergency services called?
+                  <select name="emergencyServicesCalled"><option>No</option><option>Yes</option></select>
+                </label>
+                <label>Injured person name<input name="injuredPersonName"></label>
+                <label>Body part injured<input name="bodyPartInjured"></label>
+                <label>Symptoms / injury description<textarea name="injuryDescription" rows="3"></textarea></label>
+                <label>Witness names<textarea name="injuryWitnesses" rows="2"></textarea></label>
+                <label>Action taken<textarea name="injuryActionTaken" rows="3"></textarea></label>
+              </div>
+              <div class="report-fields" data-report-section="Vehicle Damage">
+                <label>Rental vehicle involved?
+                  <select name="rentalVehicleInvolved"><option>No</option><option>Yes</option></select>
+                </label>
+                <label>Vehicle information<textarea name="vehicleInfo" rows="2" placeholder="Type, plate, assigned rental"></textarea></label>
+                <label>Location<input name="incidentLocation" placeholder="Street, venue lot, intersection"></label>
+                <label>Driver name<input name="driverName"></label>
+                <label>Passengers in assigned vehicle<textarea name="passengers" rows="2"></textarea></label>
+                <label>Other driver name<input name="otherDriverName"></label>
+                <label>Other driver ID / license<textarea name="otherDriverId" rows="2"></textarea></label>
+                <label>Other vehicle passengers<textarea name="otherPassengers" rows="2"></textarea></label>
+                <label>Insurance information<textarea name="insuranceInfo" rows="3" placeholder="Company, policy number, phone"></textarea></label>
+                <label>Police report number<input name="policeReportNumber"></label>
+                <label>Damage description<textarea name="vehicleDamageDescription" rows="3"></textarea></label>
+              </div>
               <label>Photos<input name="photos" type="file" accept="image/*" multiple data-photo-key="photos"></label>
               <label>Details<textarea name="details" rows="5" placeholder="What happened, who was involved, immediate action taken"></textarea></label>
               <button class="primary-action" type="submit">Save Report</button>
@@ -1006,6 +1105,6 @@
     <div id="modalHost"></div>
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js?v=V1.01.006-rental-photo-email"></script>
+    <script src="app.js?v=V1.01.007-event-assignment-workflows"></script>
   </body>
 </html>

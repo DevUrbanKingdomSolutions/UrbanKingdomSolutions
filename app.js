@@ -1,5 +1,5 @@
 const DB_NAME = "productionCrewDatabase";
-const DB_VERSION = 10;
+const DB_VERSION = 11;
 const SUPABASE_URL = "https://nnhqrhaltkmymnwxydwr.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5uaHFyaGFsdGtteW1ud3h5ZHdyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgwMjMxNDgsImV4cCI6MjA5MzU5OTE0OH0.X9iGhE61WehM57133LKCWMfXXDHmcb2rhw-ZPCKAJos";
 const LOGIN_SETUP_FUNCTION = "send-login-setup";
@@ -19,6 +19,8 @@ const STORES = [
   "promoters",
   "profileNotes",
   "events",
+  "eventAssignments",
+  "eventSwaps",
   "timecards",
   "runnerStops",
   "runnerCategories",
@@ -105,6 +107,8 @@ let state = {
   promoters: [],
   profileNotes: [],
   events: [],
+  eventAssignments: [],
+  eventSwaps: [],
   timecards: [],
   runnerStops: [],
   runnerCategories: [],
@@ -295,7 +299,7 @@ async function remove(storeName, id) {
 }
 
 async function loadState() {
-  const [clients, clientReps, accessLevelDefs, eventAccessLinks, workers, venues, promoters, profileNotes, events, timecards, runnerStops, runnerCategories, runnerNotes, systemProfiles, venueContacts, productionCompanies, productionContacts, vehicleLogs, accidentReports] = await Promise.all(STORES.map(getAll));
+  const [clients, clientReps, accessLevelDefs, eventAccessLinks, workers, venues, promoters, profileNotes, events, eventAssignments, eventSwaps, timecards, runnerStops, runnerCategories, runnerNotes, systemProfiles, venueContacts, productionCompanies, productionContacts, vehicleLogs, accidentReports] = await Promise.all(STORES.map(getAll));
   state = {
     ...state,
     clients: sortByName(clients),
@@ -307,6 +311,8 @@ async function loadState() {
     promoters: sortByName(promoters),
     profileNotes,
     events: events.sort((a, b) => new Date(b.startDate || b.createdAt || 0) - new Date(a.startDate || a.createdAt || 0)),
+    eventAssignments: eventAssignments.sort((a, b) => new Date(a.startDate || 0) - new Date(b.startDate || 0)),
+    eventSwaps: eventSwaps.sort((a, b) => new Date(b.swapDate || b.createdAt || 0) - new Date(a.swapDate || a.createdAt || 0)),
     timecards: timecards.sort((a, b) => new Date(b.clockIn || b.createdAt || 0) - new Date(a.clockIn || a.createdAt || 0)),
     runnerStops: sortByName(runnerStops),
     runnerCategories: sortByName(runnerCategories),
@@ -410,6 +416,9 @@ function fillForm(formId, record) {
   }
   openForm(formId);
   updateSmtpForm(form);
+  if (formId === "vehicleForm") applyVehicleAssignmentLock(form);
+  if (formId === "reportForm") updateReportTypeFields(form);
+  if (formId === "reportForm") delete form.dataset.vehicleDamageConfirmed;
 }
 
 function clearForm(formId) {
@@ -424,6 +433,12 @@ function clearForm(formId) {
     form.elements.clockIn.value = toLocalInputValue(new Date());
   }
   if (formId === "eventForm") renderEventWorkerOptions(form, []);
+  if (formId === "eventAssignmentForm") {
+    form.elements.status.value = "Confirmed";
+    form.elements.vehicleUse.value = "No Vehicle";
+  }
+  if (formId === "reportForm") updateReportTypeFields(form);
+  if (formId === "vehicleForm") applyVehicleAssignmentLock(form);
   if (formId === "reportForm") form.elements.reportedAt.value = toLocalInputValue(new Date());
   if ((formId === "vehicleForm" || formId === "reportForm") && state.activeWorkerId) {
     form.elements.workerId.value = state.activeWorkerId;
@@ -1399,7 +1414,23 @@ function getEvent(id) {
 }
 
 function eventWorkerIds(event) {
-  return Array.isArray(event.workerIds) ? event.workerIds : [];
+  const assignmentIds = state.eventAssignments
+    .filter((assignment) => assignment.eventId === event?.id && !["Cancelled", "Swapped"].includes(assignment.status))
+    .map((assignment) => assignment.workerId)
+    .filter(Boolean);
+  return Array.from(new Set([...assignmentIds, ...(Array.isArray(event?.workerIds) ? event.workerIds : [])].filter(Boolean)));
+}
+
+function eventAssignments(eventId) {
+  return state.eventAssignments.filter((assignment) => assignment.eventId === eventId && assignment.status !== "Cancelled");
+}
+
+function getEventAssignment(id) {
+  return state.eventAssignments.find((assignment) => assignment.id === id);
+}
+
+function assignmentForEventWorker(eventId, workerId) {
+  return eventAssignments(eventId).find((assignment) => assignment.workerId === workerId && !["Cancelled", "Swapped"].includes(assignment.status));
 }
 
 function eventRange(event) {
@@ -1420,9 +1451,15 @@ function dateRangesOverlap(first, second) {
 
 function workerBookingConflict(workerId, draftEvent) {
   const draftRange = eventRange(draftEvent);
+  const assignmentConflict = state.eventAssignments.find((assignment) => {
+    if (!assignment.workerId || assignment.workerId !== workerId || assignment.eventId === draftEvent.id) return false;
+    if (["Cancelled", "Swapped"].includes(assignment.status)) return false;
+    return dateRangesOverlap(draftRange, eventRange(assignment));
+  });
+  if (assignmentConflict) return getEvent(assignmentConflict.eventId) || assignmentConflict;
   return state.events.find((event) => {
     if (!event || event.id === draftEvent.id) return false;
-    if (!eventWorkerIds(event).includes(workerId)) return false;
+    if (!Array.isArray(event.workerIds) || !event.workerIds.includes(workerId)) return false;
     return dateRangesOverlap(draftRange, eventRange(event));
   });
 }
@@ -1512,6 +1549,83 @@ async function releaseWorkerBookingsForEvent(eventId) {
   for (const worker of state.workers.filter((item) => item.bookedEventId === eventId)) {
     const { bookedEventId, bookedEventName, bookedUntil, ...rest } = worker;
     await put("workers", { ...rest, status: "Available" });
+  }
+}
+
+async function afterAssignmentSaved(assignment, previous = {}) {
+  const eventRecord = getEvent(assignment.eventId);
+  const worker = getWorker(assignment.workerId);
+  if (worker && !["Cancelled", "Swapped"].includes(assignment.status)) {
+    await put("workers", {
+      ...worker,
+      status: "Booked",
+      bookedEventId: assignment.eventId,
+      bookedEventName: eventRecord?.name || "",
+      bookedUntil: assignment.endDate || eventRecord?.endDate || ""
+    });
+  }
+  if (previous.workerId && previous.workerId !== assignment.workerId) {
+    const priorWorker = getWorker(previous.workerId);
+    if (priorWorker?.bookedEventId === assignment.eventId) {
+      const { bookedEventId, bookedEventName, bookedUntil, ...rest } = priorWorker;
+      await put("workers", { ...rest, status: "Available" });
+    }
+  }
+  if (eventRecord) {
+    const workerIds = Array.from(new Set([...(Array.isArray(eventRecord.workerIds) ? eventRecord.workerIds : []), assignment.workerId].filter(Boolean)));
+    await put("events", { ...eventRecord, workerIds });
+  }
+  if (assignment.vehicleUse === "Rented Vehicle" && assignment.status !== "Cancelled") {
+    await ensureVehicleChecksForAssignment(assignment);
+  }
+}
+
+async function syncEventWorkerIdsFromAssignments(eventId) {
+  const eventRecord = getEvent(eventId);
+  if (!eventRecord) return;
+  const workerIds = Array.from(new Set(eventAssignments(eventId).filter((assignment) => !["Cancelled", "Swapped"].includes(assignment.status)).map((assignment) => assignment.workerId).filter(Boolean)));
+  await put("events", { ...eventRecord, workerIds });
+}
+
+async function ensureVehicleChecksForAssignment(assignment) {
+  const eventRecord = getEvent(assignment.eventId);
+  const worker = getWorker(assignment.workerId);
+  for (const phase of ["Start", "End"]) {
+    if (rentedVehicleLogForAssignment(assignment, phase)) continue;
+    await put("vehicleLogs", {
+      eventId: assignment.eventId,
+      workerId: assignment.workerId,
+      assignmentId: assignment.id,
+      phase,
+      vehicleType: assignment.vehicleType || "Rented Vehicle",
+      plateNumber: "",
+      gasGauge: "Full",
+      scheduledDate: phase === "Start" ? assignment.startDate || eventRecord?.startDate || "" : assignment.endDate || eventRecord?.endDate || "",
+      notes: `Auto-created for ${worker?.name || "runner"} rental vehicle assignment.`
+    });
+  }
+}
+
+async function ensureDefaultAssignmentsForEvent(eventRecord) {
+  for (const workerId of Array.isArray(eventRecord.workerIds) ? eventRecord.workerIds : []) {
+    if (assignmentForEventWorker(eventRecord.id, workerId)) continue;
+    const worker = getWorker(workerId);
+    const client = activeClientRecord();
+    const assignment = {
+      id: crypto.randomUUID(),
+      eventId: eventRecord.id,
+      workerId,
+      startDate: eventRecord.startDate || "",
+      endDate: eventRecord.endDate || "",
+      dayRate: eventRecord.dayRate || client?.defaultDayRate || worker?.defaultDayRate || worker?.defaultRate || "",
+      includedHours: eventRecord.includedHours || client?.defaultIncludedHours || worker?.defaultIncludedHours || "10",
+      additionalRate: eventRecord.additionalRate || client?.defaultAdditionalRate || worker?.defaultAdditionalRate || "",
+      vehicleUse: "No Vehicle",
+      vehicleType: "",
+      status: "Confirmed",
+      notes: "Auto-created from event assigned runner list."
+    };
+    await put("eventAssignments", assignment);
   }
 }
 
@@ -1636,23 +1750,26 @@ function timecardHours(card) {
 function dayRateFor(card) {
   const worker = getWorker(card.workerId);
   const event = getEvent(card.eventId);
+  const assignment = assignmentForEventWorker(card.eventId, card.workerId);
   const client = activeClientRecord();
-  return Number(card.dayRate || card.payRate || event?.dayRate || client?.defaultDayRate || worker?.defaultDayRate || worker?.defaultRate || 0);
+  return Number(card.dayRate || card.payRate || assignment?.dayRate || event?.dayRate || client?.defaultDayRate || worker?.defaultDayRate || worker?.defaultRate || 0);
 }
 
 function includedHoursFor(card) {
   const worker = getWorker(card.workerId);
   const event = getEvent(card.eventId);
+  const assignment = assignmentForEventWorker(card.eventId, card.workerId);
   const client = activeClientRecord();
-  return Number(card.includedHours || event?.includedHours || client?.defaultIncludedHours || worker?.defaultIncludedHours || 10);
+  return Number(card.includedHours || assignment?.includedHours || event?.includedHours || client?.defaultIncludedHours || worker?.defaultIncludedHours || 10);
 }
 
 function additionalRateFor(card) {
   const worker = getWorker(card.workerId);
   const event = getEvent(card.eventId);
+  const assignment = assignmentForEventWorker(card.eventId, card.workerId);
   const client = activeClientRecord();
   const fallback = includedHoursFor(card) ? dayRateFor(card) / includedHoursFor(card) : 0;
-  return Number(card.additionalRate || event?.additionalRate || client?.defaultAdditionalRate || worker?.defaultAdditionalRate || fallback || 0);
+  return Number(card.additionalRate || assignment?.additionalRate || event?.additionalRate || client?.defaultAdditionalRate || worker?.defaultAdditionalRate || fallback || 0);
 }
 
 function vehicleRateFor(card) {
@@ -1996,6 +2113,8 @@ function renderSelects() {
   $("#eventForm select[name='venueId']").innerHTML = venueOptions;
   $("#eventForm select[name='promoterId']").innerHTML = promoterOptions;
   renderEventWorkerOptions($("#eventForm"));
+  $("#eventAssignmentForm select[name='workerId']").innerHTML = workerOptions;
+  $("#substitutionSwapForm select[name='replacementWorkerId']").innerHTML = workerOptions;
 
   $("#timecardForm select[name='eventId']").innerHTML = eventOptions;
   $("#timecardForm select[name='workerId']").innerHTML = workerOptions;
@@ -2192,6 +2311,22 @@ function renderEvents() {
     : `<div class="compact-item empty">No events match this search.</div>`;
 }
 
+function assignmentPayLine(assignment, event) {
+  return `${currency(assignment.dayRate || event.dayRate || activeClientRecord()?.defaultDayRate || 0)}/${assignment.includedHours || event.includedHours || activeClientRecord()?.defaultIncludedHours || 10} hrs, +${currency(assignment.additionalRate || event.additionalRate || activeClientRecord()?.defaultAdditionalRate || 0)}/hr`;
+}
+
+function assignmentTable(event) {
+  const assignments = eventAssignments(event.id);
+  if (!assignments.length) return `<p>No detailed runner assignments yet.</p>`;
+  return `<table class="mini-table"><thead><tr><th>Runner</th><th>Dates</th><th>Vehicle</th><th>Rate</th><th></th></tr></thead><tbody>${assignments.map((assignment) => {
+    const worker = getWorker(assignment.workerId);
+    const actions = canAdminEdit()
+      ? `<div class="row-actions"><button class="tiny-button" data-edit="eventAssignments" data-id="${assignment.id}" data-form="eventAssignmentForm" type="button">Edit</button><button class="tiny-button danger" data-delete="eventAssignments" data-id="${assignment.id}" type="button">Delete</button></div>`
+      : "";
+    return `<tr><td>${escapeHtml(worker?.name || "Unassigned")}</td><td>${formatDate(assignment.startDate)}<p>${formatDate(assignment.endDate)}</p></td><td>${escapeHtml(assignment.vehicleUse || "No Vehicle")}<p>${escapeHtml(assignment.vehicleType || "")}</p></td><td>${isClientRole() ? assignmentPayLine(assignment, event) : ""}</td><td>${actions}</td></tr>`;
+  }).join("")}</tbody></table>`;
+}
+
 function eventCard(event) {
   const venue = getVenue(event.venueId);
   const promoter = getPromoter(event.promoterId);
@@ -2203,6 +2338,9 @@ function eventCard(event) {
   const publicAccessButton = (isClientRole() || isProductionRole())
     ? `<button class="tiny-button" data-event-access="${event.id}" type="button">Production Link</button>`
     : "";
+  const adminEventActions = canAdminEdit()
+    ? `<button class="tiny-button" data-add-assignment="${event.id}" type="button">Add Runner</button><button class="tiny-button" data-swap-crew="${event.id}" type="button">Swap Crew</button><button class="tiny-button" data-substitute-crew="${event.id}" type="button">Substitution</button>`
+    : "";
   return `<article class="record-card">
     <div class="record-card-main">
       <strong>${escapeHtml(event.name)}</strong>
@@ -2211,8 +2349,9 @@ function eventCard(event) {
       <p>${escapeHtml(event.productionContact)}</p>
       <p>${escapeHtml(crewLine)}</p>
       ${rateLine}
+      ${assignmentTable(event)}
     </div>
-    <div class="row-actions">${publicAccessButton}${actionButtons("events", event.id, "eventForm", "", canAdminEdit())}</div>
+    <div class="row-actions">${publicAccessButton}${adminEventActions}${actionButtons("events", event.id, "eventForm", "", canAdminEdit())}</div>
   </article>`;
 }
 
@@ -2572,6 +2711,54 @@ function appendTimecardNote(card, message) {
   return [existing, message].filter(Boolean).join("\n");
 }
 
+function applyVehicleAssignmentLock(form = $("#vehicleForm")) {
+  if (!form) return;
+  const log = form.elements.id?.value ? state.vehicleLogs.find((item) => item.id === form.elements.id.value) : null;
+  const locked = isCrewRole() && !!log?.assignmentId;
+  ["eventId", "workerId", "assignmentLabel"].forEach((name) => {
+    if (form.elements[name]) form.elements[name].disabled = locked;
+  });
+  form.querySelectorAll(".locked-assignment-field").forEach((field) => {
+    field.hidden = !log?.assignmentId;
+  });
+  if (log?.assignmentId && form.elements.assignmentLabel) {
+    const assignment = getEventAssignment(log.assignmentId);
+    const worker = getWorker(assignment?.workerId);
+    form.elements.assignmentLabel.value = `${getEvent(assignment?.eventId)?.name || "Event"} - ${worker?.name || "Runner"}`;
+  }
+}
+
+function updateReportTypeFields(form = $("#reportForm")) {
+  if (!form) return;
+  const type = form.elements.type?.value || "Injury Report";
+  form.querySelectorAll("[data-report-section]").forEach((section) => {
+    section.hidden = section.dataset.reportSection !== type;
+  });
+  if (type === "Vehicle Damage") autofillVehicleReport(form);
+}
+
+function rentedVehicleLogForAssignment(assignment, phase = "Start") {
+  return state.vehicleLogs.find((log) => log.assignmentId === assignment.id && log.phase === phase);
+}
+
+function autofillVehicleReport(form = $("#reportForm")) {
+  const eventId = form.elements.eventId?.value || "";
+  const workerId = form.elements.workerId?.value || state.activeWorkerId || "";
+  if (!eventId || !workerId) return;
+  const assignment = assignmentForEventWorker(eventId, workerId);
+  if (!assignment || assignment.vehicleUse !== "Rented Vehicle") return;
+  if (!form.dataset.vehicleDamageConfirmed && form.elements.type?.value === "Vehicle Damage") {
+    const confirmed = confirm("This runner is assigned to a rented vehicle for this event. Fill that vehicle into the report?");
+    form.dataset.vehicleDamageConfirmed = "yes";
+    if (!confirmed) return;
+  }
+  if (form.elements.rentalVehicleInvolved) form.elements.rentalVehicleInvolved.value = "Yes";
+  if (form.elements.vehicleInfo && !form.elements.vehicleInfo.value) {
+    const log = vehicleLogForEventWorker(eventId, workerId, "Start") || vehicleLogForEventWorker(eventId, workerId, "End");
+    form.elements.vehicleInfo.value = `${assignment.vehicleType || log?.vehicleType || "Rented Vehicle"}${log?.plateNumber ? " / " + log.plateNumber : ""}`;
+  }
+}
+
 function photoGallery(items) {
   const normalized = items.map((item, index) => Array.isArray(item) ? item : [`Photo ${index + 1}`, item]).filter(([, photo]) => photo);
   if (!normalized.length) return "";
@@ -2685,11 +2872,13 @@ function applyWorkerPayDefaultsToTimecard(workerId) {
   const form = $("#timecardForm");
   if (!form) return;
   const event = getEvent(form.elements.eventId.value);
+  const assignment = assignmentForEventWorker(form.elements.eventId.value, workerId);
   const client = activeClientRecord();
-  form.elements.dayRate.value = form.elements.dayRate.value || event?.dayRate || client?.defaultDayRate || worker?.defaultDayRate || worker?.defaultRate || "";
-  form.elements.includedHours.value = form.elements.includedHours.value || event?.includedHours || client?.defaultIncludedHours || worker?.defaultIncludedHours || "10";
-  form.elements.additionalRate.value = form.elements.additionalRate.value || event?.additionalRate || client?.defaultAdditionalRate || worker?.defaultAdditionalRate || "";
-  const vehicleUse = form.elements.vehicleUse.value;
+  form.elements.dayRate.value = form.elements.dayRate.value || assignment?.dayRate || event?.dayRate || client?.defaultDayRate || worker?.defaultDayRate || worker?.defaultRate || "";
+  form.elements.includedHours.value = form.elements.includedHours.value || assignment?.includedHours || event?.includedHours || client?.defaultIncludedHours || worker?.defaultIncludedHours || "10";
+  form.elements.additionalRate.value = form.elements.additionalRate.value || assignment?.additionalRate || event?.additionalRate || client?.defaultAdditionalRate || worker?.defaultAdditionalRate || "";
+  if (assignment?.vehicleUse && !form.elements.vehicleUse.value) form.elements.vehicleUse.value = assignment.vehicleUse;
+  const vehicleUse = form.elements.vehicleUse.value || assignment?.vehicleUse;
   if (vehicleUse === "Rented Vehicle") form.elements.vehicleRate.value = event?.rentedVehicleRate || client?.defaultRentedVehicleRate || worker?.defaultRentedVehicleRate || "";
   if (vehicleUse === "Personal Vehicle") form.elements.vehicleRate.value = event?.personalVehicleRate || client?.defaultPersonalVehicleRate || worker?.defaultPersonalVehicleRate || "";
 }
@@ -2835,7 +3024,7 @@ async function saveForm(event, storeName) {
     toast("This access view cannot save promoter profiles.");
     return;
   }
-  if (["events", "runnerStops", "timecards"].includes(storeName) && !canAdminEdit()) {
+  if (["events", "eventAssignments", "eventSwaps", "runnerStops", "timecards"].includes(storeName) && !canAdminEdit()) {
     toast("Switch to CLIENT or PROMOTER_PRODUCTION_OFFICE to save this.");
     return;
   }
@@ -2886,6 +3075,25 @@ async function saveForm(event, storeName) {
     merged.workerIds = Array.isArray(merged.workerIds) ? merged.workerIds : [];
     delete merged.showAllCrew;
   }
+  if (storeName === "eventAssignments") {
+    const eventRecord = getEvent(merged.eventId);
+    const worker = getWorker(merged.workerId);
+    const client = activeClientRecord();
+    if (!eventRecord || !worker) {
+      toast("Select an event and runner first.");
+      return;
+    }
+    merged.id = merged.id || crypto.randomUUID();
+    merged.startDate = merged.startDate || eventRecord.startDate || "";
+    merged.endDate = merged.endDate || eventRecord.endDate || "";
+    merged.dayRate = merged.dayRate || eventRecord.dayRate || client?.defaultDayRate || worker.defaultDayRate || worker.defaultRate || "";
+    merged.includedHours = merged.includedHours || eventRecord.includedHours || client?.defaultIncludedHours || worker.defaultIncludedHours || "10";
+    merged.additionalRate = merged.additionalRate || eventRecord.additionalRate || client?.defaultAdditionalRate || worker.defaultAdditionalRate || "";
+    merged.status = merged.status || "Confirmed";
+  }
+  if (storeName === "vehicleLogs") {
+    delete merged.assignmentLabel;
+  }
   if (storeName === "clients" && isClientRole()) {
     const clientId = authState.roleRecord?.client_id || "";
     if (!clientId || (record.id && record.id !== clientId)) {
@@ -2925,13 +3133,15 @@ async function saveForm(event, storeName) {
   if (storeName === "timecards" && merged.eventId) {
     const relatedEvent = getEvent(merged.eventId);
     const worker = getWorker(merged.workerId);
+    const assignment = assignmentForEventWorker(merged.eventId, merged.workerId);
     const client = activeClientRecord();
     merged.eventName = merged.eventName || relatedEvent?.name || "";
     merged.venueId = merged.venueId || relatedEvent?.venueId || "";
     merged.promoterId = merged.promoterId || relatedEvent?.promoterId || "";
-    merged.dayRate = merged.dayRate || relatedEvent?.dayRate || client?.defaultDayRate || worker?.defaultDayRate || worker?.defaultRate || "";
-    merged.includedHours = merged.includedHours || relatedEvent?.includedHours || client?.defaultIncludedHours || worker?.defaultIncludedHours || "10";
-    merged.additionalRate = merged.additionalRate || relatedEvent?.additionalRate || client?.defaultAdditionalRate || worker?.defaultAdditionalRate || "";
+    merged.dayRate = merged.dayRate || assignment?.dayRate || relatedEvent?.dayRate || client?.defaultDayRate || worker?.defaultDayRate || worker?.defaultRate || "";
+    merged.includedHours = merged.includedHours || assignment?.includedHours || relatedEvent?.includedHours || client?.defaultIncludedHours || worker?.defaultIncludedHours || "10";
+    merged.additionalRate = merged.additionalRate || assignment?.additionalRate || relatedEvent?.additionalRate || client?.defaultAdditionalRate || worker?.defaultAdditionalRate || "";
+    merged.vehicleUse = merged.vehicleUse || assignment?.vehicleUse || "";
     if (merged.vehicleUse === "Rented Vehicle") merged.vehicleRate = merged.vehicleRate || relatedEvent?.rentedVehicleRate || client?.defaultRentedVehicleRate || worker?.defaultRentedVehicleRate || "";
     if (merged.vehicleUse === "Personal Vehicle") merged.vehicleRate = merged.vehicleRate || relatedEvent?.personalVehicleRate || client?.defaultPersonalVehicleRate || worker?.defaultPersonalVehicleRate || "";
   }
@@ -2952,7 +3162,11 @@ async function saveForm(event, storeName) {
 
   let loginSyncMessage = "";
   await put(storeName, merged);
-  if (storeName === "events") await syncWorkerBookingForEvent(merged, existing || {});
+  if (storeName === "events") {
+    await syncWorkerBookingForEvent(merged, existing || {});
+    await ensureDefaultAssignmentsForEvent(merged);
+  }
+  if (storeName === "eventAssignments") await afterAssignmentSaved(merged, existing || {});
   try {
     if (storeName === "clients") {
       loginSyncMessage = await syncSupabaseClientAccount(merged);
@@ -2995,7 +3209,7 @@ async function deleteRecord(storeName, id) {
   if (storeName === "clients" && !canSystemEdit()) return;
   if (storeName === "accessLevelDefs" && !canSystemEdit()) return;
   if (storeName === "venues" && !canVenueEdit()) return;
-  const adminStores = ["events", "workers", "promoters", "runnerStops", "timecards"];
+  const adminStores = ["events", "eventAssignments", "eventSwaps", "workers", "promoters", "runnerStops", "timecards"];
   if (adminStores.includes(storeName) && !canAdminEdit()) return;
   if (["vehicleLogs", "accidentReports"].includes(storeName) && !canScopedEdit()) return;
   const confirmed = confirm("Delete this record?");
@@ -3013,7 +3227,18 @@ async function deleteRecord(storeName, id) {
     }
   }
   if (storeName === "events") await releaseWorkerBookingsForEvent(id);
+  const deletedAssignment = storeName === "eventAssignments" ? state.eventAssignments.find((item) => item.id === id) : null;
+  if (deletedAssignment) {
+    for (const log of state.vehicleLogs.filter((item) => item.assignmentId === id)) await remove("vehicleLogs", log.id);
+  }
   await remove(storeName, id);
+  if (deletedAssignment) {
+    const eventRecord = getEvent(deletedAssignment.eventId);
+    if (eventRecord) {
+      const workerIds = eventAssignments(deletedAssignment.eventId).filter((assignment) => assignment.id !== id && !["Cancelled", "Swapped"].includes(assignment.status)).map((assignment) => assignment.workerId).filter(Boolean);
+      await put("events", { ...eventRecord, workerIds: Array.from(new Set(workerIds)) });
+    }
+  }
   await loadState();
   setView(state.activeView);
   toast("Deleted.");
@@ -3182,6 +3407,75 @@ async function createEventAccessLink(event) {
   openForm("eventAccessForm");
 }
 
+function openAssignmentForm(eventId, assignment = null) {
+  const eventRecord = getEvent(eventId || assignment?.eventId);
+  if (!eventRecord) return;
+  const defaults = assignment || {
+    id: "",
+    eventId: eventRecord.id,
+    workerId: "",
+    startDate: eventRecord.startDate || "",
+    endDate: eventRecord.endDate || "",
+    dayRate: eventRecord.dayRate || activeClientRecord()?.defaultDayRate || "",
+    includedHours: eventRecord.includedHours || activeClientRecord()?.defaultIncludedHours || "10",
+    additionalRate: eventRecord.additionalRate || activeClientRecord()?.defaultAdditionalRate || "",
+    vehicleUse: "No Vehicle",
+    vehicleType: "",
+    status: "Confirmed",
+    notes: ""
+  };
+  fillForm("eventAssignmentForm", defaults);
+}
+
+function applyAssignmentDefaults(workerId) {
+  const form = $("#eventAssignmentForm");
+  const eventRecord = getEvent(form.elements.eventId.value);
+  const worker = getWorker(workerId);
+  const client = activeClientRecord();
+  if (!form || !eventRecord || !worker) return;
+  form.elements.startDate.value = form.elements.startDate.value || eventRecord.startDate || "";
+  form.elements.endDate.value = form.elements.endDate.value || eventRecord.endDate || "";
+  form.elements.dayRate.value = form.elements.dayRate.value || eventRecord.dayRate || client?.defaultDayRate || worker.defaultDayRate || worker.defaultRate || "";
+  form.elements.includedHours.value = form.elements.includedHours.value || eventRecord.includedHours || client?.defaultIncludedHours || worker.defaultIncludedHours || "10";
+  form.elements.additionalRate.value = form.elements.additionalRate.value || eventRecord.additionalRate || client?.defaultAdditionalRate || worker.defaultAdditionalRate || "";
+}
+
+function openCrewSwapForm(eventId) {
+  clearForm("crewSwapForm");
+  const eventRecord = getEvent(eventId);
+  const form = $("#crewSwapForm");
+  if (!eventRecord || !form) return;
+  form.elements.eventId.value = eventId;
+  form.elements.swapDate.value = eventRecord.startDate || toLocalInputValue(new Date());
+  renderSwapOptions(form, eventRecord);
+  openForm("crewSwapForm");
+}
+
+function renderSwapOptions(form, eventRecord) {
+  const assigned = eventAssignments(eventRecord.id).filter((assignment) => !["Cancelled", "Swapped"].includes(assignment.status));
+  form.querySelector("[data-swap-leaving]").innerHTML = assigned.map((assignment) => {
+    const worker = getWorker(assignment.workerId);
+    return `<label class="checkbox-option"><input type="checkbox" value="${assignment.id}"><span>${escapeHtml(worker?.name || "Runner")}<small>${formatDate(assignment.startDate)} - ${formatDate(assignment.endDate)}</small></span></label>`;
+  }).join("") || `<div class="compact-item empty">No confirmed runners to swap.</div>`;
+  const draft = { id: eventRecord.id, startDate: eventRecord.startDate, endDate: eventRecord.endDate };
+  const available = state.workers.filter((worker) => !workerBookingConflict(worker.id, draft) && !assigned.some((assignment) => assignment.workerId === worker.id));
+  form.querySelector("[data-swap-replacement]").innerHTML = available.map((worker) => `<label class="checkbox-option"><input type="checkbox" value="${worker.id}"><span>${escapeHtml(worker.name)}<small>${escapeHtml(worker.role || "Crew")}</small></span></label>`).join("") || `<div class="compact-item empty">No available replacements.</div>`;
+}
+
+function openSubstitutionForm(eventId) {
+  clearForm("substitutionSwapForm");
+  const eventRecord = getEvent(eventId);
+  const form = $("#substitutionSwapForm");
+  if (!eventRecord || !form) return;
+  form.elements.eventId.value = eventId;
+  form.elements.startDate.value = eventRecord.startDate || "";
+  form.elements.endDate.value = eventRecord.endDate || "";
+  const assignments = eventAssignments(eventId).filter((assignment) => !["Cancelled", "Swapped"].includes(assignment.status));
+  form.elements.assignmentId.innerHTML = assignments.map((assignment) => `<option value="${assignment.id}">${escapeHtml(getWorker(assignment.workerId)?.name || "Runner")}</option>`).join("");
+  form.elements.replacementWorkerId.innerHTML = state.workers.map((worker) => `<option value="${worker.id}">${escapeHtml(worker.name)}</option>`).join("");
+  openForm("substitutionSwapForm");
+}
+
 async function saveEventAccessLink(event) {
   if (!initializeSupabaseClient()) {
     toast("Supabase login is not configured.");
@@ -3239,6 +3533,84 @@ async function saveEventAccessLink(event) {
   setView("events");
   navigator.clipboard?.writeText(link).catch(() => {});
   toast(record.recipientEmail ? "Production event link sent and copied." : "Production event link created and copied.");
+}
+
+async function finalizeCrewSwap(event) {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const eventRecord = getEvent(form.elements.eventId.value);
+  if (!eventRecord || !canAdminEdit()) return;
+  const leaving = Array.from(form.querySelectorAll("[data-swap-leaving] input:checked")).map((input) => input.value);
+  const replacements = Array.from(form.querySelectorAll("[data-swap-replacement] input:checked")).map((input) => input.value);
+  if (!leaving.length || leaving.length !== replacements.length) {
+    toast("Select the same number of leaving and replacement runners.");
+    return;
+  }
+  const swapDate = form.elements.swapDate.value;
+  for (let index = 0; index < leaving.length; index += 1) {
+    const oldAssignment = getEventAssignment(leaving[index]);
+    if (!oldAssignment) continue;
+    await put("eventAssignments", { ...oldAssignment, endDate: swapDate, status: "Swapped" });
+    const worker = getWorker(replacements[index]);
+    const replacement = {
+      ...oldAssignment,
+      id: crypto.randomUUID(),
+      workerId: replacements[index],
+      startDate: swapDate,
+      endDate: eventRecord.endDate || oldAssignment.endDate || "",
+      status: "Standby",
+      notes: `Swap replacement. ${form.elements.notes.value || ""}`.trim()
+    };
+    await put("eventAssignments", replacement);
+    await afterAssignmentSaved(replacement, {});
+    if (worker) await put("workers", { ...worker, status: "Booked", bookedEventId: eventRecord.id, bookedEventName: eventRecord.name, bookedUntil: replacement.endDate });
+  }
+  await put("eventSwaps", {
+    eventId: eventRecord.id,
+    mode: "swap",
+    swapDate,
+    leavingAssignmentIds: leaving,
+    replacementWorkerIds: replacements,
+    notes: form.elements.notes.value || "",
+    status: "Finalized"
+  });
+  closeForm("crewSwapForm");
+  await loadState();
+  setView("events");
+  toast("Crew swap finalized.");
+}
+
+async function finalizeSubstitutionSwap(event) {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const eventRecord = getEvent(form.elements.eventId.value);
+  const assignment = getEventAssignment(form.elements.assignmentId.value);
+  if (!eventRecord || !assignment || !canAdminEdit()) return;
+  const substitute = {
+    ...assignment,
+    id: crypto.randomUUID(),
+    workerId: form.elements.replacementWorkerId.value,
+    startDate: form.elements.startDate.value,
+    endDate: form.elements.endDate.value,
+    status: "Confirmed",
+    notes: `Substitution coverage. Start/end rental photos required for both leaving and returning runner when vehicle use applies. ${form.elements.notes.value || ""}`.trim()
+  };
+  await put("eventAssignments", substitute);
+  await afterAssignmentSaved(substitute, {});
+  await put("eventSwaps", {
+    eventId: eventRecord.id,
+    mode: "substitution",
+    assignmentId: assignment.id,
+    replacementWorkerId: substitute.workerId,
+    startDate: substitute.startDate,
+    endDate: substitute.endDate,
+    notes: form.elements.notes.value || "",
+    status: "Finalized"
+  });
+  closeForm("substitutionSwapForm");
+  await loadState();
+  setView("events");
+  toast("Substitution finalized.");
 }
 
 function smtpTestPayload(scope = "admin") {
@@ -3512,6 +3884,7 @@ async function crewPunch(eventId, field) {
   }
   if (!card) {
     const worker = getWorker(state.activeWorkerId);
+    const assignment = assignmentForEventWorker(eventId, state.activeWorkerId);
     card = {
       id: crypto.randomUUID(),
       workerId: state.activeWorkerId,
@@ -3520,9 +3893,10 @@ async function crewPunch(eventId, field) {
       venueId: event?.venueId || "",
       promoterId: event?.promoterId || "",
       breakMinutes: "0",
-      dayRate: worker?.defaultDayRate || worker?.defaultRate || "",
-      includedHours: worker?.defaultIncludedHours || "10",
-      additionalRate: worker?.defaultAdditionalRate || ""
+      dayRate: assignment?.dayRate || worker?.defaultDayRate || worker?.defaultRate || "",
+      includedHours: assignment?.includedHours || worker?.defaultIncludedHours || "10",
+      additionalRate: assignment?.additionalRate || worker?.defaultAdditionalRate || "",
+      vehicleUse: assignment?.vehicleUse || ""
     };
   }
   card.id = card.id || crypto.randomUUID();
@@ -3650,6 +4024,10 @@ function bindEvents() {
   $("#timecardForm select[name='vehicleUse']").addEventListener("change", () => applyWorkerPayDefaultsToTimecard($("#timecardForm").elements.workerId.value));
 
   $("#eventForm").addEventListener("submit", (event) => saveForm(event, "events"));
+  $("#eventAssignmentForm").addEventListener("submit", (event) => saveForm(event, "eventAssignments"));
+  $("#eventAssignmentForm select[name='workerId']").addEventListener("change", (event) => applyAssignmentDefaults(event.target.value));
+  $("#crewSwapForm").addEventListener("submit", finalizeCrewSwap);
+  $("#substitutionSwapForm").addEventListener("submit", finalizeSubstitutionSwap);
   $("#eventForm").addEventListener("change", (event) => {
     if (event.target.matches("[data-event-crew-override], input[name='startDate'], input[name='endDate']")) {
       renderEventWorkerOptions($("#eventForm"));
@@ -3674,6 +4052,10 @@ function bindEvents() {
   $("#timecardForm").addEventListener("submit", (event) => saveForm(event, "timecards"));
   $("#vehicleForm").addEventListener("submit", (event) => saveForm(event, "vehicleLogs"));
   $("#reportForm").addEventListener("submit", (event) => saveForm(event, "accidentReports"));
+  $("#reportForm").addEventListener("change", (event) => {
+    if (event.target.matches("[data-report-type], select[name='eventId'], select[name='workerId']")) updateReportTypeFields($("#reportForm"));
+  });
+  $("#vehicleForm").addEventListener("change", () => applyVehicleAssignmentLock($("#vehicleForm")));
   $$("[data-smtp-provider]").forEach((select) => {
     select.addEventListener("change", () => updateSmtpForm(select.form, true));
   });
@@ -3714,6 +4096,9 @@ function bindEvents() {
     const viewClientCompanyButton = event.target.closest("[data-view-client-company]");
     const editViewedClientButton = event.target.closest("#editViewedClientCompany");
     const eventAccessButton = event.target.closest("[data-event-access]");
+    const addAssignmentButton = event.target.closest("[data-add-assignment]");
+    const swapCrewButton = event.target.closest("[data-swap-crew]");
+    const substituteCrewButton = event.target.closest("[data-substitute-crew]");
     const publicRunnerStatusButton = event.target.closest("[data-public-runner-status]");
     const refreshUsersButton = event.target.closest("[data-refresh-users]");
     const deleteUserButton = event.target.closest("[data-delete-user-account]");
@@ -3754,6 +4139,9 @@ function bindEvents() {
       const eventRecord = getEvent(eventAccessButton.dataset.eventAccess);
       if (eventRecord) await createEventAccessLink(eventRecord);
     }
+    if (addAssignmentButton) openAssignmentForm(addAssignmentButton.dataset.addAssignment);
+    if (swapCrewButton) openCrewSwapForm(swapCrewButton.dataset.swapCrew);
+    if (substituteCrewButton) openSubstitutionForm(substituteCrewButton.dataset.substituteCrew);
     if (viewClientCompanyButton) openClientCompanyView(viewClientCompanyButton.dataset.viewClientCompany);
     if (smtpTestButton) await sendSmtpTest(smtpTestButton.dataset.sendSmtpTest);
     if (editViewedClientButton?.dataset.editClientId) {
