@@ -189,6 +189,11 @@ let sendbirdClient = null;
 let sendbirdActiveChannel = null;
 let sendbirdMessages = [];
 let sendbirdActiveThread = null;
+let sendbirdConnectionState = {
+  status: "disconnected",
+  errorCode: "",
+  errorMessage: ""
+};
 
 const MESSAGE_THREAD_TYPES = {
   event: {
@@ -3039,14 +3044,43 @@ function renderMessaging() {
   renderMessagingThreadTabs();
   const configured = !!SENDBIRD_APP_ID;
   const connected = !!sendbirdClient?.currentUser;
-  status.innerHTML = connected
-    ? `<div class="compact-item"><strong>Sendbird connected</strong><span>${escapeHtml(sendbirdClient.currentUser.userId || "")}</span></div>`
-    : `<div class="compact-item ${configured ? "" : "empty"}"><strong>${configured ? "Sendbird ready to connect" : "Sendbird App ID needed"}</strong><span>${configured ? "Use Connect Messaging to start the chat session." : "Add the Sendbird Application ID in app.js after creating the Sendbird app."}</span></div>`;
+  const connectButton = $("#connectSendbirdButton");
+  if (connectButton) connectButton.hidden = connected;
+  if (connected) sendbirdConnectionState = { status: "connected", errorCode: "", errorMessage: "" };
+  status.innerHTML = renderMessagingConnectionStatus(configured, connected);
+  renderMessagingError();
   const channelList = $("#messagingChannelList");
   if (channelList) {
     channelList.innerHTML = messagingChannelCards();
   }
   renderMessageThread();
+}
+
+function renderMessagingConnectionStatus(configured, connected) {
+  if (connected) {
+    return `<div class="compact-item"><strong>Connected</strong><span>Messaging is ready.</span></div>`;
+  }
+  if (!configured) {
+    return `<div class="compact-item empty"><strong>Setup needed</strong><span>Add the Sendbird Application ID before connecting.</span></div>`;
+  }
+  if (sendbirdConnectionState.status === "error") {
+    return `<div class="compact-item empty"><strong>Connection error</strong><span>Messaging could not connect.</span></div>`;
+  }
+  if (sendbirdConnectionState.status === "connecting") {
+    return `<div class="compact-item"><strong>Connecting</strong><span>Opening the messaging session.</span></div>`;
+  }
+  return `<div class="compact-item"><strong>Disconnected</strong><span>Connect messaging to open or create threads.</span></div>`;
+}
+
+function renderMessagingError() {
+  const errorBox = $("#messagingError");
+  if (!errorBox) return;
+  if (sendbirdConnectionState.status !== "error") {
+    errorBox.innerHTML = "";
+    return;
+  }
+  const code = sendbirdConnectionState.errorCode ? `<p>Error code: ${escapeHtml(sendbirdConnectionState.errorCode)}</p>` : "";
+  errorBox.innerHTML = `<div class="compact-item empty"><strong>What happened</strong><span>${escapeHtml(sendbirdConnectionState.errorMessage || "Sendbird returned an error.")}</span>${code}</div>`;
 }
 
 function renderMessagingThreadTabs() {
@@ -3111,18 +3145,39 @@ function directMessageCards() {
 function renderMessageThread() {
   const title = $("#activeMessagingTitle");
   const meta = $("#activeMessagingMeta");
+  const members = $("#messageThreadMembers");
   const thread = $("#messageThread");
   const form = $("#sendbirdMessageForm");
   if (!title || !meta || !thread || !form) return;
   const channelName = sendbirdActiveChannel?.name || "";
   title.textContent = channelName || MESSAGE_THREAD_TYPES[state.messagingThreadType]?.label || "Messages";
-  meta.textContent = sendbirdActiveChannel ? "Sendbird group channel" : "Open a message thread to send messages.";
+  meta.textContent = activeThreadManagementLabel();
+  if (members) members.innerHTML = renderActiveThreadMembers();
   form.hidden = !sendbirdActiveChannel;
   thread.innerHTML = sendbirdActiveChannel
     ? (sendbirdMessages.length
         ? sendbirdMessages.map((message) => `<div class="compact-item"><strong>${escapeHtml(message.sender?.nickname || message.sender?.userId || "Message")}</strong><span>${escapeHtml(message.message || "")}</span></div>`).join("")
         : `<div class="compact-item empty">No messages loaded yet.</div>`)
     : `<div class="compact-item empty">Choose a message thread from the list.</div>`;
+}
+
+function activeThreadManagementLabel() {
+  const type = sendbirdActiveThread?.type || state.messagingThreadType;
+  if (!sendbirdActiveChannel) return "Open a message thread to send messages.";
+  if (["event", "office"].includes(type)) return "Permanent event thread. Eligible members are kept synced from the event.";
+  if (type === "crew") return "Crew runner thread. Production team manages event crew access.";
+  if (type === "direct") return "Direct message. Members are controlled by the people in this conversation.";
+  return "Created thread. At least one thread admin must remain assigned.";
+}
+
+function renderActiveThreadMembers() {
+  const members = activeThreadMemberProfiles();
+  if (!sendbirdActiveChannel) return "";
+  if (!members.length) return `<div class="compact-item empty"><strong>Thread Members</strong><span>No eligible members found yet.</span></div>`;
+  const canManage = canManageActiveThreadMembers();
+  const managerLine = canManage ? "You can manage membership for this thread." : "Membership is view only for this access view.";
+  return `<div class="compact-item"><strong>Thread Members</strong><span>${members.length} eligible member${members.length === 1 ? "" : "s"} · ${managerLine}</span></div>
+    ${members.map((member) => `<div class="compact-item"><strong>${escapeHtml(member.label)}</strong><span>${escapeHtml(member.kind)}${member.isCurrent ? " · You" : ""}</span></div>`).join("")}`;
 }
 
 function runnerStopRow(stop) {
@@ -4160,6 +4215,27 @@ function sendbirdUserIdForProfile(profile) {
   return String(profile?.authUserId || profile?.id || profile?.email || "").trim();
 }
 
+function messageMemberFromProfile(kind, profile, label = "") {
+  const id = sendbirdUserIdForProfile(profile);
+  if (!id) return null;
+  return {
+    id,
+    kind,
+    label: label || profile?.name || profile?.contactName || profile?.email || kind,
+    email: profile?.email || "",
+    phone: profile?.phone || "",
+    isCurrent: id === notificationSubscriberForCurrentUser().subscriberId
+  };
+}
+
+function uniqueMessageMembers(members) {
+  const byId = new Map();
+  members.filter(Boolean).forEach((member) => {
+    if (!byId.has(member.id)) byId.set(member.id, member);
+  });
+  return Array.from(byId.values()).sort((a, b) => a.label.localeCompare(b.label));
+}
+
 function eventClientId(event) {
   return authState.roleRecord?.client_id || event?.clientId || activeClientRecord()?.id || "";
 }
@@ -4201,6 +4277,78 @@ function eventVenueContacts(event) {
   return state.venueContacts.filter((contact) => !event?.venueId || contact.venueId === event.venueId);
 }
 
+function eventMessageMembers(event) {
+  return uniqueMessageMembers([
+    ...eventClientReps(event).map((rep) => messageMemberFromProfile("Client", rep)),
+    messageMemberFromProfile("Promoter", getPromoter(event?.promoterId), promoterLabel(getPromoter(event?.promoterId))),
+    ...eventProductionTeamContacts(event).map((contact) => messageMemberFromProfile("Production Team", contact)),
+    ...eventWorkerIds(event).map((workerId) => messageMemberFromProfile("Crew / Runner", getWorker(workerId)))
+  ]);
+}
+
+function productionOfficeMembers(event) {
+  return uniqueMessageMembers([
+    messageMemberFromProfile("Promoter", getPromoter(event?.promoterId), promoterLabel(getPromoter(event?.promoterId))),
+    ...eventProductionTeamContacts(event).map((contact) => messageMemberFromProfile("Production Team", contact)),
+    ...eventVenueContacts(event).map((contact) => messageMemberFromProfile("Venue", contact))
+  ]);
+}
+
+function crewRunnerMembers(event) {
+  return uniqueMessageMembers([
+    messageMemberFromProfile("Promoter", getPromoter(event?.promoterId), promoterLabel(getPromoter(event?.promoterId))),
+    ...eventProductionTeamContacts(event).map((contact) => messageMemberFromProfile("Production Team", contact)),
+    ...eventWorkerIds(event).map((workerId) => messageMemberFromProfile("Crew / Runner", getWorker(workerId)))
+  ]);
+}
+
+function directMessageMembers(profileId) {
+  const current = notificationSubscriberForCurrentUser();
+  const directProfile = directMessageProfiles().find((profile) => profile.id === profileId);
+  return uniqueMessageMembers([
+    {
+      id: current.subscriberId,
+      kind: "You",
+      label: `${current.firstName || "Current"} ${current.lastName || "User"}`.trim(),
+      isCurrent: true
+    },
+    directProfile ? { ...directProfile, isCurrent: false } : null
+  ]);
+}
+
+function membersForMessageThread(type, event, directProfileId = "") {
+  if (type === "office") return productionOfficeMembers(event);
+  if (type === "crew") return crewRunnerMembers(event);
+  if (type === "direct") return directMessageMembers(directProfileId);
+  return eventMessageMembers(event);
+}
+
+function activeThreadMemberProfiles() {
+  if (!sendbirdActiveThread) return [];
+  const members = sendbirdActiveThread.type === "direct"
+    ? membersForMessageThread("direct", null, sendbirdActiveThread.profileId)
+    : membersForMessageThread(sendbirdActiveThread.type, getEvent(sendbirdActiveThread.eventId));
+  const current = notificationSubscriberForCurrentUser();
+  if (!current.subscriberId || members.some((member) => member.id === current.subscriberId)) return members;
+  return uniqueMessageMembers([
+    ...members,
+    {
+      id: current.subscriberId,
+      kind: "Current User",
+      label: `${current.firstName || "Current"} ${current.lastName || "User"}`.trim(),
+      isCurrent: true
+    }
+  ]);
+}
+
+function canManageActiveThreadMembers() {
+  const type = sendbirdActiveThread?.type || state.messagingThreadType;
+  if (["event", "office"].includes(type)) return isClientRole() || isProductionRole() || isProductionTeamRole();
+  if (type === "crew") return isProductionTeamRole();
+  if (type === "direct") return !!sendbirdActiveChannel;
+  return !!sendbirdActiveChannel;
+}
+
 function addSendbirdProfileIds(userIds, profiles) {
   profiles.forEach((profile) => {
     const id = sendbirdUserIdForProfile(profile);
@@ -4209,34 +4357,15 @@ function addSendbirdProfileIds(userIds, profiles) {
 }
 
 function sendbirdUserIdsForEvent(event) {
-  const userIds = new Set([notificationSubscriberForCurrentUser().subscriberId]);
-  eventWorkerIds(event).forEach((workerId) => {
-    const worker = getWorker(workerId);
-    const id = sendbirdUserIdForProfile(worker);
-    if (id) userIds.add(id);
-  });
-  const promoter = getPromoter(event.promoterId);
-  const promoterId = sendbirdUserIdForProfile(promoter);
-  if (promoterId) userIds.add(promoterId);
-  addSendbirdProfileIds(userIds, eventClientReps(event));
-  addSendbirdProfileIds(userIds, eventProductionTeamContacts(event));
-  return Array.from(userIds).filter(Boolean);
+  return eventMessageMembers(event).map((member) => member.id);
 }
 
 function sendbirdUserIdsForProductionOffice(event) {
-  const userIds = new Set([notificationSubscriberForCurrentUser().subscriberId]);
-  addSendbirdProfileIds(userIds, [getPromoter(event.promoterId)]);
-  addSendbirdProfileIds(userIds, eventProductionTeamContacts(event));
-  addSendbirdProfileIds(userIds, eventVenueContacts(event));
-  return Array.from(userIds).filter(Boolean);
+  return productionOfficeMembers(event).map((member) => member.id);
 }
 
 function sendbirdUserIdsForCrewRunner(event) {
-  const userIds = new Set([notificationSubscriberForCurrentUser().subscriberId]);
-  eventWorkerIds(event).forEach((workerId) => addSendbirdProfileIds(userIds, [getWorker(workerId)]));
-  addSendbirdProfileIds(userIds, [getPromoter(event.promoterId)]);
-  addSendbirdProfileIds(userIds, eventProductionTeamContacts(event));
-  return Array.from(userIds).filter(Boolean);
+  return crewRunnerMembers(event).map((member) => member.id);
 }
 
 function directMessageProfiles() {
@@ -4279,10 +4408,15 @@ function sendbirdThreadName(type, event, directProfile) {
 }
 
 function sendbirdThreadUsers(type, event, directProfile) {
-  if (type === "office") return sendbirdUserIdsForProductionOffice(event);
-  if (type === "crew") return sendbirdUserIdsForCrewRunner(event);
-  if (type === "direct") return Array.from(new Set([notificationSubscriberForCurrentUser().subscriberId, directProfile?.id].filter(Boolean)));
-  return sendbirdUserIdsForEvent(event);
+  const currentId = notificationSubscriberForCurrentUser().subscriberId;
+  const ids = type === "office"
+    ? sendbirdUserIdsForProductionOffice(event)
+    : type === "crew"
+      ? sendbirdUserIdsForCrewRunner(event)
+      : type === "direct"
+        ? [directProfile?.id]
+        : sendbirdUserIdsForEvent(event);
+  return Array.from(new Set([currentId, ...ids].filter(Boolean)));
 }
 
 async function ensureSendbirdConnected() {
@@ -4291,12 +4425,26 @@ async function ensureSendbirdConnected() {
   return sendbirdClient?.currentUser ? sendbirdClient : null;
 }
 
+function sendbirdErrorDetails(error) {
+  return {
+    errorCode: String(error?.code || error?.errorCode || error?.status || ""),
+    errorMessage: error?.message || "Could not connect Sendbird messaging."
+  };
+}
+
 async function connectSendbirdMessaging() {
   if (!SENDBIRD_APP_ID) {
-    toast("Add the Sendbird Application ID in app.js first.");
+    sendbirdConnectionState = {
+      status: "error",
+      errorCode: "CONFIG",
+      errorMessage: "Sendbird Application ID is missing."
+    };
+    renderMessaging();
     return;
   }
   try {
+    sendbirdConnectionState = { status: "connecting", errorCode: "", errorMessage: "" };
+    renderMessaging();
     const [{ default: SendbirdChat }, { GroupChannelModule }] = await Promise.all([
       import(SENDBIRD_CHAT_SDK_URL),
       import(SENDBIRD_GROUP_CHANNEL_SDK_URL)
@@ -4312,12 +4460,14 @@ async function connectSendbirdMessaging() {
     if (sendbirdClient.updateCurrentUserInfo && profile.firstName) {
       await sendbirdClient.updateCurrentUserInfo(`${profile.firstName} ${profile.lastName}`.trim(), "");
     }
+    sendbirdConnectionState = { status: "connected", errorCode: "", errorMessage: "" };
     await ensureDueEventMessageChannels();
     renderMessaging();
     toast("Messaging connected.");
   } catch (error) {
     console.error(error);
-    toast(error.message || "Could not connect Sendbird messaging.");
+    sendbirdConnectionState = { status: "error", ...sendbirdErrorDetails(error) };
+    renderMessaging();
   }
 }
 
@@ -4331,6 +4481,19 @@ async function loadSendbirdMessages(channel) {
     return await query.load();
   }
   return [];
+}
+
+async function syncSendbirdChannelMembers(channel, userIds) {
+  if (!channel || !Array.isArray(userIds) || !userIds.length) return;
+  const existing = new Set((channel.members || []).map((member) => member.userId).filter(Boolean));
+  const missing = userIds.filter((userId) => !existing.has(userId));
+  if (!missing.length) return;
+  try {
+    if (typeof channel.inviteWithUserIds === "function") await channel.inviteWithUserIds(missing);
+    else if (typeof channel.invite === "function") await channel.invite(missing);
+  } catch (error) {
+    console.warn(error);
+  }
 }
 
 async function ensureDueEventMessageChannels() {
@@ -4372,6 +4535,7 @@ async function openMessageChannel(type, eventId, options = {}) {
       customType: threadType,
       data: JSON.stringify({ eventId: eventRecord.id, threadType })
     });
+    await syncSendbirdChannelMembers(channel, userIds);
     if (options.keepCurrent) return channel;
     sendbirdActiveChannel = channel;
     sendbirdActiveThread = { type: threadType, eventId: eventRecord.id };
@@ -4403,6 +4567,7 @@ async function openDirectMessageChannel(profileId) {
       customType: "direct",
       data: JSON.stringify({ threadType: "direct", profileId: directProfile.id })
     });
+    await syncSendbirdChannelMembers(sendbirdActiveChannel, sendbirdThreadUsers("direct", null, directProfile));
     sendbirdActiveThread = { type: "direct", profileId: directProfile.id };
     sendbirdMessages = await loadSendbirdMessages(sendbirdActiveChannel);
     renderMessaging();

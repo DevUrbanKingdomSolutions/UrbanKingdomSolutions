@@ -870,11 +870,17 @@
           <div class="stack-layout">
             <section class="panel">
               <div class="panel-heading">
+                <h3>Messaging Connection</h3>
+                <button id="connectSendbirdButton" class="tiny-button" data-connect-sendbird type="button">Connect Messaging</button>
+              </div>
+              <div id="messagingStatus" class="compact-list"></div>
+              <div id="messagingError" class="compact-list"></div>
+            </section>
+            <section class="panel">
+              <div class="panel-heading">
                 <h3>Messages</h3>
-                <button class="tiny-button" data-connect-sendbird type="button">Connect Messaging</button>
               </div>
               <div id="messagingThreadTabs" class="tab-row"></div>
-              <div id="messagingStatus" class="compact-list"></div>
               <div id="messagingChannelList" class="record-grid"></div>
             </section>
             <section class="panel">
@@ -882,6 +888,7 @@
                 <h3 id="activeMessagingTitle">Event Thread</h3>
                 <span id="activeMessagingMeta" class="muted"></span>
               </div>
+              <div id="messageThreadMembers" class="compact-list"></div>
               <div id="messageThread" class="compact-list"></div>
               <form id="sendbirdMessageForm" class="inline-form">
                 <input name="message" placeholder="Message this event team">
@@ -1156,6 +1163,6 @@
     <div id="modalHost"></div>
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js?v=V1.01.015-message-thread-permissions"></script>
+    <script src="app.js?v=V1.01.016-message-member-status"></script>
   </body>
 </html>
