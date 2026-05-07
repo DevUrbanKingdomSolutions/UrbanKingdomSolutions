@@ -305,6 +305,13 @@ button {
   width: auto;
 }
 
+.checkbox-option span {
+  grid-column: 2;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+
 .checkbox-option.is-muted {
   opacity: 0.72;
   background: #f3f0e8;
@@ -724,6 +731,16 @@ td p {
   padding: 14px;
 }
 
+.message-thread-card {
+  grid-template-columns: 1fr;
+  cursor: pointer;
+}
+
+.message-thread-card.selected {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(15, 118, 110, 0.12);
+}
+
 .record-card-main strong,
 .record-card-main span,
 .record-card-main p {
@@ -824,6 +841,10 @@ td p {
   border-radius: 8px;
   background: #ffffff;
   padding: 10px 12px;
+}
+
+#messageThreadMembers .tiny-button {
+  margin-top: 8px;
 }
 
 #messageThreadMembers .compact-item:first-child {
@@ -957,6 +978,20 @@ td p {
   border-radius: 999px;
   background: var(--accent);
   color: #ffffff;
+}
+
+.field-label {
+  display: block;
+  margin: 12px 16px 8px;
+  color: #334046;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.form-note {
+  margin: 12px 16px 0;
+  color: var(--muted);
+  font-size: 13px;
 }
 
 .payroll-view {

@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Production Crew Database</title>
-    <link rel="stylesheet" href="styles.css?v=V1.01.017-message-chat-layout">
+    <link rel="stylesheet" href="styles.css?v=V1.01.018-thread-access-management">
   </head>
   <body>
     <section id="authScreen" class="auth-screen">
@@ -895,6 +895,25 @@
                 <input name="message" placeholder="Message this event team">
                 <button class="tiny-button" type="submit">Send</button>
               </form>
+              <form id="messageThreadManageForm" class="panel form-panel">
+                <input type="hidden" name="id">
+                <input type="hidden" name="threadKey">
+                <div class="panel-heading">
+                  <h3>Manage Thread</h3>
+                  <button class="tiny-button clear-form" data-form="messageThreadManageForm" type="button">Done</button>
+                </div>
+                <label>Thread Owner<select name="ownerId"></select></label>
+                <div>
+                  <span class="field-label">Thread Admins</span>
+                  <div id="threadAdminOptions" class="checkbox-grid"></div>
+                </div>
+                <div>
+                  <span class="field-label">Thread Members</span>
+                  <div id="threadMemberOptions" class="checkbox-grid"></div>
+                </div>
+                <p class="form-note">Owner can pass ownership to another admin. Owners and admins can add or remove members. Only the owner can change admin rights.</p>
+                <button class="primary-action" type="submit">Save Thread Access</button>
+              </form>
             </section>
           </div>
         </section>
@@ -1164,6 +1183,6 @@
     <div id="modalHost"></div>
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js?v=V1.01.017-message-chat-layout"></script>
+    <script src="app.js?v=V1.01.018-thread-access-management"></script>
   </body>
 </html>

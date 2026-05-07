@@ -1,5 +1,5 @@
 const DB_NAME = "productionCrewDatabase";
-const DB_VERSION = 11;
+const DB_VERSION = 12;
 const SUPABASE_URL = "https://nnhqrhaltkmymnwxydwr.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5uaHFyaGFsdGtteW1ud3h5ZHdyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgwMjMxNDgsImV4cCI6MjA5MzU5OTE0OH0.X9iGhE61WehM57133LKCWMfXXDHmcb2rhw-ZPCKAJos";
 const LOGIN_SETUP_FUNCTION = "send-login-setup";
@@ -44,7 +44,8 @@ const STORES = [
   "productionCompanies",
   "productionContacts",
   "vehicleLogs",
-  "accidentReports"
+  "accidentReports",
+  "messageThreadSettings"
 ];
 
 const ROLE_ALIASES = {
@@ -234,6 +235,7 @@ let state = {
   productionContacts: [],
   vehicleLogs: [],
   accidentReports: [],
+  messageThreadSettings: [],
   clients: [],
   clientReps: [],
   accessLevelDefs: [],
@@ -453,7 +455,7 @@ async function remove(storeName, id) {
 }
 
 async function loadState() {
-  const [clients, clientReps, accessLevelDefs, eventAccessLinks, workers, venues, promoters, profileNotes, events, eventAssignments, eventSwaps, timecards, runnerStops, runnerCategories, runnerNotes, systemProfiles, venueContacts, productionCompanies, productionContacts, vehicleLogs, accidentReports] = await Promise.all(STORES.map(getAll));
+  const [clients, clientReps, accessLevelDefs, eventAccessLinks, workers, venues, promoters, profileNotes, events, eventAssignments, eventSwaps, timecards, runnerStops, runnerCategories, runnerNotes, systemProfiles, venueContacts, productionCompanies, productionContacts, vehicleLogs, accidentReports, messageThreadSettings] = await Promise.all(STORES.map(getAll));
   state = {
     ...state,
     clients: sortByName(clients),
@@ -476,7 +478,8 @@ async function loadState() {
     productionCompanies: sortByName(productionCompanies),
     productionContacts: sortByName(productionContacts),
     vehicleLogs: vehicleLogs.sort((a, b) => new Date(b.scheduledDate || b.createdAt || 0) - new Date(a.scheduledDate || a.createdAt || 0)),
-    accidentReports: accidentReports.sort((a, b) => new Date(b.reportedAt || b.createdAt || 0) - new Date(a.reportedAt || a.createdAt || 0))
+    accidentReports: accidentReports.sort((a, b) => new Date(b.reportedAt || b.createdAt || 0) - new Date(a.reportedAt || a.createdAt || 0)),
+    messageThreadSettings
   };
   if (!state.activeWorkerId && state.workers[0]) state.activeWorkerId = state.workers[0].id;
   if (!state.activePromoterId && state.promoters[0]) state.activePromoterId = state.promoters[0].id;
@@ -3096,8 +3099,10 @@ function renderMessagingThreadTabs() {
 
 function messagingChannelCards() {
   if (state.messagingThreadType === "direct") return directMessageCards();
-  const events = visibleEvents().filter((event) => eventWorkerIds(event).length || isClientRole() || isProductionRole() || isProductionTeamRole());
   const threadType = state.messagingThreadType;
+  const events = visibleEvents()
+    .filter((event) => eventWorkerIds(event).length || isClientRole() || isProductionRole() || isProductionTeamRole())
+    .filter((event) => canViewMessageThread(threadType, event));
   const empty = MESSAGE_THREAD_TYPES[threadType]?.empty || MESSAGE_THREAD_TYPES.event.empty;
   return events.length
     ? events.map((event) => eventMessageCard(event, threadType)).join("")
@@ -3107,39 +3112,32 @@ function messagingChannelCards() {
 function eventMessageCard(event, threadType) {
   const crewCount = eventWorkerIds(event).length;
   const active = sendbirdActiveThread?.type === threadType && sendbirdActiveThread?.eventId === event.id;
-  const labels = {
-    event: "Open Thread",
-    office: "Open Office",
-    crew: "Open Crew"
-  };
   const subtitles = {
     event: `${crewCount} crew / runners`,
     office: "Promoter, production team, and venue contacts",
     crew: `${crewCount} crew / runners and production office`
   };
-  return `<article class="record-card ${active ? "selected" : ""}">
+  return `<article class="record-card message-thread-card ${active ? "selected" : ""}" data-open-message-channel="${threadType}:${event.id}" role="button" tabindex="0">
     <div>
       <span>${escapeHtml(event.type || MESSAGE_THREAD_TYPES[threadType]?.label || "Event")}</span>
       <strong>${escapeHtml(event.name)}</strong>
       <p>${escapeHtml(subtitles[threadType] || subtitles.event)}</p>
       <p>${formatDate(event.startDate)}</p>
     </div>
-    <div class="row-actions"><button class="tiny-button" data-open-message-channel="${threadType}:${event.id}" type="button">${active ? "Open" : labels[threadType] || "Open Thread"}</button></div>
   </article>`;
 }
 
 function directMessageCards() {
-  const profiles = directMessageProfiles();
+  const profiles = directMessageProfiles().filter((profile) => canViewMessageThread("direct", null, profile.id));
   return profiles.length
     ? profiles.map((profile) => {
         const active = sendbirdActiveThread?.type === "direct" && sendbirdActiveThread?.profileId === profile.id;
-        return `<article class="record-card ${active ? "selected" : ""}">
+        return `<article class="record-card message-thread-card ${active ? "selected" : ""}" data-open-direct-message="${escapeHtml(profile.id)}" role="button" tabindex="0">
           <div>
             <span>${escapeHtml(profile.kind)}</span>
             <strong>${escapeHtml(profile.label)}</strong>
             <p>${escapeHtml(profile.email || profile.phone || "")}</p>
           </div>
-          <div class="row-actions"><button class="tiny-button" data-open-direct-message="${escapeHtml(profile.id)}" type="button">${active ? "Open" : "Message"}</button></div>
         </article>`;
       }).join("")
     : `<div class="compact-item empty">${MESSAGE_THREAD_TYPES.direct.empty}</div>`;
@@ -3208,7 +3206,8 @@ function renderActiveThreadMembers() {
   if (!members.length) return `<div class="compact-item empty"><strong>Thread Members</strong><span>No eligible members found yet.</span></div>`;
   const canManage = canManageActiveThreadMembers();
   const managerLine = canManage ? "You can manage membership for this thread." : "Membership is view only for this access view.";
-  return `<div class="compact-item"><strong>Thread Members</strong><span>${members.length} eligible member${members.length === 1 ? "" : "s"} · ${managerLine}</span></div>
+  const manageButton = canManage ? `<button class="tiny-button" data-manage-message-thread type="button">Manage Users</button>` : "";
+  return `<div class="compact-item"><strong>Thread Members</strong><span>${members.length} member${members.length === 1 ? "" : "s"} · ${managerLine}</span>${manageButton}</div>
     ${members.map((member) => `<div class="compact-item"><strong>${escapeHtml(member.label)}</strong><span>${escapeHtml(member.kind)}${member.isCurrent ? " · You" : ""}</span></div>`).join("")}`;
 }
 
@@ -4358,8 +4357,8 @@ function membersForMessageThread(type, event, directProfileId = "") {
 function activeThreadMemberProfiles() {
   if (!sendbirdActiveThread) return [];
   const members = sendbirdActiveThread.type === "direct"
-    ? membersForMessageThread("direct", null, sendbirdActiveThread.profileId)
-    : membersForMessageThread(sendbirdActiveThread.type, getEvent(sendbirdActiveThread.eventId));
+    ? effectiveThreadMembers("direct", null, sendbirdActiveThread.profileId)
+    : effectiveThreadMembers(sendbirdActiveThread.type, getEvent(sendbirdActiveThread.eventId));
   const current = notificationSubscriberForCurrentUser();
   if (!current.subscriberId || members.some((member) => member.id === current.subscriberId)) return members;
   return uniqueMessageMembers([
@@ -4374,11 +4373,96 @@ function activeThreadMemberProfiles() {
 }
 
 function canManageActiveThreadMembers() {
-  const type = sendbirdActiveThread?.type || state.messagingThreadType;
-  if (["event", "office"].includes(type)) return isClientRole() || isProductionRole() || isProductionTeamRole();
-  if (type === "crew") return isProductionTeamRole();
-  if (type === "direct") return !!sendbirdActiveChannel;
-  return !!sendbirdActiveChannel;
+  return ["owner", "admin"].includes(currentThreadRole());
+}
+
+function openMessageThreadManageForm() {
+  if (!sendbirdActiveThread || !sendbirdActiveChannel) {
+    toast("Open a thread first.");
+    return;
+  }
+  if (!canManageActiveThreadMembers()) {
+    toast("Only thread owners and admins can manage this thread.");
+    return;
+  }
+  renderMessageThreadManageForm();
+  openForm("messageThreadManageForm");
+}
+
+function renderMessageThreadManageForm() {
+  const form = $("#messageThreadManageForm");
+  if (!form || !sendbirdActiveThread) return;
+  const event = getEvent(sendbirdActiveThread.eventId);
+  const setting = currentThreadSetting() || defaultThreadSetting(sendbirdActiveThread.type, event, sendbirdActiveThread.profileId || "");
+  const available = threadAvailableMembers(sendbirdActiveThread.type, event, sendbirdActiveThread.profileId || "");
+  const currentRole = currentThreadRole();
+  form.elements.id.value = setting.id || setting.threadKey;
+  form.elements.threadKey.value = setting.threadKey;
+  const adminIds = new Set(setting.adminIds || []);
+  const memberIds = new Set(setting.memberIds || []);
+  const removedIds = new Set(setting.removedUserIds || []);
+  const activeMembers = available.filter((member) => memberIds.has(member.id) && !removedIds.has(member.id));
+  const ownerOptions = activeMembers.length ? activeMembers : available;
+  form.elements.ownerId.innerHTML = ownerOptions.map((member) => `<option value="${escapeHtml(member.id)}">${escapeHtml(member.label)}</option>`).join("");
+  form.elements.ownerId.value = setting.ownerId || currentThreadUserId();
+  form.elements.ownerId.disabled = currentRole !== "owner";
+  $("#threadAdminOptions").innerHTML = available.map((member) => {
+    const checked = adminIds.has(member.id) || setting.ownerId === member.id;
+    const disabled = currentRole !== "owner" || setting.ownerId === member.id;
+    return `<label class="checkbox-option"><input type="checkbox" name="threadAdmins" value="${escapeHtml(member.id)}" ${checked ? "checked" : ""} ${disabled ? "disabled" : ""}> ${escapeHtml(member.label)} <span>${escapeHtml(member.kind)}</span></label>`;
+  }).join("");
+  $("#threadMemberOptions").innerHTML = available.map((member) => {
+    const checked = memberIds.has(member.id) && !removedIds.has(member.id);
+    return `<label class="checkbox-option"><input type="checkbox" name="threadMembers" value="${escapeHtml(member.id)}" ${checked ? "checked" : ""}> ${escapeHtml(member.label)} <span>${escapeHtml(member.kind)}</span></label>`;
+  }).join("");
+}
+
+function checkedThreadValues(form, name) {
+  return Array.from(form.querySelectorAll(`input[name="${name}"]:checked`)).map((input) => input.value);
+}
+
+async function saveMessageThreadAccess(event) {
+  event.preventDefault();
+  if (!sendbirdActiveThread || !canManageActiveThreadMembers()) {
+    toast("Only thread owners and admins can manage this thread.");
+    return;
+  }
+  const form = event.currentTarget;
+  const setting = currentThreadSetting();
+  if (!setting) {
+    toast("Open the thread again before saving access.");
+    return;
+  }
+  const role = currentThreadRole();
+  const eventRecord = getEvent(sendbirdActiveThread.eventId);
+  const available = threadAvailableMembers(sendbirdActiveThread.type, eventRecord, sendbirdActiveThread.profileId || "");
+  const availableIds = new Set(available.map((member) => member.id));
+  const priorMemberIds = new Set(setting.memberIds || []);
+  const ownerId = role === "owner" ? (form.elements.ownerId.value || setting.ownerId) : setting.ownerId;
+  const requestedMembers = new Set(checkedThreadValues(form, "threadMembers").filter((id) => availableIds.has(id)));
+  requestedMembers.add(ownerId);
+  if (role !== "owner" && setting.ownerId) requestedMembers.add(setting.ownerId);
+  const adminIds = role === "owner"
+    ? Array.from(new Set([...checkedThreadValues(form, "threadAdmins"), ownerId].filter((id) => availableIds.has(id) || id === ownerId)))
+    : Array.from(new Set([...(setting.adminIds || []), setting.ownerId].filter(Boolean)));
+  if (!adminIds.includes(ownerId)) adminIds.push(ownerId);
+  const memberIds = Array.from(requestedMembers);
+  const removedUserIds = Array.from(new Set([
+    ...(setting.removedUserIds || []).filter((id) => !requestedMembers.has(id)),
+    ...Array.from(priorMemberIds).filter((id) => !requestedMembers.has(id))
+  ].filter((id) => id && id !== ownerId)));
+  await put("messageThreadSettings", {
+    ...setting,
+    ownerId,
+    adminIds,
+    memberIds,
+    removedUserIds
+  });
+  await loadState();
+  if (sendbirdActiveChannel) await syncSendbirdChannelMembers(sendbirdActiveChannel, memberIds);
+  renderMessaging();
+  closeForm("messageThreadManageForm");
+  toast("Thread access updated.");
 }
 
 function addSendbirdProfileIds(userIds, profiles) {
@@ -4389,15 +4473,15 @@ function addSendbirdProfileIds(userIds, profiles) {
 }
 
 function sendbirdUserIdsForEvent(event) {
-  return eventMessageMembers(event).map((member) => member.id);
+  return effectiveThreadMembers("event", event).map((member) => member.id);
 }
 
 function sendbirdUserIdsForProductionOffice(event) {
-  return productionOfficeMembers(event).map((member) => member.id);
+  return effectiveThreadMembers("office", event).map((member) => member.id);
 }
 
 function sendbirdUserIdsForCrewRunner(event) {
-  return crewRunnerMembers(event).map((member) => member.id);
+  return effectiveThreadMembers("crew", event).map((member) => member.id);
 }
 
 function directMessageProfiles() {
@@ -4432,6 +4516,109 @@ function directMessageProfiles() {
   return profiles.sort((a, b) => a.label.localeCompare(b.label));
 }
 
+function currentThreadUserId() {
+  return notificationSubscriberForCurrentUser().subscriberId || authState.user?.id || authState.user?.email || "";
+}
+
+function directThreadKey(profileId) {
+  return `direct:${[currentThreadUserId(), profileId].filter(Boolean).sort().join(":")}`;
+}
+
+function messageThreadKey(type, eventId = "", profileId = "") {
+  if (type === "direct") return directThreadKey(profileId);
+  return `${type}:${eventId}`;
+}
+
+function messageThreadSetting(key) {
+  return state.messageThreadSettings.find((setting) => setting.threadKey === key) || null;
+}
+
+function builtInThreadMembers(type, event, directProfileId = "") {
+  return membersForMessageThread(type, event, directProfileId);
+}
+
+function threadAvailableMembers(type, event, directProfileId = "") {
+  if (type === "direct") return directMessageMembers(directProfileId);
+  const base = builtInThreadMembers(type, event, directProfileId);
+  const extras = directMessageProfiles().filter((profile) => !base.some((member) => member.id === profile.id));
+  return uniqueMessageMembers([...base, ...extras]);
+}
+
+function defaultThreadSetting(type, event, directProfileId = "") {
+  const key = messageThreadKey(type, event?.id || "", directProfileId);
+  const currentId = currentThreadUserId();
+  const members = builtInThreadMembers(type, event, directProfileId).map((member) => member.id);
+  const ownerId = currentId || members[0] || "";
+  return {
+    id: key,
+    threadKey: key,
+    type,
+    eventId: event?.id || "",
+    profileId: directProfileId,
+    ownerId,
+    adminIds: ownerId ? [ownerId] : [],
+    memberIds: Array.from(new Set([ownerId, ...members].filter(Boolean))),
+    removedUserIds: []
+  };
+}
+
+async function ensureMessageThreadSetting(type, event, directProfileId = "") {
+  const key = messageThreadKey(type, event?.id || "", directProfileId);
+  const existing = messageThreadSetting(key);
+  const defaults = defaultThreadSetting(type, event, directProfileId);
+  if (existing) {
+    const merged = {
+      ...existing,
+      memberIds: Array.from(new Set([...(existing.memberIds || []), ...defaults.memberIds].filter(Boolean))),
+      adminIds: Array.from(new Set([...(existing.adminIds || []), existing.ownerId || defaults.ownerId].filter(Boolean))),
+      ownerId: existing.ownerId || defaults.ownerId
+    };
+    if (JSON.stringify(merged) !== JSON.stringify(existing)) {
+      await put("messageThreadSettings", merged);
+      await loadState();
+    }
+    return messageThreadSetting(key) || merged;
+  }
+  await put("messageThreadSettings", defaults);
+  await loadState();
+  return messageThreadSetting(key) || defaults;
+}
+
+function effectiveThreadMembers(type, event, directProfileId = "") {
+  const key = messageThreadKey(type, event?.id || "", directProfileId);
+  const setting = messageThreadSetting(key);
+  const available = threadAvailableMembers(type, event, directProfileId);
+  if (!setting) return builtInThreadMembers(type, event, directProfileId);
+  const allowed = new Set(setting.memberIds || []);
+  const removed = new Set(setting.removedUserIds || []);
+  return available.filter((member) => allowed.has(member.id) && !removed.has(member.id));
+}
+
+function canViewMessageThread(type, event, directProfileId = "") {
+  const key = messageThreadKey(type, event?.id || "", directProfileId);
+  const setting = messageThreadSetting(key);
+  const currentId = currentThreadUserId();
+  if (!setting) return true;
+  if ((setting.removedUserIds || []).includes(currentId)) return false;
+  return (setting.memberIds || []).includes(currentId) || builtInThreadMembers(type, event, directProfileId).some((member) => member.id === currentId);
+}
+
+function currentThreadSetting() {
+  if (!sendbirdActiveThread) return null;
+  const event = getEvent(sendbirdActiveThread.eventId);
+  const key = messageThreadKey(sendbirdActiveThread.type, event?.id || "", sendbirdActiveThread.profileId || "");
+  return messageThreadSetting(key);
+}
+
+function currentThreadRole() {
+  const setting = currentThreadSetting();
+  const currentId = currentThreadUserId();
+  if (!setting || !currentId) return "";
+  if (setting.ownerId === currentId) return "owner";
+  if ((setting.adminIds || []).includes(currentId)) return "admin";
+  return (setting.memberIds || []).includes(currentId) ? "member" : "";
+}
+
 function sendbirdThreadName(type, event, directProfile) {
   if (type === "office") return `${event?.name || "Event"} - Production Office`;
   if (type === "crew") return `${event?.name || "Event"} - Crew Runner`;
@@ -4446,7 +4633,7 @@ function sendbirdThreadUsers(type, event, directProfile) {
     : type === "crew"
       ? sendbirdUserIdsForCrewRunner(event)
       : type === "direct"
-        ? [directProfile?.id]
+        ? effectiveThreadMembers("direct", null, directProfile?.id).map((member) => member.id)
         : sendbirdUserIdsForEvent(event);
   return Array.from(new Set([currentId, ...ids].filter(Boolean)));
 }
@@ -4576,6 +4763,7 @@ async function openMessageChannel(type, eventId, options = {}) {
     return;
   }
   const threadType = MESSAGE_THREAD_TYPES[type] ? type : "event";
+  await ensureMessageThreadSetting(threadType, eventRecord);
   const userIds = sendbirdThreadUsers(threadType, eventRecord);
   try {
     const channel = await client.groupChannel.createChannel({
@@ -4611,6 +4799,7 @@ async function openDirectMessageChannel(profileId) {
     return;
   }
   try {
+    await ensureMessageThreadSetting("direct", null, directProfile.id);
     sendbirdActiveChannel = await client.groupChannel.createChannel({
       name: sendbirdThreadName("direct", null, directProfile),
       invitedUserIds: sendbirdThreadUsers("direct", null, directProfile),
@@ -4941,6 +5130,7 @@ function bindEvents() {
 
   $("#eventForm").addEventListener("submit", (event) => saveForm(event, "events"));
   $("#eventAssignmentForm").addEventListener("submit", (event) => saveForm(event, "eventAssignments"));
+  $("#messageThreadManageForm").addEventListener("submit", saveMessageThreadAccess);
   $("#sendbirdMessageForm").addEventListener("submit", sendSendbirdMessage);
   $("#sendbirdMessageForm").elements.message.addEventListener("input", () => {
     if (!sendbirdActiveChannel) return;
@@ -5035,6 +5225,7 @@ function bindEvents() {
     const openMessageChannelButton = event.target.closest("[data-open-message-channel]");
     const openDirectMessageButton = event.target.closest("[data-open-direct-message]");
     const newMessageThreadButton = event.target.closest("[data-new-message-thread]");
+    const manageMessageThreadButton = event.target.closest("[data-manage-message-thread]");
     const notifyProductionOfficeButton = event.target.closest("[data-notify-production-office]");
 
     if (publicRunnerStatusButton) {
@@ -5058,6 +5249,7 @@ function bindEvents() {
       await openMessageChannel(type, eventId);
     }
     if (openDirectMessageButton) await openDirectMessageChannel(openDirectMessageButton.dataset.openDirectMessage);
+    if (manageMessageThreadButton) openMessageThreadManageForm();
     if (newMessageThreadButton) {
       toast("Custom thread setup is next. Use Direct Message for new private threads right now.");
       state.messagingThreadType = "direct";
