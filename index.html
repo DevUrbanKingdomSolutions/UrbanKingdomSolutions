@@ -448,7 +448,10 @@
               <label>Production contact<input name="productionContact" placeholder="Name, phone, email"></label>
               <label>Venue<select name="venueId"></select></label>
               <label>Promoter<select name="promoterId"></select></label>
-              <label>Assigned crew / runners<select name="workerIds" multiple size="7"></select></label>
+              <label class="check-label"><input name="showAllCrew" type="checkbox" value="yes" data-event-crew-override> Show booked or unavailable crew</label>
+              <label>Assigned crew / runners
+                <div class="checkbox-grid crew-checkbox-grid" data-event-worker-options data-checkbox-group data-name="workerIds"></div>
+              </label>
               <label>Start<input name="startDate" type="datetime-local"></label>
               <label>End<input name="endDate" type="datetime-local"></label>
               <label>Notes<textarea name="notes" rows="3" placeholder="Call sheet details, client notes, runner instructions"></textarea></label>

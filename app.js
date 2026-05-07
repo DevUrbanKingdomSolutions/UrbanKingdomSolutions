@@ -362,7 +362,9 @@ function fillForm(formId, record) {
   Object.entries(record).forEach(([key, value]) => {
     const checkboxGroup = form.querySelector(`[data-checkbox-group][data-name="${key}"]`);
     if (checkboxGroup) {
-      const selectedValues = normalizeAccessLevels(value, "");
+      const selectedValues = key === "accessLevels"
+        ? normalizeAccessLevels(value, "")
+        : Array.isArray(value) ? value : String(value || "").split(",").filter(Boolean);
       checkboxGroup.querySelectorAll("input[type='checkbox']").forEach((input) => {
         input.checked = selectedValues.includes(input.value);
       });
@@ -382,6 +384,7 @@ function fillForm(formId, record) {
     }
   });
   renderViewOptionControls(form);
+  if (formId === "eventForm") renderEventWorkerOptions(form, record.workerIds || []);
   if (Array.isArray(record.views)) {
     const viewGroup = form.querySelector(`[data-checkbox-group][data-name="views"]`);
     viewGroup?.querySelectorAll("input[type='checkbox']").forEach((input) => {
@@ -403,6 +406,7 @@ function clearForm(formId) {
     form.elements.breakMinutes.value = "0";
     form.elements.clockIn.value = toLocalInputValue(new Date());
   }
+  if (formId === "eventForm") renderEventWorkerOptions(form, []);
   if (formId === "reportForm") form.elements.reportedAt.value = toLocalInputValue(new Date());
   if ((formId === "vehicleForm" || formId === "reportForm") && state.activeWorkerId) {
     form.elements.workerId.value = state.activeWorkerId;
@@ -1344,6 +1348,119 @@ function eventWorkerIds(event) {
   return Array.isArray(event.workerIds) ? event.workerIds : [];
 }
 
+function eventRange(event) {
+  const start = event?.startDate || event?.endDate || "";
+  const end = event?.endDate || event?.startDate || "";
+  return { start, end };
+}
+
+function dateRangesOverlap(first, second) {
+  if (!first.start || !second.start) return false;
+  const firstStart = new Date(first.start);
+  const firstEnd = new Date(first.end || first.start);
+  const secondStart = new Date(second.start);
+  const secondEnd = new Date(second.end || second.start);
+  if ([firstStart, firstEnd, secondStart, secondEnd].some((date) => Number.isNaN(date.getTime()))) return false;
+  return firstStart <= secondEnd && secondStart <= firstEnd;
+}
+
+function workerBookingConflict(workerId, draftEvent) {
+  const draftRange = eventRange(draftEvent);
+  return state.events.find((event) => {
+    if (!event || event.id === draftEvent.id) return false;
+    if (!eventWorkerIds(event).includes(workerId)) return false;
+    return dateRangesOverlap(draftRange, eventRange(event));
+  });
+}
+
+function hasActiveBookedStatus(worker) {
+  if ((worker.status || "Available") !== "Booked") return false;
+  if (!worker.bookedUntil) return true;
+  const bookedThrough = new Date(worker.bookedUntil);
+  if (Number.isNaN(bookedThrough.getTime())) return true;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return bookedThrough >= today;
+}
+
+function eventFormDraft(form) {
+  return {
+    id: form.elements.id?.value || "",
+    name: form.elements.name?.value || "",
+    startDate: form.elements.startDate?.value || "",
+    endDate: form.elements.endDate?.value || ""
+  };
+}
+
+function selectedEventWorkerIds(form, providedIds) {
+  if (Array.isArray(providedIds)) return providedIds;
+  return Array.from(form.querySelectorAll("[data-event-worker-options] input[type='checkbox']:checked")).map((input) => input.value);
+}
+
+function workerAvailabilityLabel(worker, conflict) {
+  const status = worker.status || "Available";
+  if (conflict) return `Booked: ${conflict.name || "another event"}`;
+  if (status === "Booked" && worker.bookedEventName && hasActiveBookedStatus(worker)) return `Booked: ${worker.bookedEventName}`;
+  if (status && status !== "Available" && hasActiveBookedStatus(worker)) return status;
+  if (status && status !== "Available" && status !== "Booked") return status;
+  return worker.role || "Crew";
+}
+
+function renderEventWorkerOptions(form = $("#eventForm"), selectedIds = null) {
+  if (!form) return;
+  const group = form.querySelector("[data-event-worker-options]");
+  if (!group) return;
+  const selected = new Set(selectedEventWorkerIds(form, selectedIds));
+  const showAll = form.elements.showAllCrew?.checked;
+  const draftEvent = eventFormDraft(form);
+  const workers = isAdminRole() ? [] : state.workers;
+  const rows = workers.map((worker) => {
+    const selectedAlready = selected.has(worker.id);
+    const conflict = workerBookingConflict(worker.id, draftEvent);
+    const status = worker.status || "Available";
+    const available = (status === "Available" || (status === "Booked" && !hasActiveBookedStatus(worker))) && !conflict;
+    if (!available && !selectedAlready && !showAll) return "";
+    const muted = !available ? " is-muted" : "";
+    const note = workerAvailabilityLabel(worker, conflict);
+    return `
+      <label class="checkbox-option${muted}">
+        <input name="workerIds" type="checkbox" value="${escapeHtml(worker.id)}" ${selectedAlready ? "checked" : ""}>
+        <span>${escapeHtml(worker.name || "Unnamed crew")}<small>${escapeHtml(note)}</small></span>
+      </label>`;
+  }).filter(Boolean).join("");
+  group.innerHTML = rows || `<div class="compact-item empty">No available crew for these dates. Use the override checkbox to see booked or unavailable crew.</div>`;
+}
+
+async function syncWorkerBookingForEvent(eventRecord, previousEvent = {}) {
+  const selected = new Set(eventWorkerIds(eventRecord));
+  const previous = new Set(eventWorkerIds(previousEvent));
+  const touched = new Set([...selected, ...previous]);
+  const bookedUntil = eventRecord.endDate || eventRecord.startDate || "";
+  for (const workerId of touched) {
+    const worker = getWorker(workerId);
+    if (!worker) continue;
+    if (selected.has(workerId)) {
+      await put("workers", {
+        ...worker,
+        status: "Booked",
+        bookedEventId: eventRecord.id,
+        bookedEventName: eventRecord.name || "",
+        bookedUntil
+      });
+    } else if (worker.bookedEventId === eventRecord.id) {
+      const { bookedEventId, bookedEventName, bookedUntil: previousBookedUntil, ...rest } = worker;
+      await put("workers", { ...rest, status: "Available" });
+    }
+  }
+}
+
+async function releaseWorkerBookingsForEvent(eventId) {
+  for (const worker of state.workers.filter((item) => item.bookedEventId === eventId)) {
+    const { bookedEventId, bookedEventName, bookedUntil, ...rest } = worker;
+    await put("workers", { ...rest, status: "Available" });
+  }
+}
+
 function visibleEvents() {
   if (isAdminRole()) return [];
   if (isProductionRole()) {
@@ -1804,7 +1921,7 @@ function renderSelects() {
 
   $("#eventForm select[name='venueId']").innerHTML = venueOptions;
   $("#eventForm select[name='promoterId']").innerHTML = promoterOptions;
-  $("#eventForm select[name='workerIds']").innerHTML = workers.map((worker) => `<option value="${worker.id}">${escapeHtml(worker.name)} - ${escapeHtml(worker.role)}</option>`).join("");
+  renderEventWorkerOptions($("#eventForm"));
 
   $("#timecardForm select[name='eventId']").innerHTML = eventOptions;
   $("#timecardForm select[name='workerId']").innerHTML = workerOptions;
@@ -2567,6 +2684,11 @@ async function saveForm(event, storeName) {
       return;
     }
   }
+  if (storeName === "events") {
+    merged.id = merged.id || crypto.randomUUID();
+    merged.workerIds = Array.isArray(merged.workerIds) ? merged.workerIds : [];
+    delete merged.showAllCrew;
+  }
   if (storeName === "clients" && isClientRole()) {
     const clientId = authState.roleRecord?.client_id || "";
     if (!clientId || (record.id && record.id !== clientId)) {
@@ -2632,6 +2754,7 @@ async function saveForm(event, storeName) {
 
   let loginSyncMessage = "";
   await put(storeName, merged);
+  if (storeName === "events") await syncWorkerBookingForEvent(merged, existing || {});
   try {
     if (storeName === "clients") {
       loginSyncMessage = await syncSupabaseClientAccount(merged);
@@ -2691,6 +2814,7 @@ async function deleteRecord(storeName, id) {
       await remove("clientReps", rep.id);
     }
   }
+  if (storeName === "events") await releaseWorkerBookingsForEvent(id);
   await remove(storeName, id);
   await loadState();
   setView(state.activeView);
@@ -3165,6 +3289,11 @@ function bindEvents() {
   $("#timecardForm select[name='vehicleUse']").addEventListener("change", () => applyWorkerPayDefaultsToTimecard($("#timecardForm").elements.workerId.value));
 
   $("#eventForm").addEventListener("submit", (event) => saveForm(event, "events"));
+  $("#eventForm").addEventListener("change", (event) => {
+    if (event.target.matches("[data-event-crew-override], input[name='startDate'], input[name='endDate']")) {
+      renderEventWorkerOptions($("#eventForm"));
+    }
+  });
   $("#eventAccessForm").addEventListener("submit", async (event) => {
     event.preventDefault();
     const eventId = event.currentTarget.elements.eventId.value;
