@@ -357,6 +357,21 @@
                 </table>
               </div>
             </section>
+            <section class="panel table-panel">
+              <div class="panel-heading">
+                <h3>User Accounts</h3>
+                <div class="panel-tools">
+                  <span id="userAccessTableCount" class="muted"></span>
+                  <button class="tiny-button" data-refresh-users type="button">Refresh</button>
+                </div>
+              </div>
+              <div class="table-wrap">
+                <table>
+                  <thead><tr><th>User</th><th>Role</th><th>Client</th><th>Profile</th><th></th></tr></thead>
+                  <tbody id="userAccessTable"></tbody>
+                </table>
+              </div>
+            </section>
           </div>
         </section>
 
@@ -756,15 +771,15 @@
               <label>Rep title / office<input name="contactName" placeholder="Production manager, local rep, office"></label>
               <label>Phone<input name="phone" placeholder="(555) 000-0000"></label>
               <label>Email<input name="email" type="email" placeholder="contact@example.com"></label>
-              <label class="owner-form">Login email<input name="loginEmail" type="email" placeholder="login@example.com"></label>
-              <label class="owner-form">Login role
+              <label class="promoter-login-field">Login email<input name="loginEmail" type="email" placeholder="login@example.com"></label>
+              <label class="promoter-login-field">Login role
                 <select name="loginRole">
                   <option value="PROMOTER_PRODUCTION_OFFICE">Production Office</option>
                   <option value="CREW">Crew / Runner</option>
                 </select>
               </label>
-              <label class="owner-form">Supabase user ID<input name="authUserId" placeholder="Paste user ID after setup"></label>
-              <label class="owner-form">Access
+              <label class="promoter-login-field">Supabase user ID<input name="authUserId" placeholder="Paste user ID after setup"></label>
+              <label class="promoter-login-field">Access
                 <select name="accessLevels" multiple size="2">
                   <option value="PROMOTER_PRODUCTION_OFFICE">Production Office</option>
                   <option value="CREW">Crew / Runner</option>
@@ -828,6 +843,21 @@
                 <table>
                   <thead><tr><th>Rep</th><th>Company</th><th>Phone</th><th>Email</th><th>Notes</th><th></th></tr></thead>
                   <tbody id="promoterTable"></tbody>
+                </table>
+              </div>
+            </section>
+            <section class="panel table-panel">
+              <div class="panel-heading">
+                <h3>User Accounts</h3>
+                <div class="panel-tools">
+                  <span id="promoterUserAccessTableCount" class="muted"></span>
+                  <button class="tiny-button" data-refresh-users type="button">Refresh</button>
+                </div>
+              </div>
+              <div class="table-wrap">
+                <table>
+                  <thead><tr><th>User</th><th>Role</th><th>Client</th><th>Profile</th><th></th></tr></thead>
+                  <tbody id="promoterUserAccessTable"></tbody>
                 </table>
               </div>
             </section>

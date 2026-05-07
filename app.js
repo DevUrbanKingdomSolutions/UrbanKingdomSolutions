@@ -7,6 +7,7 @@ const SMTP_TEST_FUNCTION = "send-smtp-test";
 const SAVE_SMTP_ROUTE_FUNCTION = "save-smtp-route";
 const CREATE_EVENT_ACCESS_FUNCTION = "create-event-access-link";
 const PUBLIC_EVENT_ACCESS_FUNCTION = "public-event-access";
+const USER_ACCESS_FUNCTION = "user-access-management";
 const STORES = [
   "clients",
   "clientReps",
@@ -105,6 +106,7 @@ let state = {
   accidentReports: [],
   clients: [],
   clientReps: [],
+  userAccessRows: [],
   eventAccessLinks: [],
   search: "",
   activeView: "dashboard",
@@ -727,7 +729,11 @@ function loginSetupPayload(storeName, record) {
 }
 
 function smtpRouteForInvite(storeName) {
-  const profile = storeName === "clients" ? activeAdminProfile() : activeClientRepRecord();
+  const profile = storeName === "clients"
+    ? activeAdminProfile()
+    : isProductionRole()
+      ? activePromoterRecord()
+      : activeClientRepRecord();
   if (!profile) return null;
   return {
     fromName: profile.smtpFromName || profile.name || "Production Crew",
@@ -791,6 +797,37 @@ async function saveSupabaseSmtpRoute(storeName, record, password) {
   record.emailRoutingStatus = "Active";
   await put(storeName, record);
   return "SMTP route saved securely.";
+}
+
+async function refreshUserAccessList(showMessage = true) {
+  if (!initializeSupabaseClient() || !(isAdminRole() || isClientRole() || isProductionRole())) return;
+  const { data, error } = await supabaseClient.functions.invoke(USER_ACCESS_FUNCTION, {
+    body: { action: "list" }
+  });
+  if (error) {
+    console.error(error);
+    if (showMessage) toast(await loginSetupErrorMessage(error));
+    return;
+  }
+  state.userAccessRows = data?.users || [];
+  renderUserAccessTables();
+  if (showMessage) toast("User accounts refreshed.");
+}
+
+async function deleteUserAccount(userId) {
+  if (!isAdminRole() || !userId) return;
+  const confirmed = confirm("Delete this login account? This removes their Supabase login and app role, but does not delete the client company profile.");
+  if (!confirmed) return;
+  const { error } = await supabaseClient.functions.invoke(USER_ACCESS_FUNCTION, {
+    body: { action: "delete", userId }
+  });
+  if (error) {
+    console.error(error);
+    toast(await loginSetupErrorMessage(error));
+    return;
+  }
+  await refreshUserAccessList(false);
+  toast("User account deleted.");
 }
 
 function setupStepKey(userId = authState.user?.id) {
@@ -868,6 +905,7 @@ async function applyAuthenticatedSession(session, preferredView = "") {
   await ensureDatabase();
   await hydrateClientSetupData(roleRecord, session.user);
   await loadState();
+  await refreshUserAccessList(false);
   appHasLoaded = true;
   const homeView = state.activeView && currentProfile().views.includes(state.activeView) ? state.activeView : roleHomeView();
   if (location.hash !== `#${homeView}`) history.replaceState(null, "", `#${homeView}`);
@@ -1301,6 +1339,7 @@ function render() {
   applyAccessProfile();
   renderSelects();
   renderAdmin();
+  renderUserAccessTables();
   renderDashboard();
   renderClientProfile();
   renderAdminProfile();
@@ -1323,6 +1362,46 @@ function renderAdmin() {
   $("#clientTable").innerHTML = state.clients.length
     ? state.clients.map((client) => `<tr><td><button class="link-button" data-view-client-company="${client.id}" type="button"><strong>${escapeHtml(client.name)}</strong></button><p>${escapeHtml(client.email)}</p></td><td>${escapeHtml(client.contactName)}<p>${escapeHtml(client.phone)}</p></td><td><span class="status-pill">${escapeHtml(client.status || "Active")}</span></td><td>${escapeHtml(client.notes)}${loginStatus(client)}</td><td>${actionButtons("clients", client.id, "clientForm", loginSetupButton("clients", client), canSystemEdit())}</td></tr>`).join("")
     : `<tr><td colspan="5" class="empty">No client accounts yet.</td></tr>`;
+}
+
+function userAccessRowsForView() {
+  if (isAdminRole() || isClientRole()) return state.userAccessRows;
+  if (isProductionRole()) {
+    return state.userAccessRows.filter((row) => row.role === "PROMOTER_PRODUCTION_OFFICE");
+  }
+  return [];
+}
+
+function renderUserAccessTables() {
+  const rows = userAccessRowsForView();
+  renderUserAccessTable("userAccessTable", "userAccessTableCount", rows);
+  renderUserAccessTable("promoterUserAccessTable", "promoterUserAccessTableCount", rows);
+}
+
+function renderUserAccessTable(tableId, countId, rows) {
+  const table = document.getElementById(tableId);
+  const count = document.getElementById(countId);
+  if (!table || !count) return;
+  count.textContent = `${rows.length} users`;
+  table.innerHTML = rows.length
+    ? rows.map((row) => `<tr><td><strong>${escapeHtml(row.email || "No email")}</strong><p>${escapeHtml(row.userId || "")}</p></td><td><span class="status-pill">${escapeHtml(row.role || "")}</span></td><td>${escapeHtml(row.clientName || row.clientId || "")}</td><td>${escapeHtml(userAccessProfileLabel(row))}</td><td>${userAccessActions(row)}</td></tr>`).join("")
+    : `<tr><td colspan="5" class="empty">Refresh to load user accounts.</td></tr>`;
+}
+
+function userAccessProfileLabel(row) {
+  if (row.role === "CLIENT") {
+    const rep = state.clientReps.find((item) => item.authUserId === row.userId)
+      || state.clientReps.find((item) => item.clientId === row.clientId && item.email === row.email);
+    return rep?.name || "Client rep";
+  }
+  if (row.role === "PROMOTER_PRODUCTION_OFFICE") return promoterLabel(getPromoter(row.promoterId)) || row.promoterId || "Promoter rep";
+  if (row.role === "CREW") return getWorker(row.workerId)?.name || row.workerId || "Crew";
+  return "";
+}
+
+function userAccessActions(row) {
+  if (!isAdminRole() || row.role === "ADMIN" || row.userId === authState.user?.id) return "";
+  return `<button class="tiny-button danger" data-delete-user-account="${row.userId}" type="button">Delete Account</button>`;
 }
 
 function openClientCompanyView(clientId) {
@@ -1762,7 +1841,10 @@ function actionButtons(store, id, formId, extra = "", allowed = canAdminEdit()) 
 }
 
 function loginSetupButton(store, profile) {
-  if (store === "clients" ? !canSystemEdit() : !canOwnerEdit()) return "";
+  if (store === "clients" && !canSystemEdit()) return "";
+  if (store === "workers" && !canOwnerEdit()) return "";
+  if (store === "promoters" && !(canOwnerEdit() || isProductionRole())) return "";
+  if (store === "promoters" && isProductionRole() && profileLoginRole(store, profile) !== "PROMOTER_PRODUCTION_OFFICE") return "";
   const email = profile.loginEmail || profile.email;
   if (!email) return "";
   return `<button class="tiny-button" data-send-login="${store}" data-id="${profile.id}" type="button">Send Login Setup</button>`;
@@ -2158,6 +2240,15 @@ function applyAccessProfile() {
   $("#promoterScopeControl").hidden = !isProductionRole();
   $("#exportData").hidden = !profile.canImportExport;
   $("#importData").closest(".file-action").hidden = !profile.canImportExport;
+  $$(".promoter-login-field").forEach((field) => { field.hidden = !(isClientRole() || isProductionRole()); });
+  $$("select[name='loginRole']").forEach((select) => {
+    if (select.closest("#promoterForm") && isProductionRole()) select.value = "PROMOTER_PRODUCTION_OFFICE";
+  });
+  $$("#promoterForm select[name='loginRole'] option[value='CREW']").forEach((option) => { option.hidden = isProductionRole(); });
+  $$("#promoterForm select[name='accessLevels'] option[value='CREW']").forEach((option) => {
+    option.hidden = isProductionRole();
+    if (isProductionRole()) option.selected = false;
+  });
   $$(".admin-form").forEach((form) => { form.hidden = !profile.canAdminEdit; });
   $$(".owner-form").forEach((form) => { form.hidden = !profile.canOwnerEdit; });
   $$(".rate-field").forEach((form) => { form.hidden = !isClientRole(); });
@@ -2293,6 +2384,8 @@ async function saveForm(event, storeName) {
   if (storeName === "promoters" && isProductionRole()) {
     const active = getPromoter(state.activePromoterId);
     merged.companyName = active?.companyName || merged.companyName;
+    merged.loginRole = "PROMOTER_PRODUCTION_OFFICE";
+    merged.accessLevels = ["PROMOTER_PRODUCTION_OFFICE"];
   }
   if (storeName === "timecards" && merged.eventId) {
     const relatedEvent = getEvent(merged.eventId);
@@ -2443,9 +2536,13 @@ async function bulkDeleteProfiles(storeName) {
 }
 
 async function sendLoginSetup(storeName, id) {
-  const canSendSetup = storeName === "clients" ? canSystemEdit() : canOwnerEdit();
+  const canSendSetup = storeName === "clients"
+    ? canSystemEdit()
+    : storeName === "promoters"
+      ? canOwnerEdit() || isProductionRole()
+      : canOwnerEdit();
   if (!canSendSetup) {
-    toast(storeName === "clients" ? "Only ADMIN can send client login setup." : "Only Client can send login setup.");
+    toast(storeName === "clients" ? "Only ADMIN can send client login setup." : "This access view cannot send that login setup.");
     return;
   }
   if (!initializeSupabaseClient()) {
@@ -2455,6 +2552,10 @@ async function sendLoginSetup(storeName, id) {
   const record = state[storeName]?.find((item) => item.id === id);
   if (!record) return;
   const payload = loginSetupPayload(storeName, record);
+  if (isProductionRole() && payload.role !== "PROMOTER_PRODUCTION_OFFICE") {
+    toast("Production Office can only invite other promoter users.");
+    return;
+  }
   if (!payload.email) {
     toast("Add a login email first.");
     return;
@@ -2894,11 +2995,15 @@ function bindEvents() {
     const editViewedClientButton = event.target.closest("#editViewedClientCompany");
     const eventAccessButton = event.target.closest("[data-event-access]");
     const publicRunnerStatusButton = event.target.closest("[data-public-runner-status]");
+    const refreshUsersButton = event.target.closest("[data-refresh-users]");
+    const deleteUserButton = event.target.closest("[data-delete-user-account]");
 
     if (publicRunnerStatusButton) {
       await updatePublicRunnerStatus(publicRunnerStatusButton.dataset.publicRunnerStatus, publicRunnerStatusButton.dataset.status);
       return;
     }
+    if (refreshUsersButton) await refreshUserAccessList();
+    if (deleteUserButton) await deleteUserAccount(deleteUserButton.dataset.deleteUserAccount);
 
   if (openButton) {
       clearForm(openButton.dataset.openForm);
