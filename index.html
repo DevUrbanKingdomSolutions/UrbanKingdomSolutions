@@ -340,6 +340,25 @@
               <label>System notes<textarea name="notes" rows="4" placeholder="Configuration notes, support details, onboarding status"></textarea></label>
               <button class="primary-action" type="submit">Save Company & Rep</button>
             </form>
+            <form id="accessLevelForm" class="panel form-panel system-form">
+              <div class="panel-heading">
+                <h3>Access Level</h3>
+                <button class="ghost-button clear-form" type="button" data-form="accessLevelForm">Clear</button>
+              </div>
+              <input type="hidden" name="id">
+              <label>Access name<input name="name" required placeholder="Runner Lead, Production Viewer"></label>
+              <label>Security foundation
+                <select name="baseRole">
+                  <option value="CREW">Crew / Runner</option>
+                  <option value="PROMOTER_PRODUCTION_OFFICE">Production Office</option>
+                </select>
+              </label>
+              <label>Allowed pages
+                <div class="checkbox-grid" data-view-options data-checkbox-group data-name="views"></div>
+              </label>
+              <label>Description<textarea name="description" rows="3" placeholder="What this access level is for"></textarea></label>
+              <button class="primary-action" type="submit">Save Access Level</button>
+            </form>
             <section class="panel table-panel">
               <div class="panel-heading">
                 <h3>Admin Console</h3>
@@ -358,6 +377,21 @@
                 <table>
                   <thead><tr><th>Client</th><th>Contact</th><th>Status</th><th>System Notes</th><th></th></tr></thead>
                   <tbody id="clientTable"></tbody>
+                </table>
+              </div>
+            </section>
+            <section class="panel table-panel">
+              <div class="panel-heading">
+                <h3>Access Levels</h3>
+                <div class="panel-tools">
+                  <span id="accessLevelTableCount" class="muted"></span>
+                  <button class="tiny-button system-action" data-open-form="accessLevelForm" type="button">Add Access Level</button>
+                </div>
+              </div>
+              <div class="table-wrap">
+                <table>
+                  <thead><tr><th>Level</th><th>Security</th><th>Pages</th><th></th></tr></thead>
+                  <tbody id="accessLevelTable"></tbody>
                 </table>
               </div>
             </section>

@@ -1,5 +1,5 @@
 const DB_NAME = "productionCrewDatabase";
-const DB_VERSION = 8;
+const DB_VERSION = 9;
 const SUPABASE_URL = "https://nnhqrhaltkmymnwxydwr.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5uaHFyaGFsdGtteW1ud3h5ZHdyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgwMjMxNDgsImV4cCI6MjA5MzU5OTE0OH0.X9iGhE61WehM57133LKCWMfXXDHmcb2rhw-ZPCKAJos";
 const LOGIN_SETUP_FUNCTION = "send-login-setup";
@@ -11,6 +11,7 @@ const USER_ACCESS_FUNCTION = "user-access-management";
 const STORES = [
   "clients",
   "clientReps",
+  "accessLevelDefs",
   "eventAccessLinks",
   "workers",
   "venues",
@@ -106,6 +107,7 @@ let state = {
   accidentReports: [],
   clients: [],
   clientReps: [],
+  accessLevelDefs: [],
   userAccessRows: [],
   eventAccessLinks: [],
   search: "",
@@ -280,11 +282,12 @@ async function remove(storeName, id) {
 }
 
 async function loadState() {
-  const [clients, clientReps, eventAccessLinks, workers, venues, promoters, profileNotes, events, timecards, runnerStops, runnerCategories, systemProfiles, vehicleLogs, accidentReports] = await Promise.all(STORES.map(getAll));
+  const [clients, clientReps, accessLevelDefs, eventAccessLinks, workers, venues, promoters, profileNotes, events, timecards, runnerStops, runnerCategories, systemProfiles, vehicleLogs, accidentReports] = await Promise.all(STORES.map(getAll));
   state = {
     ...state,
     clients: sortByName(clients),
     clientReps: sortByName(clientReps),
+    accessLevelDefs: sortByName(accessLevelDefs),
     eventAccessLinks: eventAccessLinks.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0)),
     workers: sortByName(workers),
     venues: sortByName(venues),
@@ -355,6 +358,7 @@ function readFileAsDataUrl(file) {
 function fillForm(formId, record) {
   const form = document.getElementById(formId);
   renderAccessLevelControls(form);
+  renderViewOptionControls(form);
   Object.entries(record).forEach(([key, value]) => {
     const checkboxGroup = form.querySelector(`[data-checkbox-group][data-name="${key}"]`);
     if (checkboxGroup) {
@@ -377,6 +381,13 @@ function fillForm(formId, record) {
       form.elements[key].value = value || "";
     }
   });
+  renderViewOptionControls(form);
+  if (Array.isArray(record.views)) {
+    const viewGroup = form.querySelector(`[data-checkbox-group][data-name="views"]`);
+    viewGroup?.querySelectorAll("input[type='checkbox']").forEach((input) => {
+      input.checked = record.views.includes(input.value);
+    });
+  }
   openForm(formId);
   updateSmtpForm(form);
 }
@@ -385,6 +396,8 @@ function clearForm(formId) {
   const form = document.getElementById(formId);
   if (!form?.reset) return;
   form.reset();
+  renderAccessLevelControls(form);
+  renderViewOptionControls(form);
   if (form.elements.id) form.elements.id.value = "";
   if (formId === "timecardForm") {
     form.elements.breakMinutes.value = "0";
@@ -600,7 +613,8 @@ async function fetchUserRoleFromHelpers() {
 
 function profileLoginRole(storeName, record) {
   const fallback = storeName === "clients" ? "CLIENT" : storeName === "promoters" ? "PROMOTER_PRODUCTION_OFFICE" : "CREW";
-  return normalizeRole(record.loginRole || normalizeAccessLevels(record.accessLevels, fallback)[0] || fallback);
+  const access = record.loginRole || normalizeAccessLevels(record.accessLevels, fallback)[0] || fallback;
+  return baseRoleForAccess(access);
 }
 
 function profileRolePayload(storeName, record) {
@@ -1096,32 +1110,36 @@ function normalizeRole(role) {
 
 function normalizeAccessLevel(level) {
   const value = String(level || "").trim();
-  return value ? normalizeRole(value) : "";
+  if (!value) return "";
+  if (accessLevelDefinition(value)) return value;
+  return normalizeRole(value);
 }
 
 function isAdminRole() {
-  return state.accessRole === "ADMIN";
+  return effectiveAccessRole() === "ADMIN";
 }
 
 function isClientRole() {
-  return state.accessRole === "CLIENT";
+  return effectiveAccessRole() === "CLIENT";
 }
 
 function isProductionRole() {
-  return state.accessRole === "PROMOTER_PRODUCTION_OFFICE";
+  return effectiveAccessRole() === "PROMOTER_PRODUCTION_OFFICE";
 }
 
 function isCrewRole() {
-  return state.accessRole === "CREW";
+  return effectiveAccessRole() === "CREW";
 }
 
 function currentProfile() {
-  return ACCESS_PROFILES[state.accessRole] || ACCESS_PROFILES.CLIENT;
+  return accessProfileFor(state.accessRole);
 }
 
 function roleHomeView(role = state.accessRole) {
-  const normalized = normalizeRole(role);
-  return ROLE_HOME_VIEWS[normalized] || ACCESS_PROFILES[normalized]?.views?.[0] || "dashboard";
+  const profile = accessProfileFor(role);
+  return ROLE_HOME_VIEWS[profile.effectiveRole] && profile.views.includes(ROLE_HOME_VIEWS[profile.effectiveRole])
+    ? ROLE_HOME_VIEWS[profile.effectiveRole]
+    : profile.views[0] || "dashboard";
 }
 
 function protectedViewFor(viewId) {
@@ -1147,17 +1165,17 @@ function assignedAccessForCurrentUser() {
   const baseRole = normalizeRole(authState.roleRecord?.role || state.accessRole);
   if (baseRole === "ADMIN") return ["ADMIN"];
   if (baseRole === "CLIENT") return ["CLIENT"];
-  return assignedAccessForRole(baseRole).filter((role) => ACCESS_PROFILES[role]);
+  return assignedAccessForRole(baseRole).filter((role) => accessProfileFor(role));
 }
 
 function accessLevelOptionsForForm(form) {
-  let roles = Object.keys(ACCESS_PROFILES).filter((role) => !["ADMIN", "CLIENT"].includes(role));
-  if (form?.id === "promoterForm" && isProductionRole()) roles = roles.filter((role) => role === "PROMOTER_PRODUCTION_OFFICE");
+  let roles = accessLevelDefinitions().map((level) => level.id).filter((role) => !["ADMIN", "CLIENT"].includes(baseRoleForAccess(role)));
+  if (form?.id === "promoterForm" && isProductionRole()) roles = roles.filter((role) => baseRoleForAccess(role) === "PROMOTER_PRODUCTION_OFFICE");
   return roles;
 }
 
 function accessLevelLabel(role) {
-  return ACCESS_LEVEL_LABELS[role] || role.replaceAll("_", " ");
+  return accessLevelDefinition(role)?.name || ACCESS_LEVEL_LABELS[role] || role.replaceAll("_", " ");
 }
 
 function renderAccessLevelControls(root = document) {
@@ -1166,6 +1184,66 @@ function renderAccessLevelControls(root = document) {
     const options = accessLevelOptionsForForm(group.closest("form"));
     group.innerHTML = options.map((role) => `<label class="checkbox-option"><input name="${escapeHtml(group.dataset.name || "accessLevels")}" type="checkbox" value="${escapeHtml(role)}" ${selected.includes(role) ? "checked" : ""}>${escapeHtml(accessLevelLabel(role))}</label>`).join("");
   });
+}
+
+function viewLabel(viewId) {
+  return Object.values(NAV_GROUPS)
+    .flat()
+    .flatMap((group) => group.items || [])
+    .find(([view]) => view === viewId)?.[1] || viewId;
+}
+
+function renderViewOptionControls(root = document) {
+  root.querySelectorAll?.("[data-view-options]").forEach((group) => {
+    const selected = Array.from(group.querySelectorAll("input[type='checkbox']:checked")).map((input) => input.value);
+    const form = group.closest("form");
+    const baseRole = normalizeRole(form?.elements?.baseRole?.value || "CREW");
+    const views = ACCESS_PROFILES[baseRole]?.views || [];
+    group.innerHTML = views.map((view) => `<label class="checkbox-option"><input name="${escapeHtml(group.dataset.name || "views")}" type="checkbox" value="${escapeHtml(view)}" ${selected.includes(view) ? "checked" : ""}>${escapeHtml(viewLabel(view))}</label>`).join("");
+  });
+}
+
+function builtInAccessLevelDefinitions() {
+  return Object.keys(ACCESS_PROFILES).map((id) => ({
+    id,
+    name: ACCESS_LEVEL_LABELS[id] || id,
+    baseRole: id,
+    views: ACCESS_PROFILES[id].views,
+    builtIn: true
+  }));
+}
+
+function accessLevelDefinitions() {
+  return [...builtInAccessLevelDefinitions(), ...state.accessLevelDefs];
+}
+
+function accessLevelDefinition(id) {
+  return accessLevelDefinitions().find((level) => level.id === id) || null;
+}
+
+function baseRoleForAccess(id) {
+  const definition = accessLevelDefinition(id);
+  return normalizeRole(definition?.baseRole || id);
+}
+
+function effectiveAccessRole() {
+  return baseRoleForAccess(state.accessRole);
+}
+
+function accessProfileFor(id) {
+  const definition = accessLevelDefinition(id);
+  const baseRole = baseRoleForAccess(id);
+  const baseProfile = ACCESS_PROFILES[baseRole] || ACCESS_PROFILES.CLIENT;
+  if (!definition || definition.builtIn) {
+    return { ...baseProfile, effectiveRole: baseRole };
+  }
+  const allowedViews = (definition.views || []).filter((view) => baseProfile.views.includes(view));
+  return {
+    ...baseProfile,
+    label: definition.name,
+    views: allowedViews.length ? allowedViews : baseProfile.views,
+    effectiveRole: baseRole
+  };
 }
 
 function normalizeAccessLevels(levels, fallback) {
@@ -1387,6 +1465,7 @@ function render() {
   applyAccessProfile();
   renderSelects();
   renderAdmin();
+  renderAccessLevels();
   renderUserAccessTables();
   renderDashboard();
   renderClientProfile();
@@ -1410,6 +1489,21 @@ function renderAdmin() {
   $("#clientTable").innerHTML = state.clients.length
     ? state.clients.map((client) => `<tr><td><button class="link-button" data-view-client-company="${client.id}" type="button"><strong>${escapeHtml(client.name)}</strong></button><p>${escapeHtml(client.email)}</p></td><td>${escapeHtml(client.contactName)}<p>${escapeHtml(client.phone)}</p></td><td><span class="status-pill">${escapeHtml(client.status || "Active")}</span></td><td>${escapeHtml(client.notes)}${loginStatus(client)}</td><td>${actionButtons("clients", client.id, "clientForm", loginSetupButton("clients", client), canSystemEdit())}</td></tr>`).join("")
     : `<tr><td colspan="5" class="empty">No client accounts yet.</td></tr>`;
+}
+
+function renderAccessLevels() {
+  const table = $("#accessLevelTable");
+  const count = $("#accessLevelTableCount");
+  if (!table || !count) return;
+  const rows = accessLevelDefinitions().filter((level) => !["ADMIN", "CLIENT"].includes(level.baseRole));
+  count.textContent = `${rows.length} levels`;
+  table.innerHTML = rows.length
+    ? rows.map((level) => {
+        const pages = (level.views || []).map(viewLabel).join(", ");
+        const actions = level.builtIn ? "" : actionButtons("accessLevelDefs", level.id, "accessLevelForm", "", canSystemEdit());
+        return `<tr><td><strong>${escapeHtml(level.name)}</strong><p>${escapeHtml(level.description || (level.builtIn ? "Built-in access level" : ""))}</p></td><td>${escapeHtml(accessLevelLabel(level.baseRole))}</td><td>${escapeHtml(pages)}</td><td>${actions}</td></tr>`;
+      }).join("")
+    : `<tr><td colspan="4" class="empty">No access levels configured.</td></tr>`;
 }
 
 function userAccessRowsForView() {
@@ -2258,14 +2352,14 @@ function setView(viewId) {
   state.activeView = viewId;
   $$(".view").forEach((view) => view.classList.toggle("active-view", view.id === viewId));
   $$(".nav-item").forEach((button) => button.classList.toggle("active", button.dataset.view === viewId));
-  const label = (NAV_GROUPS[state.accessRole] || []).flatMap((group) => group.items).find(([view]) => view === viewId)?.[1];
+  const label = (NAV_GROUPS[effectiveAccessRole()] || []).flatMap((group) => group.items).find(([view]) => view === viewId)?.[1];
   $("#viewTitle").textContent = label || $(`.nav-item[data-view="${viewId}"]`)?.textContent || "Dashboard";
   if (location.hash !== `#${viewId}`) history.replaceState(null, "", `#${viewId}`);
   if (requestedView !== viewId) toast("That view is restricted for your role.");
 }
 
 function renderNavigation() {
-  const groups = NAV_GROUPS[state.accessRole] || NAV_GROUPS.CLIENT;
+  const groups = NAV_GROUPS[effectiveAccessRole()] || NAV_GROUPS.CLIENT;
   $(".nav-list").innerHTML = groups.map((group) => {
     const heading = group.label ? `<div class="nav-group-label">${group.label}</div>` : "";
     const items = group.items
@@ -2325,8 +2419,8 @@ function renderAccessRoleOptions() {
 }
 
 function setAccessRole(role) {
-  const nextRole = normalizeRole(role);
-  if (!ACCESS_PROFILES[nextRole]) return;
+  const nextRole = normalizeAccessLevel(role);
+  if (!accessProfileFor(nextRole)) return;
   if (!assignedAccessForCurrentUser().includes(nextRole)) {
     toast("That access view is not assigned to this login.");
     return;
@@ -2351,7 +2445,11 @@ async function saveForm(event, storeName) {
     toast("Only ADMIN can save system profile settings.");
     return;
   }
-  if (isAdminRole() && !["clients", "systemProfiles"].includes(storeName)) {
+  if (storeName === "accessLevelDefs" && !canSystemEdit()) {
+    toast("Only ADMIN can save access levels.");
+    return;
+  }
+  if (isAdminRole() && !["clients", "systemProfiles", "accessLevelDefs"].includes(storeName)) {
     toast("ADMIN cannot access production records in this demo.");
     return;
   }
@@ -2409,6 +2507,20 @@ async function saveForm(event, storeName) {
   if (storeName === "systemProfiles") {
     merged.id = "adminProfile";
     merged.emailRoutingStatus = merged.emailRoutingStatus || "Not configured";
+  }
+  if (storeName === "accessLevelDefs") {
+    const idSource = merged.id || merged.name || crypto.randomUUID();
+    merged.id = String(idSource).trim().toUpperCase().replace(/[^A-Z0-9]+/g, "_").replace(/^_+|_+$/g, "") || crypto.randomUUID();
+    if (ACCESS_PROFILES[merged.id]) {
+      toast("Use a different name. Built-in access levels cannot be replaced.");
+      return;
+    }
+    merged.baseRole = normalizeRole(merged.baseRole || "CREW");
+    merged.views = Array.isArray(merged.views) ? merged.views.filter((view) => ACCESS_PROFILES[merged.baseRole]?.views.includes(view)) : [];
+    if (!merged.views.length) {
+      toast("Select at least one page for this access level.");
+      return;
+    }
   }
   if (storeName === "clients" && isClientRole()) {
     const clientId = authState.roleRecord?.client_id || "";
@@ -2514,6 +2626,7 @@ async function saveForm(event, storeName) {
 
 async function deleteRecord(storeName, id) {
   if (storeName === "clients" && !canSystemEdit()) return;
+  if (storeName === "accessLevelDefs" && !canSystemEdit()) return;
   if (storeName === "venues" && !canVenueEdit()) return;
   const adminStores = ["events", "workers", "promoters", "runnerStops", "timecards"];
   if (adminStores.includes(storeName) && !canAdminEdit()) return;
@@ -3009,6 +3122,7 @@ function bindEvents() {
     if (productionEvent) await saveEventAccessLink(productionEvent);
   });
   $("#adminProfileForm").addEventListener("submit", (event) => saveForm(event, "systemProfiles"));
+  $("#accessLevelForm").addEventListener("submit", (event) => saveForm(event, "accessLevelDefs"));
   $("#clientForm").addEventListener("submit", (event) => saveForm(event, "clients"));
   $("#clientCompanyProfileForm").addEventListener("submit", (event) => saveForm(event, "clients"));
   $("#clientProfileForm").addEventListener("submit", (event) => saveForm(event, "clientReps"));
@@ -3030,6 +3144,7 @@ function bindEvents() {
       }
     });
   });
+  $("#accessLevelForm select[name='baseRole']").addEventListener("change", () => renderViewOptionControls($("#accessLevelForm")));
 
   $$(".clear-form").forEach((button) => button.addEventListener("click", () => closeForm(button.dataset.form)));
   $("#clockInNow").addEventListener("click", () => {
