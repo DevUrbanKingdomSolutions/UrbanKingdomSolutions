@@ -97,6 +97,10 @@
               <span id="sessionEmail">Not signed in</span>
               <strong id="sessionRole">ROLE</strong>
             </div>
+            <label id="accessViewControl" class="access-control">
+              Access view
+              <select id="accessViewSelect"></select>
+            </label>
             <label id="crewScopeControl" class="access-control">
               Crew acting as
               <select id="activeWorker"></select>
@@ -495,10 +499,7 @@
                 </select>
               </label>
               <label class="owner-form">Access
-                <select name="accessLevels" multiple size="2">
-                  <option value="CREW">Crew / Runner</option>
-                  <option value="PROMOTER_PRODUCTION_OFFICE">Production Office</option>
-                </select>
+                <div class="checkbox-grid" data-access-level-options data-checkbox-group data-name="accessLevels"></div>
               </label>
               <label class="owner-form rate-field">Default day rate<input name="defaultDayRate" type="number" min="0" step="0.01" placeholder="350.00"></label>
               <label class="owner-form rate-field">Included hours<input name="defaultIncludedHours" type="number" min="0" step="0.25" placeholder="10"></label>
@@ -780,10 +781,7 @@
               </label>
               <label class="promoter-login-field">Supabase user ID<input name="authUserId" placeholder="Paste user ID after setup"></label>
               <label class="promoter-login-field">Access
-                <select name="accessLevels" multiple size="2">
-                  <option value="PROMOTER_PRODUCTION_OFFICE">Production Office</option>
-                  <option value="CREW">Crew / Runner</option>
-                </select>
+                <div class="checkbox-grid" data-access-level-options data-checkbox-group data-name="accessLevels"></div>
               </label>
               <label>Company billing notes<textarea name="billing" rows="3" placeholder="PO rules, invoice contact, terms"></textarea></label>
               <label>Rep / production notes<textarea name="notes" rows="3" placeholder="Preferences, recurring needs"></textarea></label>

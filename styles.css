@@ -283,6 +283,28 @@ button {
   padding: 8px 10px;
 }
 
+.checkbox-grid {
+  display: grid;
+  gap: 8px;
+}
+
+.checkbox-option {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfaf6;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.checkbox-option input {
+  width: auto;
+}
+
 .search-input,
 label input,
 label select,

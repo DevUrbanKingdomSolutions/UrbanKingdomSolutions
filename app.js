@@ -150,6 +150,13 @@ const ROLE_HOME_VIEWS = {
   CREW: "workers"
 };
 
+const ACCESS_LEVEL_LABELS = {
+  ADMIN: "Admin",
+  CLIENT: "Client",
+  PROMOTER_PRODUCTION_OFFICE: "Production Office",
+  CREW: "Crew / Runner"
+};
+
 const SMTP_PROVIDER_SETTINGS = {
   google: {
     host: "smtp.gmail.com",
@@ -302,9 +309,15 @@ function sortByName(records) {
 
 async function formRecord(form) {
   const record = {};
+  form.querySelectorAll("[data-checkbox-group]").forEach((group) => {
+    const name = group.dataset.name;
+    if (!name || group.closest("[hidden]")) return;
+    record[name] = Array.from(group.querySelectorAll("input[type='checkbox']:checked")).map((input) => input.value);
+  });
   for (const element of Array.from(form.elements)) {
     if (!element.name || element.type === "file") continue;
     if (element.closest("[hidden]")) continue;
+    if (element.closest("[data-checkbox-group]")) continue;
     if (element.type === "checkbox") {
       record[element.name] = element.checked ? element.value : "";
     } else if (element.multiple) {
@@ -341,7 +354,16 @@ function readFileAsDataUrl(file) {
 
 function fillForm(formId, record) {
   const form = document.getElementById(formId);
+  renderAccessLevelControls(form);
   Object.entries(record).forEach(([key, value]) => {
+    const checkboxGroup = form.querySelector(`[data-checkbox-group][data-name="${key}"]`);
+    if (checkboxGroup) {
+      const selectedValues = normalizeAccessLevels(value, "");
+      checkboxGroup.querySelectorAll("input[type='checkbox']").forEach((input) => {
+        input.checked = selectedValues.includes(input.value);
+      });
+      return;
+    }
     if (!form.elements[key] || form.elements[key].type === "file") return;
     if (key === "smtpProvider") value = normalizeSmtpProvider(value);
     if (form.elements[key].type === "checkbox") {
@@ -1119,6 +1141,31 @@ function assignedAccessForRole(role) {
     return normalizeAccessLevels(promoter?.accessLevels, "PROMOTER_PRODUCTION_OFFICE");
   }
   return [normalized];
+}
+
+function assignedAccessForCurrentUser() {
+  const baseRole = normalizeRole(authState.roleRecord?.role || state.accessRole);
+  if (baseRole === "ADMIN") return ["ADMIN"];
+  if (baseRole === "CLIENT") return ["CLIENT"];
+  return assignedAccessForRole(baseRole).filter((role) => ACCESS_PROFILES[role]);
+}
+
+function accessLevelOptionsForForm(form) {
+  let roles = Object.keys(ACCESS_PROFILES).filter((role) => !["ADMIN", "CLIENT"].includes(role));
+  if (form?.id === "promoterForm" && isProductionRole()) roles = roles.filter((role) => role === "PROMOTER_PRODUCTION_OFFICE");
+  return roles;
+}
+
+function accessLevelLabel(role) {
+  return ACCESS_LEVEL_LABELS[role] || role.replaceAll("_", " ");
+}
+
+function renderAccessLevelControls(root = document) {
+  root.querySelectorAll?.("[data-access-level-options]").forEach((group) => {
+    const selected = Array.from(group.querySelectorAll("input[type='checkbox']:checked")).map((input) => input.value);
+    const options = accessLevelOptionsForForm(group.closest("form"));
+    group.innerHTML = options.map((role) => `<label class="checkbox-option"><input name="${escapeHtml(group.dataset.name || "accessLevels")}" type="checkbox" value="${escapeHtml(role)}" ${selected.includes(role) ? "checked" : ""}>${escapeHtml(accessLevelLabel(role))}</label>`).join("");
+  });
 }
 
 function normalizeAccessLevels(levels, fallback) {
@@ -2230,12 +2277,17 @@ function renderNavigation() {
 }
 
 function applyAccessProfile() {
+  const assignedAccess = assignedAccessForCurrentUser();
+  if (!assignedAccess.includes(state.accessRole)) {
+    state.accessRole = assignedAccess[0] || normalizeRole(authState.roleRecord?.role);
+  }
   const profile = currentProfile();
   document.body.classList.toggle("admin-mode", isAdminRole());
   document.body.classList.toggle("owner-mode", isClientRole());
   document.body.classList.toggle("production-mode", isProductionRole());
   document.body.classList.toggle("crew-mode", isCrewRole());
   renderAccessRoleOptions();
+  renderAccessLevelControls();
   renderNavigation();
   $("#crewScopeControl").hidden = !isCrewRole();
   $("#promoterScopeControl").hidden = !isProductionRole();
@@ -2246,10 +2298,6 @@ function applyAccessProfile() {
     if (select.closest("#promoterForm") && isProductionRole()) select.value = "PROMOTER_PRODUCTION_OFFICE";
   });
   $$("#promoterForm select[name='loginRole'] option[value='CREW']").forEach((option) => { option.hidden = isProductionRole(); });
-  $$("#promoterForm select[name='accessLevels'] option[value='CREW']").forEach((option) => {
-    option.hidden = isProductionRole();
-    if (isProductionRole()) option.selected = false;
-  });
   $$(".admin-form").forEach((form) => { form.hidden = !profile.canAdminEdit; });
   $$(".owner-form").forEach((form) => { form.hidden = !profile.canOwnerEdit; });
   $$(".rate-field").forEach((form) => { form.hidden = !isClientRole(); });
@@ -2266,13 +2314,23 @@ function applyAccessProfile() {
 }
 
 function renderAccessRoleOptions() {
-  $("#sessionRole").textContent = state.accessRole;
+  const assignedAccess = assignedAccessForCurrentUser();
+  const control = $("#accessViewControl");
+  const select = $("#accessViewSelect");
+  select.innerHTML = assignedAccess.map((role) => `<option value="${escapeHtml(role)}">${escapeHtml(accessLevelLabel(role))}</option>`).join("");
+  select.value = state.accessRole;
+  control.hidden = assignedAccess.length <= 1;
+  $("#sessionRole").textContent = accessLevelLabel(state.accessRole);
   $("#sessionEmail").textContent = authState.user?.email || "Signed in";
 }
 
 function setAccessRole(role) {
   const nextRole = normalizeRole(role);
   if (!ACCESS_PROFILES[nextRole]) return;
+  if (!assignedAccessForCurrentUser().includes(nextRole)) {
+    toast("That access view is not assigned to this login.");
+    return;
+  }
   state.accessRole = nextRole;
   render();
 }
@@ -2918,6 +2976,7 @@ function bindEvents() {
     const button = event.target.closest("[data-view]");
     if (button) setView(button.dataset.view);
   });
+  $("#accessViewSelect").addEventListener("change", (event) => setAccessRole(event.target.value));
   $("#activeWorker").addEventListener("change", (event) => {
     state.activeWorkerId = event.target.value;
     localStorage.setItem("productionCrewActiveWorker", state.activeWorkerId);
