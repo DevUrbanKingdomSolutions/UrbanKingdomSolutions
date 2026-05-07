@@ -1812,6 +1812,10 @@ function clientEmailRoutingSummary(rep) {
   </div>`;
 }
 
+function smtpRouteIsReady(profile) {
+  return !!(profile?.smtpProvider && profile?.smtpFromEmail && profile?.smtpHost && profile?.smtpPort && profile?.smtpUsername && profile?.smtpSecretRef);
+}
+
 function renderClientProfile() {
   const summary = $("#clientProfileSummary");
   const card = $("#clientProfileCard");
@@ -1821,6 +1825,9 @@ function renderClientProfile() {
   if (summary) summary.innerHTML = clientEmailRoutingSummary(rep);
   if (!card) return;
   const profile = rep || clientRepDefaults();
+  const clientSmtpTestButton = smtpRouteIsReady(profile)
+    ? `<button class="tiny-button owner-action" data-send-smtp-test="client" type="button">Test SMTP</button>`
+    : "";
   card.innerHTML = `<article class="profile-page-card">
     <div class="profile-page-header">
       <div class="profile-avatar-large placeholder">${escapeHtml(initialsFor(profile.name || authState.user?.email || "Me"))}</div>
@@ -1841,7 +1848,7 @@ function renderClientProfile() {
       <div><span>Security</span><strong>${escapeHtml(profile.smtpSecure || "Not selected")}</strong></div>
     </div>
     <div class="profile-section"><span>SMTP Host</span><p>${escapeHtml(profile.smtpHost || "")}${profile.smtpPort ? ":" + escapeHtml(profile.smtpPort) : ""}</p></div>
-    <div class="profile-section"><span>SMTP Route</span><p>${escapeHtml(profile.smtpSecretRef ? "Saved securely" : "No app password saved")}</p></div>
+    <div class="profile-section"><span>SMTP Route</span><p>${escapeHtml(profile.smtpSecretRef ? "Saved securely" : "No app password saved")}</p><div class="row-actions">${clientSmtpTestButton}</div></div>
   </article>`;
   if (companyCard) {
     companyCard.innerHTML = client ? `<article class="profile-page-card">
@@ -3039,12 +3046,13 @@ async function saveEventAccessLink(event) {
   toast(record.recipientEmail ? "Production event link sent and copied." : "Production event link created and copied.");
 }
 
-function smtpTestPayload() {
-  const profile = activeAdminProfile();
+function smtpTestPayload(scope = "admin") {
+  const normalizedScope = scope === "client" ? "client" : "admin";
+  const profile = normalizedScope === "client" ? activeClientRepRecord() || clientRepDefaults() : activeAdminProfile();
   return {
-    scope: "admin",
+    scope: normalizedScope,
     to: profile.email || authState.user?.email || "",
-    name: profile.name || "System Admin",
+    name: profile.name || (normalizedScope === "client" ? "Client Rep" : "System Admin"),
     provider: profile.smtpProvider || "",
     fromName: profile.smtpFromName || profile.name || "Production Crew",
     fromEmail: profile.smtpFromEmail || "",
@@ -3057,18 +3065,23 @@ function smtpTestPayload() {
   };
 }
 
-async function sendSmtpTest() {
-  if (!canSystemEdit()) {
+async function sendSmtpTest(scope = "admin") {
+  const normalizedScope = scope === "client" ? "client" : "admin";
+  if (normalizedScope === "admin" && !canSystemEdit()) {
     toast("Only ADMIN can send an SMTP test.");
+    return;
+  }
+  if (normalizedScope === "client" && !isClientRole()) {
+    toast("Only CLIENT can test client email routing.");
     return;
   }
   if (!initializeSupabaseClient()) {
     toast("Supabase login is not configured.");
     return;
   }
-  const payload = smtpTestPayload();
+  const payload = smtpTestPayload(normalizedScope);
   if (!payload.to || !payload.fromEmail || !payload.host || !payload.port || !payload.username || !payload.secretRef) {
-    toast("Save SMTP settings with the Google App Password before sending a test.");
+    toast("Save SMTP settings with the app password before sending a test.");
     return;
   }
   const { data, error } = await supabaseClient.functions.invoke(SMTP_TEST_FUNCTION, { body: payload });
@@ -3076,13 +3089,15 @@ async function sendSmtpTest() {
     console.error(error);
     const message = await loginSetupErrorMessage(error);
     toast(message.includes("No SMTP route found") || message.includes("No Supabase secret found")
-      ? "Save SMTP settings with the Google App Password first."
+      ? "Save SMTP settings with the app password first."
       : message);
     return;
   }
-  const profile = activeAdminProfile();
-  await put("systemProfiles", {
+  const profile = normalizedScope === "client" ? activeClientRepRecord() : activeAdminProfile();
+  const storeName = normalizedScope === "client" ? "clientReps" : "systemProfiles";
+  await put(storeName, {
     ...profile,
+    id: normalizedScope === "client" ? profile.id || authState.user?.id || crypto.randomUUID() : "adminProfile",
     emailRoutingStatus: "Test sent",
     lastSmtpTestAt: new Date().toISOString(),
     lastSmtpMessageId: data?.messageId || ""
@@ -3393,7 +3408,7 @@ function bindEvents() {
       if (eventRecord) await createEventAccessLink(eventRecord);
     }
     if (viewClientCompanyButton) openClientCompanyView(viewClientCompanyButton.dataset.viewClientCompany);
-    if (smtpTestButton) await sendSmtpTest();
+    if (smtpTestButton) await sendSmtpTest(smtpTestButton.dataset.sendSmtpTest);
     if (editViewedClientButton?.dataset.editClientId) {
       const client = state.clients.find((item) => item.id === editViewedClientButton.dataset.editClientId);
       if (client) fillForm("clientForm", client);

@@ -34,14 +34,24 @@ Deno.serve(async (request) => {
       .eq("user_id", callerData.user.id)
       .maybeSingle();
     if (roleError) throw roleError;
-    if (callerRole?.role !== "ADMIN") throw new Error("Only ADMIN can send SMTP tests.");
 
     const body = await request.json();
+    const scope = String(body.scope || "admin").toLowerCase();
     const to = String(body.to || callerData.user.email || "").trim();
     const host = String(body.host || "").trim();
     const port = Number(body.port || 587);
     const username = String(body.username || "").trim();
     const secretRef = String(body.secretRef || "").trim();
+
+    if (scope === "admin" && callerRole?.role !== "ADMIN") {
+      throw new Error("Only ADMIN can send admin SMTP tests.");
+    }
+    if (scope === "client") {
+      if (callerRole?.role !== "CLIENT") throw new Error("Only CLIENT can send client SMTP tests.");
+      await verifyClientSmtpRoute(admin, callerData.user.id, secretRef);
+    }
+    if (!["admin", "client"].includes(scope)) throw new Error("Unsupported SMTP test scope.");
+
     const password = await smtpPasswordForRoute(admin, secretRef);
     const fromEmail = String(body.fromEmail || "").trim();
     const fromName = String(body.fromName || "Production Crew").trim();
@@ -83,6 +93,18 @@ Deno.serve(async (request) => {
     });
   }
 });
+
+async function verifyClientSmtpRoute(admin: any, userId: string, routeId: string) {
+  if (!routeId) throw new Error("Missing SMTP route.");
+  const { data, error } = await admin
+    .from("client_reps")
+    .select("id")
+    .eq("auth_user_id", userId)
+    .eq("smtp_secret_ref", routeId)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data?.id) throw new Error("This SMTP route is not assigned to your client profile.");
+}
 
 async function smtpPasswordForRoute(admin: any, routeId: string) {
   const secretPassword = Deno.env.get(routeId) || "";
