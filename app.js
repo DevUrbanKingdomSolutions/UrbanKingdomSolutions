@@ -383,6 +383,7 @@ function openForm(formId) {
   }
   applyAccessProfile();
   $$(".form-panel.modal-form").forEach((item) => item.classList.remove("modal-form"));
+  $("#modalHost")?.appendChild(form);
   form.classList.add("modal-form");
   $("#modalBackdrop").classList.add("show");
   document.body.classList.add("modal-open");
