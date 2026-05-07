@@ -60,6 +60,14 @@ Run `supabase-schema.sql` in Supabase SQL Editor before testing backend-backed s
 - `PUBLIC_SITE_URL`: deployed app URL, for example `https://the-entertaintainment-dashboard.vercel.app`.
 - `NOVU_SECRET_KEY`: Novu secret key for server-side workflow triggers.
 
+Novu workflow keys currently called by the app:
+
+- `runner-status-changed`
+- `event-assignment-created`
+- `production-office-call`
+- `rental-photo-reminder`
+- `rental-photo-urgent`
+
 Sendbird setup:
 
 - Add the Sendbird Application ID to `SENDBIRD_APP_ID` in `app.js`.

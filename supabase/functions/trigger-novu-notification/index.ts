@@ -27,7 +27,7 @@ Deno.serve(async (request) => {
       .eq("user_id", callerData.user.id)
       .maybeSingle();
     if (roleError) throw roleError;
-    if (!["ADMIN", "CLIENT", "PROMOTER_PRODUCTION_OFFICE", "CREW"].includes(callerRole?.role)) {
+    if (!["ADMIN", "CLIENT", "PROMOTER", "PROMOTER_PRODUCTION_OFFICE", "CREW", "PRODUCTION"].includes(callerRole?.role)) {
       throw new Error("This login cannot trigger notifications.");
     }
 

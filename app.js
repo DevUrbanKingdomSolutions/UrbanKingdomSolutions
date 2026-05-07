@@ -16,7 +16,9 @@ const SENDBIRD_GROUP_CHANNEL_SDK_URL = "https://esm.sh/@sendbird/chat/groupChann
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
   rentalPhotoUrgent: "rental-photo-urgent",
-  runnerStatusChanged: "runner-status-changed"
+  runnerStatusChanged: "runner-status-changed",
+  eventAssignmentCreated: "event-assignment-created",
+  productionOfficeCall: "production-office-call"
 };
 const STORES = [
   "clients",
@@ -181,6 +183,8 @@ let authState = {
 };
 const pendingRentalUrgencyIds = new Set();
 let sendbirdClient = null;
+let sendbirdActiveChannel = null;
+let sendbirdMessages = [];
 
 let state = {
   workers: [],
@@ -1685,6 +1689,22 @@ async function afterAssignmentSaved(assignment, previous = {}) {
   if (assignment.vehicleUse === "Rented Vehicle" && assignment.status !== "Cancelled") {
     await ensureVehicleChecksForAssignment(assignment);
   }
+  if (worker && eventRecord && assignment.workerId !== previous.workerId && !["Cancelled", "Swapped"].includes(assignment.status)) {
+    notifyWorkerAssignment(worker, eventRecord, assignment).catch((error) => console.warn(error));
+  }
+}
+
+async function notifyWorkerAssignment(worker, eventRecord, assignment) {
+  return await triggerNovuNotification(NOVU_WORKFLOWS.eventAssignmentCreated, {
+    workerName: worker.name || "Crew member",
+    eventName: eventRecord.name || "Assigned event",
+    startDate: assignment.startDate || eventRecord.startDate || "",
+    endDate: assignment.endDate || eventRecord.endDate || "",
+    vehicleUse: assignment.vehicleUse || "No Vehicle"
+  }, notificationSubscriberForWorker(worker), {
+    silent: true,
+    transactionId: `assignment-${assignment.id || eventRecord.id}-${worker.id}`
+  });
 }
 
 async function syncEventWorkerIdsFromAssignments(eventId) {
@@ -2297,7 +2317,7 @@ function renderProductionBoard() {
     ? runners.map((worker) => {
         const eventsForWorker = events.filter((event) => eventWorkerIds(event).includes(worker.id)).map((event) => event.name).join(", ");
         const status = worker.runnerStatus || "Available";
-        return `<tr><td>${profileCell(worker, worker.hideHeadshot, worker.email)}</td><td>${escapeHtml(eventsForWorker)}</td><td><span class="status-pill ${status === "On a Run" ? "warn" : ""}">${escapeHtml(status)}</span></td><td>${escapeHtml(worker.phone)}<p>${escapeHtml(worker.email)}</p></td><td><div class="row-actions"><button class="tiny-button" data-runner-status="${worker.id}" data-status="Available" type="button">Available</button><button class="tiny-button" data-runner-status="${worker.id}" data-status="On a Run" type="button">On a Run</button><button class="tiny-button" data-runner-status="${worker.id}" data-status="At Production Office" type="button">At Office</button></div></td></tr>`;
+        return `<tr><td>${profileCell(worker, worker.hideHeadshot, worker.email)}</td><td>${escapeHtml(eventsForWorker)}</td><td><span class="status-pill ${status === "On a Run" ? "warn" : ""}">${escapeHtml(status)}</span></td><td>${escapeHtml(worker.phone)}<p>${escapeHtml(worker.email)}</p></td><td><div class="row-actions"><button class="tiny-button" data-runner-status="${worker.id}" data-status="Available" type="button">Available</button><button class="tiny-button" data-runner-status="${worker.id}" data-status="On a Run" type="button">On a Run</button><button class="tiny-button" data-runner-status="${worker.id}" data-status="At Production Office" type="button">At Office</button><button class="tiny-button" data-notify-production-office="${worker.id}" type="button">Notify Office</button></div></td></tr>`;
       }).join("")
     : `<tr><td colspan="5" class="empty">Assigned runners will appear here.</td></tr>`;
 }
@@ -2949,6 +2969,35 @@ function renderMessaging() {
   status.innerHTML = connected
     ? `<div class="compact-item"><strong>Sendbird connected</strong><span>${escapeHtml(sendbirdClient.currentUser.userId || "")}</span></div>`
     : `<div class="compact-item ${configured ? "" : "empty"}"><strong>${configured ? "Sendbird ready to connect" : "Sendbird App ID needed"}</strong><span>${configured ? "Use Connect Messaging to start the chat session." : "Add the Sendbird Application ID in app.js after creating the Sendbird app."}</span></div>`;
+  const channelList = $("#messagingChannelList");
+  if (channelList) {
+    const events = visibleEvents().filter((event) => eventWorkerIds(event).length || isClientRole() || isProductionRole());
+    channelList.innerHTML = events.length
+      ? events.map((event) => {
+          const crewCount = eventWorkerIds(event).length;
+          const active = sendbirdActiveChannel?.data?.includes?.(`"eventId":"${event.id}"`);
+          return `<article class="record-card ${active ? "selected" : ""}"><div><span>${escapeHtml(event.type || "Event")}</span><strong>${escapeHtml(event.name)}</strong><p>${crewCount} crew / runners</p><p>${formatDate(event.startDate)}</p></div><div class="row-actions"><button class="tiny-button" data-open-event-channel="${event.id}" type="button">${active ? "Open" : "Open Thread"}</button></div></article>`;
+        }).join("")
+      : `<div class="compact-item empty">Event message threads appear here when events are visible to this access view.</div>`;
+  }
+  renderMessageThread();
+}
+
+function renderMessageThread() {
+  const title = $("#activeMessagingTitle");
+  const meta = $("#activeMessagingMeta");
+  const thread = $("#messageThread");
+  const form = $("#sendbirdMessageForm");
+  if (!title || !meta || !thread || !form) return;
+  const channelName = sendbirdActiveChannel?.name || "";
+  title.textContent = channelName || "Event Thread";
+  meta.textContent = sendbirdActiveChannel ? "Sendbird group channel" : "Open an event thread to send messages.";
+  form.hidden = !sendbirdActiveChannel;
+  thread.innerHTML = sendbirdActiveChannel
+    ? (sendbirdMessages.length
+        ? sendbirdMessages.map((message) => `<div class="compact-item"><strong>${escapeHtml(message.sender?.nickname || message.sender?.userId || "Message")}</strong><span>${escapeHtml(message.message || "")}</span></div>`).join("")
+        : `<div class="compact-item empty">No messages loaded yet.</div>`)
+    : `<div class="compact-item empty">Choose an event thread from the list.</div>`;
 }
 
 function runnerStopRow(stop) {
@@ -3891,6 +3940,24 @@ async function updateRunnerStatus(workerId, status) {
   toast(`Runner marked ${status}.`);
 }
 
+async function notifyRunnerToProductionOffice(workerId) {
+  if (!(isClientRole() || isProductionRole())) return;
+  const worker = getWorker(workerId);
+  if (!worker || (isProductionRole() && !assignedWorkerIdsForVisibleEvents().has(workerId))) {
+    toast("That runner is not assigned to this production view.");
+    return;
+  }
+  const eventNames = visibleEvents().filter((event) => eventWorkerIds(event).includes(workerId)).map((event) => event.name).join(", ");
+  const result = await triggerNovuNotification(NOVU_WORKFLOWS.productionOfficeCall, {
+    workerName: worker.name || "Runner",
+    eventNames,
+    message: "Please report to the production office."
+  }, notificationSubscriberForWorker(worker), {
+    transactionId: `production-office-call-${workerId}-${Date.now()}`
+  });
+  if (result.ok) await updateRunnerStatus(workerId, "At Production Office");
+}
+
 async function saveRunnerNote(stopId) {
   if (!isCrewRole() || !state.activeWorkerId) return;
   const textarea = document.querySelector(`[data-runner-note-input="${stopId}"]`);
@@ -3924,12 +3991,20 @@ function notificationSubscriberForCurrentUser() {
   const promoter = getPromoter(state.activePromoterId);
   const clientRep = activeClientRepRecord();
   const profile = isCrewRole() ? worker : isProductionRole() ? promoter : isClientRole() ? clientRep : activeAdminProfile();
+  return notificationSubscriberForProfile(profile, authState.user?.id || profile?.id || authState.user?.email || "");
+}
+
+function notificationSubscriberForProfile(profile, fallbackId = "") {
   return {
-    subscriberId: authState.user?.id || profile?.id || authState.user?.email || "",
+    subscriberId: profile?.authUserId || fallbackId || profile?.id || profile?.email || "",
     email: profile?.email || authState.user?.email || "",
     firstName: String(profile?.name || profile?.contactName || authState.user?.email || "User").split(" ")[0] || "User",
     lastName: String(profile?.name || profile?.contactName || "").split(" ").slice(1).join(" ")
   };
+}
+
+function notificationSubscriberForWorker(worker) {
+  return notificationSubscriberForProfile(worker, worker?.authUserId || worker?.id || worker?.email || "");
 }
 
 async function triggerNovuNotification(workflowId, payload = {}, to = notificationSubscriberForCurrentUser(), options = {}) {
@@ -3951,6 +4026,35 @@ async function triggerNovuNotification(workflowId, payload = {}, to = notificati
   }
   if (!options.silent) toast("Notification queued.");
   return { ok: true, data };
+}
+
+function sendbirdUserIdForProfile(profile) {
+  return String(profile?.authUserId || profile?.id || profile?.email || "").trim();
+}
+
+function sendbirdUserIdsForEvent(event) {
+  const userIds = new Set([notificationSubscriberForCurrentUser().subscriberId]);
+  eventWorkerIds(event).forEach((workerId) => {
+    const worker = getWorker(workerId);
+    const id = sendbirdUserIdForProfile(worker);
+    if (id) userIds.add(id);
+  });
+  const promoter = getPromoter(event.promoterId);
+  const promoterId = sendbirdUserIdForProfile(promoter);
+  if (promoterId) userIds.add(promoterId);
+  state.clientReps
+    .filter((rep) => rep.clientId === (authState.roleRecord?.client_id || event.clientId || ""))
+    .forEach((rep) => {
+      const id = sendbirdUserIdForProfile(rep);
+      if (id) userIds.add(id);
+    });
+  return Array.from(userIds).filter(Boolean);
+}
+
+async function ensureSendbirdConnected() {
+  if (sendbirdClient?.currentUser) return sendbirdClient;
+  await connectSendbirdMessaging();
+  return sendbirdClient?.currentUser ? sendbirdClient : null;
 }
 
 async function connectSendbirdMessaging() {
@@ -3979,6 +4083,64 @@ async function connectSendbirdMessaging() {
   } catch (error) {
     console.error(error);
     toast(error.message || "Could not connect Sendbird messaging.");
+  }
+}
+
+async function loadSendbirdMessages(channel) {
+  if (!channel) return [];
+  if (typeof channel.getMessagesByTimestamp === "function") {
+    return await channel.getMessagesByTimestamp(Date.now(), { prevResultSize: 30, nextResultSize: 0, isInclusive: true });
+  }
+  if (typeof channel.createPreviousMessageListQuery === "function") {
+    const query = channel.createPreviousMessageListQuery({ limit: 30, reverse: false });
+    return await query.load();
+  }
+  return [];
+}
+
+async function openEventMessagingChannel(eventId) {
+  const eventRecord = getEvent(eventId);
+  if (!eventRecord) return;
+  const client = await ensureSendbirdConnected();
+  if (!client?.groupChannel) {
+    toast("Messaging could not connect.");
+    return;
+  }
+  const userIds = sendbirdUserIdsForEvent(eventRecord);
+  try {
+    sendbirdActiveChannel = await client.groupChannel.createChannel({
+      name: eventRecord.name || "Event Thread",
+      invitedUserIds: userIds,
+      isDistinct: true,
+      customType: "event",
+      data: JSON.stringify({ eventId: eventRecord.id })
+    });
+    sendbirdMessages = await loadSendbirdMessages(sendbirdActiveChannel);
+    renderMessaging();
+    toast("Event thread opened.");
+  } catch (error) {
+    console.error(error);
+    toast(error.message || "Could not open event thread.");
+  }
+}
+
+async function sendSendbirdMessage(event) {
+  event.preventDefault();
+  if (!sendbirdActiveChannel) {
+    toast("Open an event thread first.");
+    return;
+  }
+  const input = event.currentTarget.elements.message;
+  const message = String(input.value || "").trim();
+  if (!message) return;
+  try {
+    await sendbirdActiveChannel.sendUserMessage({ message });
+    input.value = "";
+    sendbirdMessages = await loadSendbirdMessages(sendbirdActiveChannel);
+    renderMessageThread();
+  } catch (error) {
+    console.error(error);
+    toast(error.message || "Could not send message.");
   }
 }
 
@@ -4271,6 +4433,7 @@ function bindEvents() {
 
   $("#eventForm").addEventListener("submit", (event) => saveForm(event, "events"));
   $("#eventAssignmentForm").addEventListener("submit", (event) => saveForm(event, "eventAssignments"));
+  $("#sendbirdMessageForm").addEventListener("submit", sendSendbirdMessage);
   $("#eventAssignmentForm select[name='workerId']").addEventListener("change", (event) => applyAssignmentDefaults(event.target.value));
   $("#eventAssignmentForm select[name='vehicleUse']").addEventListener("change", () => {
     applyAssignmentDefaults($("#eventAssignmentForm").elements.workerId.value);
@@ -4350,6 +4513,8 @@ function bindEvents() {
     const refreshUsersButton = event.target.closest("[data-refresh-users]");
     const deleteUserButton = event.target.closest("[data-delete-user-account]");
     const connectSendbirdButton = event.target.closest("[data-connect-sendbird]");
+    const openEventChannelButton = event.target.closest("[data-open-event-channel]");
+    const notifyProductionOfficeButton = event.target.closest("[data-notify-production-office]");
 
     if (publicRunnerStatusButton) {
       await updatePublicRunnerStatus(publicRunnerStatusButton.dataset.publicRunnerStatus, publicRunnerStatusButton.dataset.status);
@@ -4358,6 +4523,8 @@ function bindEvents() {
     if (refreshUsersButton) await refreshUserAccessList();
     if (deleteUserButton) await deleteUserAccount(deleteUserButton.dataset.deleteUserAccount);
     if (connectSendbirdButton) await connectSendbirdMessaging();
+    if (openEventChannelButton) await openEventMessagingChannel(openEventChannelButton.dataset.openEventChannel);
+    if (notifyProductionOfficeButton) await notifyRunnerToProductionOffice(notifyProductionOfficeButton.dataset.notifyProductionOffice);
 
   if (openButton) {
       clearForm(openButton.dataset.openForm);

@@ -27,7 +27,7 @@ Deno.serve(async (request) => {
       .eq("user_id", callerData.user.id)
       .maybeSingle();
     if (roleError) throw roleError;
-    if (!["CLIENT", "PROMOTER_PRODUCTION_OFFICE", "CREW"].includes(callerRole?.role)) {
+    if (!["CLIENT", "PROMOTER", "PROMOTER_PRODUCTION_OFFICE", "CREW"].includes(callerRole?.role)) {
       throw new Error("This access view cannot send rental photo notifications.");
     }
 
