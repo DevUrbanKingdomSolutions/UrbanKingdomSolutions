@@ -407,7 +407,7 @@ function fillForm(formId, record) {
     }
   });
   renderViewOptionControls(form);
-  if (formId === "eventForm") renderEventWorkerOptions(form, record.workerIds || []);
+  if (formId === "eventForm") renderEventAssignmentManager(form, record.id || "");
   if (Array.isArray(record.views)) {
     const viewGroup = form.querySelector(`[data-checkbox-group][data-name="views"]`);
     viewGroup?.querySelectorAll("input[type='checkbox']").forEach((input) => {
@@ -432,7 +432,7 @@ function clearForm(formId) {
     form.elements.breakMinutes.value = "0";
     form.elements.clockIn.value = toLocalInputValue(new Date());
   }
-  if (formId === "eventForm") renderEventWorkerOptions(form, []);
+  if (formId === "eventForm") renderEventAssignmentManager(form, "");
   if (formId === "eventAssignmentForm") {
     form.elements.status.value = "Confirmed";
     form.elements.vehicleUse.value = "No Vehicle";
@@ -1464,62 +1464,28 @@ function workerBookingConflict(workerId, draftEvent) {
   });
 }
 
-function hasActiveBookedStatus(worker) {
-  if ((worker.status || "Available") !== "Booked") return false;
-  if (!worker.bookedUntil) return true;
-  const bookedThrough = new Date(worker.bookedUntil);
-  if (Number.isNaN(bookedThrough.getTime())) return true;
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  return bookedThrough >= today;
-}
-
-function eventFormDraft(form) {
-  return {
-    id: form.elements.id?.value || "",
-    name: form.elements.name?.value || "",
-    startDate: form.elements.startDate?.value || "",
-    endDate: form.elements.endDate?.value || ""
-  };
-}
-
-function selectedEventWorkerIds(form, providedIds) {
-  if (Array.isArray(providedIds)) return providedIds;
-  return Array.from(form.querySelectorAll("[data-event-worker-options] input[type='checkbox']:checked")).map((input) => input.value);
-}
-
-function workerAvailabilityLabel(worker, conflict) {
-  const status = worker.status || "Available";
-  if (conflict) return `Booked: ${conflict.name || "another event"}`;
-  if (status === "Booked" && worker.bookedEventName && hasActiveBookedStatus(worker)) return `Booked: ${worker.bookedEventName}`;
-  if (status && status !== "Available" && hasActiveBookedStatus(worker)) return status;
-  if (status && status !== "Available" && status !== "Booked") return status;
-  return worker.role || "Crew";
-}
-
-function renderEventWorkerOptions(form = $("#eventForm"), selectedIds = null) {
+function renderEventAssignmentManager(form = $("#eventForm"), eventId = "") {
   if (!form) return;
-  const group = form.querySelector("[data-event-worker-options]");
-  if (!group) return;
-  const selected = new Set(selectedEventWorkerIds(form, selectedIds));
-  const showAll = form.elements.showAllCrew?.checked;
-  const draftEvent = eventFormDraft(form);
-  const workers = isAdminRole() ? [] : state.workers;
-  const rows = workers.map((worker) => {
-    const selectedAlready = selected.has(worker.id);
-    const conflict = workerBookingConflict(worker.id, draftEvent);
-    const status = worker.status || "Available";
-    const available = (status === "Available" || (status === "Booked" && !hasActiveBookedStatus(worker))) && !conflict;
-    if (!available && !selectedAlready && !showAll) return "";
-    const muted = !available ? " is-muted" : "";
-    const note = workerAvailabilityLabel(worker, conflict);
-    return `
-      <label class="checkbox-option${muted}">
-        <input name="workerIds" type="checkbox" value="${escapeHtml(worker.id)}" ${selectedAlready ? "checked" : ""}>
-        <span>${escapeHtml(worker.name || "Unnamed crew")}<small>${escapeHtml(note)}</small></span>
-      </label>`;
-  }).filter(Boolean).join("");
-  group.innerHTML = rows || `<div class="compact-item empty">No available crew for these dates. Use the override checkbox to see booked or unavailable crew.</div>`;
+  const container = form.querySelector("[data-event-assignment-summary]");
+  const addButton = form.querySelector("[data-form-add-assignment]");
+  if (!container) return;
+  const id = eventId || form.elements.id?.value || "";
+  if (addButton) addButton.dataset.formAddAssignment = id;
+  if (!id) {
+    container.innerHTML = `<div class="compact-item empty">Save the event first, then add runners with detailed schedules, rates, and vehicle use.</div>`;
+    if (addButton) addButton.disabled = true;
+    return;
+  }
+  if (addButton) addButton.disabled = false;
+  const assignments = eventAssignments(id).filter((assignment) => !["Cancelled", "Swapped"].includes(assignment.status));
+  if (!assignments.length) {
+    container.innerHTML = `<div class="compact-item empty">No runners booked yet. Use Add Runner to assign crew.</div>`;
+    return;
+  }
+  container.innerHTML = `<table class="mini-table"><thead><tr><th>Runner</th><th>Dates</th><th>Vehicle</th><th>Status</th><th></th></tr></thead><tbody>${assignments.map((assignment) => {
+    const worker = getWorker(assignment.workerId);
+    return `<tr><td>${escapeHtml(worker?.name || "Runner")}</td><td>${formatDate(assignment.startDate)}<p>${formatDate(assignment.endDate)}</p></td><td>${escapeHtml(assignment.vehicleUse || "No Vehicle")}<p>${escapeHtml(assignment.vehicleType || "")}</p></td><td>${escapeHtml(assignment.status || "Confirmed")}</td><td><button class="tiny-button" data-edit="eventAssignments" data-id="${assignment.id}" data-form="eventAssignmentForm" type="button">Edit</button></td></tr>`;
+  }).join("")}</tbody></table>`;
 }
 
 async function syncWorkerBookingForEvent(eventRecord, previousEvent = {}) {
@@ -2112,7 +2078,7 @@ function renderSelects() {
 
   $("#eventForm select[name='venueId']").innerHTML = venueOptions;
   $("#eventForm select[name='promoterId']").innerHTML = promoterOptions;
-  renderEventWorkerOptions($("#eventForm"));
+  renderEventAssignmentManager($("#eventForm"));
   $("#eventAssignmentForm select[name='workerId']").innerHTML = workerOptions;
   $("#substitutionSwapForm select[name='replacementWorkerId']").innerHTML = workerOptions;
 
@@ -3072,7 +3038,7 @@ async function saveForm(event, storeName) {
   }
   if (storeName === "events") {
     merged.id = merged.id || crypto.randomUUID();
-    merged.workerIds = Array.isArray(merged.workerIds) ? merged.workerIds : [];
+    merged.workerIds = Array.isArray(merged.workerIds) ? merged.workerIds : eventWorkerIds(merged);
     delete merged.showAllCrew;
   }
   if (storeName === "eventAssignments") {
@@ -4028,11 +3994,7 @@ function bindEvents() {
   $("#eventAssignmentForm select[name='workerId']").addEventListener("change", (event) => applyAssignmentDefaults(event.target.value));
   $("#crewSwapForm").addEventListener("submit", finalizeCrewSwap);
   $("#substitutionSwapForm").addEventListener("submit", finalizeSubstitutionSwap);
-  $("#eventForm").addEventListener("change", (event) => {
-    if (event.target.matches("[data-event-crew-override], input[name='startDate'], input[name='endDate']")) {
-      renderEventWorkerOptions($("#eventForm"));
-    }
-  });
+  $("#eventForm").addEventListener("change", () => renderEventAssignmentManager($("#eventForm")));
   $("#eventAccessForm").addEventListener("submit", async (event) => {
     event.preventDefault();
     const eventId = event.currentTarget.elements.eventId.value;
@@ -4097,6 +4059,7 @@ function bindEvents() {
     const editViewedClientButton = event.target.closest("#editViewedClientCompany");
     const eventAccessButton = event.target.closest("[data-event-access]");
     const addAssignmentButton = event.target.closest("[data-add-assignment]");
+    const formAddAssignmentButton = event.target.closest("[data-form-add-assignment]");
     const swapCrewButton = event.target.closest("[data-swap-crew]");
     const substituteCrewButton = event.target.closest("[data-substitute-crew]");
     const publicRunnerStatusButton = event.target.closest("[data-public-runner-status]");
@@ -4140,6 +4103,7 @@ function bindEvents() {
       if (eventRecord) await createEventAccessLink(eventRecord);
     }
     if (addAssignmentButton) openAssignmentForm(addAssignmentButton.dataset.addAssignment);
+    if (formAddAssignmentButton?.dataset.formAddAssignment) openAssignmentForm(formAddAssignmentButton.dataset.formAddAssignment);
     if (swapCrewButton) openCrewSwapForm(swapCrewButton.dataset.swapCrew);
     if (substituteCrewButton) openSubstitutionForm(substituteCrewButton.dataset.substituteCrew);
     if (viewClientCompanyButton) openClientCompanyView(viewClientCompanyButton.dataset.viewClientCompany);

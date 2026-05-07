@@ -449,11 +449,14 @@
               <label>Production contact<input name="productionContact" placeholder="Name, phone, email"></label>
               <label>Venue<select name="venueId"></select></label>
               <label>Promoter<select name="promoterId"></select></label>
-              <label class="check-label"><input name="showAllCrew" type="checkbox" value="yes" data-event-crew-override> Show booked or unavailable crew</label>
               <label class="check-label rate-field"><input name="requiresRentalPhotos" type="checkbox" value="yes"> Rented vehicle photos required for assigned runners</label>
-              <label>Assigned crew / runners
-                <div class="checkbox-grid crew-checkbox-grid" data-event-worker-options data-checkbox-group data-name="workerIds"></div>
-              </label>
+              <div class="assignment-manager" data-event-assignment-manager>
+                <div class="panel-heading compact-heading">
+                  <h4>Assigned Crew / Runners</h4>
+                  <button class="tiny-button" data-form-add-assignment type="button">Add Runner</button>
+                </div>
+                <div data-event-assignment-summary></div>
+              </div>
               <label>Start<input name="startDate" type="datetime-local"></label>
               <label>End<input name="endDate" type="datetime-local"></label>
               <div class="photo-fieldset rate-field">
@@ -1105,6 +1108,6 @@
     <div id="modalHost"></div>
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js?v=V1.01.007-event-assignment-workflows"></script>
+    <script src="app.js?v=V1.01.008-event-edit-assignment-manager"></script>
   </body>
 </html>
