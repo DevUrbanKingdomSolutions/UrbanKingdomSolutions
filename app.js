@@ -419,6 +419,7 @@ function fillForm(formId, record) {
   if (formId === "vehicleForm") applyVehicleAssignmentLock(form);
   if (formId === "reportForm") updateReportTypeFields(form);
   if (formId === "reportForm") delete form.dataset.vehicleDamageConfirmed;
+  if (formId === "eventAssignmentForm") updateAssignmentVehicleFields(form);
 }
 
 function clearForm(formId) {
@@ -436,6 +437,7 @@ function clearForm(formId) {
   if (formId === "eventAssignmentForm") {
     form.elements.status.value = "Confirmed";
     form.elements.vehicleUse.value = "No Vehicle";
+    updateAssignmentVehicleFields(form);
   }
   if (formId === "reportForm") updateReportTypeFields(form);
   if (formId === "vehicleForm") applyVehicleAssignmentLock(form);
@@ -1741,10 +1743,11 @@ function additionalRateFor(card) {
 function vehicleRateFor(card) {
   const worker = getWorker(card.workerId);
   const event = getEvent(card.eventId);
+  const assignment = assignmentForEventWorker(card.eventId, card.workerId);
   const client = activeClientRecord();
   if (card.vehicleRate) return Number(card.vehicleRate);
   if (card.vehicleUse === "Rented Vehicle") return Number(event?.rentedVehicleRate || client?.defaultRentedVehicleRate || worker?.defaultRentedVehicleRate || 0);
-  if (card.vehicleUse === "Personal Vehicle") return Number(event?.personalVehicleRate || client?.defaultPersonalVehicleRate || worker?.defaultPersonalVehicleRate || 0);
+  if (card.vehicleUse === "Personal Vehicle") return Number(assignment?.personalVehicleRate || event?.personalVehicleRate || client?.defaultPersonalVehicleRate || worker?.defaultPersonalVehicleRate || 0);
   return 0;
 }
 
@@ -2298,9 +2301,6 @@ function eventCard(event) {
   const promoter = getPromoter(event.promoterId);
   const crew = eventWorkerIds(event).map((id) => getWorker(id)?.name).filter(Boolean);
   const crewLine = isCrewRole() ? "Assigned to you" : (crew.join(", ") || "No crew assigned");
-  const rateLine = isClientRole()
-    ? `<p>${currency(event.dayRate || activeClientRecord()?.defaultDayRate || 0)}/${event.includedHours || activeClientRecord()?.defaultIncludedHours || 10} hrs, +${currency(event.additionalRate || activeClientRecord()?.defaultAdditionalRate || 0)}/hr</p>`
-    : "";
   const publicAccessButton = (isClientRole() || isProductionRole())
     ? `<button class="tiny-button" data-event-access="${event.id}" type="button">Production Link</button>`
     : "";
@@ -2314,7 +2314,6 @@ function eventCard(event) {
       <p>${escapeHtml(venue?.name || "No venue")} | ${escapeHtml(promoterLabel(promoter) || "No promoter rep")}</p>
       <p>${escapeHtml(event.productionContact)}</p>
       <p>${escapeHtml(crewLine)}</p>
-      ${rateLine}
       ${assignmentTable(event)}
     </div>
     <div class="row-actions">${publicAccessButton}${adminEventActions}${actionButtons("events", event.id, "eventForm", "", canAdminEdit())}</div>
@@ -2707,6 +2706,14 @@ function rentedVehicleLogForAssignment(assignment, phase = "Start") {
   return state.vehicleLogs.find((log) => log.assignmentId === assignment.id && log.phase === phase);
 }
 
+function updateAssignmentVehicleFields(form = $("#eventAssignmentForm")) {
+  if (!form) return;
+  const use = form.elements.vehicleUse?.value || "No Vehicle";
+  form.querySelectorAll(".personal-vehicle-rate-field").forEach((field) => {
+    field.hidden = use !== "Personal Vehicle";
+  });
+}
+
 function autofillVehicleReport(form = $("#reportForm")) {
   const eventId = form.elements.eventId?.value || "";
   const workerId = form.elements.workerId?.value || state.activeWorkerId || "";
@@ -2846,7 +2853,7 @@ function applyWorkerPayDefaultsToTimecard(workerId) {
   if (assignment?.vehicleUse && !form.elements.vehicleUse.value) form.elements.vehicleUse.value = assignment.vehicleUse;
   const vehicleUse = form.elements.vehicleUse.value || assignment?.vehicleUse;
   if (vehicleUse === "Rented Vehicle") form.elements.vehicleRate.value = event?.rentedVehicleRate || client?.defaultRentedVehicleRate || worker?.defaultRentedVehicleRate || "";
-  if (vehicleUse === "Personal Vehicle") form.elements.vehicleRate.value = event?.personalVehicleRate || client?.defaultPersonalVehicleRate || worker?.defaultPersonalVehicleRate || "";
+    if (vehicleUse === "Personal Vehicle") form.elements.vehicleRate.value = assignment?.personalVehicleRate || event?.personalVehicleRate || client?.defaultPersonalVehicleRate || worker?.defaultPersonalVehicleRate || "";
 }
 
 function setView(viewId) {
@@ -3055,6 +3062,7 @@ async function saveForm(event, storeName) {
     merged.dayRate = merged.dayRate || eventRecord.dayRate || client?.defaultDayRate || worker.defaultDayRate || worker.defaultRate || "";
     merged.includedHours = merged.includedHours || eventRecord.includedHours || client?.defaultIncludedHours || worker.defaultIncludedHours || "10";
     merged.additionalRate = merged.additionalRate || eventRecord.additionalRate || client?.defaultAdditionalRate || worker.defaultAdditionalRate || "";
+    if (merged.vehicleUse === "Personal Vehicle") merged.personalVehicleRate = merged.personalVehicleRate || eventRecord.personalVehicleRate || client?.defaultPersonalVehicleRate || worker.defaultPersonalVehicleRate || "";
     merged.status = merged.status || "Confirmed";
   }
   if (storeName === "vehicleLogs") {
@@ -3109,7 +3117,7 @@ async function saveForm(event, storeName) {
     merged.additionalRate = merged.additionalRate || assignment?.additionalRate || relatedEvent?.additionalRate || client?.defaultAdditionalRate || worker?.defaultAdditionalRate || "";
     merged.vehicleUse = merged.vehicleUse || assignment?.vehicleUse || "";
     if (merged.vehicleUse === "Rented Vehicle") merged.vehicleRate = merged.vehicleRate || relatedEvent?.rentedVehicleRate || client?.defaultRentedVehicleRate || worker?.defaultRentedVehicleRate || "";
-    if (merged.vehicleUse === "Personal Vehicle") merged.vehicleRate = merged.vehicleRate || relatedEvent?.personalVehicleRate || client?.defaultPersonalVehicleRate || worker?.defaultPersonalVehicleRate || "";
+    if (merged.vehicleUse === "Personal Vehicle") merged.vehicleRate = merged.vehicleRate || assignment?.personalVehicleRate || relatedEvent?.personalVehicleRate || client?.defaultPersonalVehicleRate || worker?.defaultPersonalVehicleRate || "";
   }
   if (isCrewRole()) merged.workerId = state.activeWorkerId;
   if (isProductionRole()) {
@@ -3387,6 +3395,7 @@ function openAssignmentForm(eventId, assignment = null) {
     additionalRate: eventRecord.additionalRate || activeClientRecord()?.defaultAdditionalRate || "",
     vehicleUse: "No Vehicle",
     vehicleType: "",
+    personalVehicleRate: eventRecord.personalVehicleRate || activeClientRecord()?.defaultPersonalVehicleRate || "",
     status: "Confirmed",
     notes: ""
   };
@@ -3404,6 +3413,8 @@ function applyAssignmentDefaults(workerId) {
   form.elements.dayRate.value = form.elements.dayRate.value || eventRecord.dayRate || client?.defaultDayRate || worker.defaultDayRate || worker.defaultRate || "";
   form.elements.includedHours.value = form.elements.includedHours.value || eventRecord.includedHours || client?.defaultIncludedHours || worker.defaultIncludedHours || "10";
   form.elements.additionalRate.value = form.elements.additionalRate.value || eventRecord.additionalRate || client?.defaultAdditionalRate || worker.defaultAdditionalRate || "";
+  form.elements.personalVehicleRate.value = form.elements.personalVehicleRate.value || eventRecord.personalVehicleRate || client?.defaultPersonalVehicleRate || worker.defaultPersonalVehicleRate || "";
+  updateAssignmentVehicleFields(form);
 }
 
 function openCrewSwapForm(eventId) {
@@ -3992,6 +4003,10 @@ function bindEvents() {
   $("#eventForm").addEventListener("submit", (event) => saveForm(event, "events"));
   $("#eventAssignmentForm").addEventListener("submit", (event) => saveForm(event, "eventAssignments"));
   $("#eventAssignmentForm select[name='workerId']").addEventListener("change", (event) => applyAssignmentDefaults(event.target.value));
+  $("#eventAssignmentForm select[name='vehicleUse']").addEventListener("change", () => {
+    applyAssignmentDefaults($("#eventAssignmentForm").elements.workerId.value);
+    updateAssignmentVehicleFields($("#eventAssignmentForm"));
+  });
   $("#crewSwapForm").addEventListener("submit", finalizeCrewSwap);
   $("#substitutionSwapForm").addEventListener("submit", finalizeSubstitutionSwap);
   $("#eventForm").addEventListener("change", () => renderEventAssignmentManager($("#eventForm")));

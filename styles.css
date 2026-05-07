@@ -354,7 +354,8 @@ button {
 }
 
 .report-fields[hidden],
-.locked-assignment-field[hidden] {
+.locked-assignment-field[hidden],
+.personal-vehicle-rate-field[hidden] {
   display: none;
 }
 
