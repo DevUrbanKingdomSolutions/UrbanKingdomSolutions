@@ -231,6 +231,61 @@ with check (
   and id = public.current_client_id()
 );
 
+create table if not exists public.access_levels (
+  id text primary key,
+  name text not null,
+  base_role public.app_role not null,
+  views jsonb not null default '[]'::jsonb,
+  description text,
+  status text not null default 'Active',
+  created_by uuid references auth.users(id) on delete set null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+alter table public.access_levels enable row level security;
+
+do $$
+declare
+  policy_record record;
+begin
+  for policy_record in
+    select policyname
+    from pg_policies
+    where schemaname = 'public'
+      and tablename = 'access_levels'
+  loop
+    execute format('drop policy if exists %I on public.access_levels', policy_record.policyname);
+  end loop;
+end
+$$;
+
+create policy "Admins can manage access levels"
+on public.access_levels
+for all
+to authenticated
+using (public.current_app_role() = 'ADMIN')
+with check (public.current_app_role() = 'ADMIN');
+
+create policy "Clients can read active access levels"
+on public.access_levels
+for select
+to authenticated
+using (
+  public.current_app_role() = 'CLIENT'
+  and status = 'Active'
+);
+
+create policy "Production office can read production access levels"
+on public.access_levels
+for select
+to authenticated
+using (
+  public.current_app_role() = 'PROMOTER_PRODUCTION_OFFICE'
+  and status = 'Active'
+  and base_role = 'PROMOTER_PRODUCTION_OFFICE'
+);
+
 create table if not exists public.client_reps (
   id text primary key,
   client_id uuid not null references public.clients(id) on delete cascade,

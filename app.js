@@ -713,6 +713,50 @@ function mapSupabaseClientRep(record) {
   };
 }
 
+function mapSupabaseAccessLevel(record) {
+  return {
+    id: record.id || "",
+    name: record.name || "",
+    baseRole: normalizeRole(record.base_role || "CREW"),
+    views: Array.isArray(record.views) ? record.views : [],
+    description: record.description || "",
+    status: record.status || "Active",
+    createdAt: record.created_at || record.createdAt,
+    updatedAt: record.updated_at || record.updatedAt
+  };
+}
+
+async function hydrateAccessLevelsFromSupabase() {
+  if (!supabaseClient || !(isAdminRole() || isClientRole() || isProductionRole())) return;
+  try {
+    const { data, error } = await supabaseClient
+      .from("access_levels")
+      .select("id,name,base_role,views,description,status,created_at,updated_at")
+      .order("name");
+    if (error) throw error;
+    for (const level of data || []) {
+      await put("accessLevelDefs", mapSupabaseAccessLevel(level));
+    }
+  } catch (error) {
+    console.warn("Could not hydrate access levels.", error);
+  }
+}
+
+async function syncSupabaseAccessLevel(record) {
+  if (!canSystemEdit()) return "";
+  const { error } = await supabaseClient.from("access_levels").upsert({
+    id: record.id,
+    name: record.name,
+    base_role: normalizeRole(record.baseRole || "CREW"),
+    views: record.views || [],
+    description: record.description || "",
+    status: record.status || "Active",
+    updated_at: new Date().toISOString()
+  });
+  if (error) throw error;
+  return "Access level saved to Supabase.";
+}
+
 async function hydrateClientSetupData(roleRecord, user) {
   if (!supabaseClient || roleRecord.role !== "CLIENT" || !roleRecord.client_id) return { client: null, repCount: 0 };
   try {
@@ -940,6 +984,7 @@ async function applyAuthenticatedSession(session, preferredView = "") {
   $("#sessionRole").textContent = state.accessRole;
   showAppShell();
   await ensureDatabase();
+  await hydrateAccessLevelsFromSupabase();
   await hydrateClientSetupData(roleRecord, session.user);
   await loadState();
   await refreshUserAccessList(false);
@@ -2598,6 +2643,7 @@ async function saveForm(event, storeName) {
     if (storeName === "clientReps") loginSyncMessage = await syncSupabaseClientRep(merged);
     const smtpMessage = await saveSupabaseSmtpRoute(storeName, merged, smtpAppPassword);
     if (smtpMessage) loginSyncMessage = smtpMessage;
+    if (storeName === "accessLevelDefs") loginSyncMessage = await syncSupabaseAccessLevel(merged);
     loginSyncMessage = await syncSupabaseRoleForProfile(storeName, merged) || loginSyncMessage;
   } catch (error) {
     console.error(error);
@@ -2660,6 +2706,10 @@ async function deleteSupabaseRecord(storeName, id) {
     if (repDelete.error) throw repDelete.error;
     const clientDelete = await supabaseClient.from("clients").delete().eq("id", id);
     if (clientDelete.error) throw clientDelete.error;
+  }
+  if (storeName === "accessLevelDefs") {
+    const deleteLevel = await supabaseClient.from("access_levels").delete().eq("id", id);
+    if (deleteLevel.error) throw deleteLevel.error;
   }
 }
 
