@@ -1,19 +1,35 @@
 # Supabase Setup
 
-## Make the Send Login Setup button live
+## Deploy Edge Functions
 
-The app button calls the Edge Function at `supabase/functions/send-login-setup`.
+The app uses six Supabase Edge Functions:
+
+- `send-login-setup`
+- `send-smtp-test`
+- `save-smtp-route`
+- `create-event-access-link`
+- `public-event-access`
+- `user-access-management`
 
 Run this from the project folder after installing the Supabase CLI and logging in:
 
 ```bash
 supabase login
 supabase link --project-ref nnhqrhaltkmymnwxydwr
+supabase functions deploy save-smtp-route
 supabase functions deploy send-login-setup
 supabase functions deploy send-smtp-test
+supabase functions deploy create-event-access-link
+supabase functions deploy public-event-access
+supabase functions deploy user-access-management
 ```
 
 The hosted Edge Function uses Supabase's private service role key on Supabase's server side. Do not place the service role key in `app.js`, `index.html`, Vercel environment variables exposed to the browser, or GitHub.
+
+Required Supabase secrets:
+
+- `SMTP_ENCRYPTION_KEY`
+- `PUBLIC_SITE_URL`
 
 After deployment:
 
@@ -23,10 +39,4 @@ After deployment:
 
 ## Test SMTP
 
-Add the SMTP password/API key in Supabase as a project secret. The secret name must match the Admin Profile `SMTP secret reference` field.
-
-Then deploy:
-
-```bash
-supabase functions deploy send-smtp-test
-```
+SMTP app passwords/API keys are entered from the Admin, Client Rep, or Promoter SMTP settings UI. The `save-smtp-route` function encrypts and stores them in Supabase using `SMTP_ENCRYPTION_KEY`.

@@ -28,7 +28,9 @@ This is a first working version of a private entertainment production database a
 - First-login invite setup screen for creating a password before entering the app.
 - Client-visible profile login fields for login email, login role, Supabase user ID, and sending login setup.
 - Admin-visible client login fields for login email, CLIENT role connection, Supabase user ID, and sending client login setup.
-- Admin My Profile and Client Rep/My Profile fields for SMTP email routing details, including provider, sender, reply-to, host, port, username, secret reference, security mode, and routing status.
+- Admin My Profile, Client Rep/My Profile, and Promoter Profile fields for SMTP email routing details, including provider, sender, reply-to, host, port, username, app password/key capture, security mode, and routing status.
+- Admin-managed access levels with selectable app pages, backed by Supabase.
+- Event-specific production team links that can be sent by email and opened without a full login.
 - ADMIN can manage client accounts and system setup without production data, payroll, timecards, crew personal data, promoter records, or reports.
 - Production Board for CLIENT and PROMOTER_PRODUCTION_OFFICE to view assigned production details and mark runners Available, On a Run, or At Production Office.
 - Hash-based route protection redirects restricted direct links like `#payroll` when the signed-in role cannot access that view.
@@ -41,18 +43,31 @@ If a user lands on the wrong access page, run `supabase-role-check.sql` in Supab
 
 The production records are still stored locally in the browser using IndexedDB while the app screens are being finalized. Authentication and roles now come from Supabase so the production tables can move over module by module.
 
-To send real login setup emails, deploy the Supabase Edge Function in `supabase/functions/send-login-setup`. The function uses Supabase's private service role key to generate the invite link and sends the setup email through the saved SMTP routing settings.
+The app uses these Supabase Edge Functions:
 
-SMTP routing fields are stored as configuration metadata. Keep actual SMTP passwords/API keys in Supabase secrets or provider settings, then reference the secret name in the app.
+- `send-login-setup`: sends Auth invite/setup emails through saved SMTP routing.
+- `send-smtp-test`: sends an SMTP test email.
+- `save-smtp-route`: encrypts and saves SMTP app passwords/API keys entered in the UI.
+- `create-event-access-link`: creates and optionally emails event-specific production team links.
+- `public-event-access`: loads public event-link data and updates runner status for that event.
+- `user-access-management`: lists scoped login users and lets ADMIN delete non-admin login accounts.
 
-To test ADMIN SMTP settings, deploy `supabase/functions/send-smtp-test` and add the SMTP password/API key as a Supabase Edge Function secret whose name matches the profile's SMTP secret reference exactly. The secret reference should be a simple secret name such as `ADMIN_SMTP_PASSWORD`, not the actual password.
+Run `supabase-schema.sql` in Supabase SQL Editor before testing backend-backed settings. The project needs these Supabase secrets:
 
-Quick deploy commands for the login setup button:
+- `SMTP_ENCRYPTION_KEY`: one permanent encryption key for saved SMTP passwords/API keys.
+- `PUBLIC_SITE_URL`: deployed app URL, for example `https://the-entertaintainment-dashboard.vercel.app`.
+
+Quick deploy commands for all Edge Functions:
 
 ```bash
 supabase login
 supabase link --project-ref nnhqrhaltkmymnwxydwr
+supabase functions deploy save-smtp-route
 supabase functions deploy send-login-setup
+supabase functions deploy send-smtp-test
+supabase functions deploy create-event-access-link
+supabase functions deploy public-event-access
+supabase functions deploy user-access-management
 ```
 
 ## Important next steps
