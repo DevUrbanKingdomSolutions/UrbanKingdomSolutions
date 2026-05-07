@@ -189,6 +189,8 @@ let sendbirdClient = null;
 let sendbirdActiveChannel = null;
 let sendbirdMessages = [];
 let sendbirdActiveThread = null;
+let sendbirdTypingUsers = [];
+let sendbirdTypingPoller = null;
 let sendbirdConnectionState = {
   status: "disconnected",
   errorCode: "",
@@ -3086,9 +3088,10 @@ function renderMessagingError() {
 function renderMessagingThreadTabs() {
   const tabs = $("#messagingThreadTabs");
   if (!tabs) return;
-  tabs.innerHTML = Object.entries(MESSAGE_THREAD_TYPES)
+  const threadButtons = Object.entries(MESSAGE_THREAD_TYPES)
     .map(([type, config]) => `<button class="tab-button ${state.messagingThreadType === type ? "active" : ""}" data-message-thread-type="${type}" type="button">${config.label}</button>`)
     .join("");
+  tabs.innerHTML = `${threadButtons}<button class="tiny-button message-new-thread-button" data-new-message-thread type="button">+ New Thread</button>`;
 }
 
 function messagingChannelCards() {
@@ -3147,6 +3150,7 @@ function renderMessageThread() {
   const meta = $("#activeMessagingMeta");
   const members = $("#messageThreadMembers");
   const thread = $("#messageThread");
+  const typing = $("#messageTypingStatus");
   const form = $("#sendbirdMessageForm");
   if (!title || !meta || !thread || !form) return;
   const channelName = sendbirdActiveChannel?.name || "";
@@ -3156,9 +3160,37 @@ function renderMessageThread() {
   form.hidden = !sendbirdActiveChannel;
   thread.innerHTML = sendbirdActiveChannel
     ? (sendbirdMessages.length
-        ? sendbirdMessages.map((message) => `<div class="compact-item"><strong>${escapeHtml(message.sender?.nickname || message.sender?.userId || "Message")}</strong><span>${escapeHtml(message.message || "")}</span></div>`).join("")
-        : `<div class="compact-item empty">No messages loaded yet.</div>`)
-    : `<div class="compact-item empty">Choose a message thread from the list.</div>`;
+        ? `<div class="chat-thread">${sendbirdMessages.map((message) => messageBubble(message)).join("")}</div>`
+        : `<div class="chat-thread-empty">No messages loaded yet.</div>`)
+    : `<div class="chat-thread-empty">Choose a message thread from the list.</div>`;
+  if (typing) typing.innerHTML = renderTypingStatus();
+}
+
+function messageBubble(message) {
+  const senderName = message.sender?.nickname || message.sender?.userId || "Message";
+  const senderId = message.sender?.userId || "";
+  const isOwn = senderId && senderId === sendbirdClient?.currentUser?.userId;
+  const sentAt = message.createdAt ? formatDateTime(message.createdAt) : "";
+  return `<article class="message-bubble-row ${isOwn ? "own" : ""}">
+    <div class="message-avatar">${escapeHtml(initialsForName(senderName))}</div>
+    <div class="message-bubble">
+      <div class="message-meta"><strong>${escapeHtml(isOwn ? "You" : senderName)}</strong><span>${escapeHtml(sentAt)}</span></div>
+      <p>${escapeHtml(message.message || "")}</p>
+    </div>
+  </article>`;
+}
+
+function initialsForName(name) {
+  const parts = String(name || "User").trim().split(/\s+/).filter(Boolean);
+  return (parts.length > 1 ? `${parts[0][0]}${parts[1][0]}` : parts[0]?.slice(0, 2) || "U").toUpperCase();
+}
+
+function renderTypingStatus() {
+  if (!sendbirdActiveChannel) return "";
+  const users = sendbirdTypingUsers.filter((user) => user?.userId !== sendbirdClient?.currentUser?.userId);
+  if (!users.length) return `<span>No one is typing</span>`;
+  const names = users.map((user) => user.nickname || user.userId).filter(Boolean).slice(0, 3);
+  return `<span>${escapeHtml(names.join(", "))} ${names.length === 1 ? "is" : "are"} typing...</span>`;
 }
 
 function activeThreadManagementLabel() {
@@ -4461,6 +4493,7 @@ async function connectSendbirdMessaging() {
       await sendbirdClient.updateCurrentUserInfo(`${profile.firstName} ${profile.lastName}`.trim(), "");
     }
     sendbirdConnectionState = { status: "connected", errorCode: "", errorMessage: "" };
+    startSendbirdTypingPoller();
     await ensureDueEventMessageChannels();
     renderMessaging();
     toast("Messaging connected.");
@@ -4481,6 +4514,23 @@ async function loadSendbirdMessages(channel) {
     return await query.load();
   }
   return [];
+}
+
+function refreshSendbirdTypingUsers() {
+  if (!sendbirdActiveChannel || typeof sendbirdActiveChannel.getTypingUsers !== "function") {
+    sendbirdTypingUsers = [];
+    renderMessageThread();
+    return;
+  }
+  sendbirdTypingUsers = sendbirdActiveChannel.getTypingUsers() || [];
+  renderMessageThread();
+}
+
+function startSendbirdTypingPoller() {
+  if (sendbirdTypingPoller) return;
+  sendbirdTypingPoller = window.setInterval(() => {
+    if (state.activeView === "messages" && sendbirdActiveChannel) refreshSendbirdTypingUsers();
+  }, 2500);
 }
 
 async function syncSendbirdChannelMembers(channel, userIds) {
@@ -4540,6 +4590,7 @@ async function openMessageChannel(type, eventId, options = {}) {
     sendbirdActiveChannel = channel;
     sendbirdActiveThread = { type: threadType, eventId: eventRecord.id };
     sendbirdMessages = await loadSendbirdMessages(sendbirdActiveChannel);
+    refreshSendbirdTypingUsers();
     renderMessaging();
     if (!options.silent) toast(`${MESSAGE_THREAD_TYPES[threadType].label} opened.`);
   } catch (error) {
@@ -4570,6 +4621,7 @@ async function openDirectMessageChannel(profileId) {
     await syncSendbirdChannelMembers(sendbirdActiveChannel, sendbirdThreadUsers("direct", null, directProfile));
     sendbirdActiveThread = { type: "direct", profileId: directProfile.id };
     sendbirdMessages = await loadSendbirdMessages(sendbirdActiveChannel);
+    refreshSendbirdTypingUsers();
     renderMessaging();
     toast("Direct message opened.");
   } catch (error) {
@@ -4589,8 +4641,10 @@ async function sendSendbirdMessage(event) {
   if (!message) return;
   try {
     await sendbirdActiveChannel.sendUserMessage({ message });
+    if (typeof sendbirdActiveChannel.endTyping === "function") sendbirdActiveChannel.endTyping();
     input.value = "";
     sendbirdMessages = await loadSendbirdMessages(sendbirdActiveChannel);
+    refreshSendbirdTypingUsers();
     renderMessageThread();
   } catch (error) {
     console.error(error);
@@ -4888,6 +4942,15 @@ function bindEvents() {
   $("#eventForm").addEventListener("submit", (event) => saveForm(event, "events"));
   $("#eventAssignmentForm").addEventListener("submit", (event) => saveForm(event, "eventAssignments"));
   $("#sendbirdMessageForm").addEventListener("submit", sendSendbirdMessage);
+  $("#sendbirdMessageForm").elements.message.addEventListener("input", () => {
+    if (!sendbirdActiveChannel) return;
+    if (typeof sendbirdActiveChannel.startTyping === "function") sendbirdActiveChannel.startTyping();
+    window.clearTimeout($("#sendbirdMessageForm").dataset.typingTimer);
+    $("#sendbirdMessageForm").dataset.typingTimer = window.setTimeout(() => {
+      if (typeof sendbirdActiveChannel?.endTyping === "function") sendbirdActiveChannel.endTyping();
+      refreshSendbirdTypingUsers();
+    }, 1600);
+  });
   $("#eventAssignmentForm select[name='workerId']").addEventListener("change", (event) => applyAssignmentDefaults(event.target.value));
   $("#eventAssignmentForm select[name='vehicleUse']").addEventListener("change", () => {
     applyAssignmentDefaults($("#eventAssignmentForm").elements.workerId.value);
@@ -4971,6 +5034,7 @@ function bindEvents() {
     const messageThreadTypeButton = event.target.closest("[data-message-thread-type]");
     const openMessageChannelButton = event.target.closest("[data-open-message-channel]");
     const openDirectMessageButton = event.target.closest("[data-open-direct-message]");
+    const newMessageThreadButton = event.target.closest("[data-new-message-thread]");
     const notifyProductionOfficeButton = event.target.closest("[data-notify-production-office]");
 
     if (publicRunnerStatusButton) {
@@ -4994,6 +5058,15 @@ function bindEvents() {
       await openMessageChannel(type, eventId);
     }
     if (openDirectMessageButton) await openDirectMessageChannel(openDirectMessageButton.dataset.openDirectMessage);
+    if (newMessageThreadButton) {
+      toast("Custom thread setup is next. Use Direct Message for new private threads right now.");
+      state.messagingThreadType = "direct";
+      localStorage.setItem("productionCrewMessagingThreadType", state.messagingThreadType);
+      sendbirdActiveChannel = null;
+      sendbirdActiveThread = null;
+      sendbirdMessages = [];
+      renderMessaging();
+    }
     if (notifyProductionOfficeButton) await notifyRunnerToProductionOffice(notifyProductionOfficeButton.dataset.notifyProductionOffice);
 
   if (openButton) {
