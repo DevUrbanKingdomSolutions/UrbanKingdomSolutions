@@ -439,12 +439,12 @@ function clearForm(formId) {
     form.elements.vehicleUse.value = "No Vehicle";
     updateAssignmentVehicleFields(form);
   }
-  if (formId === "reportForm") updateReportTypeFields(form);
-  if (formId === "vehicleForm") applyVehicleAssignmentLock(form);
   if (formId === "reportForm") form.elements.reportedAt.value = toLocalInputValue(new Date());
   if ((formId === "vehicleForm" || formId === "reportForm") && state.activeWorkerId) {
     form.elements.workerId.value = state.activeWorkerId;
   }
+  if (formId === "reportForm") updateReportTypeFields(form);
+  if (formId === "vehicleForm") applyVehicleAssignmentLock(form);
   updateSmtpForm(form);
 }
 
@@ -2670,6 +2670,11 @@ function vehicleLogForEventWorker(eventId, workerId, phase = "") {
   });
 }
 
+function assignmentForForm(form) {
+  const assignmentId = form?.elements?.assignmentId?.value || "";
+  return getEventAssignment(assignmentId) || assignmentForEventWorker(form?.elements?.eventId?.value || "", form?.elements?.workerId?.value || state.activeWorkerId || "");
+}
+
 function appendTimecardNote(card, message) {
   const existing = String(card.notes || "").trim();
   if (existing.includes(message)) return existing;
@@ -2679,15 +2684,24 @@ function appendTimecardNote(card, message) {
 function applyVehicleAssignmentLock(form = $("#vehicleForm")) {
   if (!form) return;
   const log = form.elements.id?.value ? state.vehicleLogs.find((item) => item.id === form.elements.id.value) : null;
-  const locked = isCrewRole() && !!log?.assignmentId;
+  const assignment = log?.assignmentId ? getEventAssignment(log.assignmentId) : assignmentForForm(form);
+  if (assignment) {
+    if (form.elements.assignmentId) form.elements.assignmentId.value = assignment.id;
+    if (form.elements.eventId && !form.elements.eventId.value) form.elements.eventId.value = assignment.eventId;
+    if (form.elements.workerId && !form.elements.workerId.value) form.elements.workerId.value = assignment.workerId;
+    if (form.elements.vehicleType && !form.elements.vehicleType.value) form.elements.vehicleType.value = assignment.vehicleType || (assignment.vehicleUse === "Rented Vehicle" ? "Rented Vehicle" : "");
+    if (form.elements.scheduledDate && !form.elements.scheduledDate.value) {
+      form.elements.scheduledDate.value = form.elements.phase.value === "End" ? assignment.endDate || "" : assignment.startDate || "";
+    }
+  }
+  const locked = isCrewRole() && !!assignment;
   ["eventId", "workerId", "assignmentLabel"].forEach((name) => {
     if (form.elements[name]) form.elements[name].disabled = locked;
   });
   form.querySelectorAll(".locked-assignment-field").forEach((field) => {
-    field.hidden = !log?.assignmentId;
+    field.hidden = !assignment;
   });
-  if (log?.assignmentId && form.elements.assignmentLabel) {
-    const assignment = getEventAssignment(log.assignmentId);
+  if (assignment && form.elements.assignmentLabel) {
     const worker = getWorker(assignment?.workerId);
     form.elements.assignmentLabel.value = `${getEvent(assignment?.eventId)?.name || "Event"} - ${worker?.name || "Runner"}`;
   }
@@ -2695,6 +2709,12 @@ function applyVehicleAssignmentLock(form = $("#vehicleForm")) {
 
 function updateReportTypeFields(form = $("#reportForm")) {
   if (!form) return;
+  const assignment = assignmentForForm(form);
+  if (assignment) {
+    if (form.elements.assignmentId) form.elements.assignmentId.value = assignment.id;
+    if (form.elements.eventId && !form.elements.eventId.value) form.elements.eventId.value = assignment.eventId;
+    if (form.elements.workerId && !form.elements.workerId.value) form.elements.workerId.value = assignment.workerId;
+  }
   const type = form.elements.type?.value || "Injury Report";
   form.querySelectorAll("[data-report-section]").forEach((section) => {
     section.hidden = section.dataset.reportSection !== type;
@@ -3066,7 +3086,19 @@ async function saveForm(event, storeName) {
     merged.status = merged.status || "Confirmed";
   }
   if (storeName === "vehicleLogs") {
+    const assignment = getEventAssignment(merged.assignmentId) || assignmentForEventWorker(merged.eventId, merged.workerId);
+    if (assignment) {
+      merged.assignmentId = assignment.id;
+      merged.eventId = assignment.eventId;
+      merged.workerId = assignment.workerId;
+      merged.vehicleType = merged.vehicleType || assignment.vehicleType || (assignment.vehicleUse === "Rented Vehicle" ? "Rented Vehicle" : "");
+      merged.scheduledDate = merged.scheduledDate || (merged.phase === "End" ? assignment.endDate : assignment.startDate) || "";
+    }
     delete merged.assignmentLabel;
+  }
+  if (storeName === "accidentReports") {
+    const assignment = getEventAssignment(merged.assignmentId) || assignmentForEventWorker(merged.eventId, merged.workerId);
+    if (assignment) merged.assignmentId = assignment.id;
   }
   if (storeName === "clients" && isClientRole()) {
     const clientId = authState.roleRecord?.client_id || "";
@@ -3904,6 +3936,8 @@ async function crewPunch(eventId, field) {
   card[field] = now;
   if (field === "clockIn" && !card.eventName) card.eventName = event?.name || "";
   if (field === "clockIn" && rentalVehicleRequired(event, card)) {
+    const assignment = assignmentForEventWorker(eventId, state.activeWorkerId);
+    if (assignment?.vehicleUse === "Rented Vehicle") await ensureVehicleChecksForAssignment(assignment);
     const startLog = vehicleLogForEventWorker(eventId, state.activeWorkerId, "Start");
     if (!vehicleStartCheckStarted(startLog)) {
       card.rentalStartReminderAt = new Date().toISOString();

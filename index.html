@@ -767,6 +767,7 @@
                 <button class="ghost-button clear-form" type="button" data-form="vehicleForm">Clear</button>
               </div>
               <input type="hidden" name="id">
+              <input type="hidden" name="assignmentId">
               <label>Event<select name="eventId" required></select></label>
               <label>Assigned worker<select name="workerId"></select></label>
               <label class="locked-assignment-field">Assignment<input name="assignmentLabel" readonly placeholder="Auto-filled from event assignment"></label>
@@ -853,6 +854,7 @@
                 <button class="ghost-button clear-form" type="button" data-form="reportForm">Clear</button>
               </div>
               <input type="hidden" name="id">
+              <input type="hidden" name="assignmentId">
               <label>Report type
                 <select name="type" data-report-type>
                   <option>Injury Report</option>
@@ -1109,6 +1111,6 @@
     <div id="modalHost"></div>
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js?v=V1.01.008-event-edit-assignment-manager"></script>
+    <script src="app.js?v=V1.01.009-assignment-form-wiring"></script>
   </body>
 </html>
