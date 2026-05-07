@@ -354,10 +354,9 @@
               <label>Access name<input name="name" required placeholder="Runner Lead, Production Viewer"></label>
               <label>Security foundation
                 <select name="baseRole">
+                  <option value="CLIENT">Client</option>
+                  <option value="PROMOTER">Promoter</option>
                   <option value="CREW">Crew / Runner</option>
-                  <option value="PROMOTER_ADMIN">Promoter Admin</option>
-                  <option value="PROMOTER_REP">Promoter Rep</option>
-                  <option value="PRODUCTION_TEAM_ACCESS">Production Team Access</option>
                 </select>
               </label>
               <label>Allowed pages
@@ -370,14 +369,28 @@
               <div class="panel-heading">
                 <h3>Admin Console</h3>
                 <div class="panel-tools">
-                  <span id="clientTableCount" class="muted"></span>
-                  <button class="tiny-button system-action" data-open-form="clientForm" type="button">Add Client</button>
+                  <span id="adminUserTableCount" class="muted"></span>
                 </div>
               </div>
               <div class="compact-list">
                 <div class="compact-item">
                   <strong>System-only access</strong>
                   <p>Admin can manage client accounts, role setup, app configuration, and troubleshooting tools without opening production data, payroll, timecards, reports, or crew personal details.</p>
+                </div>
+              </div>
+              <div class="table-wrap">
+                <table>
+                  <thead><tr><th>Admin User</th><th>Role</th><th>Client</th><th>Profile</th><th></th></tr></thead>
+                  <tbody id="adminUserTable"></tbody>
+                </table>
+              </div>
+            </section>
+            <section class="panel table-panel">
+              <div class="panel-heading">
+                <h3>Client Accounts</h3>
+                <div class="panel-tools">
+                  <span id="clientTableCount" class="muted"></span>
+                  <button class="tiny-button system-action" data-open-form="clientForm" type="button">Add Client</button>
                 </div>
               </div>
               <div class="table-wrap">
@@ -627,7 +640,7 @@
               <label class="owner-form">Login role
                 <select name="loginRole">
                   <option value="CREW">Crew / Runner</option>
-                  <option value="PROMOTER_PRODUCTION_OFFICE">Promoter Admin</option>
+                  <option value="PROMOTER">Promoter Admin</option>
                 </select>
               </label>
               <label class="owner-form">Supabase user ID<input name="authUserId" placeholder="Paste user ID after setup"></label>
@@ -989,7 +1002,7 @@
               <label class="promoter-login-field">Login email<input name="loginEmail" type="email" placeholder="login@example.com"></label>
               <label class="promoter-login-field">Login role
                 <select name="loginRole">
-                  <option value="PROMOTER_PRODUCTION_OFFICE">Promoter Admin</option>
+                  <option value="PROMOTER">Promoter Admin</option>
                   <option value="CREW">Crew / Runner</option>
                 </select>
               </label>
@@ -1133,6 +1146,6 @@
     <div id="modalHost"></div>
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js?v=V1.01.011-access-level-updates"></script>
+    <script src="app.js?v=V1.01.012-security-access-cleanup"></script>
   </body>
 </html>

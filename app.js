@@ -48,21 +48,24 @@ const ROLE_ALIASES = {
   client: "CLIENT",
   client_admin: "CLIENT",
   client_rep: "CLIENT",
-  production: "PROMOTER_PRODUCTION_OFFICE",
-  promoter: "PROMOTER_PRODUCTION_OFFICE",
-  promoter_admin: "PROMOTER_PRODUCTION_OFFICE",
-  promoter_rep: "PROMOTER_PRODUCTION_OFFICE",
-  production_team_access: "PROMOTER_PRODUCTION_OFFICE",
-  promoter_production_office: "PROMOTER_PRODUCTION_OFFICE",
+  production: "PRODUCTION",
+  production_team_access: "PRODUCTION",
+  promoter: "PROMOTER",
+  promoter_admin: "PROMOTER",
+  promoter_rep: "PROMOTER",
+  promoter_production_office: "PROMOTER",
   crew: "CREW",
+  runner: "CREW",
   ADMIN: "ADMIN",
   CLIENT: "CLIENT",
   CLIENT_ADMIN: "CLIENT",
   CLIENT_REP: "CLIENT",
-  PROMOTER_PRODUCTION_OFFICE: "PROMOTER_PRODUCTION_OFFICE",
-  PROMOTER_ADMIN: "PROMOTER_PRODUCTION_OFFICE",
-  PROMOTER_REP: "PROMOTER_PRODUCTION_OFFICE",
-  PRODUCTION_TEAM_ACCESS: "PROMOTER_PRODUCTION_OFFICE",
+  PROMOTER: "PROMOTER",
+  PROMOTER_PRODUCTION_OFFICE: "PROMOTER",
+  PROMOTER_ADMIN: "PROMOTER",
+  PROMOTER_REP: "PROMOTER",
+  PRODUCTION: "PRODUCTION",
+  PRODUCTION_TEAM_ACCESS: "PRODUCTION",
   CREW: "CREW"
 };
 
@@ -104,7 +107,7 @@ const ACCESS_PROFILES = {
   },
   PROMOTER_ADMIN: {
     label: "PROMOTER ADMIN",
-    baseRole: "PROMOTER_PRODUCTION_OFFICE",
+    baseRole: "PROMOTER",
     views: ["productionBoard", "events", "workers", "promoters", "venues", "vehicles", "reports", "directory", "messages", "dataTools"],
     canAdminEdit: true,
     canOwnerEdit: false,
@@ -116,7 +119,7 @@ const ACCESS_PROFILES = {
   },
   PROMOTER_REP: {
     label: "PROMOTER REP",
-    baseRole: "PROMOTER_PRODUCTION_OFFICE",
+    baseRole: "PROMOTER",
     views: ["productionBoard", "events", "workers", "promoters", "venues", "vehicles", "reports", "directory", "messages"],
     canAdminEdit: true,
     canOwnerEdit: false,
@@ -126,9 +129,9 @@ const ACCESS_PROFILES = {
     canViewRates: false,
     canSystemEdit: false
   },
-  PRODUCTION_TEAM_ACCESS: {
-    label: "PRODUCTION TEAM ACCESS",
-    baseRole: "PROMOTER_PRODUCTION_OFFICE",
+  PRODUCTION: {
+    label: "PRODUCTION",
+    baseRole: "PRODUCTION",
     views: ["productionBoard", "events", "vehicles", "reports", "directory", "messages"],
     canAdminEdit: false,
     canOwnerEdit: false,
@@ -152,7 +155,9 @@ const ACCESS_PROFILES = {
   }
 };
 ACCESS_PROFILES.CLIENT = ACCESS_PROFILES.CLIENT_ADMIN;
+ACCESS_PROFILES.PROMOTER = ACCESS_PROFILES.PROMOTER_ADMIN;
 ACCESS_PROFILES.PROMOTER_PRODUCTION_OFFICE = ACCESS_PROFILES.PROMOTER_ADMIN;
+ACCESS_PROFILES.PRODUCTION_TEAM_ACCESS = ACCESS_PROFILES.PRODUCTION;
 
 let db;
 let supabaseClient;
@@ -246,16 +251,21 @@ const NAV_GROUPS = {
   ]
 };
 NAV_GROUPS.CLIENT = NAV_GROUPS.CLIENT_ADMIN;
+NAV_GROUPS.PROMOTER = NAV_GROUPS.PROMOTER_ADMIN;
 NAV_GROUPS.PROMOTER_PRODUCTION_OFFICE = NAV_GROUPS.PROMOTER_ADMIN;
+NAV_GROUPS.PRODUCTION = NAV_GROUPS.PRODUCTION_TEAM_ACCESS;
+NAV_GROUPS.PRODUCTION_TEAM_ACCESS = NAV_GROUPS.PRODUCTION;
 
 const ROLE_HOME_VIEWS = {
   ADMIN: "adminProfile",
   CLIENT: "dashboard",
   CLIENT_ADMIN: "dashboard",
   CLIENT_REP: "dashboard",
+  PROMOTER: "productionBoard",
   PROMOTER_PRODUCTION_OFFICE: "productionBoard",
   PROMOTER_ADMIN: "productionBoard",
   PROMOTER_REP: "productionBoard",
+  PRODUCTION: "productionBoard",
   PRODUCTION_TEAM_ACCESS: "productionBoard",
   CREW: "workers"
 };
@@ -265,9 +275,11 @@ const ACCESS_LEVEL_LABELS = {
   CLIENT: "Client Admin",
   CLIENT_ADMIN: "Client Admin",
   CLIENT_REP: "Client Rep",
+  PROMOTER: "Promoter Admin",
   PROMOTER_PRODUCTION_OFFICE: "Promoter Admin",
   PROMOTER_ADMIN: "Promoter Admin",
   PROMOTER_REP: "Promoter Rep",
+  PRODUCTION: "Production Team Access",
   PRODUCTION_TEAM_ACCESS: "Production Team Access",
   CREW: "Crew / Runner"
 };
@@ -746,7 +758,7 @@ async function fetchUserRoleFromHelpers() {
 }
 
 function profileLoginRole(storeName, record) {
-  const fallback = storeName === "clients" ? "CLIENT" : storeName === "promoters" ? "PROMOTER_PRODUCTION_OFFICE" : "CREW";
+  const fallback = storeName === "clients" ? "CLIENT" : storeName === "promoters" ? "PROMOTER" : "CREW";
   const access = record.loginRole || normalizeAccessLevels(record.accessLevels, fallback)[0] || fallback;
   return baseRoleForAccess(access);
 }
@@ -1237,7 +1249,8 @@ function profileViewForRole(role) {
   const normalized = normalizeRole(role);
   if (normalized === "ADMIN") return "adminProfile";
   if (normalized === "CLIENT") return "clientProfile";
-  if (normalized === "PROMOTER_PRODUCTION_OFFICE") return "promoters";
+  if (normalized === "PROMOTER") return "promoters";
+  if (normalized === "PRODUCTION") return "productionBoard";
   if (normalized === "CREW") return "workers";
   return roleHomeView(normalized);
 }
@@ -1342,7 +1355,11 @@ function isClientRole() {
 }
 
 function isProductionRole() {
-  return effectiveAccessRole() === "PROMOTER_PRODUCTION_OFFICE";
+  return effectiveAccessRole() === "PROMOTER";
+}
+
+function isProductionTeamRole() {
+  return effectiveAccessRole() === "PRODUCTION";
 }
 
 function isCrewRole() {
@@ -1368,15 +1385,16 @@ function protectedViewFor(viewId) {
 
 function assignedAccessForRole(role) {
   const normalized = normalizeRole(role);
-  if (normalized === "CLIENT") return ["CLIENT_ADMIN", "CLIENT_REP", "PROMOTER_ADMIN", "PROMOTER_REP", "PRODUCTION_TEAM_ACCESS", "CREW"];
+  if (normalized === "CLIENT") return ["CLIENT_ADMIN", "CLIENT_REP", "PROMOTER_ADMIN", "PROMOTER_REP", "CREW", "PRODUCTION"];
   if (normalized === "CREW") {
     const worker = getWorker(state.activeWorkerId);
     return normalizeAccessLevels(worker?.accessLevels, "CREW");
   }
-  if (normalized === "PROMOTER_PRODUCTION_OFFICE") {
+  if (normalized === "PROMOTER") {
     const promoter = getPromoter(state.activePromoterId);
     return normalizeAccessLevels(promoter?.accessLevels, "PROMOTER_ADMIN");
   }
+  if (normalized === "PRODUCTION") return ["PRODUCTION"];
   return [normalized];
 }
 
@@ -1393,8 +1411,9 @@ function assignedAccessForCurrentUser() {
 function accessLevelOptionsForForm(form) {
   let roles = accessLevelDefinitions().map((level) => level.id).filter((role) => role !== "ADMIN");
   if (form?.id === "clientProfileForm") return roles.filter((role) => baseRoleForAccess(role) === "CLIENT");
-  if (form?.id !== "clientForm") roles = roles.filter((role) => baseRoleForAccess(role) !== "CLIENT");
-  if (form?.id === "promoterForm" && isProductionRole()) roles = roles.filter((role) => baseRoleForAccess(role) === "PROMOTER_PRODUCTION_OFFICE");
+  if (form?.id === "workerForm") return roles.filter((role) => baseRoleForAccess(role) === "CREW");
+  if (form?.id === "promoterForm") return roles.filter((role) => baseRoleForAccess(role) === "PROMOTER");
+  if (form?.id !== "clientForm") roles = roles.filter((role) => !["CLIENT", "PRODUCTION"].includes(baseRoleForAccess(role)));
   return roles;
 }
 
@@ -1428,7 +1447,7 @@ function renderViewOptionControls(root = document) {
 }
 
 function builtInAccessLevelDefinitions() {
-  const legacyAliases = new Set(["CLIENT", "PROMOTER_PRODUCTION_OFFICE"]);
+  const legacyAliases = new Set(["CLIENT", "PROMOTER", "PROMOTER_PRODUCTION_OFFICE", "PRODUCTION_TEAM_ACCESS"]);
   return Object.keys(ACCESS_PROFILES).filter((id) => !legacyAliases.has(id)).map((id) => ({
     id,
     name: ACCESS_LEVEL_LABELS[id] || id,
@@ -1907,6 +1926,7 @@ function render() {
 }
 
 function renderAdmin() {
+  renderUserAccessTable("adminUserTable", "adminUserTableCount", state.userAccessRows.filter((row) => normalizeRole(row.role) === "ADMIN"));
   $("#clientTableCount").textContent = `${state.clients.length} clients`;
   $("#clientTable").innerHTML = state.clients.length
     ? state.clients.map((client) => `<tr><td><button class="link-button" data-view-client-company="${client.id}" type="button"><strong>${escapeHtml(client.name)}</strong></button><p>${escapeHtml(client.email)}</p></td><td>${escapeHtml(client.contactName)}<p>${escapeHtml(client.phone)}</p></td><td><span class="status-pill">${escapeHtml(client.status || "Active")}</span></td><td>${escapeHtml(client.notes)}${loginStatus(client)}</td><td>${actionButtons("clients", client.id, "clientForm", loginSetupButton("clients", client), canSystemEdit())}</td></tr>`).join("")
@@ -1917,7 +1937,7 @@ function renderAccessLevels() {
   const table = $("#accessLevelTable");
   const count = $("#accessLevelTableCount");
   if (!table || !count) return;
-  const rows = accessLevelDefinitions().filter((level) => !["ADMIN", "CLIENT"].includes(level.baseRole));
+  const rows = accessLevelDefinitions().filter((level) => !["ADMIN", "PRODUCTION"].includes(level.baseRole));
   count.textContent = `${rows.length} levels`;
   table.innerHTML = rows.length
     ? rows.map((level) => {
@@ -1931,7 +1951,7 @@ function renderAccessLevels() {
 function userAccessRowsForView() {
   if (isAdminRole() || isClientRole()) return state.userAccessRows;
   if (isProductionRole()) {
-    return state.userAccessRows.filter((row) => row.role === "PROMOTER_PRODUCTION_OFFICE");
+    return state.userAccessRows.filter((row) => normalizeRole(row.role) === "PROMOTER");
   }
   return [];
 }
@@ -1948,7 +1968,7 @@ function renderUserAccessTable(tableId, countId, rows) {
   if (!table || !count) return;
   count.textContent = `${rows.length} users`;
   table.innerHTML = rows.length
-    ? rows.map((row) => `<tr><td><strong>${escapeHtml(row.email || "No email")}</strong><p>${escapeHtml(row.userId || "")}</p></td><td><span class="status-pill">${escapeHtml(row.role || "")}</span></td><td>${escapeHtml(row.clientName || row.clientId || "")}</td><td>${escapeHtml(userAccessProfileLabel(row))}</td><td>${userAccessActions(row)}</td></tr>`).join("")
+    ? rows.map((row) => `<tr><td><strong>${escapeHtml(row.email || "No email")}</strong><p>${escapeHtml(row.userId || "")}</p></td><td><span class="status-pill">${escapeHtml(accessLevelLabel(normalizeRole(row.role)))}</span></td><td>${escapeHtml(row.clientName || row.clientId || "")}</td><td>${escapeHtml(userAccessProfileLabel(row))}</td><td>${userAccessActions(row)}</td></tr>`).join("")
     : `<tr><td colspan="5" class="empty">Refresh to load user accounts.</td></tr>`;
 }
 
@@ -1958,7 +1978,8 @@ function userAccessProfileLabel(row) {
       || state.clientReps.find((item) => item.clientId === row.clientId && item.email === row.email);
     return rep?.name || "Client rep";
   }
-  if (row.role === "PROMOTER_PRODUCTION_OFFICE") return promoterLabel(getPromoter(row.promoterId)) || row.promoterId || "Promoter rep";
+  if (normalizeRole(row.role) === "PROMOTER") return promoterLabel(getPromoter(row.promoterId)) || row.promoterId || "Promoter rep";
+  if (normalizeRole(row.role) === "PRODUCTION") return "Production team";
   if (row.role === "CREW") return getWorker(row.workerId)?.name || row.workerId || "Crew";
   return "";
 }
@@ -2479,7 +2500,7 @@ function loginSetupButton(store, profile) {
   if (store === "clients" && !canSystemEdit()) return "";
   if (store === "workers" && !canOwnerEdit()) return "";
   if (store === "promoters" && !(canOwnerEdit() || isProductionRole())) return "";
-  if (store === "promoters" && isProductionRole() && profileLoginRole(store, profile) !== "PROMOTER_PRODUCTION_OFFICE") return "";
+  if (store === "promoters" && isProductionRole() && profileLoginRole(store, profile) !== "PROMOTER") return "";
   const email = profile.loginEmail || profile.email;
   if (!email) return "";
   return `<button class="tiny-button" data-send-login="${store}" data-id="${profile.id}" type="button">Send Login Setup</button>`;
@@ -2600,7 +2621,7 @@ function profileSelect(store, id) {
 
 function accessBadges(levels, fallback) {
   return normalizeAccessLevels(levels, fallback)
-    .map((level) => level === "PROMOTER_PRODUCTION_OFFICE" ? "Production Office" : level === "CREW" ? "Crew / Runner" : level === "CLIENT" ? "Client" : "Admin")
+    .map((level) => level === "PROMOTER" || level === "PROMOTER_PRODUCTION_OFFICE" ? "Promoter" : level === "PRODUCTION" ? "Production" : level === "CREW" ? "Crew / Runner" : level === "CLIENT" ? "Client" : "Admin")
     .map((label) => `<span class="status-pill">${escapeHtml(label)}</span>`)
     .join(" ");
 }
@@ -2884,7 +2905,7 @@ function renderPromoters() {
   $("#promoterTable").innerHTML = rows.length
     ? rows.map((promoter) => {
         const smtpStatus = promoter.smtpSecretRef ? `<p><span class="status-pill">SMTP saved</span></p>` : "";
-        return `<tr><td>${profileSelect("promoters", promoter.id)}${profileCell(promoter, false, promoter.contactName)}</td><td><strong>${escapeHtml(promoter.companyName || "Independent")}</strong><p>${escapeHtml(promoter.contactName)}</p></td><td>${escapeHtml(promoter.phone)}</td><td>${escapeHtml(promoter.email)}</td><td>${escapeHtml(promoter.notes || promoter.billing)}<p>${accessBadges(promoter.accessLevels, "PROMOTER_PRODUCTION_OFFICE")}</p>${smtpStatus}${loginStatus(promoter)}</td><td>${actionButtons("promoters", promoter.id, "promoterForm", loginSetupButton("promoters", promoter), canEditPromoter(promoter))}</td></tr>`;
+        return `<tr><td>${profileSelect("promoters", promoter.id)}${profileCell(promoter, false, promoter.contactName)}</td><td><strong>${escapeHtml(promoter.companyName || "Independent")}</strong><p>${escapeHtml(promoter.contactName)}</p></td><td>${escapeHtml(promoter.phone)}</td><td>${escapeHtml(promoter.email)}</td><td>${escapeHtml(promoter.notes || promoter.billing)}<p>${accessBadges(promoter.accessLevels, "PROMOTER_ADMIN")}</p>${smtpStatus}${loginStatus(promoter)}</td><td>${actionButtons("promoters", promoter.id, "promoterForm", loginSetupButton("promoters", promoter), canEditPromoter(promoter))}</td></tr>`;
       }).join("")
     : `<tr><td colspan="6" class="empty">No promoter profiles match this search.</td></tr>`;
 }
@@ -3045,7 +3066,7 @@ function applyAccessProfile() {
   $("#importData").closest(".file-action").hidden = !profile.canImportExport;
   $$(".promoter-login-field").forEach((field) => { field.hidden = !(isClientRole() || isProductionRole()); });
   $$("select[name='loginRole']").forEach((select) => {
-    if (select.closest("#promoterForm") && isProductionRole()) select.value = "PROMOTER_PRODUCTION_OFFICE";
+    if (select.closest("#promoterForm") && isProductionRole()) select.value = "PROMOTER";
   });
   $$("#promoterForm select[name='loginRole'] option[value='CREW']").forEach((option) => { option.hidden = isProductionRole(); });
   $$(".admin-form").forEach((form) => { form.hidden = !profile.canAdminEdit; });
@@ -3140,7 +3161,7 @@ async function saveForm(event, storeName) {
     return;
   }
   if (["events", "eventAssignments", "eventSwaps", "runnerStops", "timecards"].includes(storeName) && !canAdminEdit()) {
-    toast("Switch to CLIENT or PROMOTER_PRODUCTION_OFFICE to save this.");
+    toast("Switch to CLIENT or PROMOTER to save this.");
     return;
   }
   if (["vehicleLogs", "accidentReports"].includes(storeName) && !canScopedEdit()) {
@@ -3256,7 +3277,7 @@ async function saveForm(event, storeName) {
   if (storeName === "promoters" && isProductionRole()) {
     const active = getPromoter(state.activePromoterId);
     merged.companyName = active?.companyName || merged.companyName;
-    merged.loginRole = "PROMOTER_PRODUCTION_OFFICE";
+    merged.loginRole = "PROMOTER";
     merged.accessLevels = ["PROMOTER_ADMIN"];
   }
   if (storeName === "timecards" && merged.eventId) {
@@ -3450,8 +3471,8 @@ async function sendLoginSetup(storeName, id) {
   const record = state[storeName]?.find((item) => item.id === id);
   if (!record) return;
   const payload = loginSetupPayload(storeName, record);
-  if (isProductionRole() && payload.role !== "PROMOTER_PRODUCTION_OFFICE") {
-    toast("Production Office can only invite other promoter users.");
+  if (isProductionRole() && payload.role !== "PROMOTER") {
+    toast("Promoter can only invite other promoter users.");
     return;
   }
   if (!payload.email) {
@@ -3614,11 +3635,11 @@ async function saveEventAccessLink(event) {
     return;
   }
   if (!(isClientRole() || isProductionRole())) {
-    toast("Only Client or Production Office can create event links.");
+    toast("Only Client or Promoter can create event links.");
     return;
   }
   if (isProductionRole() && event.promoterId !== state.activePromoterId) {
-    toast("Production Office can only create links for their events.");
+    toast("Promoter can only create links for their events.");
     return;
   }
   const form = $("#eventAccessForm");

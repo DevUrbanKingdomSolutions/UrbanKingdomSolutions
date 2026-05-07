@@ -42,7 +42,7 @@ Deno.serve(async (request) => {
 });
 
 async function listUserAccounts(admin: any, callerRole: any) {
-  if (!["ADMIN", "CLIENT", "PROMOTER_PRODUCTION_OFFICE"].includes(callerRole?.role)) {
+  if (!["ADMIN", "CLIENT", "PROMOTER", "PROMOTER_PRODUCTION_OFFICE"].includes(callerRole?.role)) {
     throw new Error("This role cannot view user accounts.");
   }
 
@@ -50,8 +50,8 @@ async function listUserAccounts(admin: any, callerRole: any) {
     .from("user_roles")
     .select("user_id,role,client_id,worker_id,promoter_id,updated_at");
   if (callerRole.role === "CLIENT") query = query.eq("client_id", callerRole.client_id);
-  if (callerRole.role === "PROMOTER_PRODUCTION_OFFICE") {
-    query = query.eq("client_id", callerRole.client_id).eq("role", "PROMOTER_PRODUCTION_OFFICE");
+  if (["PROMOTER", "PROMOTER_PRODUCTION_OFFICE"].includes(callerRole.role)) {
+    query = query.eq("client_id", callerRole.client_id).in("role", ["PROMOTER", "PROMOTER_PRODUCTION_OFFICE"]);
   }
 
   const { data: roles, error: rolesError } = await query.order("updated_at", { ascending: false });

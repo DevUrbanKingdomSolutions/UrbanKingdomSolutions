@@ -46,15 +46,16 @@ Deno.serve(async (request) => {
       if (callerRole?.role !== "ADMIN") throw new Error("Only ADMIN users can send client login setup.");
       if (role !== "CLIENT") throw new Error("Client setup must use the CLIENT role.");
     } else {
-      const promoterInvitingPromoter = callerRole?.role === "PROMOTER_PRODUCTION_OFFICE" && profileType === "promoter" && role === "PROMOTER_PRODUCTION_OFFICE";
+      const callerIsPromoter = ["PROMOTER", "PROMOTER_PRODUCTION_OFFICE"].includes(callerRole?.role);
+      const promoterInvitingPromoter = callerIsPromoter && profileType === "promoter" && ["PROMOTER", "PROMOTER_PRODUCTION_OFFICE"].includes(role);
       if (callerRole?.role !== "CLIENT" && !promoterInvitingPromoter) {
         throw new Error("Only CLIENT users can send crew and production office login setup.");
       }
-      if (callerRole?.role === "CLIENT" && !["CLIENT", "PROMOTER_PRODUCTION_OFFICE", "CREW"].includes(role)) {
-        throw new Error("Only client rep, crew, and production office roles can be invited here.");
+      if (callerRole?.role === "CLIENT" && !["CLIENT", "PROMOTER", "PRODUCTION", "PROMOTER_PRODUCTION_OFFICE", "CREW"].includes(role)) {
+        throw new Error("Only client rep, promoter, production, and crew roles can be invited here.");
       }
-      if (callerRole?.role === "PROMOTER_PRODUCTION_OFFICE" && role !== "PROMOTER_PRODUCTION_OFFICE") {
-        throw new Error("Production Office can only invite other promoter users.");
+      if (callerIsPromoter && !["PROMOTER", "PROMOTER_PRODUCTION_OFFICE"].includes(role)) {
+        throw new Error("Promoter can only invite other promoter users.");
       }
     }
 
@@ -124,7 +125,7 @@ async function sendInviteEmail(admin: any, route, to, inviteLink, profileType) {
     requireTLS: secureMode === "tls"
   });
 
-  const label = profileType === "client" || profileType === "clientRep" ? "client account" : profileType === "promoter" ? "production office account" : "crew account";
+  const label = profileType === "client" || profileType === "clientRep" ? "client account" : profileType === "promoter" ? "promoter account" : profileType === "production" ? "production team account" : "crew account";
   const result = await transporter.sendMail({
     to,
     from: `${fromName} <${fromEmail}>`,

@@ -23,7 +23,7 @@ This is a first working version of a private entertainment production database a
 - Search across the database.
 - JSON export and import for backup or moving data.
 - Access views for planning permissions: Admin, Client Admin, Client Rep, Promoter Admin, Promoter Rep, Production Team Access, and Crew / Runner.
-- Supabase Auth login with database-backed base roles: ADMIN, CLIENT, PROMOTER_PRODUCTION_OFFICE, and CREW, with app-level access levels layered on top.
+- Supabase Auth login with database-backed base roles: ADMIN, CLIENT, PROMOTER, CREW, and PRODUCTION, with app-level access levels layered on top. Legacy PROMOTER_PRODUCTION_OFFICE rows are still understood during migration.
 - Dedicated ADMIN profile, Client Company profile, and Client Rep/My Profile pages.
 - First-login invite setup screen for creating a password before entering the app.
 - Client-visible profile login fields for login email, access level selection, Supabase user ID, and sending login setup.

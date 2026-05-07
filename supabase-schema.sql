@@ -3,6 +3,8 @@ begin
   create type public.app_role as enum (
     'ADMIN',
     'CLIENT',
+    'PROMOTER',
+    'PRODUCTION',
     'PROMOTER_PRODUCTION_OFFICE',
     'CREW'
   );
@@ -10,6 +12,9 @@ exception
   when duplicate_object then null;
 end
 $$;
+
+alter type public.app_role add value if not exists 'PROMOTER';
+alter type public.app_role add value if not exists 'PRODUCTION';
 
 create table if not exists public.user_roles (
   user_id uuid primary key references auth.users(id) on delete cascade,
@@ -139,7 +144,7 @@ to authenticated
 with check (
   public.current_app_role() = 'CLIENT'
   and client_id = public.current_client_id()
-  and role in ('CLIENT', 'PROMOTER_PRODUCTION_OFFICE', 'CREW')
+  and role in ('CLIENT', 'PROMOTER', 'PRODUCTION', 'PROMOTER_PRODUCTION_OFFICE', 'CREW')
 );
 
 create policy "Clients can update scoped login roles"
@@ -149,12 +154,12 @@ to authenticated
 using (
   public.current_app_role() = 'CLIENT'
   and client_id = public.current_client_id()
-  and role in ('CLIENT', 'PROMOTER_PRODUCTION_OFFICE', 'CREW')
+  and role in ('CLIENT', 'PROMOTER', 'PRODUCTION', 'PROMOTER_PRODUCTION_OFFICE', 'CREW')
 )
 with check (
   public.current_app_role() = 'CLIENT'
   and client_id = public.current_client_id()
-  and role in ('CLIENT', 'PROMOTER_PRODUCTION_OFFICE', 'CREW')
+  and role in ('CLIENT', 'PROMOTER', 'PRODUCTION', 'PROMOTER_PRODUCTION_OFFICE', 'CREW')
 );
 
 create policy "Clients can remove scoped login roles"
@@ -164,7 +169,7 @@ to authenticated
 using (
   public.current_app_role() = 'CLIENT'
   and client_id = public.current_client_id()
-  and role in ('CLIENT', 'PROMOTER_PRODUCTION_OFFICE', 'CREW')
+  and role in ('CLIENT', 'PROMOTER', 'PRODUCTION', 'PROMOTER_PRODUCTION_OFFICE', 'CREW')
 );
 
 create table if not exists public.clients (
@@ -286,9 +291,9 @@ on public.access_levels
 for select
 to authenticated
 using (
-  public.current_app_role() = 'PROMOTER_PRODUCTION_OFFICE'
+  public.current_app_role() in ('PROMOTER', 'PROMOTER_PRODUCTION_OFFICE')
   and status = 'Active'
-  and base_role = 'PROMOTER_PRODUCTION_OFFICE'
+  and base_role in ('PROMOTER', 'PROMOTER_PRODUCTION_OFFICE')
 );
 
 create table if not exists public.client_reps (
