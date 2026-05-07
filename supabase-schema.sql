@@ -181,7 +181,12 @@ create table if not exists public.clients (
 
 alter table public.clients
   add column if not exists company_type text,
-  add column if not exists address text;
+  add column if not exists address text,
+  add column if not exists default_day_rate numeric,
+  add column if not exists default_included_hours numeric,
+  add column if not exists default_additional_rate numeric,
+  add column if not exists default_rented_vehicle_rate numeric,
+  add column if not exists default_personal_vehicle_rate numeric;
 
 alter table public.clients enable row level security;
 

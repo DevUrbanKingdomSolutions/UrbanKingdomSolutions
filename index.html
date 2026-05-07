@@ -286,6 +286,14 @@
             <label>Main contact<input name="contactName" placeholder="Name"></label>
             <label>Email<input name="email" type="email" placeholder="client@example.com"></label>
             <label>Phone<input name="phone" placeholder="(555) 000-0000"></label>
+            <div class="photo-fieldset rate-field">
+              <span>Default Pay Rates</span>
+              <label>Default day rate<input name="defaultDayRate" type="number" min="0" step="0.01" placeholder="350.00"></label>
+              <label>Included hours<input name="defaultIncludedHours" type="number" min="0" step="0.25" placeholder="10"></label>
+              <label>Additional hourly rate<input name="defaultAdditionalRate" type="number" min="0" step="0.01" placeholder="45.00"></label>
+              <label>Rented vehicle rate<input name="defaultRentedVehicleRate" type="number" min="0" step="0.01" placeholder="25.00"></label>
+              <label>Personal vehicle rate<input name="defaultPersonalVehicleRate" type="number" min="0" step="0.01" placeholder="75.00"></label>
+            </div>
             <label>System notes<textarea name="notes" rows="4" placeholder="Company notes"></textarea></label>
             <button class="primary-action" type="submit">Save / Update & Close</button>
           </form>
@@ -454,6 +462,14 @@
               </label>
               <label>Start<input name="startDate" type="datetime-local"></label>
               <label>End<input name="endDate" type="datetime-local"></label>
+              <div class="photo-fieldset rate-field">
+                <span>Event Pay Rates</span>
+                <label>Day rate<input name="dayRate" type="number" min="0" step="0.01" placeholder="Use client default"></label>
+                <label>Included hours<input name="includedHours" type="number" min="0" step="0.25" placeholder="Use client default"></label>
+                <label>Additional hourly rate<input name="additionalRate" type="number" min="0" step="0.01" placeholder="Use client default"></label>
+                <label>Rented vehicle rate<input name="rentedVehicleRate" type="number" min="0" step="0.01" placeholder="Use client default"></label>
+                <label>Personal vehicle rate<input name="personalVehicleRate" type="number" min="0" step="0.01" placeholder="Use client default"></label>
+              </div>
               <label>Notes<textarea name="notes" rows="3" placeholder="Call sheet details, client notes, runner instructions"></textarea></label>
               <button class="primary-action" type="submit">Save Event</button>
             </form>

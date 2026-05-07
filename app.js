@@ -633,6 +633,10 @@ function profileRolePayload(storeName, record) {
   };
 }
 
+function nullableNumber(value) {
+  return value === "" || value === undefined || value === null ? null : Number(value);
+}
+
 async function syncSupabaseClientAccount(record) {
   const canSyncClient = canSystemEdit() || (isClientRole() && record.id === authState.roleRecord?.client_id);
   if (!canSyncClient) return "";
@@ -643,6 +647,11 @@ async function syncSupabaseClientAccount(record) {
     email: record.email || "",
     phone: record.phone || "",
     status: record.status || "Active",
+    default_day_rate: nullableNumber(record.defaultDayRate),
+    default_included_hours: nullableNumber(record.defaultIncludedHours),
+    default_additional_rate: nullableNumber(record.defaultAdditionalRate),
+    default_rented_vehicle_rate: nullableNumber(record.defaultRentedVehicleRate),
+    default_personal_vehicle_rate: nullableNumber(record.defaultPersonalVehicleRate),
     notes: record.notes || "",
     updated_at: new Date().toISOString()
   });
@@ -686,6 +695,11 @@ function mapSupabaseClient(record) {
     email: record.email || "",
     phone: record.phone || "",
     status: record.status || "Active",
+    defaultDayRate: record.default_day_rate || "",
+    defaultIncludedHours: record.default_included_hours || "",
+    defaultAdditionalRate: record.default_additional_rate || "",
+    defaultRentedVehicleRate: record.default_rented_vehicle_rate || "",
+    defaultPersonalVehicleRate: record.default_personal_vehicle_rate || "",
     notes: record.notes || "",
     createdAt: record.created_at || record.createdAt,
     updatedAt: record.updated_at || record.updatedAt
@@ -766,7 +780,7 @@ async function hydrateClientSetupData(roleRecord, user) {
   try {
     const { data: client, error: clientError } = await supabaseClient
       .from("clients")
-      .select("id,name,contact_name,email,phone,status,notes,created_at,updated_at")
+      .select("id,name,contact_name,email,phone,status,default_day_rate,default_included_hours,default_additional_rate,default_rented_vehicle_rate,default_personal_vehicle_rate,notes,created_at,updated_at")
       .eq("id", roleRecord.client_id)
       .maybeSingle();
     if (clientError) throw clientError;
@@ -940,6 +954,11 @@ function clientCompanyDefaults() {
     contactName: authState.user?.user_metadata?.name || "",
     email: authState.user?.email || "",
     phone: authState.user?.user_metadata?.phone || "",
+    defaultDayRate: "",
+    defaultIncludedHours: "10",
+    defaultAdditionalRate: "",
+    defaultRentedVehicleRate: "",
+    defaultPersonalVehicleRate: "",
     status: "Setup Needed"
   };
 }
@@ -1581,25 +1600,33 @@ function timecardHours(card) {
 
 function dayRateFor(card) {
   const worker = getWorker(card.workerId);
-  return Number(card.dayRate || card.payRate || worker?.defaultDayRate || worker?.defaultRate || 0);
+  const event = getEvent(card.eventId);
+  const client = activeClientRecord();
+  return Number(card.dayRate || card.payRate || event?.dayRate || client?.defaultDayRate || worker?.defaultDayRate || worker?.defaultRate || 0);
 }
 
 function includedHoursFor(card) {
   const worker = getWorker(card.workerId);
-  return Number(card.includedHours || worker?.defaultIncludedHours || 10);
+  const event = getEvent(card.eventId);
+  const client = activeClientRecord();
+  return Number(card.includedHours || event?.includedHours || client?.defaultIncludedHours || worker?.defaultIncludedHours || 10);
 }
 
 function additionalRateFor(card) {
   const worker = getWorker(card.workerId);
+  const event = getEvent(card.eventId);
+  const client = activeClientRecord();
   const fallback = includedHoursFor(card) ? dayRateFor(card) / includedHoursFor(card) : 0;
-  return Number(card.additionalRate || worker?.defaultAdditionalRate || fallback || 0);
+  return Number(card.additionalRate || event?.additionalRate || client?.defaultAdditionalRate || worker?.defaultAdditionalRate || fallback || 0);
 }
 
 function vehicleRateFor(card) {
   const worker = getWorker(card.workerId);
+  const event = getEvent(card.eventId);
+  const client = activeClientRecord();
   if (card.vehicleRate) return Number(card.vehicleRate);
-  if (card.vehicleUse === "Rented Vehicle") return Number(worker?.defaultRentedVehicleRate || 0);
-  if (card.vehicleUse === "Personal Vehicle") return Number(worker?.defaultPersonalVehicleRate || 0);
+  if (card.vehicleUse === "Rented Vehicle") return Number(event?.rentedVehicleRate || client?.defaultRentedVehicleRate || worker?.defaultRentedVehicleRate || 0);
+  if (card.vehicleUse === "Personal Vehicle") return Number(event?.personalVehicleRate || client?.defaultPersonalVehicleRate || worker?.defaultPersonalVehicleRate || 0);
   return 0;
 }
 
@@ -1851,6 +1878,8 @@ function renderClientProfile() {
     <div class="profile-section"><span>SMTP Route</span><p>${escapeHtml(profile.smtpSecretRef ? "Saved securely" : "No app password saved")}</p><div class="row-actions">${clientSmtpTestButton}</div></div>
   </article>`;
   if (companyCard) {
+    const rateSummary = client ? `
+      <div class="profile-section"><span>Default Pay Rates</span><p>${currency(client.defaultDayRate || 0)}/${client.defaultIncludedHours || 10} hrs, +${currency(client.defaultAdditionalRate || 0)}/hr</p><p>Rented vehicle: ${currency(client.defaultRentedVehicleRate || 0)} | Personal vehicle: ${currency(client.defaultPersonalVehicleRate || 0)}</p></div>` : "";
     companyCard.innerHTML = client ? `<article class="profile-page-card">
       <div class="profile-page-header">
         <div class="profile-avatar-large placeholder">${escapeHtml(initialsFor(client.name || "Company"))}</div>
@@ -1865,6 +1894,7 @@ function renderClientProfile() {
         <div><span>Email</span><strong>${escapeHtml(client.email || "")}</strong></div>
         <div><span>Phone</span><strong>${escapeHtml(client.phone || "")}</strong></div>
       </div>
+      ${rateSummary}
       <div class="profile-section"><span>Company Notes</span><p>${escapeHtml(client.notes || "")}</p></div>
     </article>` : `<div class="compact-item empty">No company profile connected yet.</div>`;
   }
@@ -2104,6 +2134,9 @@ function eventCard(event) {
   const promoter = getPromoter(event.promoterId);
   const crew = eventWorkerIds(event).map((id) => getWorker(id)?.name).filter(Boolean);
   const crewLine = isCrewRole() ? "Assigned to you" : (crew.join(", ") || "No crew assigned");
+  const rateLine = isClientRole()
+    ? `<p>${currency(event.dayRate || activeClientRecord()?.defaultDayRate || 0)}/${event.includedHours || activeClientRecord()?.defaultIncludedHours || 10} hrs, +${currency(event.additionalRate || activeClientRecord()?.defaultAdditionalRate || 0)}/hr</p>`
+    : "";
   const publicAccessButton = (isClientRole() || isProductionRole())
     ? `<button class="tiny-button" data-event-access="${event.id}" type="button">Production Link</button>`
     : "";
@@ -2114,6 +2147,7 @@ function eventCard(event) {
       <p>${escapeHtml(venue?.name || "No venue")} | ${escapeHtml(promoterLabel(promoter) || "No promoter rep")}</p>
       <p>${escapeHtml(event.productionContact)}</p>
       <p>${escapeHtml(crewLine)}</p>
+      ${rateLine}
     </div>
     <div class="row-actions">${publicAccessButton}${actionButtons("events", event.id, "eventForm", "", canAdminEdit())}</div>
   </article>`;
@@ -2502,13 +2536,15 @@ function renderRunnerCategoryCreator() {
 function applyWorkerPayDefaultsToTimecard(workerId) {
   const worker = getWorker(workerId);
   const form = $("#timecardForm");
-  if (!worker || !form) return;
-  form.elements.dayRate.value = form.elements.dayRate.value || worker.defaultDayRate || worker.defaultRate || "";
-  form.elements.includedHours.value = form.elements.includedHours.value || worker.defaultIncludedHours || "10";
-  form.elements.additionalRate.value = form.elements.additionalRate.value || worker.defaultAdditionalRate || "";
+  if (!form) return;
+  const event = getEvent(form.elements.eventId.value);
+  const client = activeClientRecord();
+  form.elements.dayRate.value = form.elements.dayRate.value || event?.dayRate || client?.defaultDayRate || worker?.defaultDayRate || worker?.defaultRate || "";
+  form.elements.includedHours.value = form.elements.includedHours.value || event?.includedHours || client?.defaultIncludedHours || worker?.defaultIncludedHours || "10";
+  form.elements.additionalRate.value = form.elements.additionalRate.value || event?.additionalRate || client?.defaultAdditionalRate || worker?.defaultAdditionalRate || "";
   const vehicleUse = form.elements.vehicleUse.value;
-  if (vehicleUse === "Rented Vehicle") form.elements.vehicleRate.value = worker.defaultRentedVehicleRate || "";
-  if (vehicleUse === "Personal Vehicle") form.elements.vehicleRate.value = worker.defaultPersonalVehicleRate || "";
+  if (vehicleUse === "Rented Vehicle") form.elements.vehicleRate.value = event?.rentedVehicleRate || client?.defaultRentedVehicleRate || worker?.defaultRentedVehicleRate || "";
+  if (vehicleUse === "Personal Vehicle") form.elements.vehicleRate.value = event?.personalVehicleRate || client?.defaultPersonalVehicleRate || worker?.defaultPersonalVehicleRate || "";
 }
 
 function setView(viewId) {
@@ -2735,14 +2771,15 @@ async function saveForm(event, storeName) {
   if (storeName === "timecards" && merged.eventId) {
     const relatedEvent = getEvent(merged.eventId);
     const worker = getWorker(merged.workerId);
+    const client = activeClientRecord();
     merged.eventName = merged.eventName || relatedEvent?.name || "";
     merged.venueId = merged.venueId || relatedEvent?.venueId || "";
     merged.promoterId = merged.promoterId || relatedEvent?.promoterId || "";
-    merged.dayRate = merged.dayRate || worker?.defaultDayRate || worker?.defaultRate || "";
-    merged.includedHours = merged.includedHours || worker?.defaultIncludedHours || "10";
-    merged.additionalRate = merged.additionalRate || worker?.defaultAdditionalRate || "";
-    if (merged.vehicleUse === "Rented Vehicle") merged.vehicleRate = merged.vehicleRate || worker?.defaultRentedVehicleRate || "";
-    if (merged.vehicleUse === "Personal Vehicle") merged.vehicleRate = merged.vehicleRate || worker?.defaultPersonalVehicleRate || "";
+    merged.dayRate = merged.dayRate || relatedEvent?.dayRate || client?.defaultDayRate || worker?.defaultDayRate || worker?.defaultRate || "";
+    merged.includedHours = merged.includedHours || relatedEvent?.includedHours || client?.defaultIncludedHours || worker?.defaultIncludedHours || "10";
+    merged.additionalRate = merged.additionalRate || relatedEvent?.additionalRate || client?.defaultAdditionalRate || worker?.defaultAdditionalRate || "";
+    if (merged.vehicleUse === "Rented Vehicle") merged.vehicleRate = merged.vehicleRate || relatedEvent?.rentedVehicleRate || client?.defaultRentedVehicleRate || worker?.defaultRentedVehicleRate || "";
+    if (merged.vehicleUse === "Personal Vehicle") merged.vehicleRate = merged.vehicleRate || relatedEvent?.personalVehicleRate || client?.defaultPersonalVehicleRate || worker?.defaultPersonalVehicleRate || "";
   }
   if (isCrewRole()) merged.workerId = state.activeWorkerId;
   if (isProductionRole()) {
@@ -3299,6 +3336,7 @@ function bindEvents() {
     $("#timecardForm").elements.eventName.value = selectedEvent.name || "";
     $("#timecardForm").elements.venueId.value = selectedEvent.venueId || "";
     $("#timecardForm").elements.promoterId.value = selectedEvent.promoterId || "";
+    applyWorkerPayDefaultsToTimecard($("#timecardForm").elements.workerId.value);
   });
   $("#timecardForm select[name='workerId']").addEventListener("change", (event) => applyWorkerPayDefaultsToTimecard(event.target.value));
   $("#timecardForm select[name='vehicleUse']").addEventListener("change", () => applyWorkerPayDefaultsToTimecard($("#timecardForm").elements.workerId.value));
