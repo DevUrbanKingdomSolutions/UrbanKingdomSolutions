@@ -2,7 +2,7 @@
 
 ## Deploy Edge Functions
 
-The app uses seven Supabase Edge Functions:
+The app uses eight Supabase Edge Functions:
 
 - `send-login-setup`
 - `send-smtp-test`
@@ -11,6 +11,7 @@ The app uses seven Supabase Edge Functions:
 - `public-event-access`
 - `user-access-management`
 - `send-rental-photo-notification`
+- `trigger-novu-notification`
 
 Run this from the project folder after installing the Supabase CLI and logging in:
 
@@ -24,6 +25,7 @@ supabase functions deploy create-event-access-link
 supabase functions deploy public-event-access
 supabase functions deploy user-access-management
 supabase functions deploy send-rental-photo-notification
+supabase functions deploy trigger-novu-notification
 ```
 
 The hosted Edge Function uses Supabase's private service role key on Supabase's server side. Do not place the service role key in `app.js`, `index.html`, Vercel environment variables exposed to the browser, or GitHub.
@@ -32,6 +34,7 @@ Required Supabase secrets:
 
 - `SMTP_ENCRYPTION_KEY`
 - `PUBLIC_SITE_URL`
+- `NOVU_SECRET_KEY`
 
 After deployment:
 

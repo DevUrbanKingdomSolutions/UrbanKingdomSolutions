@@ -9,6 +9,15 @@ const CREATE_EVENT_ACCESS_FUNCTION = "create-event-access-link";
 const PUBLIC_EVENT_ACCESS_FUNCTION = "public-event-access";
 const USER_ACCESS_FUNCTION = "user-access-management";
 const RENTAL_PHOTO_NOTIFICATION_FUNCTION = "send-rental-photo-notification";
+const NOVU_TRIGGER_FUNCTION = "trigger-novu-notification";
+const SENDBIRD_APP_ID = "2B54A2B2-CB8E-43DE-A7F8-B53059C09AB3";
+const SENDBIRD_CHAT_SDK_URL = "https://esm.sh/@sendbird/chat";
+const SENDBIRD_GROUP_CHANNEL_SDK_URL = "https://esm.sh/@sendbird/chat/groupChannel";
+const NOVU_WORKFLOWS = {
+  rentalPhotoReminder: "rental-photo-reminder",
+  rentalPhotoUrgent: "rental-photo-urgent",
+  runnerStatusChanged: "runner-status-changed"
+};
 const STORES = [
   "clients",
   "clientReps",
@@ -60,7 +69,7 @@ const ACCESS_PROFILES = {
   },
   CLIENT: {
     label: "CLIENT",
-    views: ["dashboard", "clientCompanyProfile", "clientProfile", "workers", "promoters", "venues", "events", "productionBoard", "clock", "timecards", "vehicles", "reports", "payroll", "directory", "runner", "dataTools"],
+    views: ["dashboard", "clientCompanyProfile", "clientProfile", "workers", "promoters", "venues", "events", "productionBoard", "clock", "timecards", "vehicles", "reports", "payroll", "directory", "runner", "messages", "dataTools"],
     canAdminEdit: true,
     canOwnerEdit: true,
     canVenueEdit: true,
@@ -70,7 +79,7 @@ const ACCESS_PROFILES = {
   },
   PROMOTER_PRODUCTION_OFFICE: {
     label: "PROMOTER_PRODUCTION_OFFICE",
-    views: ["productionBoard", "events", "workers", "promoters", "venues", "vehicles", "reports", "directory", "dataTools"],
+    views: ["productionBoard", "events", "workers", "promoters", "venues", "vehicles", "reports", "directory", "messages", "dataTools"],
     canAdminEdit: true,
     canOwnerEdit: false,
     canVenueEdit: true,
@@ -80,7 +89,7 @@ const ACCESS_PROFILES = {
   },
   CREW: {
     label: "CREW",
-    views: ["workers", "clock", "productionResponse", "events", "timecards", "vehicles", "reports", "directory", "runner"],
+    views: ["workers", "clock", "productionResponse", "events", "timecards", "vehicles", "reports", "directory", "runner", "messages"],
     canAdminEdit: false,
     canOwnerEdit: false,
     canVenueEdit: false,
@@ -100,6 +109,7 @@ let authState = {
   pendingSetup: false
 };
 const pendingRentalUrgencyIds = new Set();
+let sendbirdClient = null;
 
 let state = {
   workers: [],
@@ -145,20 +155,20 @@ const NAV_GROUPS = {
     { label: "PROFILES", items: [["workers", "Crew Profiles"], ["promoters", "Promoter Profiles"], ["venues", "Venues"]] },
     { label: "EVENTS", items: [["events", "Events"], ["productionBoard", "Production Board"], ["clock", "TimeClock"], ["timecards", "Timecards"], ["vehicles", "Vehicles"], ["reports", "Reports"]] },
     { label: "PAYROLL", items: [["payroll", "Payroll"]] },
-    { label: "DIRECTORIES", items: [["directory", "Crew Directory"], ["runner", "Gig Directory"]] },
+    { label: "DIRECTORIES", items: [["directory", "Crew Directory"], ["runner", "Gig Directory"], ["messages", "Messages"]] },
     { label: "TOOLS", items: [["dataTools", "Import / Export"]] }
   ],
   PROMOTER_PRODUCTION_OFFICE: [
     { items: [["productionBoard", "Production Board"]] },
     { label: "PROFILES", items: [["workers", "Crew Profiles"], ["promoters", "Promoter Profiles"], ["venues", "Venues"]] },
     { label: "EVENTS", items: [["events", "Events"], ["vehicles", "Vehicles"], ["reports", "Reports"]] },
-    { label: "DIRECTORIES", items: [["directory", "Crew Directory"]] },
+    { label: "DIRECTORIES", items: [["directory", "Crew Directory"], ["messages", "Messages"]] },
     { label: "TOOLS", items: [["dataTools", "Import / Export"]] }
   ],
   CREW: [
     { items: [["workers", "My Profile"], ["clock", "Time Clock"]] },
     { label: "EVENTS", items: [["productionResponse", "Crew Response"], ["events", "Events"], ["timecards", "Timecards"], ["vehicles", "Vehicles"], ["reports", "Reports"]] },
-    { label: "DIRECTORIES", items: [["directory", "Crew Directory"], ["runner", "Gig Directory"]] }
+    { label: "DIRECTORIES", items: [["directory", "Crew Directory"], ["runner", "Gig Directory"], ["messages", "Messages"]] }
   ]
 };
 
@@ -1793,6 +1803,7 @@ function render() {
   renderVenues();
   renderPromoters();
   renderRunnerStops();
+  renderMessaging();
   checkRentalPhotoUrgencies();
 }
 
@@ -2797,6 +2808,16 @@ function renderRunnerStops() {
     : `<tr><td colspan="6" class="empty">No runner stops match this search.</td></tr>`;
 }
 
+function renderMessaging() {
+  const status = $("#messagingStatus");
+  if (!status) return;
+  const configured = !!SENDBIRD_APP_ID;
+  const connected = !!sendbirdClient?.currentUser;
+  status.innerHTML = connected
+    ? `<div class="compact-item"><strong>Sendbird connected</strong><span>${escapeHtml(sendbirdClient.currentUser.userId || "")}</span></div>`
+    : `<div class="compact-item ${configured ? "" : "empty"}"><strong>${configured ? "Sendbird ready to connect" : "Sendbird App ID needed"}</strong><span>${configured ? "Use Connect Messaging to start the chat session." : "Add the Sendbird Application ID in app.js after creating the Sendbird app."}</span></div>`;
+}
+
 function runnerStopRow(stop) {
   const noteUi = isCrewRole() ? runnerStopNoteUi(stop) : "";
   return `<tr><td><strong>${escapeHtml(stop.name)}</strong><p>${escapeHtml(stop.phone)}</p></td><td>${escapeHtml(stop.category)}</td><td>${escapeHtml(stop.address)}</td><td>${escapeHtml(stop.hours)}</td><td>${escapeHtml(stop.bestUse)}${noteUi}</td><td>${actionButtons("runnerStops", stop.id, "runnerForm")}</td></tr>`;
@@ -3726,6 +3747,11 @@ async function updateRunnerStatus(workerId, status) {
     return;
   }
   await put("workers", { ...worker, runnerStatus: status });
+  triggerNovuNotification(NOVU_WORKFLOWS.runnerStatusChanged, {
+    runnerName: worker.name || "Runner",
+    status,
+    eventNames: visibleEvents().filter((event) => eventWorkerIds(event).includes(workerId)).map((event) => event.name).join(", ")
+  }, notificationSubscriberForCurrentUser(), { silent: true, transactionId: `runner-status-${workerId}-${Date.now()}` }).catch((error) => console.warn(error));
   await loadState();
   setView(state.activeView);
   toast(`Runner marked ${status}.`);
@@ -3759,6 +3785,69 @@ async function saveRunnerNote(stopId) {
   toast("Directory note added.");
 }
 
+function notificationSubscriberForCurrentUser() {
+  const worker = getWorker(state.activeWorkerId);
+  const promoter = getPromoter(state.activePromoterId);
+  const clientRep = activeClientRepRecord();
+  const profile = isCrewRole() ? worker : isProductionRole() ? promoter : isClientRole() ? clientRep : activeAdminProfile();
+  return {
+    subscriberId: authState.user?.id || profile?.id || authState.user?.email || "",
+    email: profile?.email || authState.user?.email || "",
+    firstName: String(profile?.name || profile?.contactName || authState.user?.email || "User").split(" ")[0] || "User",
+    lastName: String(profile?.name || profile?.contactName || "").split(" ").slice(1).join(" ")
+  };
+}
+
+async function triggerNovuNotification(workflowId, payload = {}, to = notificationSubscriberForCurrentUser(), options = {}) {
+  if (!initializeSupabaseClient()) return { ok: false, message: "Supabase login is not configured." };
+  if (!workflowId || !to?.subscriberId) return { ok: false, message: "Novu workflow or subscriber is missing." };
+  const { data, error } = await supabaseClient.functions.invoke(NOVU_TRIGGER_FUNCTION, {
+    body: {
+      workflowId,
+      to,
+      payload,
+      transactionId: options.transactionId || ""
+    }
+  });
+  if (error) {
+    console.error(error);
+    const message = await loginSetupErrorMessage(error);
+    if (!options.silent) toast(message);
+    return { ok: false, message };
+  }
+  if (!options.silent) toast("Notification queued.");
+  return { ok: true, data };
+}
+
+async function connectSendbirdMessaging() {
+  if (!SENDBIRD_APP_ID) {
+    toast("Add the Sendbird Application ID in app.js first.");
+    return;
+  }
+  try {
+    const [{ default: SendbirdChat }, { GroupChannelModule }] = await Promise.all([
+      import(SENDBIRD_CHAT_SDK_URL),
+      import(SENDBIRD_GROUP_CHANNEL_SDK_URL)
+    ]);
+    if (!sendbirdClient) {
+      sendbirdClient = SendbirdChat.init({
+        appId: SENDBIRD_APP_ID,
+        modules: [new GroupChannelModule()]
+      });
+    }
+    const profile = notificationSubscriberForCurrentUser();
+    await sendbirdClient.connect(profile.subscriberId);
+    if (sendbirdClient.updateCurrentUserInfo && profile.firstName) {
+      await sendbirdClient.updateCurrentUserInfo(`${profile.firstName} ${profile.lastName}`.trim(), "");
+    }
+    renderMessaging();
+    toast("Messaging connected.");
+  } catch (error) {
+    console.error(error);
+    toast(error.message || "Could not connect Sendbird messaging.");
+  }
+}
+
 function rentalPhotoNotificationPayload(event, worker, card, type) {
   const route = smtpRouteForRentalNotifications();
   if (!route?.fromEmail || !route?.host || !route?.port || !route?.username || !route?.secretRef) return null;
@@ -3784,6 +3873,18 @@ async function sendRentalPhotoNotification(event, worker, card, type) {
     console.error(error);
     return { ok: false, message: await loginSetupErrorMessage(error) };
   }
+  const workflowId = type === "urgent_start_missing" ? NOVU_WORKFLOWS.rentalPhotoUrgent : NOVU_WORKFLOWS.rentalPhotoReminder;
+  triggerNovuNotification(workflowId, {
+    type,
+    eventName: event?.name || card?.eventName || "Assigned event",
+    workerName: worker?.name || "Crew member",
+    vehiclePageUrl: `${location.origin}${location.pathname}#vehicles`
+  }, {
+    subscriberId: worker?.authUserId || worker?.id || authState.user?.id || worker?.email || "",
+    email: worker?.email || "",
+    firstName: String(worker?.name || "Crew").split(" ")[0],
+    lastName: String(worker?.name || "").split(" ").slice(1).join(" ")
+  }, { silent: true, transactionId: `${type}-${card?.id || ""}` }).catch((novuError) => console.warn(novuError));
   return { ok: true, message: data?.messageId ? "Rental photo email sent." : "Rental photo notification sent." };
 }
 
@@ -4114,6 +4215,7 @@ function bindEvents() {
     const publicRunnerStatusButton = event.target.closest("[data-public-runner-status]");
     const refreshUsersButton = event.target.closest("[data-refresh-users]");
     const deleteUserButton = event.target.closest("[data-delete-user-account]");
+    const connectSendbirdButton = event.target.closest("[data-connect-sendbird]");
 
     if (publicRunnerStatusButton) {
       await updatePublicRunnerStatus(publicRunnerStatusButton.dataset.publicRunnerStatus, publicRunnerStatusButton.dataset.status);
@@ -4121,6 +4223,7 @@ function bindEvents() {
     }
     if (refreshUsersButton) await refreshUserAccessList();
     if (deleteUserButton) await deleteUserAccount(deleteUserButton.dataset.deleteUserAccount);
+    if (connectSendbirdButton) await connectSendbirdMessaging();
 
   if (openButton) {
       clearForm(openButton.dataset.openForm);

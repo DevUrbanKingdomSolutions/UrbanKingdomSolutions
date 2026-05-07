@@ -846,6 +846,22 @@
           </div>
         </section>
 
+        <section id="messages" class="view">
+          <div class="stack-layout">
+            <section class="panel">
+              <div class="panel-heading">
+                <h3>Messages</h3>
+                <button class="tiny-button" data-connect-sendbird type="button">Connect Messaging</button>
+              </div>
+              <div id="messagingStatus" class="compact-list"></div>
+              <div class="compact-item empty">
+                <strong>Sendbird installed</strong>
+                <span>Channel lists and event/team threads will be wired after the Sendbird app ID and access-token policy are finalized.</span>
+              </div>
+            </section>
+          </div>
+        </section>
+
         <section id="reports" class="view">
           <div class="split-layout">
             <form id="reportForm" class="panel form-panel scoped-form">
@@ -1111,6 +1127,6 @@
     <div id="modalHost"></div>
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js?v=V1.01.009-assignment-form-wiring"></script>
+    <script src="app.js?v=V1.01.010-novu-sendbird-install"></script>
   </body>
 </html>

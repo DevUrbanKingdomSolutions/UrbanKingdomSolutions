@@ -52,11 +52,18 @@ The app uses these Supabase Edge Functions:
 - `public-event-access`: loads public event-link data and updates runner status for that event.
 - `user-access-management`: lists scoped login users and lets ADMIN delete non-admin login accounts.
 - `send-rental-photo-notification`: sends rental vehicle photo reminder and urgent follow-up emails.
+- `trigger-novu-notification`: triggers Novu workflows from the app without exposing the Novu secret key.
 
 Run `supabase-schema.sql` in Supabase SQL Editor before testing backend-backed settings. The project needs these Supabase secrets:
 
 - `SMTP_ENCRYPTION_KEY`: one permanent encryption key for saved SMTP passwords/API keys.
 - `PUBLIC_SITE_URL`: deployed app URL, for example `https://the-entertaintainment-dashboard.vercel.app`.
+- `NOVU_SECRET_KEY`: Novu secret key for server-side workflow triggers.
+
+Sendbird setup:
+
+- Add the Sendbird Application ID to `SENDBIRD_APP_ID` in `app.js`.
+- Keep Sendbird API tokens and user access-token generation server-side before production messaging rollout.
 
 Quick deploy commands for all Edge Functions:
 
@@ -70,6 +77,7 @@ supabase functions deploy create-event-access-link
 supabase functions deploy public-event-access
 supabase functions deploy user-access-management
 supabase functions deploy send-rental-photo-notification
+supabase functions deploy trigger-novu-notification
 ```
 
 ## Important next steps
