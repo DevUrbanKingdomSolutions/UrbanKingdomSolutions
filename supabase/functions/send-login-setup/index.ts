@@ -86,9 +86,9 @@ Deno.serve(async (request) => {
     });
     if (upsertError) throw upsertError;
 
-    await sendInviteEmail(admin, body.emailRoute, email, inviteLink, profileType);
+    const delivery = await sendInviteEmail(admin, body.emailRoute, email, inviteLink, profileType);
 
-    return new Response(JSON.stringify({ userId, status: "sent" }), {
+    return new Response(JSON.stringify({ userId, status: "sent", delivery }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" }
     });
   } catch (error) {
@@ -125,7 +125,7 @@ async function sendInviteEmail(admin: any, route, to, inviteLink, profileType) {
   });
 
   const label = profileType === "client" ? "client account" : profileType === "promoter" ? "production office account" : "crew account";
-  await transporter.sendMail({
+  const result = await transporter.sendMail({
     to,
     from: `${fromName} <${fromEmail}>`,
     replyTo,
@@ -133,6 +133,17 @@ async function sendInviteEmail(admin: any, route, to, inviteLink, profileType) {
     text: `You have been invited to create your ${label}. Use this secure link to finish setup: ${inviteLink}`,
     html: `<p>You have been invited to create your ${label}.</p><p><a href="${inviteLink}">Set up your account</a></p>`
   });
+  const accepted = (result.accepted || []).map(String);
+  const rejected = (result.rejected || []).map(String);
+  if (!accepted.length || rejected.includes(to)) {
+    throw new Error(`SMTP did not accept the invite email for ${to}.`);
+  }
+  return {
+    messageId: result.messageId || "",
+    accepted,
+    rejected,
+    response: result.response || ""
+  };
 }
 
 async function smtpPasswordForRoute(admin: any, routeId: string) {

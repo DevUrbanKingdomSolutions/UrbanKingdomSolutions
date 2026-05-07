@@ -2587,7 +2587,10 @@ async function sendLoginSetup(storeName, id) {
     loginRole: payload.role,
     authUserId: data?.userId || data?.user_id || record.authUserId || "",
     inviteStatus: "Login setup sent",
-    inviteSentAt: new Date().toISOString()
+    inviteSentAt: new Date().toISOString(),
+    inviteMessageId: data?.delivery?.messageId || "",
+    inviteAcceptedByServer: (data?.delivery?.accepted || []).join(", "),
+    inviteServerResponse: data?.delivery?.response || ""
   };
   await put(storeName, updatedRecord);
   if (storeName === "clients") {
@@ -2600,7 +2603,8 @@ async function sendLoginSetup(storeName, id) {
   }
   await loadState();
   setView(state.activeView);
-  toast("Login setup sent.");
+  const accepted = (data?.delivery?.accepted || []).join(", ") || payload.email;
+  toast(`Login setup accepted by email server for ${accepted}.`);
 }
 
 function eventAccessSnapshot(event) {
