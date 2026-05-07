@@ -3143,6 +3143,33 @@ function directMessageCards() {
     : `<div class="compact-item empty">${MESSAGE_THREAD_TYPES.direct.empty}</div>`;
 }
 
+function firstVisibleMessageThreadTarget(type = state.messagingThreadType) {
+  if (type === "direct") {
+    const profile = directMessageProfiles().find((item) => canViewMessageThread("direct", null, item.id));
+    return profile ? { type: "direct", profileId: profile.id } : null;
+  }
+  const eventRecord = visibleEvents()
+    .filter((event) => eventWorkerIds(event).length || isClientRole() || isProductionRole() || isProductionTeamRole())
+    .find((event) => canViewMessageThread(type, event));
+  return eventRecord ? { type, eventId: eventRecord.id } : null;
+}
+
+async function selectMessageThreadType(type) {
+  state.messagingThreadType = MESSAGE_THREAD_TYPES[type] ? type : "event";
+  localStorage.setItem("productionCrewMessagingThreadType", state.messagingThreadType);
+  sendbirdActiveChannel = null;
+  sendbirdActiveThread = null;
+  sendbirdMessages = [];
+  renderMessaging();
+  const target = firstVisibleMessageThreadTarget(state.messagingThreadType);
+  if (!target) {
+    toast("No visible thread is available in this section yet.");
+    return;
+  }
+  if (target.type === "direct") await openDirectMessageChannel(target.profileId);
+  else await openMessageChannel(target.type, target.eventId);
+}
+
 function renderMessageThread() {
   const title = $("#activeMessagingTitle");
   const meta = $("#activeMessagingMeta");
@@ -5237,12 +5264,8 @@ function bindEvents() {
     if (connectSendbirdButton) await connectSendbirdMessaging();
     if (openEventChannelButton) await openEventMessagingChannel(openEventChannelButton.dataset.openEventChannel);
     if (messageThreadTypeButton) {
-      state.messagingThreadType = messageThreadTypeButton.dataset.messageThreadType;
-      localStorage.setItem("productionCrewMessagingThreadType", state.messagingThreadType);
-      sendbirdActiveChannel = null;
-      sendbirdActiveThread = null;
-      sendbirdMessages = [];
-      renderMessaging();
+      await selectMessageThreadType(messageThreadTypeButton.dataset.messageThreadType);
+      return;
     }
     if (openMessageChannelButton) {
       const [type, eventId] = openMessageChannelButton.dataset.openMessageChannel.split(":");
