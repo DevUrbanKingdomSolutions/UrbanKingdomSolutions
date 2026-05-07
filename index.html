@@ -77,13 +77,6 @@
           <button class="nav-item" data-view="promoters" type="button">Promoter Profiles</button>
           <button class="nav-item" data-view="runner" type="button">Gig Directory</button>
         </nav>
-        <div class="side-actions">
-          <button id="exportData" class="secondary-action" type="button">Export Data</button>
-          <label class="secondary-action file-action">
-            Import Data
-            <input id="importData" type="file" accept="application/json">
-          </label>
-        </div>
       </aside>
 
       <main class="content">
@@ -457,6 +450,7 @@
               <label>Venue<select name="venueId"></select></label>
               <label>Promoter<select name="promoterId"></select></label>
               <label class="check-label"><input name="showAllCrew" type="checkbox" value="yes" data-event-crew-override> Show booked or unavailable crew</label>
+              <label class="check-label rate-field"><input name="requiresRentalPhotos" type="checkbox" value="yes"> Rented vehicle photos required for assigned runners</label>
               <label>Assigned crew / runners
                 <div class="checkbox-grid crew-checkbox-grid" data-event-worker-options data-checkbox-group data-name="workerIds"></div>
               </label>
@@ -480,7 +474,9 @@
               </div>
               <input type="hidden" name="eventId">
               <label>Send to email<input name="recipientEmail" type="email" placeholder="production@example.com"></label>
+              <label>Production company<input name="productionCompanyName" placeholder="Tour, production, awards team"></label>
               <label>Team / contact name<input name="recipientName" placeholder="Production team"></label>
+              <label>Secondary contact emails<textarea name="secondaryContactEmails" rows="2" placeholder="One email per line or separated by commas"></textarea></label>
               <label>Expires on<input name="expiresAt" type="date"></label>
               <label>Notes<textarea name="notes" rows="3" placeholder="Optional note for this access link"></textarea></label>
               <button class="primary-action" type="submit">Create & Send Link</button>
@@ -494,6 +490,18 @@
                 </div>
               </div>
               <div id="eventCards" class="record-grid"></div>
+            </section>
+          </div>
+        </section>
+
+        <section id="productionResponse" class="view">
+          <div class="stack-layout">
+            <section class="panel">
+              <div class="panel-heading">
+                <h3>Crew Response</h3>
+                <span id="productionResponseCount" class="muted"></span>
+              </div>
+              <div id="productionResponseCards" class="record-grid"></div>
             </section>
           </div>
         </section>
@@ -707,13 +715,21 @@
               </label>
               <label>Scheduled date<input name="scheduledDate" type="datetime-local"></label>
               <div class="photo-fieldset">
-                <span>Vehicle photos</span>
-                <label>Front<input name="frontPhoto" type="file" accept="image/*" data-photo-key="front"></label>
-                <label>Back<input name="backPhoto" type="file" accept="image/*" data-photo-key="back"></label>
-                <label>Driver side<input name="driverSidePhoto" type="file" accept="image/*" data-photo-key="driverSide"></label>
-                <label>Passenger side<input name="passengerSidePhoto" type="file" accept="image/*" data-photo-key="passengerSide"></label>
-                <label>Gas gauge<input name="gasGaugePhoto" type="file" accept="image/*" data-photo-key="gasGauge"></label>
+                <span>Start photos</span>
+                <label>Front<input name="frontPhoto" type="file" accept="image/*" data-photo-key="startFront"></label>
+                <label>Back<input name="backPhoto" type="file" accept="image/*" data-photo-key="startBack"></label>
+                <label>Driver side<input name="driverSidePhoto" type="file" accept="image/*" data-photo-key="startDriverSide"></label>
+                <label>Passenger side<input name="passengerSidePhoto" type="file" accept="image/*" data-photo-key="startPassengerSide"></label>
+                <label>Gas gauge<input name="gasGaugePhoto" type="file" accept="image/*" data-photo-key="startGasGauge"></label>
                 <label>Prior damages<input name="priorDamagePhotos" type="file" accept="image/*" multiple data-photo-key="priorDamages"></label>
+              </div>
+              <div class="photo-fieldset">
+                <span>End photos</span>
+                <label>Front<input name="endFrontPhoto" type="file" accept="image/*" data-photo-key="endFront"></label>
+                <label>Back<input name="endBackPhoto" type="file" accept="image/*" data-photo-key="endBack"></label>
+                <label>Driver side<input name="endDriverSidePhoto" type="file" accept="image/*" data-photo-key="endDriverSide"></label>
+                <label>Passenger side<input name="endPassengerSidePhoto" type="file" accept="image/*" data-photo-key="endPassengerSide"></label>
+                <label>Gas gauge<input name="endGasGaugePhoto" type="file" accept="image/*" data-photo-key="endGasGauge"></label>
               </div>
               <label>Notes<textarea name="notes" rows="3" placeholder="Mileage, dents, fuel receipt, pickup/dropoff notes"></textarea></label>
               <button class="primary-action" type="submit">Save Vehicle Check</button>
@@ -731,6 +747,24 @@
                   <thead><tr><th>Event</th><th>Worker</th><th>Vehicle</th><th>Gas</th><th>Check</th><th>Photos</th><th></th></tr></thead>
                   <tbody id="vehicleTable"></tbody>
                 </table>
+              </div>
+            </section>
+          </div>
+        </section>
+
+        <section id="dataTools" class="view">
+          <div class="stack-layout">
+            <section class="panel">
+              <div class="panel-heading">
+                <h3>Import / Export</h3>
+                <span class="muted">Client and Production Office only</span>
+              </div>
+              <div class="row-actions">
+                <button id="exportData" class="secondary-action" type="button">Export Data</button>
+                <label class="secondary-action file-action">
+                  Import Data
+                  <input id="importData" type="file" accept="application/json">
+                </label>
               </div>
             </section>
           </div>
@@ -917,7 +951,7 @@
 
         <section id="runner" class="view">
           <div class="split-layout">
-            <form id="runnerForm" class="panel form-panel">
+            <form id="runnerForm" class="panel form-panel admin-form">
               <div class="panel-heading">
                 <h3>Add Runner Stop</h3>
                 <button class="ghost-button clear-form" type="button" data-form="runnerForm">Clear</button>
@@ -972,6 +1006,6 @@
     <div id="modalHost"></div>
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js?v=20260506-event-access-1"></script>
+    <script src="app.js?v=V1.01.005-crew-rental-response"></script>
   </body>
 </html>

@@ -322,6 +322,22 @@ button {
   overflow: auto;
 }
 
+.directory-note-box {
+  border-top: 1px solid var(--border);
+  margin-top: 8px;
+  padding-top: 8px;
+}
+
+.directory-note-box textarea {
+  min-height: 58px;
+}
+
+.mini-note-list p {
+  color: var(--muted);
+  font-size: 0.82rem;
+  margin: 0 0 4px;
+}
+
 .search-input,
 label input,
 label select,

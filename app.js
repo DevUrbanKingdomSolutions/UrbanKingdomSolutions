@@ -1,5 +1,5 @@
 const DB_NAME = "productionCrewDatabase";
-const DB_VERSION = 9;
+const DB_VERSION = 10;
 const SUPABASE_URL = "https://nnhqrhaltkmymnwxydwr.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5uaHFyaGFsdGtteW1ud3h5ZHdyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgwMjMxNDgsImV4cCI6MjA5MzU5OTE0OH0.X9iGhE61WehM57133LKCWMfXXDHmcb2rhw-ZPCKAJos";
 const LOGIN_SETUP_FUNCTION = "send-login-setup";
@@ -21,7 +21,11 @@ const STORES = [
   "timecards",
   "runnerStops",
   "runnerCategories",
+  "runnerNotes",
   "systemProfiles",
+  "venueContacts",
+  "productionCompanies",
+  "productionContacts",
   "vehicleLogs",
   "accidentReports"
 ];
@@ -53,7 +57,7 @@ const ACCESS_PROFILES = {
   },
   CLIENT: {
     label: "CLIENT",
-    views: ["dashboard", "clientCompanyProfile", "clientProfile", "workers", "promoters", "venues", "events", "productionBoard", "clock", "timecards", "vehicles", "reports", "payroll", "directory", "runner"],
+    views: ["dashboard", "clientCompanyProfile", "clientProfile", "workers", "promoters", "venues", "events", "productionBoard", "clock", "timecards", "vehicles", "reports", "payroll", "directory", "runner", "dataTools"],
     canAdminEdit: true,
     canOwnerEdit: true,
     canVenueEdit: true,
@@ -63,17 +67,17 @@ const ACCESS_PROFILES = {
   },
   PROMOTER_PRODUCTION_OFFICE: {
     label: "PROMOTER_PRODUCTION_OFFICE",
-    views: ["productionBoard", "events", "workers", "promoters", "venues", "vehicles", "reports", "directory"],
+    views: ["productionBoard", "events", "workers", "promoters", "venues", "vehicles", "reports", "directory", "dataTools"],
     canAdminEdit: true,
     canOwnerEdit: false,
     canVenueEdit: true,
     canScopedEdit: true,
-    canImportExport: false,
+    canImportExport: true,
     canSystemEdit: false
   },
   CREW: {
     label: "CREW",
-    views: ["workers", "clock", "events", "timecards"],
+    views: ["workers", "clock", "productionResponse", "events", "timecards", "vehicles", "reports", "directory", "runner"],
     canAdminEdit: false,
     canOwnerEdit: false,
     canVenueEdit: false,
@@ -102,7 +106,11 @@ let state = {
   timecards: [],
   runnerStops: [],
   runnerCategories: [],
+  runnerNotes: [],
   systemProfiles: [],
+  venueContacts: [],
+  productionCompanies: [],
+  productionContacts: [],
   vehicleLogs: [],
   accidentReports: [],
   clients: [],
@@ -131,17 +139,20 @@ const NAV_GROUPS = {
     { label: "PROFILES", items: [["workers", "Crew Profiles"], ["promoters", "Promoter Profiles"], ["venues", "Venues"]] },
     { label: "EVENTS", items: [["events", "Events"], ["productionBoard", "Production Board"], ["clock", "TimeClock"], ["timecards", "Timecards"], ["vehicles", "Vehicles"], ["reports", "Reports"]] },
     { label: "PAYROLL", items: [["payroll", "Payroll"]] },
-    { label: "DIRECTORIES", items: [["directory", "Crew Directory"], ["runner", "Gig Directory"]] }
+    { label: "DIRECTORIES", items: [["directory", "Crew Directory"], ["runner", "Gig Directory"]] },
+    { label: "TOOLS", items: [["dataTools", "Import / Export"]] }
   ],
   PROMOTER_PRODUCTION_OFFICE: [
     { items: [["productionBoard", "Production Board"]] },
     { label: "PROFILES", items: [["workers", "Crew Profiles"], ["promoters", "Promoter Profiles"], ["venues", "Venues"]] },
     { label: "EVENTS", items: [["events", "Events"], ["vehicles", "Vehicles"], ["reports", "Reports"]] },
-    { label: "DIRECTORIES", items: [["directory", "Crew Directory"]] }
+    { label: "DIRECTORIES", items: [["directory", "Crew Directory"]] },
+    { label: "TOOLS", items: [["dataTools", "Import / Export"]] }
   ],
   CREW: [
     { items: [["workers", "My Profile"], ["clock", "Time Clock"]] },
-    { label: "EVENTS", items: [["events", "Events"], ["timecards", "Timecards"]] }
+    { label: "EVENTS", items: [["productionResponse", "Crew Response"], ["events", "Events"], ["timecards", "Timecards"], ["vehicles", "Vehicles"], ["reports", "Reports"]] },
+    { label: "DIRECTORIES", items: [["directory", "Crew Directory"], ["runner", "Gig Directory"]] }
   ]
 };
 
@@ -282,7 +293,7 @@ async function remove(storeName, id) {
 }
 
 async function loadState() {
-  const [clients, clientReps, accessLevelDefs, eventAccessLinks, workers, venues, promoters, profileNotes, events, timecards, runnerStops, runnerCategories, systemProfiles, vehicleLogs, accidentReports] = await Promise.all(STORES.map(getAll));
+  const [clients, clientReps, accessLevelDefs, eventAccessLinks, workers, venues, promoters, profileNotes, events, timecards, runnerStops, runnerCategories, runnerNotes, systemProfiles, venueContacts, productionCompanies, productionContacts, vehicleLogs, accidentReports] = await Promise.all(STORES.map(getAll));
   state = {
     ...state,
     clients: sortByName(clients),
@@ -297,7 +308,11 @@ async function loadState() {
     timecards: timecards.sort((a, b) => new Date(b.clockIn || b.createdAt || 0) - new Date(a.clockIn || a.createdAt || 0)),
     runnerStops: sortByName(runnerStops),
     runnerCategories: sortByName(runnerCategories),
+    runnerNotes: runnerNotes.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0)),
     systemProfiles: sortByName(systemProfiles),
+    venueContacts: sortByName(venueContacts),
+    productionCompanies: sortByName(productionCompanies),
+    productionContacts: sortByName(productionContacts),
     vehicleLogs: vehicleLogs.sort((a, b) => new Date(b.scheduledDate || b.createdAt || 0) - new Date(a.scheduledDate || a.createdAt || 0)),
     accidentReports: accidentReports.sort((a, b) => new Date(b.reportedAt || b.createdAt || 0) - new Date(a.reportedAt || a.createdAt || 0))
   };
@@ -1661,6 +1676,7 @@ function render() {
   renderAdminProfile();
   renderEvents();
   renderProductionBoard();
+  renderProductionResponse();
   renderClock();
   renderWorkers();
   renderTimecards();
@@ -2080,6 +2096,32 @@ function publicRunnerCard(worker) {
   </article>`;
 }
 
+function renderProductionResponse() {
+  const container = $("#productionResponseCards");
+  if (!container) return;
+  const events = isCrewRole() ? visibleEvents() : [];
+  $("#productionResponseCount").textContent = `${events.length} assigned`;
+  container.innerHTML = events.length
+    ? events.map((event) => {
+        const worker = getWorker(state.activeWorkerId) || {};
+        const venue = getVenue(event.venueId);
+        const status = worker.runnerStatus || "Available";
+        return `<article class="record-card">
+          <div class="record-card-main">
+            <strong>${escapeHtml(event.name)}</strong>
+            <span>${escapeHtml(venue?.name || "No venue")} ${event.startDate ? "- " + formatDate(event.startDate) : ""}</span>
+            <p><span class="status-pill ${status === "On a Run" ? "warn" : ""}">${escapeHtml(status)}</span></p>
+          </div>
+          <div class="row-actions">
+            <button class="tiny-button" data-runner-status="${state.activeWorkerId}" data-status="Available" type="button">Available</button>
+            <button class="tiny-button" data-runner-status="${state.activeWorkerId}" data-status="On a Run" type="button">On a Run</button>
+            <button class="tiny-button" data-runner-status="${state.activeWorkerId}" data-status="At Production Office" type="button">At Office</button>
+          </div>
+        </article>`;
+      }).join("")
+    : `<div class="compact-item empty">Assigned events will appear here.</div>`;
+}
+
 async function loadPublicEventAccess() {
   if (!initializeSupabaseClient()) {
     showPublicEventScreen("Public event access is not configured.");
@@ -2165,11 +2207,13 @@ function clockCard(event) {
   const venue = getVenue(event.venueId);
   const card = state.timecards.find((item) => item.eventId === event.id && item.workerId === state.activeWorkerId && !item.clockOut)
     || state.timecards.find((item) => item.eventId === event.id && item.workerId === state.activeWorkerId);
+  const rentalWarning = rentalVehicleRequired(event, card || {}) ? rentalClockWarning(event, card) : "";
   return `<article class="record-card clock-card">
     <div class="record-card-main">
       <strong>${escapeHtml(event.name)}</strong>
       <span>${escapeHtml(venue?.name || "No venue")} ${event.startDate ? "- " + formatDate(event.startDate) : ""}</span>
       <p>Call: ${formatDate(card?.clockIn) || "Not set"} | Lunch out: ${formatDate(card?.lunchOut) || "Not set"} | Lunch in: ${formatDate(card?.lunchIn) || "Not set"} | Wrap: ${formatDate(card?.clockOut) || "Not set"}</p>
+      ${rentalWarning}
     </div>
     <div class="clock-actions">
       <button class="primary-action" data-time-punch="clockIn" data-event-id="${event.id}" type="button">Call Time</button>
@@ -2178,6 +2222,15 @@ function clockCard(event) {
       <button class="primary-action" data-time-punch="clockOut" data-event-id="${event.id}" type="button">Wrap</button>
     </div>
   </article>`;
+}
+
+function rentalClockWarning(event, card) {
+  if (!card?.clockIn || card.clockOut) return `<p><span class="status-pill warn">Rental photos required</span></p>`;
+  const startLog = vehicleLogForEventWorker(event.id, state.activeWorkerId, "Start");
+  if (vehicleStartCheckStarted(startLog)) return `<p><span class="status-pill">Rental start check received</span></p>`;
+  const minutes = Math.floor((new Date() - new Date(card.clockIn)) / 60000);
+  if (minutes >= 15) return `<p><span class="status-pill warn">Urgent: start vehicle photos and plate are overdue</span></p>`;
+  return `<p><span class="status-pill warn">Reminder: submit start vehicle photos within ${Math.max(1, 15 - minutes)} min</span></p>`;
 }
 
 function actionButtons(store, id, formId, extra = "", allowed = canAdminEdit()) {
@@ -2453,15 +2506,49 @@ function renderReports() {
 function vehiclePhotoGallery(log) {
   const photos = log.vehiclePhotos || {};
   const items = [
-    ["Front", photos.front],
-    ["Back", photos.back],
-    ["Driver", photos.driverSide],
-    ["Passenger", photos.passengerSide],
-    ["Gas", photos.gasGauge],
+    ["Start front", photos.startFront || photos.front],
+    ["Start back", photos.startBack || photos.back],
+    ["Start driver", photos.startDriverSide || photos.driverSide],
+    ["Start passenger", photos.startPassengerSide || photos.passengerSide],
+    ["Start gas", photos.startGasGauge || photos.gasGauge],
     ...[].concat(photos.priorDamages || []).map((photo, index) => [`Damage ${index + 1}`, photo])
   ];
+  items.push(
+    ["End front", photos.endFront],
+    ["End back", photos.endBack],
+    ["End driver", photos.endDriverSide],
+    ["End passenger", photos.endPassengerSide],
+    ["End gas", photos.endGasGauge]
+  );
   if (log.photoData) items.push(["Legacy", log.photoData]);
   return photoGallery(items.filter(([, photo]) => photo));
+}
+
+function vehicleEndPhotosComplete(log) {
+  const photos = log?.vehiclePhotos || {};
+  return !!(log?.plateNumber && photos.endFront && photos.endBack && photos.endDriverSide && photos.endPassengerSide && photos.endGasGauge);
+}
+
+function vehicleStartCheckStarted(log) {
+  const photos = log?.vehiclePhotos || {};
+  return !!(log?.plateNumber || photos.startFront || photos.startBack || photos.startDriverSide || photos.startPassengerSide || photos.startGasGauge);
+}
+
+function rentalVehicleRequired(event, card = {}) {
+  return event?.requiresRentalPhotos === "yes" || event?.requiresRentalPhotos === true || card.vehicleUse === "Rented Vehicle";
+}
+
+function vehicleLogForEventWorker(eventId, workerId, phase = "") {
+  return state.vehicleLogs.find((log) => {
+    if (log.eventId !== eventId || log.workerId !== workerId) return false;
+    return !phase || String(log.phase || "").toLowerCase() === phase.toLowerCase();
+  });
+}
+
+function appendTimecardNote(card, message) {
+  const existing = String(card.notes || "").trim();
+  if (existing.includes(message)) return existing;
+  return [existing, message].filter(Boolean).join("\n");
 }
 
 function photoGallery(items) {
@@ -2505,8 +2592,28 @@ function renderRunnerStops() {
     .filter((stop) => matchesSearch(stop));
   $("#runnerTableCount").textContent = `${rows.length} shown`;
   $("#runnerTable").innerHTML = rows.length
-    ? rows.map((stop) => `<tr><td><strong>${escapeHtml(stop.name)}</strong><p>${escapeHtml(stop.phone)}</p></td><td>${escapeHtml(stop.category)}</td><td>${escapeHtml(stop.address)}</td><td>${escapeHtml(stop.hours)}</td><td>${escapeHtml(stop.bestUse)}</td><td>${actionButtons("runnerStops", stop.id, "runnerForm")}</td></tr>`).join("")
+    ? rows.map((stop) => runnerStopRow(stop)).join("")
     : `<tr><td colspan="6" class="empty">No runner stops match this search.</td></tr>`;
+}
+
+function runnerStopRow(stop) {
+  const noteUi = isCrewRole() ? runnerStopNoteUi(stop) : "";
+  return `<tr><td><strong>${escapeHtml(stop.name)}</strong><p>${escapeHtml(stop.phone)}</p></td><td>${escapeHtml(stop.category)}</td><td>${escapeHtml(stop.address)}</td><td>${escapeHtml(stop.hours)}</td><td>${escapeHtml(stop.bestUse)}${noteUi}</td><td>${actionButtons("runnerStops", stop.id, "runnerForm")}</td></tr>`;
+}
+
+function runnerStopNoteUi(stop) {
+  const notes = runnerNotesForStop(stop.id);
+  const remaining = Math.max(0, 5 - runnerNotesAddedThisYear(stop.id));
+  const noteList = notes.length ? `<div class="mini-note-list">${notes.slice(0, 3).map((note) => `<p>${escapeHtml(note.text)}</p>`).join("")}</div>` : "";
+  return `<div class="directory-note-box">
+    ${noteList}
+    <textarea data-runner-note-input="${stop.id}" maxlength="500" rows="2" placeholder="Add note, 500 characters max"></textarea>
+    <div class="row-actions"><button class="tiny-button" data-save-runner-note="${stop.id}" type="button" ${remaining <= 0 ? "disabled" : ""}>Add Note</button><span class="muted">${remaining} notes left this year</span></div>
+  </div>`;
+}
+
+function runnerNotesForStop(stopId) {
+  return state.runnerNotes.filter((note) => note.stopId === stopId).sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
 }
 
 function runnerCategories() {
@@ -2516,9 +2623,26 @@ function runnerCategories() {
   return ["All", ...Array.from(new Set([...builtIns, ...fromStops, ...custom].filter(Boolean))).sort()];
 }
 
+function runnerCategoryWindow(workerId = state.activeWorkerId) {
+  const entries = state.runnerCategories
+    .filter((category) => category.createdByWorkerId === workerId)
+    .sort((a, b) => new Date(a.createdAt || 0) - new Date(b.createdAt || 0));
+  if (!entries.length) return { used: 0, resetAt: null };
+  const first = new Date(entries[0].createdAt || `${entries[0].createdYear || new Date().getFullYear()}-01-01`);
+  const resetAt = new Date(first);
+  resetAt.setFullYear(resetAt.getFullYear() + 1);
+  const now = new Date();
+  if (now >= resetAt) return { used: 0, resetAt: null };
+  return { used: entries.filter((entry) => new Date(entry.createdAt || 0) >= first && new Date(entry.createdAt || 0) < resetAt).length, resetAt };
+}
+
 function runnerCategoriesAddedThisYear(workerId = state.activeWorkerId) {
+  return runnerCategoryWindow(workerId).used;
+}
+
+function runnerNotesAddedThisYear(stopId, workerId = state.activeWorkerId) {
   const year = new Date().getFullYear();
-  return state.runnerCategories.filter((category) => category.createdByWorkerId === workerId && Number(category.createdYear) === year).length;
+  return state.runnerNotes.filter((note) => note.stopId === stopId && note.workerId === workerId && Number(note.createdYear) === year).length;
 }
 
 function renderRunnerCategoryCreator() {
@@ -2527,9 +2651,11 @@ function renderRunnerCategoryCreator() {
   const visible = isCrewRole();
   form.hidden = !visible;
   if (!visible) return;
-  const used = runnerCategoriesAddedThisYear();
+  const windowInfo = runnerCategoryWindow();
+  const used = windowInfo.used;
   const remaining = Math.max(0, 3 - used);
-  limit.textContent = `${remaining} of 3 left this year`;
+  const resetText = windowInfo.resetAt ? ` Reset: ${windowInfo.resetAt.toLocaleDateString()}` : " Clock starts after your first custom category.";
+  limit.textContent = `${remaining} of 3 left.${resetText}`;
   form.querySelector("button").disabled = remaining <= 0;
 }
 
@@ -2661,6 +2787,13 @@ async function saveForm(event, storeName) {
   if (storeName === "venues" && !canVenueEdit()) {
     toast("This access view cannot save venues.");
     return;
+  }
+  if (["vehicleLogs", "accidentReports"].includes(storeName) && isCrewRole()) {
+    const eventId = form.elements.eventId?.value || "";
+    if (!eventId || !isEventVisible(eventId)) {
+      toast("Crew can only save rentals and reports for assigned events.");
+      return;
+    }
   }
   if (storeName === "workers" && isCrewRole() && form.elements.id.value && form.elements.id.value !== state.activeWorkerId) {
     toast("Crew can only save their own profile.");
@@ -3054,7 +3187,9 @@ async function saveEventAccessLink(event) {
       clientId: authState.roleRecord?.client_id || "",
       promoterId: event.promoterId || "",
       recipientEmail: record.recipientEmail || "",
+      productionCompanyName: record.productionCompanyName || "",
       recipientName: record.recipientName || "Production team",
+      secondaryContactEmails: record.secondaryContactEmails || "",
       expiresAt: record.expiresAt || "",
       notes: record.notes || "",
       snapshot: eventAccessSnapshot(event),
@@ -3071,7 +3206,9 @@ async function saveEventAccessLink(event) {
     id: data.linkId,
     eventId: event.id,
     recipientEmail: record.recipientEmail || "",
+    productionCompanyName: record.productionCompanyName || "",
     recipientName: record.recipientName || "Production team",
+    secondaryContactEmails: record.secondaryContactEmails || "",
     expiresAt: record.expiresAt || "",
     publicUrl: link,
     status: "Active"
@@ -3176,8 +3313,12 @@ async function saveProfileNote(workerId) {
 }
 
 async function updateRunnerStatus(workerId, status) {
-  if (!(isClientRole() || isProductionRole())) return;
+  if (!(isClientRole() || isProductionRole() || (isCrewRole() && workerId === state.activeWorkerId))) return;
   const worker = getWorker(workerId);
+  if (isCrewRole() && workerId !== state.activeWorkerId) {
+    toast("Crew can only update their own response status.");
+    return;
+  }
   if (!worker || (isProductionRole() && !assignedWorkerIdsForVisibleEvents().has(workerId))) {
     toast("That runner is not assigned to this production view.");
     return;
@@ -3186,6 +3327,34 @@ async function updateRunnerStatus(workerId, status) {
   await loadState();
   setView(state.activeView);
   toast(`Runner marked ${status}.`);
+}
+
+async function saveRunnerNote(stopId) {
+  if (!isCrewRole() || !state.activeWorkerId) return;
+  const textarea = document.querySelector(`[data-runner-note-input="${stopId}"]`);
+  const text = String(textarea?.value || "").trim();
+  if (!text) {
+    toast("Enter a note first.");
+    return;
+  }
+  if (text.length > 500) {
+    toast("Directory notes are limited to 500 characters.");
+    return;
+  }
+  if (runnerNotesAddedThisYear(stopId) >= 5) {
+    toast("This worker has used all 5 notes for this directory entry this year.");
+    return;
+  }
+  await put("runnerNotes", {
+    stopId,
+    workerId: state.activeWorkerId,
+    text,
+    createdYear: new Date().getFullYear()
+  });
+  textarea.value = "";
+  await loadState();
+  setView(state.activeView);
+  toast("Directory note added.");
 }
 
 async function addRunnerCategory(event) {
@@ -3260,8 +3429,39 @@ async function crewPunch(eventId, field) {
       additionalRate: worker?.defaultAdditionalRate || ""
     };
   }
+  if (field === "clockOut" && rentalVehicleRequired(event, card)) {
+    const endLog = vehicleLogForEventWorker(eventId, state.activeWorkerId, "End");
+    if (!vehicleEndPhotosComplete(endLog)) {
+      const nowDate = new Date();
+      const bypassAt = card.rentalPhotoBypassAfter ? new Date(card.rentalPhotoBypassAfter) : null;
+      const warning = "Rental vehicle end photos were required at Wrap. A wrap attempt was made before end photos and plate number were submitted.";
+      if (!bypassAt || Number.isNaN(bypassAt.getTime())) {
+        card.rentalPhotoBypassAfter = new Date(nowDate.getTime() + 5 * 60000).toISOString();
+        card.notes = appendTimecardNote(card, warning);
+        await put("timecards", card);
+        await loadState();
+        setView("vehicles");
+        toast("End vehicle photos are required before Wrap. You can bypass after 5 minutes, and this warning is saved on the timecard.");
+        return;
+      }
+      if (nowDate < bypassAt) {
+        const minutes = Math.max(1, Math.ceil((bypassAt - nowDate) / 60000));
+        toast(`End vehicle photos are still required. Bypass opens in ${minutes} minute(s).`);
+        return;
+      }
+      card.notes = appendTimecardNote(card, `${warning} Bypassed after the 5 minute warning window.`);
+      card.rentalPhotoBypassUsedAt = nowDate.toISOString();
+    }
+  }
   card[field] = now;
   if (field === "clockIn" && !card.eventName) card.eventName = event?.name || "";
+  if (field === "clockIn" && rentalVehicleRequired(event, card)) {
+    const startLog = vehicleLogForEventWorker(eventId, state.activeWorkerId, "Start");
+    if (!vehicleStartCheckStarted(startLog)) {
+      card.rentalStartReminderAt = new Date().toISOString();
+      toast("Reminder: submit rental vehicle start photos and plate number within 15 minutes.");
+    }
+  }
   await put("timecards", card);
   await loadState();
   setView(state.activeView);
@@ -3396,6 +3596,7 @@ function bindEvents() {
     const directoryTab = event.target.closest("[data-directory-tab]");
     const payrollTab = event.target.closest("[data-payroll-view]");
     const profileNoteButton = event.target.closest("[data-save-profile-note]");
+    const runnerNoteButton = event.target.closest("[data-save-runner-note]");
     const runnerStatusButton = event.target.closest("[data-runner-status]");
     const selectVisibleButton = event.target.closest("[data-select-visible]");
     const clearSelectedButton = event.target.closest("[data-clear-selected]");
@@ -3454,6 +3655,7 @@ function bindEvents() {
     if (clockButton) await clockOutNow(clockButton.dataset.clockOut);
     if (punchButton) await crewPunch(punchButton.dataset.eventId, punchButton.dataset.timePunch);
     if (profileNoteButton) await saveProfileNote(profileNoteButton.dataset.saveProfileNote);
+    if (runnerNoteButton) await saveRunnerNote(runnerNoteButton.dataset.saveRunnerNote);
     if (runnerStatusButton) await updateRunnerStatus(runnerStatusButton.dataset.runnerStatus, runnerStatusButton.dataset.status);
     if (selectVisibleButton) setVisibleProfileSelection(selectVisibleButton.dataset.selectVisible, true);
     if (clearSelectedButton) setVisibleProfileSelection(clearSelectedButton.dataset.clearSelected, false);
