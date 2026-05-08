@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#20282c">
     <title>Production Crew Database</title>
-    <link rel="stylesheet" href="styles.css?v=V1.03.009-mobile-connection-banner">
+    <link rel="stylesheet" href="styles.css?v=V1.03.010-mobile-camera-capture">
   </head>
   <body>
     <section id="authScreen" class="auth-screen">
@@ -670,7 +670,7 @@
               <input type="hidden" name="id">
               <div class="photo-fieldset">
                 <span>Profile</span>
-                <label>Headshot<input name="headshotPhoto" type="file" accept="image/*" data-photo-key="headshot"></label>
+                <label>Headshot<input name="headshotPhoto" type="file" accept="image/*" capture="user" data-photo-key="headshot"></label>
                 <label>Name<input name="name" required placeholder="Full name"></label>
                 <label class="owner-form">Primary role<input name="role" placeholder="Stagehand, audio, lighting"></label>
                 <button class="tiny-button owner-action" data-open-profile-access="workers" type="button">Manage Access</button>
@@ -896,20 +896,20 @@
               <label>Scheduled date<input name="scheduledDate" type="datetime-local"></label>
               <div class="photo-fieldset" data-vehicle-photo-section="start">
                 <span>Start photos</span>
-                <label>Front<input name="frontPhoto" type="file" accept="image/*" data-photo-key="startFront"></label>
-                <label>Back<input name="backPhoto" type="file" accept="image/*" data-photo-key="startBack"></label>
-                <label>Driver side<input name="driverSidePhoto" type="file" accept="image/*" data-photo-key="startDriverSide"></label>
-                <label>Passenger side<input name="passengerSidePhoto" type="file" accept="image/*" data-photo-key="startPassengerSide"></label>
-                <label>Gas gauge<input name="gasGaugePhoto" type="file" accept="image/*" data-photo-key="startGasGauge"></label>
-                <label>Prior damages<input name="priorDamagePhotos" type="file" accept="image/*" multiple data-photo-key="priorDamages"></label>
+                <label>Front<input name="frontPhoto" type="file" accept="image/*" capture="environment" data-photo-key="startFront"></label>
+                <label>Back<input name="backPhoto" type="file" accept="image/*" capture="environment" data-photo-key="startBack"></label>
+                <label>Driver side<input name="driverSidePhoto" type="file" accept="image/*" capture="environment" data-photo-key="startDriverSide"></label>
+                <label>Passenger side<input name="passengerSidePhoto" type="file" accept="image/*" capture="environment" data-photo-key="startPassengerSide"></label>
+                <label>Gas gauge<input name="gasGaugePhoto" type="file" accept="image/*" capture="environment" data-photo-key="startGasGauge"></label>
+                <label>Prior damages<input name="priorDamagePhotos" type="file" accept="image/*" capture="environment" multiple data-photo-key="priorDamages"></label>
               </div>
               <div class="photo-fieldset" data-vehicle-photo-section="end">
                 <span>End photos</span>
-                <label>Front<input name="endFrontPhoto" type="file" accept="image/*" data-photo-key="endFront"></label>
-                <label>Back<input name="endBackPhoto" type="file" accept="image/*" data-photo-key="endBack"></label>
-                <label>Driver side<input name="endDriverSidePhoto" type="file" accept="image/*" data-photo-key="endDriverSide"></label>
-                <label>Passenger side<input name="endPassengerSidePhoto" type="file" accept="image/*" data-photo-key="endPassengerSide"></label>
-                <label>Gas gauge<input name="endGasGaugePhoto" type="file" accept="image/*" data-photo-key="endGasGauge"></label>
+                <label>Front<input name="endFrontPhoto" type="file" accept="image/*" capture="environment" data-photo-key="endFront"></label>
+                <label>Back<input name="endBackPhoto" type="file" accept="image/*" capture="environment" data-photo-key="endBack"></label>
+                <label>Driver side<input name="endDriverSidePhoto" type="file" accept="image/*" capture="environment" data-photo-key="endDriverSide"></label>
+                <label>Passenger side<input name="endPassengerSidePhoto" type="file" accept="image/*" capture="environment" data-photo-key="endPassengerSide"></label>
+                <label>Gas gauge<input name="endGasGaugePhoto" type="file" accept="image/*" capture="environment" data-photo-key="endGasGauge"></label>
               </div>
               <label>Notes<textarea name="notes" rows="3" placeholder="Mileage, dents, fuel receipt, pickup/dropoff notes"></textarea></label>
               <button class="primary-action" type="submit">Save Vehicle Check</button>
@@ -1072,7 +1072,7 @@
                 <label>Police report number<input name="policeReportNumber"></label>
                 <label>Damage description<textarea name="vehicleDamageDescription" rows="3"></textarea></label>
               </div>
-              <label>Photos<input name="photos" type="file" accept="image/*" multiple data-photo-key="photos"></label>
+              <label>Photos<input name="photos" type="file" accept="image/*" capture="environment" multiple data-photo-key="photos"></label>
               <label>Details<textarea name="details" rows="5" placeholder="What happened, who was involved, immediate action taken"></textarea></label>
               <button class="primary-action" type="submit">Save Report</button>
             </form>
@@ -1168,7 +1168,7 @@
               <input type="hidden" name="id">
               <div class="photo-fieldset">
                 <span>Profile</span>
-                <label>Headshot<input name="headshotPhoto" type="file" accept="image/*" data-photo-key="headshot"></label>
+                <label>Headshot<input name="headshotPhoto" type="file" accept="image/*" capture="user" data-photo-key="headshot"></label>
                 <label>Promoter company<input name="companyName" placeholder="LiveNation, AEG, independent"></label>
                 <label>Local promoter rep<input name="name" required placeholder="Rep name"></label>
                 <label>Rep title / office<input name="contactName" placeholder="Production manager, local rep, office"></label>
@@ -1306,6 +1306,6 @@
     <div id="modalHost"></div>
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js?v=V1.03.009-mobile-connection-banner"></script>
+    <script src="app.js?v=V1.03.010-mobile-camera-capture"></script>
   </body>
 </html>
