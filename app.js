@@ -2945,6 +2945,39 @@ function renderMobileDeviceStatus() {
   ].map(([label, value, ready]) => `<div class="mobile-device-item ${ready ? "ready" : "pending"}"><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></div>`).join("");
 }
 
+async function requestMobilePermissions() {
+  const plugins = capacitorBridge()?.Plugins || {};
+  const results = [];
+  try {
+    if (plugins.Geolocation?.requestPermissions) {
+      const result = await plugins.Geolocation.requestPermissions();
+      results.push(`Location: ${result.location || result.coarseLocation || "requested"}`);
+    } else if (navigator.geolocation) {
+      await browserCurrentPosition();
+      results.push("Location: requested");
+    } else {
+      results.push("Location: unavailable");
+    }
+  } catch (error) {
+    results.push("Location: not granted");
+  }
+  try {
+    if (plugins.PushNotifications?.requestPermissions) {
+      const result = await plugins.PushNotifications.requestPermissions();
+      results.push(`Push: ${result.receive || "requested"}`);
+    } else if ("Notification" in window) {
+      const result = await Notification.requestPermission();
+      results.push(`Push: ${result}`);
+    } else {
+      results.push("Push: unavailable");
+    }
+  } catch (error) {
+    results.push("Push: not granted");
+  }
+  renderMobileDeviceStatus();
+  toast(results.join(" · "));
+}
+
 function renderConnectionBanner() {
   const banner = $("#connectionBanner");
   if (!banner) return;
@@ -6523,7 +6556,12 @@ function bindEvents() {
     const viewRecordButton = event.target.closest("[data-view-record]");
     const mobileGoViewButton = event.target.closest("[data-mobile-go-view]");
     const openReportTypeButton = event.target.closest("[data-open-report-type]");
+    const requestMobilePermissionsButton = event.target.closest("[data-request-mobile-permissions]");
 
+    if (requestMobilePermissionsButton) {
+      await requestMobilePermissions();
+      return;
+    }
     if (openReportTypeButton) {
       openReportFormForType(openReportTypeButton.dataset.openReportType);
       return;
