@@ -435,6 +435,21 @@ const ACCESS_LEVEL_LABELS = {
   PRODUCTION_TEAM_ACCESS: "Production Team Access",
   CREW: "Crew / Runner"
 };
+const ACCESS_ROLE_PRIORITY = {
+  ADMIN: 100,
+  CLIENT_ADMIN: 90,
+  CLIENT: 90,
+  CLIENT_REP_LEAD: 80,
+  CLIENT_REP: 70,
+  CLIENT_ACCOUNTING: 65,
+  PROMOTER_ADMIN: 60,
+  PROMOTER: 60,
+  PROMOTER_PRODUCTION_OFFICE: 60,
+  PROMOTER_REP: 50,
+  PRODUCTION_TEAM_ACCESS: 40,
+  PRODUCTION: 40,
+  CREW: 10
+};
 
 const CLIENT_PACKAGE_DEFINITIONS = [
   {
@@ -1917,6 +1932,10 @@ function clientCompanyNeedsSetup(client) {
   return !client || !client.name || client.status === "Setup Needed";
 }
 
+function clientRepNeedsSetup(rep) {
+  return !rep || !rep.name || !rep.email || rep.status === "Setup Needed";
+}
+
 function clientCompanyDefaults() {
   return {
     id: authState.roleRecord?.client_id || "",
@@ -1945,8 +1964,14 @@ function openCurrentClientSetupStep() {
   if (!isClientRole()) return;
   window.setTimeout(() => {
     const step = clientSetupStep();
-    if (step === "company") openClientCompanySetupForm();
-    if (step === "rep") openClientRepSetupForm();
+    if (step === "company") {
+      if (clientCompanyNeedsSetup(activeClientRecord())) openClientCompanySetupForm();
+      else setClientSetupStep(clientRepNeedsSetup(activeClientRepRecord()) ? "rep" : "");
+    }
+    if (step === "rep") {
+      if (clientRepNeedsSetup(activeClientRepRecord())) openClientRepSetupForm();
+      else setClientSetupStep("");
+    }
   }, 0);
 }
 
@@ -2336,6 +2361,13 @@ function assignedAccessForRole(role) {
   return [normalized];
 }
 
+function sortAccessRoles(roles = []) {
+  return Array.from(new Set(roles.filter(Boolean))).sort((a, b) => {
+    const priorityDelta = (ACCESS_ROLE_PRIORITY[b] || 0) - (ACCESS_ROLE_PRIORITY[a] || 0);
+    return priorityDelta || accessLevelLabel(a).localeCompare(accessLevelLabel(b));
+  });
+}
+
 function assignedAccessForCurrentUser() {
   const baseRole = normalizeRole(authState.roleRecord?.role || state.accessRole);
   if (baseRole === "ADMIN") return ["ADMIN"];
@@ -2345,9 +2377,11 @@ function assignedAccessForCurrentUser() {
     if (roles.includes("CLIENT_ACCOUNTING") && roles.includes("CLIENT_REP") && !roles.includes("CLIENT_REP_LEAD") && !roles.includes("CLIENT_ADMIN")) {
       roles = roles.filter((role) => role !== "CLIENT_ACCOUNTING");
     }
-    return roles;
+    roles = sortAccessRoles(roles);
+    return roles.includes("ADMIN") ? ["ADMIN"] : roles;
   }
-  return assignedAccessForRole(baseRole).filter((role) => accessProfileFor(role));
+  const roles = sortAccessRoles(assignedAccessForRole(baseRole).filter((role) => accessProfileFor(role)));
+  return roles.includes("ADMIN") ? ["ADMIN"] : roles;
 }
 
 function accessLevelOptionsForForm(form) {
@@ -5469,9 +5503,9 @@ function renderAccessRoleOptions() {
   const control = $("#accessViewControl");
   const select = $("#accessViewSelect");
   select.innerHTML = assignedAccess.map((role) => `<option value="${escapeHtml(role)}">${escapeHtml(accessLevelLabel(role))}</option>`).join("");
-  select.value = state.accessRole;
+  select.value = assignedAccess.includes(state.accessRole) ? state.accessRole : primaryAssignedAccessRole();
   control.hidden = true;
-  $("#sessionRole").textContent = accessLevelLabel(state.accessRole);
+  $("#sessionRole").textContent = accessLevelLabel(primaryAssignedAccessRole());
   $("#sessionEmail").textContent = authState.user?.email || "Signed in";
 }
 
@@ -5484,6 +5518,10 @@ function setAccessRole(role) {
   }
   state.accessRole = nextRole;
   render();
+}
+
+function primaryAssignedAccessRole() {
+  return assignedAccessForCurrentUser()[0] || state.accessRole;
 }
 
 async function saveForm(event, storeName) {
