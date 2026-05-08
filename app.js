@@ -1552,9 +1552,7 @@ function assignedAccessForCurrentUser() {
 
 function accessLevelOptionsForForm(form) {
   let roles = accessLevelDefinitions().map((level) => level.id).filter((role) => role !== "ADMIN");
-  if (form?.id === "clientProfileForm") return roles.filter((role) => baseRoleForAccess(role) === "CLIENT");
-  if (form?.id === "workerForm") return roles.filter((role) => baseRoleForAccess(role) === "CREW");
-  if (form?.id === "promoterForm") return roles.filter((role) => baseRoleForAccess(role) === "PROMOTER");
+  if (["clientProfileForm", "workerForm", "promoterForm"].includes(form?.id)) return roles;
   if (form?.id !== "clientForm") roles = roles.filter((role) => !["CLIENT", "PRODUCTION"].includes(baseRoleForAccess(role)));
   return roles;
 }
@@ -1569,6 +1567,18 @@ function renderAccessLevelControls(root = document) {
     const options = accessLevelOptionsForForm(group.closest("form"));
     group.innerHTML = options.map((role) => `<label class="checkbox-option"><input name="${escapeHtml(group.dataset.name || "accessLevels")}" type="checkbox" value="${escapeHtml(role)}" ${selected.includes(role) ? "checked" : ""}>${escapeHtml(accessLevelLabel(role))}</label>`).join("");
   });
+}
+
+async function refreshSiteAccessLevelsForForm(formId) {
+  if (!["clientProfileForm", "workerForm", "promoterForm", "accessLevelForm"].includes(formId)) return;
+  try {
+    await hydrateAccessLevelsFromSupabase();
+    await loadState();
+  } catch (error) {
+    console.warn(error);
+  }
+  renderAccessLevelControls(document.getElementById(formId));
+  if (formId === "accessLevelForm") renderViewOptionControls($("#accessLevelForm"));
 }
 
 function viewLabel(viewId) {
@@ -2148,7 +2158,7 @@ function renderAccessLevels() {
     ? rows.map((level) => {
         const pages = (level.views || []).map(viewLabel).join(", ");
         const actions = level.builtIn ? "" : actionButtons("accessLevelDefs", level.id, "accessLevelForm", "", canSystemEdit());
-        return `<tr><td><strong>${escapeHtml(level.name)}</strong><p>${escapeHtml(level.description || (level.builtIn ? "Built-in access level" : ""))}</p></td><td>${escapeHtml(accessLevelLabel(level.baseRole))}</td><td>${escapeHtml(pages)}</td><td>${actions}</td></tr>`;
+        return `<tr><td><strong>${escapeHtml(level.name)}</strong><p>Site level: ${escapeHtml(level.id)}</p><p>${escapeHtml(level.description || (level.builtIn ? "Built-in access level" : ""))}</p></td><td><strong>${escapeHtml(accessLevelLabel(level.baseRole))}</strong><p>Supabase level</p></td><td>${escapeHtml(pages)}</td><td>${actions}</td></tr>`;
       }).join("")
     : `<tr><td colspan="4" class="empty">No access levels configured.</td></tr>`;
 }
@@ -5769,6 +5779,7 @@ function bindEvents() {
     if (notifyProductionOfficeButton) await notifyRunnerToProductionOffice(notifyProductionOfficeButton.dataset.notifyProductionOffice);
 
   if (openButton) {
+      await refreshSiteAccessLevelsForForm(openButton.dataset.openForm);
       clearForm(openButton.dataset.openForm);
       if (openButton.dataset.openForm === "adminProfileForm" && isAdminRole()) {
         fillForm("adminProfileForm", activeAdminProfile());
@@ -5787,6 +5798,7 @@ function bindEvents() {
     }
 
     if (editButton) {
+      await refreshSiteAccessLevelsForForm(editButton.dataset.form);
       const collection = state[editButton.dataset.edit];
       const record = collection.find((item) => item.id === editButton.dataset.id);
       if (record) fillForm(editButton.dataset.form, record);
