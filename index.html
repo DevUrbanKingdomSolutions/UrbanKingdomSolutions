@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Production Crew Database</title>
-    <link rel="stylesheet" href="styles.css?v=V1.01.034-multiple-venue-contacts">
+    <link rel="stylesheet" href="styles.css?v=V1.01.035-venue-contact-collapse">
   </head>
   <body>
     <section id="authScreen" class="auth-screen">
@@ -1071,7 +1071,7 @@
                   <span>Additional venue contacts</span>
                   <button class="tiny-button" data-add-venue-contact type="button">Add Contact</button>
                 </div>
-                <div id="venueContactList" class="repeatable-list"></div>
+                <div id="venueContactList" class="repeatable-list" hidden></div>
               </div>
               <label>Parking instructions<textarea name="parking" rows="3" placeholder="Crew parking, dock, load-in gate"></textarea></label>
               <label>Load-in notes<textarea name="notes" rows="3" placeholder="Dock height, elevator, curfew, restrictions"></textarea></label>
@@ -1256,6 +1256,6 @@
     <div id="modalHost"></div>
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js?v=V1.01.034-multiple-venue-contacts"></script>
+    <script src="app.js?v=V1.01.035-venue-contact-collapse"></script>
   </body>
 </html>

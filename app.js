@@ -3308,9 +3308,10 @@ function renderVenueContactEditor(venueId = "") {
   const list = $("#venueContactList");
   if (!list) return;
   const contacts = venueId ? venueContactsForVenue(venueId) : [];
+  list.hidden = !contacts.length;
   list.innerHTML = contacts.length
     ? contacts.map((contact) => venueContactEditorRow(contact)).join("")
-    : venueContactEditorRow({});
+    : "";
 }
 
 function venueContactEditorRow(contact = {}) {
@@ -3320,6 +3321,7 @@ function venueContactEditorRow(contact = {}) {
     <label>Phone<input data-contact-field="phone" value="${escapeHtml(contact.phone || "")}" placeholder="(555) 000-0000"></label>
     <label>Email<input data-contact-field="email" type="email" value="${escapeHtml(contact.email || "")}" placeholder="contact@venue.com"></label>
     <label>Notes<textarea data-contact-field="notes" rows="2" placeholder="Best use, hours, preferences">${escapeHtml(contact.notes || "")}</textarea></label>
+    <button class="tiny-button" data-submit-venue-contact type="button">Submit Contact</button>
     <button class="tiny-button danger" data-remove-venue-contact type="button">Remove</button>
   </div>`;
 }
@@ -5680,6 +5682,7 @@ function bindEvents() {
     const editViewedClientButton = event.target.closest("#editViewedClientCompany");
     const eventAccessButton = event.target.closest("[data-event-access]");
     const addVenueContactButton = event.target.closest("[data-add-venue-contact]");
+    const submitVenueContactButton = event.target.closest("[data-submit-venue-contact]");
     const removeVenueContactButton = event.target.closest("[data-remove-venue-contact]");
     const vehiclePhaseButton = event.target.closest("[data-vehicle-phase]");
     const addAssignmentButton = event.target.closest("[data-add-assignment]");
@@ -5757,13 +5760,19 @@ function bindEvents() {
       if (eventRecord) await createEventAccessLink(eventRecord);
     }
     if (addVenueContactButton) {
-      $("#venueContactList").insertAdjacentHTML("beforeend", venueContactEditorRow({}));
+      const list = $("#venueContactList");
+      list.hidden = false;
+      list.insertAdjacentHTML("beforeend", venueContactEditorRow({}));
+      return;
+    }
+    if (submitVenueContactButton) {
+      toast("Contact ready. Save Venue to keep changes.");
       return;
     }
     if (removeVenueContactButton) {
       const row = removeVenueContactButton.closest("[data-venue-contact-row]");
       row?.remove();
-      if (!$("#venueContactList").querySelector("[data-venue-contact-row]")) renderVenueContactEditor("");
+      if (!$("#venueContactList").querySelector("[data-venue-contact-row]")) $("#venueContactList").hidden = true;
       return;
     }
     if (vehiclePhaseButton) openVehiclePhaseForm(vehiclePhaseButton);
