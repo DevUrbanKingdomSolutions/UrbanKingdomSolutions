@@ -426,6 +426,7 @@ const SMTP_PROVIDER_SETTINGS = {
 
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => Array.from(document.querySelectorAll(selector));
+let pushRegistrationListenersReady = false;
 
 function capacitorBridge() {
   return window.Capacitor || null;
@@ -436,14 +437,33 @@ function mobileRuntimeInfo() {
   const platform = capacitor?.getPlatform?.() || "web";
   const native = !!capacitor?.isNativePlatform?.();
   const plugins = capacitor?.Plugins || {};
+  const pushToken = localStorage.getItem("productionCrewPushToken") || "";
   return {
     native,
     platform,
     online: navigator.onLine !== false,
     pushReady: !!plugins.PushNotifications,
+    pushTokenReady: !!pushToken,
     cameraReady: !!plugins.Camera,
     geolocationReady: !!plugins.Geolocation
   };
+}
+
+function initPushRegistrationListeners() {
+  const push = capacitorBridge()?.Plugins?.PushNotifications;
+  if (!push?.addListener || pushRegistrationListenersReady) return;
+  pushRegistrationListenersReady = true;
+  push.addListener("registration", (token) => {
+    const value = token?.value || "";
+    if (value) localStorage.setItem("productionCrewPushToken", value);
+    refreshMobileRuntimePanels();
+    toast("Push device token saved for beta testing.");
+  });
+  push.addListener("registrationError", (error) => {
+    localStorage.removeItem("productionCrewPushToken");
+    refreshMobileRuntimePanels();
+    toast(error?.error || "Push registration failed.");
+  });
 }
 
 async function capturePunchLocation() {
@@ -2981,6 +3001,7 @@ function renderMobileDeviceStatus() {
     ["Runtime", info.native ? "Native wrapper" : "Web app", info.native],
     ["Network", info.online ? "Online" : "Offline", info.online],
     ["Push Bridge", info.pushReady ? "Available" : "Web only", info.pushReady],
+    ["Push Token", info.pushTokenReady ? "Saved" : "Not registered", info.pushTokenReady],
     ["Camera Bridge", info.cameraReady ? "Available" : "Browser upload", info.cameraReady],
     ["Location Bridge", info.geolocationReady ? "Available" : "Browser location", info.geolocationReady]
   ].map(([label, value, ready]) => `<div class="mobile-device-item ${ready ? "ready" : "pending"}"><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></div>`).join("");
@@ -3006,6 +3027,10 @@ async function requestMobilePermissions() {
     if (plugins.PushNotifications?.requestPermissions) {
       const result = await plugins.PushNotifications.requestPermissions();
       results.push(`Push: ${result.receive || "requested"}`);
+      if (result.receive === "granted") {
+        initPushRegistrationListeners();
+        await plugins.PushNotifications.register();
+      }
     } else if ("Notification" in window) {
       const result = await Notification.requestPermission();
       results.push(`Push: ${result}`);
@@ -3034,7 +3059,7 @@ function renderMobileQaPanel() {
     ["Messaging", !!sendbirdClient?.currentUser, sendbirdClient?.currentUser ? "Connected" : "Needs connect"],
     ["Connection", info.online, info.online ? "Online" : "Offline"],
     ["Location", info.geolocationReady || !!navigator.geolocation, info.geolocationReady ? "Native ready" : "Browser ready"],
-    ["Push", info.pushReady, info.pushReady ? "Native ready" : "Native test pending"]
+    ["Push", info.pushTokenReady || info.pushReady, info.pushTokenReady ? "Token saved" : info.pushReady ? "Native ready" : "Native test pending"]
   ];
   const readyCount = checks.filter(([, ready]) => ready).length;
   count.textContent = `${readyCount}/${checks.length} ready`;
@@ -3052,7 +3077,7 @@ function renderMobileLaunchPanel() {
     ["Crew workflow", isCrewRole() ? visibleEvents().length > 0 : state.events.length > 0, "Assigned event flow available"],
     ["Camera capture", true, "Vehicle/report inputs request camera"],
     ["Location capture", info.geolocationReady || !!navigator.geolocation, info.geolocationReady ? "Native bridge ready" : "Browser location ready"],
-    ["Push path", info.pushReady, info.pushReady ? "Native bridge ready" : "Needs native-device test"],
+    ["Push path", info.pushTokenReady || info.pushReady, info.pushTokenReady ? "Device token saved" : info.pushReady ? "Native bridge ready" : "Needs native-device test"],
     ["Messaging", !!SENDBIRD_APP_ID, "Sendbird app ID configured"],
     ["Notifications", !!NOVU_TRIGGER_FUNCTION, "Novu trigger function named"],
     ["Offline notice", true, "Connection banner active"],
@@ -6793,6 +6818,7 @@ async function init() {
   showAuthScreen("Checking session...");
   bindEvents();
   initMobileAppLifecycle();
+  initPushRegistrationListeners();
   clearForm("timecardForm");
   clearForm("reportForm");
   await initializeAuth();
