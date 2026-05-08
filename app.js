@@ -1705,16 +1705,7 @@ function assignedAccessForCurrentUser() {
 function accessLevelOptionsForForm(form) {
   let roles = accessLevelDefinitions().map((level) => level.id).filter((role) => role !== "ADMIN");
   if (form?.id === "accountAccessForm") return roles;
-  if (["clientProfileForm", "workerForm", "promoterForm"].includes(form?.id)) {
-    const serverRole = normalizeRole(authState.roleRecord?.role || state.accessRole);
-    if (serverRole === "CLIENT") return roles.filter((role) => baseRoleForAccess(role) !== "ADMIN");
-    if (serverRole === "PROMOTER") {
-      const blocked = new Set(["CLIENT", "CLIENT_ADMIN", "CLIENT_REP", "CLIENT_REP_LEAD", "CLIENT_ACCOUNTING"]);
-      return roles.filter((role) => !blocked.has(role) && !["ADMIN", "CLIENT"].includes(baseRoleForAccess(role)));
-    }
-    if (serverRole === "ADMIN") return roles;
-    return roles.filter((role) => !["CLIENT", "PRODUCTION"].includes(baseRoleForAccess(role)));
-  }
+  if (["clientProfileForm", "workerForm", "promoterForm"].includes(form?.id)) return [];
   if (form?.id !== "clientForm") roles = roles.filter((role) => !["CLIENT", "PRODUCTION"].includes(baseRoleForAccess(role)));
   return roles;
 }
@@ -1744,15 +1735,8 @@ function renderAccessLevelControls(root = document) {
 function accessPickerAllowed(form) {
   if (!form) return true;
   if (form.id === "accountAccessForm" || form.id === "accessLevelForm") return true;
-  if (form.id === "clientProfileForm") return false;
-  if (!["workerForm", "promoterForm"].includes(form.id)) return true;
-  const serverRole = normalizeRole(authState.roleRecord?.role || state.accessRole);
-  if (form.id === "workerForm" && serverRole === "CREW") return false;
-  const workerId = form.elements?.id?.value || "";
-  if (form.id === "workerForm" && workerId && workerId === state.activeWorkerId && assignedAccessForCurrentUser().includes("CREW")) return false;
-  const promoterId = form.elements?.id?.value || "";
-  if (form.id === "promoterForm" && serverRole === "PROMOTER" && promoterId && promoterId === state.activePromoterId) return false;
-  return ["ADMIN", "CLIENT", "PROMOTER"].includes(serverRole);
+  if (["clientProfileForm", "workerForm", "promoterForm"].includes(form.id)) return false;
+  return true;
 }
 
 async function refreshSiteAccessLevelsForForm(formId) {
