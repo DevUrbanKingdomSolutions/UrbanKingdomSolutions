@@ -3004,9 +3004,11 @@ function renderMobileDeviceStatus() {
   }
   const info = mobileRuntimeInfo();
   mode.textContent = info.native ? `${info.platform} app` : "web browser";
+  const pwaReady = "serviceWorker" in navigator && ["http:", "https:"].includes(window.location.protocol);
   status.innerHTML = [
     ["Runtime", info.native ? "Native wrapper" : "Web app", info.native],
     ["Network", info.online ? "Online" : "Offline", info.online],
+    ["PWA Shell", pwaReady ? "Ready" : "Deploy to test", pwaReady],
     ["Push Bridge", info.pushReady ? "Available" : "Web only", info.pushReady],
     ["Push Token", info.pushTokenReady ? "Saved" : "Not registered", info.pushTokenReady],
     ["Camera Bridge", info.cameraReady ? "Available" : "Browser upload", info.cameraReady],
@@ -3096,9 +3098,11 @@ function renderMobileLaunchPanel() {
     return;
   }
   const info = mobileRuntimeInfo();
+  const pwaReady = "serviceWorker" in navigator && ["http:", "https:"].includes(window.location.protocol);
   const checks = [
     ["App wrapper", true, "Capacitor iOS/Android folders installed"],
     ["App identity", true, "Manifest and placeholder icon added"],
+    ["PWA app shell", pwaReady, pwaReady ? "Install/offline shell ready" : "Available after deploy"],
     ["Crew workflow", isCrewRole() ? visibleEvents().length > 0 : state.events.length > 0, "Assigned event flow available"],
     ["Camera capture", true, "Vehicle/report inputs request camera"],
     ["Location capture", info.geolocationReady || !!navigator.geolocation, info.geolocationReady ? "Native bridge ready" : "Browser location ready"],
@@ -3111,6 +3115,26 @@ function renderMobileLaunchPanel() {
   const readyCount = checks.filter(([, ready]) => ready).length;
   count.textContent = `${readyCount}/${checks.length} ready`;
   list.innerHTML = checks.map(([label, ready, detail]) => `<div class="mobile-launch-item ${ready ? "ready" : "pending"}"><span>${escapeHtml(label)}</span><strong>${escapeHtml(detail)}</strong></div>`).join("");
+}
+
+async function registerAppShellServiceWorker() {
+  if (!("serviceWorker" in navigator)) return;
+  if (!["http:", "https:"].includes(window.location.protocol)) return;
+  try {
+    const registration = await navigator.serviceWorker.register("./sw.js");
+    if (registration.waiting) registration.waiting.postMessage({ type: "SKIP_WAITING" });
+    registration.addEventListener("updatefound", () => {
+      const worker = registration.installing;
+      if (!worker) return;
+      worker.addEventListener("statechange", () => {
+        if (worker.state === "installed" && navigator.serviceWorker.controller) {
+          toast("Mobile app shell updated. Refresh when ready.");
+        }
+      });
+    });
+  } catch (error) {
+    console.warn("Service worker registration failed", error);
+  }
 }
 
 function renderConnectionBanner() {
@@ -6844,6 +6868,7 @@ async function init() {
   bindEvents();
   initMobileAppLifecycle();
   initPushRegistrationListeners();
+  await registerAppShellServiceWorker();
   clearForm("timecardForm");
   clearForm("reportForm");
   await initializeAuth();

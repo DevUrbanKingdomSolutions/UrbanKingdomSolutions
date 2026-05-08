@@ -2,7 +2,7 @@
   "name": "Production Crew",
   "short_name": "Crew",
   "description": "Entertainment production crew, events, timecards, vehicles, reports, and messaging.",
-  "start_url": "index.html",
+  "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
   "background_color": "#f5f3ee",

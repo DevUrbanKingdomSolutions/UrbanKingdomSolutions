@@ -3,7 +3,7 @@ import { resolve } from "node:path";
 
 const root = resolve(import.meta.dirname, "..");
 const outputDir = resolve(root, "www");
-const staticFiles = ["index.html", "app.js", "styles.css", "manifest.webmanifest"];
+const staticFiles = ["index.html", "app.js", "styles.css", "manifest.webmanifest", "sw.js"];
 const assetDirs = ["assets"];
 
 await rm(outputDir, { force: true, recursive: true });
