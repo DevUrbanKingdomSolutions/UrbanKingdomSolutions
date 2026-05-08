@@ -620,6 +620,7 @@ function fillForm(formId, record) {
       form.elements[key].value = value || "";
     }
   });
+  renderAccessLevelControls(form);
   renderViewOptionControls(form);
   if (formId === "eventForm") renderEventAssignmentManager(form, record.id || "");
   if (formId === "venueForm") renderVenueContactEditor(record.id || "");
@@ -1725,10 +1726,24 @@ function accessLevelLabel(role) {
 
 function renderAccessLevelControls(root = document) {
   root.querySelectorAll?.("[data-access-level-options]").forEach((group) => {
+    const restricted = crewSensitiveAccessLocked(group.closest("form"));
+    const wrapper = group.closest("[data-crew-sensitive-field]");
+    if (wrapper) wrapper.hidden = restricted;
+    if (restricted) {
+      group.innerHTML = "";
+      return;
+    }
     const selected = Array.from(group.querySelectorAll("input[type='checkbox']:checked")).map((input) => input.value);
     const options = accessLevelOptionsForForm(group.closest("form"));
     group.innerHTML = options.map((role) => `<label class="checkbox-option"><input name="${escapeHtml(group.dataset.name || "accessLevels")}" type="checkbox" value="${escapeHtml(role)}" ${selected.includes(role) ? "checked" : ""}>${escapeHtml(accessLevelLabel(role))}</label>`).join("");
   });
+}
+
+function crewSensitiveAccessLocked(form) {
+  if (form?.id !== "workerForm") return false;
+  if (normalizeRole(authState.roleRecord?.role) === "CREW") return true;
+  const workerId = form.elements?.id?.value || "";
+  return !!workerId && workerId === state.activeWorkerId && assignedAccessForCurrentUser().includes("CREW");
 }
 
 async function refreshSiteAccessLevelsForForm(formId) {
@@ -3983,6 +3998,10 @@ function applyAccessProfile() {
   $$("#promoterForm select[name='loginRole'] option[value='CREW']").forEach((option) => { option.hidden = isProductionRole(); });
   $$(".admin-form").forEach((form) => { form.hidden = !profile.canAdminEdit; });
   $$(".owner-form").forEach((form) => { form.hidden = !profile.canOwnerEdit; });
+  $$("[data-crew-sensitive-field]").forEach((field) => {
+    const locked = crewSensitiveAccessLocked(field.closest("form"));
+    field.hidden = locked || (field.classList.contains("owner-form") && !profile.canOwnerEdit);
+  });
   $$(".rate-field").forEach((form) => { form.hidden = !canEditRates(); });
   $$(".venue-form").forEach((form) => { form.hidden = !profile.canVenueEdit; });
   $$(".scoped-form").forEach((form) => { form.hidden = !profile.canScopedEdit; });
@@ -4082,6 +4101,7 @@ async function saveForm(event, storeName) {
   }
 
   const record = await formRecord(form);
+  if (storeName === "workers" && crewSensitiveAccessLocked(form)) delete record.accessLevels;
   const smtpAppPassword = record.smtpAppPassword || "";
   delete record.smtpAppPassword;
   let existing = record.id ? state[storeName].find((item) => item.id === record.id) : null;

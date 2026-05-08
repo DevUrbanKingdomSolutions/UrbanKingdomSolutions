@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Production Crew Database</title>
-    <link rel="stylesheet" href="styles.css?v=V1.01.044-client-access-picker-fallback">
+    <link rel="stylesheet" href="styles.css?v=V1.01.045-hide-crew-access-picker">
   </head>
   <body>
     <section id="authScreen" class="auth-screen">
@@ -679,7 +679,7 @@
                   <option>Do not call</option>
                 </select>
               </label>
-              <label class="owner-form">Access
+              <label class="owner-form" data-crew-sensitive-field>Access
                 <div class="checkbox-grid" data-access-level-options data-checkbox-group data-name="accessLevels"></div>
               </label>
               <label class="owner-form rate-field check-label"><input name="allowCrewRateView" type="checkbox" value="yes"> Allow this crew member to view their pay rates</label>
@@ -1283,6 +1283,6 @@
     <div id="modalHost"></div>
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js?v=V1.01.044-client-access-picker-fallback"></script>
+    <script src="app.js?v=V1.01.045-hide-crew-access-picker"></script>
   </body>
 </html>
