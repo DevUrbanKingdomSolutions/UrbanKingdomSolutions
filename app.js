@@ -2946,7 +2946,7 @@ function renderVehicles() {
   $("#vehicleTableCount").textContent = `${rows.length} shown`;
   $("#vehicleTable").innerHTML = rows.length
     ? rows.map(vehicleCheckRow).join("")
-    : `<tr><td colspan="6" class="empty">No vehicle checks match this search.</td></tr>`;
+    : `<tr><td colspan="7" class="empty">No vehicle checks match this search.</td></tr>`;
 }
 
 function groupedVehicleRows(logs) {
@@ -2985,7 +2985,8 @@ function vehicleCheckRow(group) {
   return `<tr>
     <td><strong>${escapeHtml(event?.name || "")}</strong><p>${formatDate(event?.startDate)}${event?.endDate ? " - " + formatDate(event.endDate) : ""}</p></td>
     <td>${escapeHtml(worker?.name || "")}</td>
-    <td><strong>${escapeHtml(vehicleType || "Vehicle")}</strong><p>${escapeHtml(plate)}</p></td>
+    <td><strong>${escapeHtml(vehicleType || "Vehicle")}</strong></td>
+    <td>${escapeHtml(plate || "Not set")}</td>
     <td>${vehiclePhaseCell(group, "Start")}</td>
     <td>${vehiclePhaseCell(group, "End")}</td>
     <td>${group.logs.map((log) => vehiclePhotoGallery(log)).join("")}</td>
