@@ -56,6 +56,8 @@ const ROLE_ALIASES = {
   client: "CLIENT",
   client_admin: "CLIENT",
   client_rep: "CLIENT",
+  client_rep_lead: "CLIENT",
+  client_accounting: "CLIENT",
   production: "PRODUCTION",
   production_team_access: "PRODUCTION",
   promoter: "PROMOTER",
@@ -68,6 +70,8 @@ const ROLE_ALIASES = {
   CLIENT: "CLIENT",
   CLIENT_ADMIN: "CLIENT",
   CLIENT_REP: "CLIENT",
+  CLIENT_REP_LEAD: "CLIENT",
+  CLIENT_ACCOUNTING: "CLIENT",
   PROMOTER: "PROMOTER",
   PROMOTER_PRODUCTION_OFFICE: "PROMOTER",
   PROMOTER_ADMIN: "PROMOTER",
@@ -92,7 +96,7 @@ const ACCESS_PROFILES = {
   CLIENT_ADMIN: {
     label: "CLIENT ADMIN",
     baseRole: "CLIENT",
-    views: ["dashboard", "clientCompanyProfile", "clientProfile", "workers", "promoters", "venues", "events", "productionBoard", "clock", "timecards", "vehicles", "reports", "payroll", "directory", "runner", "messages", "dataTools"],
+    views: ["dashboard", "clientCompanyProfile", "clientProfile", "workers", "promoters", "venues", "events", "productionBoard", "timecards", "vehicles", "reports", "payroll", "directory", "runner", "messages", "dataTools"],
     canAdminEdit: true,
     canOwnerEdit: true,
     canVenueEdit: true,
@@ -104,13 +108,37 @@ const ACCESS_PROFILES = {
   CLIENT_REP: {
     label: "CLIENT REP",
     baseRole: "CLIENT",
-    views: ["dashboard", "clientProfile", "workers", "promoters", "venues", "events", "productionBoard", "clock", "timecards", "vehicles", "reports", "directory", "runner", "messages", "dataTools"],
+    views: ["dashboard", "clientProfile", "promoters", "events", "productionBoard", "vehicles", "reports", "directory", "runner", "messages", "dataTools"],
+    canAdminEdit: true,
+    canOwnerEdit: true,
+    canVenueEdit: false,
+    canScopedEdit: true,
+    canImportExport: true,
+    canViewRates: false,
+    canSystemEdit: false
+  },
+  CLIENT_REP_LEAD: {
+    label: "CLIENT REP LEAD",
+    baseRole: "CLIENT",
+    views: ["dashboard", "clientProfile", "workers", "promoters", "venues", "events", "productionBoard", "vehicles", "reports", "directory", "runner", "messages", "dataTools"],
     canAdminEdit: true,
     canOwnerEdit: true,
     canVenueEdit: true,
     canScopedEdit: true,
     canImportExport: true,
     canViewRates: false,
+    canSystemEdit: false
+  },
+  CLIENT_ACCOUNTING: {
+    label: "CLIENT ACCOUNTING",
+    baseRole: "CLIENT",
+    views: ["timecards", "payroll"],
+    canAdminEdit: true,
+    canOwnerEdit: false,
+    canVenueEdit: false,
+    canScopedEdit: false,
+    canImportExport: false,
+    canViewRates: true,
     canSystemEdit: false
   },
   PROMOTER_ADMIN: {
@@ -275,7 +303,7 @@ const NAV_GROUPS = {
     { items: [["dashboard", "Dashboard"]] },
     { items: [["clientCompanyProfile", "Client Profile"], ["clientProfile", "My Profile"]] },
     { label: "PROFILES", items: [["workers", "Crew Profiles"], ["promoters", "Promoter Profiles"], ["venues", "Venues"]] },
-    { label: "EVENTS", items: [["events", "Events"], ["productionBoard", "Production Board"], ["clock", "TimeClock"], ["timecards", "Timecards"], ["vehicles", "Vehicles"], ["reports", "Reports"]] },
+    { label: "EVENTS", items: [["events", "Events"], ["productionBoard", "Production Board"], ["timecards", "Timecards"], ["vehicles", "Vehicles"], ["reports", "Reports"]] },
     { label: "PAYROLL", items: [["payroll", "Payroll"]] },
     { label: "DIRECTORIES", items: [["directory", "Crew Directory"], ["runner", "Gig Directory"], ["messages", "Messages"]] },
     { label: "TOOLS", items: [["dataTools", "Import / Export"]] }
@@ -283,10 +311,21 @@ const NAV_GROUPS = {
   CLIENT_REP: [
     { items: [["dashboard", "Dashboard"]] },
     { items: [["clientProfile", "My Profile"]] },
-    { label: "PROFILES", items: [["workers", "Crew Profiles"], ["promoters", "Promoter Profiles"], ["venues", "Venues"]] },
-    { label: "EVENTS", items: [["events", "Events"], ["productionBoard", "Production Board"], ["clock", "TimeClock"], ["timecards", "Timecards"], ["vehicles", "Vehicles"], ["reports", "Reports"]] },
+    { label: "PROFILES", items: [["promoters", "Promoter Profiles"]] },
+    { label: "EVENTS", items: [["events", "Events"], ["productionBoard", "Production Board"], ["vehicles", "Vehicles"], ["reports", "Reports"]] },
     { label: "DIRECTORIES", items: [["directory", "Crew Directory"], ["runner", "Gig Directory"], ["messages", "Messages"]] },
     { label: "TOOLS", items: [["dataTools", "Import / Export"]] }
+  ],
+  CLIENT_REP_LEAD: [
+    { items: [["dashboard", "Dashboard"]] },
+    { items: [["clientProfile", "My Profile"]] },
+    { label: "PROFILES", items: [["workers", "Crew Profiles"], ["promoters", "Promoter Profiles"], ["venues", "Venues"]] },
+    { label: "EVENTS", items: [["events", "Events"], ["productionBoard", "Production Board"], ["vehicles", "Vehicles"], ["reports", "Reports"]] },
+    { label: "DIRECTORIES", items: [["directory", "Crew Directory"], ["runner", "Gig Directory"], ["messages", "Messages"]] },
+    { label: "TOOLS", items: [["dataTools", "Import / Export"]] }
+  ],
+  CLIENT_ACCOUNTING: [
+    { label: "PAYROLL", items: [["timecards", "Timecards"], ["payroll", "Payroll"]] }
   ],
   PROMOTER_ADMIN: [
     { items: [["productionBoard", "Production Board"]] },
@@ -323,6 +362,8 @@ const ROLE_HOME_VIEWS = {
   CLIENT: "dashboard",
   CLIENT_ADMIN: "dashboard",
   CLIENT_REP: "dashboard",
+  CLIENT_REP_LEAD: "dashboard",
+  CLIENT_ACCOUNTING: "timecards",
   PROMOTER: "productionBoard",
   PROMOTER_PRODUCTION_OFFICE: "productionBoard",
   PROMOTER_ADMIN: "productionBoard",
@@ -337,6 +378,8 @@ const ACCESS_LEVEL_LABELS = {
   CLIENT: "Client Admin",
   CLIENT_ADMIN: "Client Admin",
   CLIENT_REP: "Client Rep",
+  CLIENT_REP_LEAD: "Client Rep Lead",
+  CLIENT_ACCOUNTING: "Client Accounting",
   PROMOTER: "Promoter Admin",
   PROMOTER_PRODUCTION_OFFICE: "Promoter Admin",
   PROMOTER_ADMIN: "Promoter Admin",
@@ -1527,7 +1570,7 @@ function accessRoleForView(viewId) {
 
 function assignedAccessForRole(role) {
   const normalized = normalizeRole(role);
-  if (normalized === "CLIENT") return ["CLIENT_ADMIN", "CLIENT_REP", "PROMOTER_ADMIN", "PROMOTER_REP", "CREW", "PRODUCTION_TEAM_ACCESS"];
+  if (normalized === "CLIENT") return ["CLIENT_ADMIN", "CLIENT_REP", "CLIENT_REP_LEAD", "CLIENT_ACCOUNTING", "PROMOTER_ADMIN", "PROMOTER_REP", "CREW", "PRODUCTION_TEAM_ACCESS"];
   if (normalized === "CREW") {
     const worker = getWorker(state.activeWorkerId);
     return normalizeAccessLevels(worker?.accessLevels, "CREW");
@@ -1545,7 +1588,11 @@ function assignedAccessForCurrentUser() {
   if (baseRole === "ADMIN") return ["ADMIN"];
   if (baseRole === "CLIENT") {
     const rep = activeClientRepRecord();
-    return normalizeAccessLevels(rep?.accessLevels, "CLIENT_ADMIN").filter((role) => accessProfileFor(role));
+    let roles = normalizeAccessLevels(rep?.accessLevels, "CLIENT_ADMIN").filter((role) => accessProfileFor(role));
+    if (roles.includes("CLIENT_ACCOUNTING") && roles.includes("CLIENT_REP") && !roles.includes("CLIENT_REP_LEAD") && !roles.includes("CLIENT_ADMIN")) {
+      roles = roles.filter((role) => role !== "CLIENT_ACCOUNTING");
+    }
+    return roles;
   }
   return assignedAccessForRole(baseRole).filter((role) => accessProfileFor(role));
 }
@@ -1668,8 +1715,12 @@ function canSystemEdit() {
   return currentProfile().canSystemEdit;
 }
 
+function hasAssignedAccess(role) {
+  return assignedAccessForCurrentUser().includes(role);
+}
+
 function canViewRates() {
-  return currentProfile().canViewRates;
+  return currentProfile().canViewRates || (hasAssignedAccess("CLIENT_ACCOUNTING") && hasAssignedAccess("CLIENT_REP_LEAD"));
 }
 
 function getWorker(id) {
@@ -3801,7 +3852,7 @@ function applyAccessProfile() {
   $$("#promoterForm select[name='loginRole'] option[value='CREW']").forEach((option) => { option.hidden = isProductionRole(); });
   $$(".admin-form").forEach((form) => { form.hidden = !profile.canAdminEdit; });
   $$(".owner-form").forEach((form) => { form.hidden = !profile.canOwnerEdit; });
-  $$(".rate-field").forEach((form) => { form.hidden = !profile.canViewRates; });
+  $$(".rate-field").forEach((form) => { form.hidden = !canViewRates(); });
   $$(".venue-form").forEach((form) => { form.hidden = !profile.canVenueEdit; });
   $$(".scoped-form").forEach((form) => { form.hidden = !profile.canScopedEdit; });
   $$(".system-form").forEach((form) => { form.hidden = !profile.canSystemEdit; });
