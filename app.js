@@ -552,6 +552,7 @@ async function formRecord(form) {
   form.querySelectorAll("[data-checkbox-group]").forEach((group) => {
     const name = group.dataset.name;
     if (!name || group.closest("[hidden]")) return;
+    if (name === "accessLevels" && !accessPickerAllowed(form)) return;
     record[name] = Array.from(group.querySelectorAll("input[type='checkbox']:checked")).map((input) => input.value);
   });
   for (const element of Array.from(form.elements)) {
@@ -1726,10 +1727,13 @@ function accessLevelLabel(role) {
 
 function renderAccessLevelControls(root = document) {
   root.querySelectorAll?.("[data-access-level-options]").forEach((group) => {
-    const restricted = crewSensitiveAccessLocked(group.closest("form"));
-    const wrapper = group.closest("[data-crew-sensitive-field]");
-    if (wrapper) wrapper.hidden = restricted;
-    if (restricted) {
+    const allowed = accessPickerAllowed(group.closest("form"));
+    const wrapper = group.closest("[data-access-manager-field]");
+    if (wrapper) {
+      wrapper.hidden = !allowed;
+      wrapper.style.display = allowed ? "" : "none";
+    }
+    if (!allowed) {
       group.innerHTML = "";
       return;
     }
@@ -1739,11 +1743,21 @@ function renderAccessLevelControls(root = document) {
   });
 }
 
-function crewSensitiveAccessLocked(form) {
-  if (form?.id !== "workerForm") return false;
-  if (normalizeRole(authState.roleRecord?.role) === "CREW") return true;
+function accessPickerAllowed(form) {
+  if (!form) return true;
+  if (form.id === "accountAccessForm" || form.id === "accessLevelForm") return true;
+  if (form.id === "clientProfileForm") return false;
+  if (!["workerForm", "promoterForm"].includes(form.id)) return true;
+  if (form.id === "workerForm" && normalizeRole(authState.roleRecord?.role) === "CREW") return false;
   const workerId = form.elements?.id?.value || "";
-  return !!workerId && workerId === state.activeWorkerId && assignedAccessForCurrentUser().includes("CREW");
+  if (form.id === "workerForm" && workerId && workerId === state.activeWorkerId && assignedAccessForCurrentUser().includes("CREW")) return false;
+  const promoterId = form.elements?.id?.value || "";
+  if (form.id === "promoterForm" && normalizeRole(authState.roleRecord?.role) === "PROMOTER" && promoterId && promoterId === state.activePromoterId) return false;
+  const clientAccessManager = isClientRole()
+    || currentProfile().canOwnerEdit
+    || hasAssignedProfilePermission((profile) => profile.effectiveRole === "CLIENT" && profile.canOwnerEdit);
+  const promoterAccessManager = hasAssignedProfilePermission((profile) => profile.effectiveRole === "PROMOTER" && profile.canAdminEdit);
+  return clientAccessManager || promoterAccessManager || canSystemEdit();
 }
 
 async function refreshSiteAccessLevelsForForm(formId) {
@@ -3998,9 +4012,10 @@ function applyAccessProfile() {
   $$("#promoterForm select[name='loginRole'] option[value='CREW']").forEach((option) => { option.hidden = isProductionRole(); });
   $$(".admin-form").forEach((form) => { form.hidden = !profile.canAdminEdit; });
   $$(".owner-form").forEach((form) => { form.hidden = !profile.canOwnerEdit; });
-  $$("[data-crew-sensitive-field]").forEach((field) => {
-    const locked = crewSensitiveAccessLocked(field.closest("form"));
-    field.hidden = locked || (field.classList.contains("owner-form") && !profile.canOwnerEdit);
+  $$("[data-access-manager-field]").forEach((field) => {
+    const allowed = accessPickerAllowed(field.closest("form"));
+    field.hidden = !allowed;
+    field.style.display = allowed ? "" : "none";
   });
   $$(".rate-field").forEach((form) => { form.hidden = !canEditRates(); });
   $$(".venue-form").forEach((form) => { form.hidden = !profile.canVenueEdit; });
@@ -4101,7 +4116,7 @@ async function saveForm(event, storeName) {
   }
 
   const record = await formRecord(form);
-  if (storeName === "workers" && crewSensitiveAccessLocked(form)) delete record.accessLevels;
+  if (["clientReps", "workers", "promoters"].includes(storeName) && !accessPickerAllowed(form)) delete record.accessLevels;
   const smtpAppPassword = record.smtpAppPassword || "";
   delete record.smtpAppPassword;
   let existing = record.id ? state[storeName].find((item) => item.id === record.id) : null;

@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Production Crew Database</title>
-    <link rel="stylesheet" href="styles.css?v=V1.01.045-hide-crew-access-picker">
+    <link rel="stylesheet" href="styles.css?v=V1.01.046-lock-profile-access-fields">
   </head>
   <body>
     <section id="authScreen" class="auth-screen">
@@ -160,7 +160,7 @@
             <label>Email<input name="email" type="email" placeholder="you@example.com"></label>
             <label>Phone<input name="phone" placeholder="(555) 000-0000"></label>
             <label>Mailing address<textarea name="mailingAddress" rows="3" placeholder="Street, city, state, zip"></textarea></label>
-            <div class="photo-fieldset rate-field">
+            <div class="photo-fieldset rate-field" data-access-manager-field>
               <span>Client Access</span>
               <div class="checkbox-grid" data-access-level-options data-checkbox-group data-name="accessLevels"></div>
             </div>
@@ -679,7 +679,7 @@
                   <option>Do not call</option>
                 </select>
               </label>
-              <label class="owner-form" data-crew-sensitive-field>Access
+              <label class="owner-form" data-access-manager-field>Access
                 <div class="checkbox-grid" data-access-level-options data-checkbox-group data-name="accessLevels"></div>
               </label>
               <label class="owner-form rate-field check-label"><input name="allowCrewRateView" type="checkbox" value="yes"> Allow this crew member to view their pay rates</label>
@@ -1144,7 +1144,7 @@
                 </select>
               </label>
               <label class="promoter-login-field">Supabase user ID<input name="authUserId" placeholder="Paste user ID after setup"></label>
-              <label class="promoter-login-field">Access
+              <label class="promoter-login-field" data-access-manager-field>Access
                 <div class="checkbox-grid" data-access-level-options data-checkbox-group data-name="accessLevels"></div>
               </label>
               <label>Company billing notes<textarea name="billing" rows="3" placeholder="PO rules, invoice contact, terms"></textarea></label>
@@ -1283,6 +1283,6 @@
     <div id="modalHost"></div>
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js?v=V1.01.045-hide-crew-access-picker"></script>
+    <script src="app.js?v=V1.01.046-lock-profile-access-fields"></script>
   </body>
 </html>
