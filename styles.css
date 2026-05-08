@@ -1788,6 +1788,7 @@ td p {
   position: fixed;
   right: 20px;
   bottom: 20px;
+  z-index: 90;
   max-width: 360px;
   background: #20282c;
   color: #ffffff;
@@ -2294,6 +2295,13 @@ body:not(.owner-mode) .rate-field {
   .mobile-bottom-nav button.active {
     background: #e7f4ef;
     color: #176346;
+  }
+
+  .toast {
+    right: 12px;
+    bottom: calc(88px + env(safe-area-inset-bottom));
+    left: 12px;
+    max-width: none;
   }
 }
 
