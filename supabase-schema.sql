@@ -186,6 +186,7 @@ create table if not exists public.clients (
 
 alter table public.clients
   add column if not exists company_type text,
+  add column if not exists package_layouts text[] not null default array['LOCAL_PRODUCTION_SERVICES']::text[],
   add column if not exists address text,
   add column if not exists default_day_rate numeric,
   add column if not exists default_included_hours numeric,

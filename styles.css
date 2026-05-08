@@ -380,6 +380,24 @@ button {
   margin-top: 2px;
 }
 
+.package-option span {
+  display: grid;
+  gap: 3px;
+}
+
+.package-option strong {
+  color: var(--ink);
+  font-size: 13px;
+}
+
+.package-option em {
+  font-style: normal;
+}
+
+.package-option small {
+  line-height: 1.35;
+}
+
 .crew-checkbox-grid {
   max-height: 260px;
   overflow: auto;

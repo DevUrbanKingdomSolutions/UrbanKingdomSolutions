@@ -392,6 +392,39 @@ const ACCESS_LEVEL_LABELS = {
   CREW: "Crew / Runner"
 };
 
+const CLIENT_PACKAGE_DEFINITIONS = [
+  {
+    id: "LOCAL_PRODUCTION_SERVICES",
+    name: "Local Production Services",
+    status: "Active",
+    description: "Crew, runners, events, venues, timecards, vehicles, reports, payroll, messaging, and local gig resources."
+  },
+  {
+    id: "TOUR_DATA_SERVICES",
+    name: "Tour Data Services",
+    status: "Planned",
+    description: "Tour cities, travel, HR, production documents, and city-by-city resource sharing."
+  },
+  {
+    id: "AWARDS_SHOWS",
+    name: "Awards Shows",
+    status: "Planned",
+    description: "Awards production teams, show departments, credentials, documents, runs, and event-day operations."
+  },
+  {
+    id: "LIVE_TV_SPECIALS",
+    name: "Live TV Specials",
+    status: "Planned",
+    description: "Broadcast-oriented event data, production teams, show timing, contacts, and venue operations."
+  },
+  {
+    id: "CORPORATE_LIVE_EVENTS",
+    name: "Corporate Live Events",
+    status: "Planned",
+    description: "Corporate event crews, venues, production offices, schedules, vendors, and client-facing operations."
+  }
+];
+
 const SMTP_PROVIDER_SETTINGS = {
   google: {
     host: "smtp.gmail.com",
@@ -664,6 +697,35 @@ function sortByName(records) {
   return records.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
 }
 
+function clientPackageDefinitions() {
+  return CLIENT_PACKAGE_DEFINITIONS;
+}
+
+function normalizeClientPackages(value) {
+  const values = Array.isArray(value) ? value : String(value || "").split(",");
+  const allowed = new Set(clientPackageDefinitions().map((pkg) => pkg.id));
+  const packages = values.map((item) => String(item || "").trim()).filter((item) => allowed.has(item));
+  return packages.length ? Array.from(new Set(packages)) : ["LOCAL_PRODUCTION_SERVICES"];
+}
+
+function clientPackageLabels(value) {
+  const selected = normalizeClientPackages(value);
+  return selected.map((id) => clientPackageDefinitions().find((pkg) => pkg.id === id)?.name || id);
+}
+
+function clientPackageBadges(value) {
+  return clientPackageLabels(value).map((label) => `<span class="status-pill">${escapeHtml(label)}</span>`).join(" ");
+}
+
+function renderClientPackageControls(form) {
+  const group = form?.querySelector("[data-package-options]");
+  if (!group) return;
+  group.innerHTML = clientPackageDefinitions().map((pkg) => {
+    const status = pkg.status === "Active" ? "" : ` <em class="muted">(${escapeHtml(pkg.status)})</em>`;
+    return `<label class="checkbox-option package-option"><input type="checkbox" value="${escapeHtml(pkg.id)}"><span><strong>${escapeHtml(pkg.name)}</strong>${status}<small>${escapeHtml(pkg.description)}</small></span></label>`;
+  }).join("");
+}
+
 async function formRecord(form) {
   const record = {};
   form.querySelectorAll("[data-checkbox-group]").forEach((group) => {
@@ -712,6 +774,7 @@ function readFileAsDataUrl(file) {
 
 function fillForm(formId, record) {
   const form = document.getElementById(formId);
+  if (!form.querySelector("[data-package-options] input")) renderClientPackageControls(form);
   renderAccessLevelControls(form);
   renderViewOptionControls(form);
   Object.entries(record).forEach(([key, value]) => {
@@ -760,9 +823,15 @@ function clearForm(formId) {
   const form = document.getElementById(formId);
   if (!form?.reset) return;
   form.reset();
+  if (!form.querySelector("[data-package-options] input")) renderClientPackageControls(form);
   renderAccessLevelControls(form);
   renderViewOptionControls(form);
   if (form.elements.id) form.elements.id.value = "";
+  if (formId === "clientForm") {
+    const packageGroup = form.querySelector(`[data-checkbox-group][data-name="packageLayouts"]`);
+    const defaultPackage = packageGroup?.querySelector(`input[value="LOCAL_PRODUCTION_SERVICES"]`);
+    if (defaultPackage) defaultPackage.checked = true;
+  }
   if (formId === "timecardForm") {
     form.elements.breakMinutes.value = "0";
     form.elements.clockIn.value = toLocalInputValue(new Date());
@@ -788,6 +857,11 @@ function openForm(formId) {
   if (!form || form.hidden) {
     toast("This access view cannot open that form.");
     return;
+  }
+  renderClientPackageControls(form);
+  if (formId === "clientForm" && !form.elements.id?.value) {
+    const defaultPackage = form.querySelector(`[data-checkbox-group][data-name="packageLayouts"] input[value="LOCAL_PRODUCTION_SERVICES"]`);
+    if (defaultPackage) defaultPackage.checked = true;
   }
   applyAccessProfile();
   $$(".form-panel.modal-form").forEach((item) => item.classList.remove("modal-form"));
@@ -1016,6 +1090,7 @@ async function syncSupabaseClientAccount(record) {
     email: record.email || "",
     phone: record.phone || "",
     status: record.status || "Active",
+    package_layouts: normalizeClientPackages(record.packageLayouts),
     default_day_rate: nullableNumber(record.defaultDayRate),
     default_included_hours: nullableNumber(record.defaultIncludedHours),
     default_additional_rate: nullableNumber(record.defaultAdditionalRate),
@@ -1065,6 +1140,7 @@ function mapSupabaseClient(record) {
     email: record.email || "",
     phone: record.phone || "",
     status: record.status || "Active",
+    packageLayouts: normalizeClientPackages(record.package_layouts || record.packageLayouts),
     defaultDayRate: record.default_day_rate || "",
     defaultIncludedHours: record.default_included_hours || "",
     defaultAdditionalRate: record.default_additional_rate || "",
@@ -1151,7 +1227,7 @@ async function hydrateClientSetupData(roleRecord, user) {
   try {
     const { data: client, error: clientError } = await supabaseClient
       .from("clients")
-      .select("id,name,contact_name,email,phone,status,default_day_rate,default_included_hours,default_additional_rate,default_rented_vehicle_rate,default_personal_vehicle_rate,notes,created_at,updated_at")
+      .select("id,name,contact_name,email,phone,status,package_layouts,default_day_rate,default_included_hours,default_additional_rate,default_rented_vehicle_rate,default_personal_vehicle_rate,notes,created_at,updated_at")
       .eq("id", roleRecord.client_id)
       .maybeSingle();
     if (clientError) throw clientError;
@@ -2523,7 +2599,7 @@ function renderAdmin() {
   renderUserAccessTable("adminUserTable", "adminUserTableCount", state.userAccessRows.filter((row) => normalizeRole(row.role) === "ADMIN"));
   $("#clientTableCount").textContent = `${state.clients.length} clients`;
   $("#clientTable").innerHTML = state.clients.length
-    ? state.clients.map((client) => `<tr><td><button class="link-button" data-view-client-company="${client.id}" type="button"><strong>${escapeHtml(client.name)}</strong></button><p>${escapeHtml(client.email)}</p></td><td>${escapeHtml(client.contactName)}<p>${escapeHtml(client.phone)}</p></td><td><span class="status-pill">${escapeHtml(client.status || "Active")}</span></td><td>${escapeHtml(client.notes)}${loginStatus(client)}</td><td>${actionButtons("clients", client.id, "clientForm", loginSetupButton("clients", client), canSystemEdit())}</td></tr>`).join("")
+    ? state.clients.map((client) => `<tr><td><button class="link-button" data-view-client-company="${client.id}" type="button"><strong>${escapeHtml(client.name)}</strong></button><p>${escapeHtml(client.email)}</p><p>${clientPackageBadges(client.packageLayouts)}</p></td><td>${escapeHtml(client.contactName)}<p>${escapeHtml(client.phone)}</p></td><td><span class="status-pill">${escapeHtml(client.status || "Active")}</span></td><td>${escapeHtml(client.notes)}${loginStatus(client)}</td><td>${actionButtons("clients", client.id, "clientForm", loginSetupButton("clients", client), canSystemEdit())}</td></tr>`).join("")
     : `<tr><td colspan="5" class="empty">No client accounts yet.</td></tr>`;
 }
 
@@ -2606,6 +2682,7 @@ function openClientCompanyView(clientId) {
       <div><span>Main Contact</span><strong>${escapeHtml(client.contactName || "")}</strong></div>
       <div><span>Email</span><strong>${escapeHtml(client.email || "")}</strong></div>
       <div><span>Phone</span><strong>${escapeHtml(client.phone || "")}</strong></div>
+      <div><span>Package Layouts</span><strong>${clientPackageBadges(client.packageLayouts)}</strong></div>
     </div>
     <div class="profile-section"><span>System Notes</span><p>${escapeHtml(client.notes || "")}</p></div>
   </article>`;
@@ -2725,6 +2802,8 @@ function openReadOnlyRecord(storeName, id) {
   } else if (storeName === "runnerStops") {
     readOnlyProfileCard(record.name, record.category || "Gig Directory", [
       ["Phone", record.phone],
+      ["City", record.city],
+      ["State", record.state],
       ["Address", record.address],
       ["Hours", record.hours],
       ["Best Use", record.bestUse]
@@ -2872,6 +2951,7 @@ function renderClientProfile() {
         <div><span>Main Contact</span><strong>${escapeHtml(client.contactName || "")}</strong></div>
         <div><span>Email</span><strong>${escapeHtml(client.email || "")}</strong></div>
         <div><span>Phone</span><strong>${escapeHtml(client.phone || "")}</strong></div>
+        <div><span>Package Layouts</span><strong>${clientPackageBadges(client.packageLayouts)}</strong></div>
       </div>
       ${rateSummary}
       <div class="profile-section"><span>Company Notes</span><p>${escapeHtml(client.notes || "")}</p></div>
@@ -3446,13 +3526,17 @@ function eventCard(event) {
   const promoter = getPromoter(event.promoterId);
   const crew = eventWorkerIds(event).map((id) => getWorker(id)?.name).filter(Boolean);
   const crewLine = isCrewRole() ? "Assigned to you" : (crew.join(", ") || "No crew assigned");
+  const gigSearch = eventGigSearchText(event);
+  const gigDirectoryButton = canOpenView("runner") && gigSearch
+    ? `<button class="tiny-button" data-event-gig-search="${event.id}" type="button">City Resources</button>`
+    : "";
   const publicAccessButton = (isClientRole() || isProductionRole())
     ? `<button class="tiny-button" data-event-access="${event.id}" type="button">Production Link</button>`
     : "";
   const adminEventActions = canAdminEdit()
     ? `<button class="tiny-button" data-add-assignment="${event.id}" type="button">Add Runner</button><button class="tiny-button" data-swap-crew="${event.id}" type="button">Swap Crew</button><button class="tiny-button" data-substitute-crew="${event.id}" type="button">Substitution</button>`
     : "";
-  const eventActions = `${publicAccessButton}${adminEventActions}${actionButtons("events", event.id, "eventForm", "", canAdminEdit())}`;
+  const eventActions = `${gigDirectoryButton}${publicAccessButton}${adminEventActions}${actionButtons("events", event.id, "eventForm", "", canAdminEdit())}`;
   return `<article class="record-card">
     <div class="record-card-main">
       <strong>${recordLink("events", event.id, event.name)}</strong>
@@ -3467,6 +3551,35 @@ function eventCard(event) {
       <div class="event-options-menu">${eventActions}</div>
     </details>
   </article>`;
+}
+
+function canOpenView(view) {
+  return combinedNavGroups().some((group) => group.items.some(([itemView]) => itemView === view));
+}
+
+function eventGigSearchText(event) {
+  const venue = getVenue(event?.venueId);
+  const explicit = [event?.city, event?.state].filter(Boolean).join(" ");
+  if (explicit) return explicit;
+  const address = venue?.address || "";
+  const parts = address.split(",").map((part) => part.trim()).filter(Boolean);
+  if (parts.length >= 3) return `${parts.at(-3)} ${parts.at(-2)}`;
+  if (parts.length >= 2) return parts.at(-2);
+  return venue?.city || venue?.state ? [venue.city, venue.state].filter(Boolean).join(" ") : "";
+}
+
+function openGigDirectoryForEvent(eventId) {
+  const event = getEvent(eventId);
+  const search = eventGigSearchText(event);
+  if (!search) {
+    toast("Add a city or venue address first.");
+    return;
+  }
+  state.search = search.toLowerCase();
+  state.runnerCategory = "All";
+  $("#globalSearch").value = search;
+  setView("runner");
+  toast(`Showing gig resources for ${search}.`);
 }
 
 function renderClock() {
@@ -4558,7 +4671,8 @@ function renderActiveThreadMembers() {
 
 function runnerStopRow(stop) {
   const noteUi = isCrewRole() ? runnerStopNoteUi(stop) : "";
-  return `<tr><td><strong>${recordLink("runnerStops", stop.id, stop.name)}</strong><p>${escapeHtml(stop.phone)}</p></td><td>${escapeHtml(stop.category)}</td><td>${escapeHtml(stop.address)}</td><td>${escapeHtml(stop.hours)}</td><td>${escapeHtml(stop.bestUse)}${noteUi}</td><td>${actionButtons("runnerStops", stop.id, "runnerForm")}</td></tr>`;
+  const location = [stop.city, stop.state].filter(Boolean).join(", ");
+  return `<tr><td><strong>${recordLink("runnerStops", stop.id, stop.name)}</strong><p>${escapeHtml(stop.phone)}</p>${location ? `<p>${escapeHtml(location)}</p>` : ""}</td><td>${escapeHtml(stop.category)}</td><td>${escapeHtml(stop.address)}</td><td>${escapeHtml(stop.hours)}</td><td>${escapeHtml(stop.bestUse)}${noteUi}</td><td>${actionButtons("runnerStops", stop.id, "runnerForm")}</td></tr>`;
 }
 
 function runnerStopNoteUi(stop) {
@@ -4913,6 +5027,9 @@ async function saveForm(event, storeName) {
       toast("Select at least one page for this access level.");
       return;
     }
+  }
+  if (storeName === "clients") {
+    merged.packageLayouts = normalizeClientPackages(merged.packageLayouts);
   }
   if (storeName === "events") {
     merged.id = merged.id || crypto.randomUUID();
@@ -6748,6 +6865,7 @@ function bindEvents() {
     const viewClientCompanyButton = event.target.closest("[data-view-client-company]");
     const editViewedClientButton = event.target.closest("#editViewedClientCompany");
     const eventAccessButton = event.target.closest("[data-event-access]");
+    const eventGigSearchButton = event.target.closest("[data-event-gig-search]");
     const addVenueContactButton = event.target.closest("[data-add-venue-contact]");
     const submitVenueContactButton = event.target.closest("[data-submit-venue-contact]");
     const removeVenueContactButton = event.target.closest("[data-remove-venue-contact]");
@@ -6851,6 +6969,10 @@ function bindEvents() {
     if (eventAccessButton) {
       const eventRecord = getEvent(eventAccessButton.dataset.eventAccess);
       if (eventRecord) await createEventAccessLink(eventRecord);
+    }
+    if (eventGigSearchButton) {
+      openGigDirectoryForEvent(eventGigSearchButton.dataset.eventGigSearch);
+      return;
     }
     if (addVenueContactButton) {
       const list = $("#venueContactList");

@@ -10,7 +10,7 @@
     <title>Production Crew Database</title>
     <link rel="manifest" href="manifest.webmanifest">
     <link rel="icon" href="assets/app-icon.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="styles.css?v=V1.03.023-pwa-install-button">
+    <link rel="stylesheet" href="styles.css?v=V1.03.024-client-packages">
   </head>
   <body>
     <section id="authScreen" class="auth-screen">
@@ -390,6 +390,9 @@
               </div>
               <input type="hidden" name="id">
               <label>Client company<input name="name" required placeholder="Company name"></label>
+              <label>Package layouts
+                <div class="checkbox-grid package-grid" data-package-options data-checkbox-group data-name="packageLayouts"></div>
+              </label>
               <label>First client rep<input name="contactName" placeholder="Name"></label>
               <label>Company email<input name="email" type="email" placeholder="client@example.com"></label>
               <label>Rep login email<input name="loginEmail" type="email" placeholder="owner-login@example.com"></label>
@@ -1307,6 +1310,11 @@
               </div>
               <input type="hidden" name="id">
               <label>Name<input name="name" required placeholder="Store, shop, service, worker tip"></label>
+              <div class="photo-fieldset">
+                <span>Location</span>
+                <label>City<input name="city" placeholder="Los Angeles"></label>
+                <label>State<input name="state" placeholder="CA"></label>
+              </div>
               <label>Category
                 <select name="category">
                   <option>Hardware</option>
@@ -1356,6 +1364,6 @@
     <div id="modalHost"></div>
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js?v=V1.03.023-pwa-install-button"></script>
+    <script src="app.js?v=V1.03.024-client-packages"></script>
   </body>
 </html>
