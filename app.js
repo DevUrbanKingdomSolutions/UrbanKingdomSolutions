@@ -2995,6 +2995,12 @@ function renderMobileDeviceStatus() {
   const mode = $("#mobileDeviceMode");
   const status = $("#mobileDeviceStatus");
   if (!panel || !mode || !status) return;
+  panel.hidden = !isAdminRole();
+  if (!isAdminRole()) {
+    status.innerHTML = "";
+    mode.textContent = "";
+    return;
+  }
   const info = mobileRuntimeInfo();
   mode.textContent = info.native ? `${info.platform} app` : "web browser";
   status.innerHTML = [
@@ -3008,6 +3014,10 @@ function renderMobileDeviceStatus() {
 }
 
 async function requestMobilePermissions() {
+  if (!isAdminRole()) {
+    toast("Only ADMIN can use mobile beta permission tools.");
+    return;
+  }
   const plugins = capacitorBridge()?.Plugins || {};
   const results = [];
   try {
@@ -3045,9 +3055,16 @@ async function requestMobilePermissions() {
 }
 
 function renderMobileQaPanel() {
+  const panel = $("#mobileQaPanel");
   const list = $("#mobileQaList");
   const count = $("#mobileQaCount");
-  if (!list || !count) return;
+  if (!panel || !list || !count) return;
+  panel.hidden = !isAdminRole();
+  if (!isAdminRole()) {
+    list.innerHTML = "";
+    count.textContent = "";
+    return;
+  }
   const info = mobileRuntimeInfo();
   const checks = [
     ["Login", !!authState.session, "Session active"],
@@ -3067,9 +3084,16 @@ function renderMobileQaPanel() {
 }
 
 function renderMobileLaunchPanel() {
+  const panel = $("#mobileLaunchPanel");
   const list = $("#mobileLaunchList");
   const count = $("#mobileLaunchCount");
-  if (!list || !count) return;
+  if (!panel || !list || !count) return;
+  panel.hidden = !isAdminRole();
+  if (!isAdminRole()) {
+    list.innerHTML = "";
+    count.textContent = "";
+    return;
+  }
   const info = mobileRuntimeInfo();
   const checks = [
     ["App wrapper", true, "Capacitor iOS/Android folders installed"],
