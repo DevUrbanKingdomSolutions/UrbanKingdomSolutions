@@ -474,6 +474,68 @@ label textarea:focus {
   margin-bottom: 18px;
 }
 
+.crew-mobile-home {
+  display: none;
+}
+
+.crew-mobile-hero,
+.crew-mobile-actions,
+.crew-mobile-tasks {
+  display: grid;
+  gap: 10px;
+  padding: 14px 16px;
+}
+
+.crew-mobile-hero {
+  border-bottom: 1px solid var(--line);
+}
+
+.crew-mobile-hero strong {
+  display: block;
+  font-size: 22px;
+}
+
+.crew-mobile-hero span,
+.crew-mobile-hero p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.crew-mobile-actions {
+  grid-template-columns: 1fr 1fr;
+  border-bottom: 1px solid var(--line);
+  background: #fbfaf6;
+}
+
+.crew-mobile-actions .primary-action {
+  grid-column: 1 / -1;
+  min-height: 54px;
+  text-align: center;
+  font-weight: 900;
+}
+
+.crew-mobile-actions .ghost-button {
+  min-height: 44px;
+  background: #ffffff;
+}
+
+.crew-mobile-task {
+  display: grid;
+  gap: 4px;
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 12px;
+  color: var(--ink);
+  text-align: left;
+}
+
+.crew-mobile-task span {
+  color: var(--muted);
+  font-size: 13px;
+}
+
 .metric,
 .panel {
   background: var(--panel);
@@ -1563,6 +1625,11 @@ body:not(.owner-mode) .rate-field {
   .metric-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 10px;
+  }
+
+  body.crew-mode .crew-mobile-home:not([hidden]) {
+    display: block;
+    margin-bottom: 14px;
   }
 
   .metric {

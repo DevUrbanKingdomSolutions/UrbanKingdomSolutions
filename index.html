@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#20282c">
     <title>Production Crew Database</title>
-    <link rel="stylesheet" href="styles.css?v=V1.03.003-mobile-actions">
+    <link rel="stylesheet" href="styles.css?v=V1.03.004-crew-mobile-home">
   </head>
   <body>
     <section id="authScreen" class="auth-screen">
@@ -110,6 +110,15 @@
         </header>
 
         <section id="dashboard" class="view active-view" aria-labelledby="viewTitle">
+          <section id="crewMobileHome" class="panel crew-mobile-home" hidden>
+            <div class="panel-heading">
+              <h3>Today</h3>
+              <span id="crewMobileStatus" class="muted"></span>
+            </div>
+            <div id="crewMobileHero" class="crew-mobile-hero"></div>
+            <div id="crewMobileActions" class="crew-mobile-actions"></div>
+            <div id="crewMobileTasks" class="crew-mobile-tasks"></div>
+          </section>
           <div class="metric-grid">
             <article class="metric">
               <span>Events</span>
@@ -1288,6 +1297,6 @@
     <div id="modalHost"></div>
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js?v=V1.03.003-mobile-actions"></script>
+    <script src="app.js?v=V1.03.004-crew-mobile-home"></script>
   </body>
 </html>

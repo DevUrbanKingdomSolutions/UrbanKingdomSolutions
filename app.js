@@ -2836,6 +2836,7 @@ function renderSelects() {
 }
 
 function renderDashboard() {
+  renderCrewMobileHome();
   if (isAdminRole()) {
     $("#eventCount").textContent = "0";
     $("#activeTimecards").textContent = "0";
@@ -2870,6 +2871,85 @@ function renderDashboard() {
   $("#recentNotes").innerHTML = noteItems.length
     ? noteItems.slice(0, 8).map((item) => `<div class="compact-item"><strong>${escapeHtml(item.type)}: ${escapeHtml(item.name)}</strong><span>${escapeHtml(item.text)}</span></div>`).join("")
     : `<div class="compact-item empty">Notes will appear here as you add them.</div>`;
+}
+
+function renderCrewMobileHome() {
+  const panel = $("#crewMobileHome");
+  if (!panel) return;
+  panel.hidden = !isCrewRole();
+  if (!isCrewRole()) return;
+  const events = [...visibleEvents()].sort((a, b) => new Date(a.startDate || 0) - new Date(b.startDate || 0));
+  const activeCard = state.timecards.find((card) => card.workerId === state.activeWorkerId && card.clockIn && !card.clockOut);
+  const activeEvent = activeCard ? getEvent(activeCard.eventId) : null;
+  const focusEvent = activeEvent || events[0];
+  const focusCard = focusEvent ? timecardForCrewEvent(focusEvent.id) : null;
+  const venue = focusEvent ? getVenue(focusEvent.venueId) : null;
+  const punch = focusEvent ? nextCrewPunch(focusCard) : null;
+  $("#crewMobileStatus").textContent = events.length ? `${events.length} assigned` : "No assigned events";
+  $("#crewMobileHero").innerHTML = focusEvent
+    ? `<strong>${escapeHtml(focusEvent.name)}</strong>
+      <span>${escapeHtml(venue?.name || "No venue")} ${focusEvent.startDate ? "- " + formatDate(focusEvent.startDate) : ""}</span>
+      <p>${escapeHtml(activeCard ? "You are currently clocked in." : crewEventStatus(focusCard))}</p>`
+    : `<strong>No assigned event</strong><span>When an event is assigned, it will appear here.</span><p>Use the directory and messages if you need to check in with the office.</p>`;
+  $("#crewMobileActions").innerHTML = focusEvent
+    ? `<button class="primary-action" data-time-punch="${escapeHtml(punch.field)}" data-event-id="${escapeHtml(focusEvent.id)}" type="button">${escapeHtml(punch.label)}</button>
+      <button class="ghost-button" data-mobile-go-view="vehicles" type="button">Vehicle Photos</button>
+      <button class="ghost-button" data-mobile-go-view="reports" type="button">Report</button>
+      <button class="ghost-button" data-mobile-go-view="messages" type="button">Messages</button>`
+    : `<button class="primary-action" data-mobile-go-view="messages" type="button">Messages</button>
+      <button class="ghost-button" data-mobile-go-view="runner" type="button">Gig Directory</button>`;
+  $("#crewMobileTasks").innerHTML = crewMobileTaskCards(events, activeCard).join("");
+}
+
+function timecardForCrewEvent(eventId) {
+  return state.timecards.find((card) => card.eventId === eventId && card.workerId === state.activeWorkerId && !card.clockOut)
+    || state.timecards.find((card) => card.eventId === eventId && card.workerId === state.activeWorkerId)
+    || null;
+}
+
+function nextCrewPunch(card) {
+  if (!card?.clockIn) return { field: "clockIn", label: "Call Time" };
+  if (!card.lunchOut) return { field: "lunchOut", label: "Lunch Out" };
+  if (!card.lunchIn) return { field: "lunchIn", label: "Lunch In" };
+  if (!card.clockOut) return { field: "clockOut", label: "Wrap" };
+  return { field: "clockIn", label: "New Call Time" };
+}
+
+function crewEventStatus(card) {
+  if (!card?.clockIn) return "Ready for Call Time.";
+  if (!card.lunchOut) return "Call Time is set. Lunch Out is next.";
+  if (!card.lunchIn) return "Lunch Out is set. Lunch In is next.";
+  if (!card.clockOut) return "Lunch is complete. Wrap is next.";
+  return "Timecard is wrapped.";
+}
+
+function crewMobileTaskCards(events, activeCard) {
+  const tasks = [];
+  if (activeCard) {
+    const activeEvent = getEvent(activeCard.eventId);
+    tasks.push(["Live Timecard", `${activeEvent?.name || activeCard.eventName || "Current event"} is running.`, "clock"]);
+  }
+  const rentalTasks = events
+    .map((event) => crewRentalTask(event, timecardForCrewEvent(event.id)))
+    .filter(Boolean);
+  tasks.push(...rentalTasks.slice(0, 2));
+  events.slice(0, 3).forEach((event) => {
+    const venue = getVenue(event.venueId);
+    tasks.push(["Assigned Event", `${event.name}${venue?.name ? " at " + venue.name : ""}`, "events"]);
+  });
+  if (!tasks.length) tasks.push(["No urgent tasks", "Assigned event tasks will appear here.", "events"]);
+  return tasks.slice(0, 5).map(([label, text, view]) => `<button class="crew-mobile-task" data-mobile-go-view="${escapeHtml(view)}" type="button"><b>${escapeHtml(label)}</b><span>${escapeHtml(text)}</span></button>`);
+}
+
+function crewRentalTask(event, card) {
+  const assignment = assignmentForEventWorker(event.id, state.activeWorkerId);
+  const needsRental = rentalVehicleRequired(event, card || assignment || {});
+  if (!needsRental) return null;
+  const startLog = vehicleLogForEventWorker(event.id, state.activeWorkerId, "Start");
+  const endLog = vehicleLogForEventWorker(event.id, state.activeWorkerId, "End");
+  if (card?.clockOut && !vehicleEndPhotosComplete(endLog)) return ["End Vehicle Photos", `${event.name} still needs end photos and plate number.`, "vehicles"];
+  if (card?.clockIn && !vehicleStartCheckStarted(startLog)) return ["Start Vehicle Photos", `${event.name} needs start photos and plate number.`, "vehicles"];
+  return null;
 }
 
 function renderProductionBoard() {
@@ -6227,7 +6307,12 @@ function bindEvents() {
     const notifyProductionOfficeButton = event.target.closest("[data-notify-production-office]");
     const profileAccessButton = event.target.closest("[data-open-profile-access]");
     const viewRecordButton = event.target.closest("[data-view-record]");
+    const mobileGoViewButton = event.target.closest("[data-mobile-go-view]");
 
+    if (mobileGoViewButton) {
+      setView(mobileGoViewButton.dataset.mobileGoView);
+      return;
+    }
     if (publicRunnerStatusButton) {
       await updatePublicRunnerStatus(publicRunnerStatusButton.dataset.publicRunnerStatus, publicRunnerStatusButton.dataset.status);
       return;
