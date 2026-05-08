@@ -279,6 +279,26 @@ button {
   align-items: center;
 }
 
+.connection-banner {
+  display: grid;
+  gap: 3px;
+  margin: -8px 0 18px;
+  border: 1px solid #f1c27a;
+  border-radius: 8px;
+  background: #fff7e6;
+  color: #6b3f0b;
+  padding: 10px 12px;
+}
+
+.connection-banner strong {
+  font-size: 13px;
+  text-transform: uppercase;
+}
+
+.connection-banner span {
+  font-size: 13px;
+}
+
 .session-pill {
   display: grid;
   gap: 2px;
@@ -1779,6 +1799,10 @@ body:not(.owner-mode) .rate-field {
     display: grid;
     grid-template-columns: 1fr;
     gap: 8px;
+  }
+
+  .connection-banner {
+    margin: -4px 0 12px;
   }
 
   .session-pill {

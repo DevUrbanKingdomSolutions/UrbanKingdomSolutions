@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#20282c">
     <title>Production Crew Database</title>
-    <link rel="stylesheet" href="styles.css?v=V1.03.008-mobile-runtime-status">
+    <link rel="stylesheet" href="styles.css?v=V1.03.009-mobile-connection-banner">
   </head>
   <body>
     <section id="authScreen" class="auth-screen">
@@ -108,6 +108,7 @@
             <button id="logoutButton" class="ghost-button" type="button">Log Out</button>
           </div>
         </header>
+        <div id="connectionBanner" class="connection-banner" hidden></div>
 
         <section id="dashboard" class="view active-view" aria-labelledby="viewTitle">
           <section id="crewMobileHome" class="panel crew-mobile-home" hidden>
@@ -1305,6 +1306,6 @@
     <div id="modalHost"></div>
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js?v=V1.03.008-mobile-runtime-status"></script>
+    <script src="app.js?v=V1.03.009-mobile-connection-banner"></script>
   </body>
 </html>

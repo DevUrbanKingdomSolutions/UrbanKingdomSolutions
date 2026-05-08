@@ -2382,6 +2382,7 @@ function escapeHtml(value) {
 
 function render() {
   applyAccessProfile();
+  renderConnectionBanner();
   renderSelects();
   renderAdmin();
   renderAccessLevels();
@@ -2907,6 +2908,14 @@ function renderMobileDeviceStatus() {
     ["Camera Bridge", info.cameraReady ? "Available" : "Browser upload", info.cameraReady],
     ["Location Bridge", info.geolocationReady ? "Available" : "Browser location", info.geolocationReady]
   ].map(([label, value, ready]) => `<div class="mobile-device-item ${ready ? "ready" : "pending"}"><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></div>`).join("");
+}
+
+function renderConnectionBanner() {
+  const banner = $("#connectionBanner");
+  if (!banner) return;
+  const online = navigator.onLine !== false;
+  banner.hidden = online;
+  banner.innerHTML = online ? "" : `<strong>Offline mode</strong><span>Signal is down. Local screens may still work, but cloud login, messages, email, and Supabase updates need connection.</span>`;
 }
 
 function renderCrewMobileHome() {
@@ -6298,8 +6307,16 @@ function bindEvents() {
     state.search = event.target.value.trim().toLowerCase();
     render();
   });
-  window.addEventListener("online", renderMobileDeviceStatus);
-  window.addEventListener("offline", renderMobileDeviceStatus);
+  window.addEventListener("online", () => {
+    renderConnectionBanner();
+    renderMobileDeviceStatus();
+    toast("Connection restored.");
+  });
+  window.addEventListener("offline", () => {
+    renderConnectionBanner();
+    renderMobileDeviceStatus();
+    toast("Offline. Some cloud features will pause until signal returns.");
+  });
   $("#timecardForm select[name='eventId']").addEventListener("change", (event) => {
     const selectedEvent = getEvent(event.target.value);
     if (!selectedEvent) return;
