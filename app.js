@@ -2893,6 +2893,7 @@ function renderSelects() {
 function renderDashboard() {
   renderCrewMobileHome();
   renderMobileDeviceStatus();
+  renderMobileQaPanel();
   if (isAdminRole()) {
     $("#eventCount").textContent = "0";
     $("#activeTimecards").textContent = "0";
@@ -2976,6 +2977,28 @@ async function requestMobilePermissions() {
   }
   renderMobileDeviceStatus();
   toast(results.join(" · "));
+}
+
+function renderMobileQaPanel() {
+  const list = $("#mobileQaList");
+  const count = $("#mobileQaCount");
+  if (!list || !count) return;
+  const info = mobileRuntimeInfo();
+  const checks = [
+    ["Login", !!authState.session, "Session active"],
+    ["Crew profile", !!state.activeWorkerId || !isCrewRole(), isCrewRole() ? "Crew selected" : "Not crew view"],
+    ["Assigned events", visibleEvents().length > 0 || !isCrewRole(), `${visibleEvents().length} visible`],
+    ["Time clock", visibleEvents().length > 0 && isCrewRole(), "Punch flow ready"],
+    ["Vehicle photos", visibleRecords(state.vehicleLogs).length > 0, `${visibleRecords(state.vehicleLogs).length} checks`],
+    ["Reports", visibleRecords(state.accidentReports).length > 0, `${visibleRecords(state.accidentReports).length} reports`],
+    ["Messaging", !!sendbirdClient?.currentUser, sendbirdClient?.currentUser ? "Connected" : "Needs connect"],
+    ["Connection", info.online, info.online ? "Online" : "Offline"],
+    ["Location", info.geolocationReady || !!navigator.geolocation, info.geolocationReady ? "Native ready" : "Browser ready"],
+    ["Push", info.pushReady, info.pushReady ? "Native ready" : "Native test pending"]
+  ];
+  const readyCount = checks.filter(([, ready]) => ready).length;
+  count.textContent = `${readyCount}/${checks.length} ready`;
+  list.innerHTML = checks.map(([label, ready, detail]) => `<div class="mobile-qa-item ${ready ? "ready" : "pending"}"><span>${escapeHtml(label)}</span><strong>${escapeHtml(detail)}</strong></div>`).join("");
 }
 
 function renderConnectionBanner() {
