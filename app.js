@@ -2357,7 +2357,6 @@ function userAccessRowsForView() {
 function renderUserAccessTables() {
   const rows = userAccessRowsForView();
   renderUserAccessTable("userAccessTable", "userAccessTableCount", rows);
-  renderUserAccessTable("promoterUserAccessTable", "promoterUserAccessTableCount", rows);
 }
 
 function renderUserAccessTable(tableId, countId, rows) {
