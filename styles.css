@@ -513,6 +513,10 @@ label textarea:focus {
   overflow: hidden;
 }
 
+#events .table-panel {
+  overflow: visible;
+}
+
 .panel-heading {
   min-height: 58px;
   display: flex;
@@ -794,6 +798,10 @@ td p {
 .event-options {
   position: relative;
   justify-self: end;
+}
+
+.event-options[open] {
+  z-index: 10;
 }
 
 .event-options summary {
