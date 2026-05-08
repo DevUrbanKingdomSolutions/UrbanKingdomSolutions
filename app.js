@@ -1267,6 +1267,7 @@ function loginSetupPayload(storeName, record) {
   return {
     profileType,
     profileId: record.id,
+    authUserId: record.authUserId || "",
     email,
     role: profileLoginRole(storeName, record),
     clientId: storeName === "clients" ? record.id : authState.roleRecord?.client_id || null,
@@ -3675,7 +3676,14 @@ function rentalClockWarning(event, card) {
 
 function actionButtons(store, id, formId, extra = "", allowed = canAdminEdit()) {
   if (!allowed) return extra || "";
-  return `<div class="row-actions">${extra}<button class="tiny-button" data-edit="${store}" data-id="${id}" data-form="${formId}" type="button">Edit</button><button class="tiny-button danger" data-delete="${store}" data-id="${id}" type="button">Delete</button></div>`;
+  return `<details class="record-options">
+    <summary class="tiny-button">Options</summary>
+    <div class="record-options-menu">
+      ${extra}
+      <button class="tiny-button" data-edit="${store}" data-id="${id}" data-form="${formId}" type="button">Edit</button>
+      <button class="tiny-button danger" data-delete="${store}" data-id="${id}" type="button">Delete</button>
+    </div>
+  </details>`;
 }
 
 function recordLink(store, id, label, className = "link-button") {
@@ -3689,7 +3697,8 @@ function loginSetupButton(store, profile) {
   if (store === "promoters" && isProductionRole() && profileLoginRole(store, profile) !== "PROMOTER") return "";
   const email = profile.loginEmail || profile.email;
   if (!email) return "";
-  return `<button class="tiny-button" data-send-login="${store}" data-id="${profile.id}" type="button">Send Login Setup</button>`;
+  const label = profile.inviteStatus === "Password reset sent" || profile.loginCompletedAt ? "Reset Password" : "Send Login Setup";
+  return `<button class="tiny-button" data-send-login="${store}" data-id="${profile.id}" type="button">${escapeHtml(label)}</button>`;
 }
 
 function loginStatus(profile) {
@@ -5381,7 +5390,7 @@ async function sendLoginSetup(storeName, id) {
     loginEmail: payload.email,
     loginRole: payload.role,
     authUserId: data?.userId || data?.user_id || record.authUserId || "",
-    inviteStatus: "Login setup sent",
+    inviteStatus: data?.action === "reset" ? "Password reset sent" : "Login setup sent",
     inviteSentAt: new Date().toISOString(),
     inviteMessageId: data?.delivery?.messageId || "",
     inviteAcceptedByServer: (data?.delivery?.accepted || []).join(", "),
@@ -5399,7 +5408,7 @@ async function sendLoginSetup(storeName, id) {
   await loadState();
   setView(state.activeView);
   const accepted = (data?.delivery?.accepted || []).join(", ") || payload.email;
-  toast(`Login setup accepted by email server for ${accepted}.`);
+  toast(`${data?.action === "reset" ? "Password reset" : "Login setup"} accepted by email server for ${accepted}.`);
 }
 
 function eventAccessSnapshot(event) {

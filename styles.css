@@ -1067,26 +1067,31 @@ td p {
   justify-content: flex-end;
 }
 
-.event-options {
+.event-options,
+.record-options {
   position: relative;
   justify-self: end;
 }
 
-.event-options[open] {
+.event-options[open],
+.record-options[open] {
   z-index: 10;
 }
 
-.event-options summary {
+.event-options summary,
+.record-options summary {
   display: inline-flex;
   align-items: center;
   list-style: none;
 }
 
-.event-options summary::-webkit-details-marker {
+.event-options summary::-webkit-details-marker,
+.record-options summary::-webkit-details-marker {
   display: none;
 }
 
-.event-options-menu {
+.event-options-menu,
+.record-options-menu {
   position: absolute;
   top: calc(100% + 6px);
   right: 0;
@@ -1101,7 +1106,8 @@ td p {
   box-shadow: var(--shadow);
 }
 
-.event-options-menu .tiny-button {
+.event-options-menu .tiny-button,
+.record-options-menu .tiny-button {
   width: 100%;
   text-align: left;
 }

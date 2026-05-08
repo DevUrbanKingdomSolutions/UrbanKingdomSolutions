@@ -40,6 +40,7 @@ Deno.serve(async (request) => {
     const email = String(body.email || "").trim().toLowerCase();
     const role = String(body.role || "");
     const profileType = String(body.profileType || "");
+    const requestedUserId = String(body.authUserId || "").trim();
     if (!email) throw new Error("Email is required.");
 
     if (profileType === "client") {
@@ -66,8 +67,10 @@ Deno.serve(async (request) => {
     const configuredSiteUrl = Deno.env.get("PUBLIC_SITE_URL") || Deno.env.get("SITE_URL") || "";
     const redirectTo = configuredSiteUrl || (requestOrigin.startsWith("https://") ? requestOrigin : "");
 
+    const existingUser = requestedUserId ? await userById(admin, requestedUserId) : null;
+    const shouldResetPassword = !!existingUser?.last_sign_in_at;
     const { data: linkData, error: linkError } = await admin.auth.admin.generateLink({
-      type: "invite",
+      type: shouldResetPassword ? "recovery" : "invite",
       email,
       options: redirectTo ? { redirectTo } : undefined
     });
@@ -87,9 +90,9 @@ Deno.serve(async (request) => {
     });
     if (upsertError) throw upsertError;
 
-    const delivery = await sendInviteEmail(admin, body.emailRoute, email, inviteLink, profileType);
+    const delivery = await sendInviteEmail(admin, body.emailRoute, email, inviteLink, profileType, shouldResetPassword);
 
-    return new Response(JSON.stringify({ userId, status: "sent", delivery }), {
+    return new Response(JSON.stringify({ userId, status: "sent", action: shouldResetPassword ? "reset" : "setup", delivery }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" }
     });
   } catch (error) {
@@ -100,7 +103,13 @@ Deno.serve(async (request) => {
   }
 });
 
-async function sendInviteEmail(admin: any, route, to, inviteLink, profileType) {
+async function userById(admin: any, userId: string) {
+  const { data, error } = await admin.auth.admin.getUserById(userId);
+  if (error) return null;
+  return data?.user || null;
+}
+
+async function sendInviteEmail(admin: any, route, to, inviteLink, profileType, resetPassword = false) {
   if (!route) throw new Error("SMTP routing settings are required.");
   const host = String(route.host || "").trim();
   const port = Number(route.port || 587);
@@ -126,13 +135,16 @@ async function sendInviteEmail(admin: any, route, to, inviteLink, profileType) {
   });
 
   const label = profileType === "client" || profileType === "clientRep" ? "client account" : profileType === "promoter" ? "promoter account" : profileType === "production" ? "production team account" : "crew account";
+  const subject = resetPassword ? "Reset your Production Crew password" : "Set up your Production Crew account";
+  const actionText = resetPassword ? "reset your password" : `create your ${label}`;
+  const actionLabel = resetPassword ? "Reset your password" : "Set up your account";
   const result = await transporter.sendMail({
     to,
     from: `${fromName} <${fromEmail}>`,
     replyTo,
-    subject: "Set up your Production Crew account",
-    text: `You have been invited to create your ${label}. Use this secure link to finish setup: ${inviteLink}`,
-    html: `<p>You have been invited to create your ${label}.</p><p><a href="${inviteLink}">Set up your account</a></p>`
+    subject,
+    text: `Use this secure link to ${actionText}: ${inviteLink}`,
+    html: `<p>Use this secure link to ${actionText}.</p><p><a href="${inviteLink}">${actionLabel}</a></p>`
   });
   const accepted = (result.accepted || []).map(String);
   const rejected = (result.rejected || []).map(String);
