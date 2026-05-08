@@ -4112,6 +4112,7 @@ function setView(viewId) {
   $("#viewTitle").textContent = label || $(`.nav-item[data-view="${viewId}"]`)?.textContent || "Dashboard";
   if (location.hash !== `#${viewId}`) history.replaceState(null, "", `#${viewId}`);
   if (requestedView !== viewId) toast("That view is restricted for your role.");
+  closeMobileNavigation();
 }
 
 function combinedNavGroups() {
@@ -4154,6 +4155,47 @@ function renderNavigation() {
       <div class="nav-group-items" ${isCollapsed ? "hidden" : ""}>${items}</div>
     </section>`;
   }).join("");
+  renderMobileBottomNavigation(groups);
+}
+
+function renderMobileBottomNavigation(groups = combinedNavGroups()) {
+  const nav = $("#mobileBottomNav");
+  if (!nav) return;
+  const preferred = ["dashboard", "clock", "events", "messages", "workers"];
+  const allItems = groups.flatMap((group) => group.items || []);
+  const byView = new Map(allItems.map(([view, label]) => [view, label]));
+  const selected = [];
+  preferred.forEach((view) => {
+    if (byView.has(view)) selected.push([view, byView.get(view)]);
+  });
+  allItems.forEach((item) => {
+    if (selected.length < 5 && !selected.some(([view]) => view === item[0])) selected.push(item);
+  });
+  nav.innerHTML = selected.slice(0, 5)
+    .map(([view, label]) => `<button class="${state.activeView === view ? "active" : ""}" data-mobile-view="${escapeHtml(view)}" type="button">${escapeHtml(shortMobileLabel(label))}</button>`)
+    .join("");
+}
+
+function shortMobileLabel(label = "") {
+  return label
+    .replace("Crew Profiles", "Crew")
+    .replace("My Profile", "Profile")
+    .replace("Production Board", "Board")
+    .replace("Gig Directory", "Gigs")
+    .replace("Promoter Profiles", "Promoters")
+    .replace("Client Profile", "Client")
+    .replace("Admin Console", "Admin");
+}
+
+function toggleMobileNavigation() {
+  const open = !document.body.classList.contains("mobile-nav-open");
+  document.body.classList.toggle("mobile-nav-open", open);
+  $("#mobileMenuButton")?.setAttribute("aria-expanded", String(open));
+}
+
+function closeMobileNavigation() {
+  document.body.classList.remove("mobile-nav-open");
+  $("#mobileMenuButton")?.setAttribute("aria-expanded", "false");
 }
 
 function navGroupKey(group, index) {
@@ -5960,6 +6002,19 @@ function bindEvents() {
   $("#clearSessionButton").addEventListener("click", clearSavedLogin);
   $("#setupLogoutButton").addEventListener("click", clearSavedLogin);
   $("#logoutButton").addEventListener("click", logout);
+  $("#mobileMenuButton").addEventListener("click", toggleMobileNavigation);
+  $("#mobileBottomNav").addEventListener("click", (event) => {
+    const button = event.target.closest("[data-mobile-view]");
+    if (button) setView(button.dataset.mobileView);
+  });
+  document.addEventListener("click", (event) => {
+    if (!document.body.classList.contains("mobile-nav-open")) return;
+    if (event.target.closest(".sidebar") || event.target.closest("#mobileMenuButton")) return;
+    closeMobileNavigation();
+  });
+  window.addEventListener("resize", () => {
+    if (window.innerWidth > 860) closeMobileNavigation();
+  });
   $(".nav-list").addEventListener("click", (event) => {
     const groupToggle = event.target.closest("[data-nav-group]");
     if (groupToggle) {
