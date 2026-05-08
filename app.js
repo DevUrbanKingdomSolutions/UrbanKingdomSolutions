@@ -253,6 +253,8 @@ let state = {
   runnerCategory: "All",
   directoryTab: "crew",
   payrollView: localStorage.getItem("productionCrewPayrollView") || "worker",
+  vehicleFilter: localStorage.getItem("productionCrewVehicleFilter") || "all",
+  vehicleSort: localStorage.getItem("productionCrewVehicleSort") || "latest",
   messagingThreadType: localStorage.getItem("productionCrewMessagingThreadType") || "event",
   collapsedNavGroups: JSON.parse(localStorage.getItem("productionCrewCollapsedNavGroups") || "{}")
 };
@@ -2942,11 +2944,46 @@ function monthLabel(value) {
 
 function renderVehicles() {
   const logs = visibleRecords(state.vehicleLogs).filter((log) => matchesSearch(log, `${getEvent(log.eventId)?.name || ""} ${getWorker(log.workerId)?.name || ""}`));
-  const rows = groupedVehicleRows(logs);
+  const filter = $("#vehicleFilter");
+  const sort = $("#vehicleSort");
+  if (filter) filter.value = state.vehicleFilter;
+  if (sort) sort.value = state.vehicleSort;
+  const rows = sortVehicleRows(filterVehicleRows(groupedVehicleRows(logs)));
   $("#vehicleTableCount").textContent = `${rows.length} shown`;
   $("#vehicleTable").innerHTML = rows.length
     ? rows.map(vehicleCheckRow).join("")
     : `<tr><td colspan="7" class="empty">No vehicle checks match this search.</td></tr>`;
+}
+
+function filterVehicleRows(rows) {
+  return rows.filter((group) => {
+    const plate = vehicleGroupPlate(group);
+    if (state.vehicleFilter === "missing-start") return !group.startLog;
+    if (state.vehicleFilter === "missing-end") return !group.endLog;
+    if (state.vehicleFilter === "missing-plate") return !plate;
+    if (state.vehicleFilter === "complete") return !!group.startLog && !!group.endLog;
+    return true;
+  });
+}
+
+function sortVehicleRows(rows) {
+  const sortValue = state.vehicleSort;
+  const text = (value) => String(value || "").toLowerCase();
+  return [...rows].sort((a, b) => {
+    if (sortValue === "event") return text(getEvent(a.eventId)?.name).localeCompare(text(getEvent(b.eventId)?.name));
+    if (sortValue === "worker") return text(getWorker(a.workerId)?.name).localeCompare(text(getWorker(b.workerId)?.name));
+    if (sortValue === "plate") return text(vehicleGroupPlate(a)).localeCompare(text(vehicleGroupPlate(b)));
+    if (sortValue === "vehicle") return text(vehicleGroupType(a)).localeCompare(text(vehicleGroupType(b)));
+    return new Date(b.startLog?.scheduledDate || b.endLog?.scheduledDate || 0) - new Date(a.startLog?.scheduledDate || a.endLog?.scheduledDate || 0);
+  });
+}
+
+function vehicleGroupType(group) {
+  return group.vehicleType || group.startLog?.vehicleType || group.endLog?.vehicleType || "";
+}
+
+function vehicleGroupPlate(group) {
+  return group.plateNumber || group.startLog?.plateNumber || group.endLog?.plateNumber || "";
 }
 
 function groupedVehicleRows(logs) {
@@ -2980,8 +3017,8 @@ function groupedVehicleRows(logs) {
 function vehicleCheckRow(group) {
   const event = getEvent(group.eventId);
   const worker = getWorker(group.workerId);
-  const vehicleType = group.vehicleType || group.startLog?.vehicleType || group.endLog?.vehicleType || "";
-  const plate = group.plateNumber || group.startLog?.plateNumber || group.endLog?.plateNumber || "";
+  const vehicleType = vehicleGroupType(group);
+  const plate = vehicleGroupPlate(group);
   return `<tr>
     <td><strong>${escapeHtml(event?.name || "")}</strong><p>${formatDate(event?.startDate)}${event?.endDate ? " - " + formatDate(event.endDate) : ""}</p></td>
     <td>${escapeHtml(worker?.name || "")}</td>
@@ -5415,6 +5452,16 @@ function bindEvents() {
     if (event.target.matches("[data-report-type], select[name='eventId'], select[name='workerId']")) updateReportTypeFields($("#reportForm"));
   });
   $("#vehicleForm").addEventListener("change", () => applyVehicleAssignmentLock($("#vehicleForm")));
+  $("#vehicleFilter").addEventListener("change", (event) => {
+    state.vehicleFilter = event.target.value;
+    localStorage.setItem("productionCrewVehicleFilter", state.vehicleFilter);
+    renderVehicles();
+  });
+  $("#vehicleSort").addEventListener("change", (event) => {
+    state.vehicleSort = event.target.value;
+    localStorage.setItem("productionCrewVehicleSort", state.vehicleSort);
+    renderVehicles();
+  });
   $$("[data-smtp-provider]").forEach((select) => {
     select.addEventListener("change", () => updateSmtpForm(select.form, true));
   });
