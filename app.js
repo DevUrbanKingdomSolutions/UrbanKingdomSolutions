@@ -2481,6 +2481,128 @@ function openClientCompanyView(clientId) {
   openForm("clientCompanyView");
 }
 
+function detailItem(label, value) {
+  return `<div><span>${escapeHtml(label)}</span><strong>${escapeHtml(value || "")}</strong></div>`;
+}
+
+function profileSection(label, value) {
+  return value ? `<div class="profile-section"><span>${escapeHtml(label)}</span><p>${escapeHtml(value)}</p></div>` : "";
+}
+
+function readOnlyProfileCard(title, subtitle, details = [], sections = [], avatarHtml = "") {
+  $("#recordViewTitle").textContent = title || "Profile";
+  $("#recordViewBody").innerHTML = `<article class="profile-page-card">
+    <div class="profile-page-header">
+      ${avatarHtml || `<div class="profile-avatar-large placeholder">${escapeHtml(initialsFor(title || "Profile"))}</div>`}
+      <div>
+        <h3>${escapeHtml(title || "Profile")}</h3>
+        <p>${escapeHtml(subtitle || "")}</p>
+      </div>
+    </div>
+    <div class="profile-detail-grid">${details.map(([label, value]) => detailItem(label, value)).join("")}</div>
+    ${sections.map(([label, value]) => profileSection(label, value)).join("")}
+  </article>`;
+}
+
+function openReadOnlyRecord(storeName, id) {
+  const record = state[storeName]?.find((item) => item.id === id);
+  if (!record) {
+    toast("Record not found.");
+    return;
+  }
+  if (storeName === "workers") {
+    readOnlyProfileCard(record.name, record.role || "Crew / Runner", [
+      ["Phone", publicWorkerValue(record, "phone")],
+      ["Email", publicWorkerValue(record, "email")],
+      ["Status", record.status],
+      ["Mailing Address", record.mailingAddress]
+    ], [
+      ["Skills", record.skills],
+      ["Emergency Contact", isCrewRole() ? "" : record.emergency],
+      ["Notes", canOwnerEdit() ? record.notes : ""]
+    ], profileAvatarLarge(record, record.hideHeadshot));
+  } else if (storeName === "promoters") {
+    readOnlyProfileCard(record.name || record.contactName, record.companyName || "Promoter", [
+      ["Rep / Office", record.contactName],
+      ["Phone", record.phone],
+      ["Email", record.email],
+      ["Login", record.authUserId ? "Connected" : "Not connected"]
+    ], [
+      ["Billing Notes", record.billing],
+      ["Production Notes", record.notes]
+    ], profileAvatarLarge(record, false));
+  } else if (storeName === "venues") {
+    readOnlyProfileCard(record.name, "Venue", [
+      ["Address", record.address],
+      ["Main Contact", record.contactName],
+      ["Phone", record.phone],
+      ["Email", record.email],
+      ["Parking", record.parking]
+    ], [
+      ["Venue Contacts", venueContactsForVenue(record.id).map((contact) => `${contact.name || contact.contactName || "Contact"}${contact.title ? `, ${contact.title}` : ""} ${contact.phone || ""} ${contact.email || ""}`).join("\n")],
+      ["Notes", record.notes]
+    ]);
+  } else if (storeName === "events") {
+    const venue = getVenue(record.venueId);
+    const promoter = getPromoter(record.promoterId);
+    readOnlyProfileCard(record.name, record.type || "Event", [
+      ["Start", formatDate(record.startDate)],
+      ["End", formatDate(record.endDate)],
+      ["Venue", venue?.name],
+      ["Promoter", promoterLabel(promoter)],
+      ["Production Contact", record.productionContact]
+    ], [
+      ["Assigned Crew", eventWorkerIds(record).map((workerId) => getWorker(workerId)?.name).filter(Boolean).join(", ")],
+      ["Notes", record.notes]
+    ]);
+  } else if (storeName === "timecards") {
+    const worker = getWorker(record.workerId);
+    const event = getEvent(record.eventId);
+    const rateDetails = canViewRates() ? [["Pay Basis", payBasis(record)], ["Estimated Pay", currency(estimatedPay(record))]] : [];
+    readOnlyProfileCard(worker?.name || "Timecard", event?.name || record.eventName || "Timecard", [
+      ["Call", formatDate(record.clockIn)],
+      ["Lunch Out", formatDate(record.lunchOut)],
+      ["Lunch In", formatDate(record.lunchIn)],
+      ["Wrap", formatDate(record.clockOut)],
+      ["Hours", timecardHours(record).toFixed(2)],
+      ...rateDetails
+    ], [["Notes", record.notes]]);
+  } else if (storeName === "vehicleLogs") {
+    const event = getEvent(record.eventId);
+    const worker = getWorker(record.workerId);
+    readOnlyProfileCard(record.vehicleType || "Vehicle Check", event?.name || "Vehicle", [
+      ["Runner", worker?.name],
+      ["Phase", record.phase || "Start"],
+      ["Plate", record.plateNumber],
+      ["Gas Gauge", record.gasGauge],
+      ["Scheduled Date", formatDate(record.scheduledDate)]
+    ], [
+      ["Prior Damage", record.priorDamage],
+      ["Notes", record.notes]
+    ]);
+  } else if (storeName === "accidentReports") {
+    readOnlyProfileCard(record.title, record.type || "Report", [
+      ["Event", getEvent(record.eventId)?.name],
+      ["Worker", getWorker(record.workerId)?.name],
+      ["Reported", formatDate(record.reportedAt)],
+      ["Location", record.incidentLocation]
+    ], [
+      ["Details", record.details],
+      ["Damage / Injury Notes", record.injuryDescription || record.vehicleDamageDescription]
+    ]);
+  } else if (storeName === "runnerStops") {
+    readOnlyProfileCard(record.name, record.category || "Gig Directory", [
+      ["Phone", record.phone],
+      ["Address", record.address],
+      ["Hours", record.hours],
+      ["Best Use", record.bestUse]
+    ], [["Notes", record.notes]]);
+  } else {
+    readOnlyProfileCard(record.name || record.title || "Record", storeName, Object.entries(record).slice(0, 8));
+  }
+  openForm("recordView");
+}
+
 function activeClientRecord() {
   const clientId = authState.roleRecord?.client_id || "";
   return state.clients.find((client) => client.id === clientId) || null;
@@ -2923,7 +3045,7 @@ function eventCard(event) {
   const eventActions = `${publicAccessButton}${adminEventActions}${actionButtons("events", event.id, "eventForm", "", canAdminEdit())}`;
   return `<article class="record-card">
     <div class="record-card-main">
-      <strong>${escapeHtml(event.name)}</strong>
+      <strong>${recordLink("events", event.id, event.name)}</strong>
       <span>${escapeHtml(event.type)} ${event.startDate ? "- " + formatDate(event.startDate) : ""}</span>
       <p>${escapeHtml(venue?.name || "No venue")} | ${escapeHtml(promoterLabel(promoter) || "No promoter rep")}</p>
       <p>${escapeHtml(event.productionContact)}</p>
@@ -2978,6 +3100,10 @@ function rentalClockWarning(event, card) {
 function actionButtons(store, id, formId, extra = "", allowed = canAdminEdit()) {
   if (!allowed) return extra || "";
   return `<div class="row-actions">${extra}<button class="tiny-button" data-edit="${store}" data-id="${id}" data-form="${formId}" type="button">Edit</button><button class="tiny-button danger" data-delete="${store}" data-id="${id}" type="button">Delete</button></div>`;
+}
+
+function recordLink(store, id, label, className = "link-button") {
+  return `<button class="${escapeHtml(className)}" data-view-record="${escapeHtml(store)}:${escapeHtml(id)}" type="button">${escapeHtml(label || "View")}</button>`;
 }
 
 function loginSetupButton(store, profile) {
@@ -3081,7 +3207,7 @@ function workerProfileRow(worker) {
     : `${escapeHtml(worker.skills)}${showRates ? `<p>${currency(worker.defaultDayRate || worker.defaultRate || 0)}/${worker.defaultIncludedHours || 10} hrs</p>` : ""}${canOwnerEdit() ? `<p>${accessBadges(worker.accessLevels, "CREW")}</p>${loginStatus(worker)}` : ""}`;
   const note = isProductionRole() ? promoterNoteBox(worker.id) : "";
   return `<tr>
-    <td>${profileSelect("workers", worker.id)}${profileCell(worker, showLimited && worker.hideHeadshot && worker.id !== state.activeWorkerId, publicEmail)}</td>
+    <td>${profileSelect("workers", worker.id)}${profileCell(worker, showLimited && worker.hideHeadshot && worker.id !== state.activeWorkerId, publicEmail, "workers", worker.id)}</td>
     <td>${escapeHtml(showLimited ? "" : worker.role)}</td>
     <td>${showLimited ? "" : `<span class="status-pill ${worker.status === "Booked" ? "warn" : ""}">${escapeHtml(worker.status)}</span>`}</td>
     <td>${escapeHtml(publicPhone)}</td>
@@ -3090,12 +3216,13 @@ function workerProfileRow(worker) {
   </tr>`;
 }
 
-function profileCell(profile, hideHeadshot = false, subtitle = profile.email) {
+function profileCell(profile, hideHeadshot = false, subtitle = profile.email, storeName = "", id = profile.id) {
   const initials = initialsFor(profile.name || profile.contactName || "?");
   const image = profile.headshotData && !hideHeadshot
     ? `<img class="profile-headshot" src="${profile.headshotData}" alt="${escapeHtml(profile.name || profile.contactName)} headshot">`
     : `<div class="profile-headshot placeholder">${escapeHtml(initials)}</div>`;
-  return `<div class="profile-cell">${image}<div><strong>${escapeHtml(profile.name)}</strong><p>${escapeHtml(subtitle)}</p></div></div>`;
+  const title = storeName && id ? recordLink(storeName, id, profile.name || profile.contactName || "Profile") : escapeHtml(profile.name || profile.contactName || "Profile");
+  return `<div class="profile-cell">${image}<div><strong>${title}</strong><p>${escapeHtml(subtitle)}</p></div></div>`;
 }
 
 function profileSelect(store, id) {
@@ -3147,7 +3274,7 @@ function renderTimecards() {
         const event = getEvent(card.eventId);
         const liveAction = card.clockOut || !canAdminEdit() ? "" : `<button class="tiny-button" data-clock-out="${card.id}" type="button">Clock Out</button>`;
         const rateCells = showRates ? `<td>${payBasis(card)}</td><td>${currency(estimatedPay(card))}</td>` : "";
-        return `<tr><td><strong>${escapeHtml(worker?.name || "Unknown worker")}</strong></td><td>${escapeHtml(event?.name || card.eventName)}<p>${escapeHtml(card.notes)}</p></td><td>${escapeHtml(venue?.name || "")}</td><td>${formatDate(card.clockIn)}</td><td>${formatDate(card.lunchOut)}${card.lunchIn ? `<p>In: ${formatDate(card.lunchIn)}</p>` : ""}</td><td>${formatDate(card.clockOut) || "Live"}</td><td>${timecardHours(card).toFixed(2)}</td>${rateCells}<td>${actionButtons("timecards", card.id, "timecardForm", liveAction, canAdminEdit())}</td></tr>`;
+        return `<tr><td><strong>${recordLink("timecards", card.id, worker?.name || "Unknown worker")}</strong></td><td>${escapeHtml(event?.name || card.eventName)}<p>${escapeHtml(card.notes)}</p></td><td>${escapeHtml(venue?.name || "")}</td><td>${formatDate(card.clockIn)}</td><td>${formatDate(card.lunchOut)}${card.lunchIn ? `<p>In: ${formatDate(card.lunchIn)}</p>` : ""}</td><td>${formatDate(card.clockOut) || "Live"}</td><td>${timecardHours(card).toFixed(2)}</td>${rateCells}<td>${actionButtons("timecards", card.id, "timecardForm", liveAction, canAdminEdit())}</td></tr>`;
       }).join("")
     : `<tr><td colspan="${emptyColspan}" class="empty">No timecards match this search.</td></tr>`;
 }
@@ -3208,7 +3335,7 @@ function renderCrewDirectory() {
   $("#directoryTableCount").textContent = `${rows.length} crew`;
   $("#directoryHead").innerHTML = `<tr><th>Name</th><th>Phone</th><th>Email</th></tr>`;
   $("#directoryTable").innerHTML = rows.length
-    ? rows.map((worker) => `<tr><td>${profileCell(worker, worker.hideHeadshot, publicWorkerValue(worker, "email"))}</td><td>${escapeHtml(publicWorkerValue(worker, "phone"))}</td><td>${escapeHtml(publicWorkerValue(worker, "email"))}</td></tr>`).join("")
+    ? rows.map((worker) => `<tr><td>${profileCell(worker, worker.hideHeadshot, publicWorkerValue(worker, "email"), "workers", worker.id)}</td><td>${escapeHtml(publicWorkerValue(worker, "phone"))}</td><td>${escapeHtml(publicWorkerValue(worker, "email"))}</td></tr>`).join("")
     : `<tr><td colspan="3" class="empty">No crew directory entries match this search.</td></tr>`;
 }
 
@@ -3217,7 +3344,7 @@ function renderPromoterDirectory() {
   $("#directoryTableCount").textContent = `${rows.length} promoter reps`;
   $("#directoryHead").innerHTML = `<tr><th>Rep</th><th>Company</th><th>Phone</th><th>Email</th></tr>`;
   $("#directoryTable").innerHTML = rows.length
-    ? rows.map((promoter) => `<tr><td>${profileCell(promoter, false, promoter.contactName)}</td><td>${escapeHtml(promoter.companyName || "Independent")}</td><td>${escapeHtml(promoter.phone)}</td><td>${escapeHtml(promoter.email)}</td></tr>`).join("")
+    ? rows.map((promoter) => `<tr><td>${profileCell(promoter, false, promoter.contactName, "promoters", promoter.id)}</td><td>${escapeHtml(promoter.companyName || "Independent")}</td><td>${escapeHtml(promoter.phone)}</td><td>${escapeHtml(promoter.email)}</td></tr>`).join("")
     : `<tr><td colspan="4" class="empty">No promoter directory entries match this search.</td></tr>`;
 }
 
@@ -3226,7 +3353,7 @@ function renderVenueDirectory() {
   $("#directoryTableCount").textContent = `${rows.length} venues`;
   $("#directoryHead").innerHTML = `<tr><th>Venue</th><th>Address</th><th>Contact</th><th>Parking</th></tr>`;
   $("#directoryTable").innerHTML = rows.length
-    ? rows.map((venue) => `<tr><td><strong>${escapeHtml(venue.name)}</strong></td><td>${escapeHtml(venue.address)}</td><td>${escapeHtml(venue.contactName)}<p>${escapeHtml(venue.phone)} ${escapeHtml(venue.email)}</p></td><td>${escapeHtml(venue.parking)}</td></tr>`).join("")
+    ? rows.map((venue) => `<tr><td><strong>${recordLink("venues", venue.id, venue.name)}</strong></td><td>${escapeHtml(venue.address)}</td><td>${escapeHtml(venue.contactName)}<p>${escapeHtml(venue.phone)} ${escapeHtml(venue.email)}</p></td><td>${escapeHtml(venue.parking)}</td></tr>`).join("")
     : `<tr><td colspan="4" class="empty">No venue directory entries match this search.</td></tr>`;
 }
 
@@ -3357,8 +3484,9 @@ function vehicleCheckRow(group) {
   const worker = getWorker(group.workerId);
   const vehicleType = vehicleGroupType(group);
   const plate = vehicleGroupPlate(group);
+  const logId = group.startLog?.id || group.endLog?.id || "";
   return `<tr>
-    <td><strong>${escapeHtml(event?.name || "")}</strong><p>${formatDate(event?.startDate)}${event?.endDate ? " - " + formatDate(event.endDate) : ""}</p></td>
+    <td><strong>${logId ? recordLink("vehicleLogs", logId, event?.name || "Vehicle Check") : escapeHtml(event?.name || "")}</strong><p>${formatDate(event?.startDate)}${event?.endDate ? " - " + formatDate(event.endDate) : ""}</p></td>
     <td>${escapeHtml(worker?.name || "")}</td>
     <td><strong>${escapeHtml(vehicleType || "Vehicle")}</strong></td>
     <td>${escapeHtml(plate || "Not set")}</td>
@@ -3387,7 +3515,7 @@ function renderReports() {
   const rows = sortReports(filterReports(visibleRecords(state.accidentReports).filter((report) => recordMatchesEventFilter(report, state.reportEventFilter) && matchesSearch(report, `${getEvent(report.eventId)?.name || ""} ${getWorker(report.workerId)?.name || ""}`))));
   $("#reportTableCount").textContent = `${rows.length} shown`;
   $("#reportTable").innerHTML = rows.length
-    ? rows.map((report) => `<tr><td>${escapeHtml(report.type)}</td><td>${escapeHtml(getEvent(report.eventId)?.name || "")}</td><td>${escapeHtml(getWorker(report.workerId)?.name || "")}</td><td><strong>${escapeHtml(report.title)}</strong><p>${escapeHtml(report.details)}</p></td><td>${formatDate(report.reportedAt)}</td><td>${photoGallery(report.photos || (report.photoData ? [report.photoData] : []))}</td><td>${actionButtons("accidentReports", report.id, "reportForm", "", canScopedEdit())}</td></tr>`).join("")
+    ? rows.map((report) => `<tr><td>${escapeHtml(report.type)}</td><td>${escapeHtml(getEvent(report.eventId)?.name || "")}</td><td>${escapeHtml(getWorker(report.workerId)?.name || "")}</td><td><strong>${recordLink("accidentReports", report.id, report.title)}</strong><p>${escapeHtml(report.details)}</p></td><td>${formatDate(report.reportedAt)}</td><td>${photoGallery(report.photos || (report.photoData ? [report.photoData] : []))}</td><td>${actionButtons("accidentReports", report.id, "reportForm", "", canScopedEdit())}</td></tr>`).join("")
     : `<tr><td colspan="7" class="empty">No accident reports match this search.</td></tr>`;
 }
 
@@ -3572,7 +3700,7 @@ function renderVenues() {
   const rows = visibleVenues().filter((venue) => matchesSearch(venue));
   $("#venueTableCount").textContent = `${rows.length} shown`;
   $("#venueTable").innerHTML = rows.length
-    ? rows.map((venue) => `<tr><td><strong>${escapeHtml(venue.name)}</strong><p>${escapeHtml(venue.notes)}</p></td><td>${escapeHtml(venue.address)}</td><td>${venueContactSummary(venue)}</td><td>${escapeHtml(venue.parking)}</td><td>${actionButtons("venues", venue.id, "venueForm", "", canVenueEdit())}</td></tr>`).join("")
+    ? rows.map((venue) => `<tr><td><strong>${recordLink("venues", venue.id, venue.name)}</strong><p>${escapeHtml(venue.notes)}</p></td><td>${escapeHtml(venue.address)}</td><td>${venueContactSummary(venue)}</td><td>${escapeHtml(venue.parking)}</td><td>${actionButtons("venues", venue.id, "venueForm", "", canVenueEdit())}</td></tr>`).join("")
     : `<tr><td colspan="5" class="empty">No venues match this search.</td></tr>`;
 }
 
@@ -3640,7 +3768,7 @@ function renderPromoters() {
   $("#promoterTable").innerHTML = rows.length
     ? rows.map((promoter) => {
         const smtpStatus = promoter.smtpSecretRef ? `<p><span class="status-pill">SMTP saved</span></p>` : "";
-        return `<tr><td>${profileSelect("promoters", promoter.id)}${profileCell(promoter, false, promoter.contactName)}</td><td><strong>${escapeHtml(promoter.companyName || "Independent")}</strong><p>${escapeHtml(promoter.contactName)}</p></td><td>${escapeHtml(promoter.phone)}</td><td>${escapeHtml(promoter.email)}</td><td>${escapeHtml(promoter.notes || promoter.billing)}<p>${accessBadges(promoter.accessLevels, "PROMOTER_ADMIN")}</p>${smtpStatus}${loginStatus(promoter)}</td><td>${actionButtons("promoters", promoter.id, "promoterForm", loginSetupButton("promoters", promoter), canEditPromoter(promoter))}</td></tr>`;
+        return `<tr><td>${profileSelect("promoters", promoter.id)}${profileCell(promoter, false, promoter.contactName, "promoters", promoter.id)}</td><td><strong>${escapeHtml(promoter.companyName || "Independent")}</strong><p>${escapeHtml(promoter.contactName)}</p></td><td>${escapeHtml(promoter.phone)}</td><td>${escapeHtml(promoter.email)}</td><td>${escapeHtml(promoter.notes || promoter.billing)}<p>${accessBadges(promoter.accessLevels, "PROMOTER_ADMIN")}</p>${smtpStatus}${loginStatus(promoter)}</td><td>${actionButtons("promoters", promoter.id, "promoterForm", loginSetupButton("promoters", promoter), canEditPromoter(promoter))}</td></tr>`;
       }).join("")
     : `<tr><td colspan="6" class="empty">No promoter profiles match this search.</td></tr>`;
 }
@@ -3890,7 +4018,7 @@ function renderActiveThreadMembers() {
 
 function runnerStopRow(stop) {
   const noteUi = isCrewRole() ? runnerStopNoteUi(stop) : "";
-  return `<tr><td><strong>${escapeHtml(stop.name)}</strong><p>${escapeHtml(stop.phone)}</p></td><td>${escapeHtml(stop.category)}</td><td>${escapeHtml(stop.address)}</td><td>${escapeHtml(stop.hours)}</td><td>${escapeHtml(stop.bestUse)}${noteUi}</td><td>${actionButtons("runnerStops", stop.id, "runnerForm")}</td></tr>`;
+  return `<tr><td><strong>${recordLink("runnerStops", stop.id, stop.name)}</strong><p>${escapeHtml(stop.phone)}</p></td><td>${escapeHtml(stop.category)}</td><td>${escapeHtml(stop.address)}</td><td>${escapeHtml(stop.hours)}</td><td>${escapeHtml(stop.bestUse)}${noteUi}</td><td>${actionButtons("runnerStops", stop.id, "runnerForm")}</td></tr>`;
 }
 
 function runnerStopNoteUi(stop) {
@@ -6019,6 +6147,7 @@ function bindEvents() {
     const manageMessageThreadButton = event.target.closest("[data-manage-message-thread]");
     const notifyProductionOfficeButton = event.target.closest("[data-notify-production-office]");
     const profileAccessButton = event.target.closest("[data-open-profile-access]");
+    const viewRecordButton = event.target.closest("[data-view-record]");
 
     if (publicRunnerStatusButton) {
       await updatePublicRunnerStatus(publicRunnerStatusButton.dataset.publicRunnerStatus, publicRunnerStatusButton.dataset.status);
@@ -6050,6 +6179,10 @@ function bindEvents() {
     }
     if (notifyProductionOfficeButton) await notifyRunnerToProductionOffice(notifyProductionOfficeButton.dataset.notifyProductionOffice);
     if (profileAccessButton) await openProfileAccessForm(profileAccessButton.dataset.openProfileAccess);
+    if (viewRecordButton) {
+      const [storeName, id] = viewRecordButton.dataset.viewRecord.split(":");
+      openReadOnlyRecord(storeName, id);
+    }
 
   if (openButton) {
       await refreshSiteAccessLevelsForForm(openButton.dataset.openForm);

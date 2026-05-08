@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Production Crew Database</title>
-    <link rel="stylesheet" href="styles.css?v=V1.01.055-remove-login-role-fields">
+    <link rel="stylesheet" href="styles.css?v=V1.01.056-read-only-list-profiles">
   </head>
   <body>
     <section id="authScreen" class="auth-screen">
@@ -706,6 +706,13 @@
               <p class="form-note">Access changes are managed separately from the public profile details.</p>
               <button class="primary-action" type="submit">Save Access</button>
             </form>
+            <section id="recordView" class="panel form-panel">
+              <div class="panel-heading">
+                <h3 id="recordViewTitle">Profile</h3>
+                <button class="ghost-button clear-form" type="button" data-form="recordView">Close</button>
+              </div>
+              <div id="recordViewBody" class="record-grid"></div>
+            </section>
             <section class="panel table-panel">
               <div class="panel-heading">
                 <h3>Crew / Runner Profiles</h3>
@@ -1278,6 +1285,6 @@
     <div id="modalHost"></div>
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js?v=V1.01.055-remove-login-role-fields"></script>
+    <script src="app.js?v=V1.01.056-read-only-list-profiles"></script>
   </body>
 </html>
