@@ -1832,8 +1832,17 @@ function hasAssignedAccess(role) {
   return assignedAccessForCurrentUser().includes(role);
 }
 
-function canViewRates() {
+function canEditRates() {
   return currentProfile().canViewRates || (hasAssignedAccess("CLIENT_ACCOUNTING") && hasAssignedAccess("CLIENT_REP_LEAD"));
+}
+
+function crewCanViewRates() {
+  const worker = getWorker(state.activeWorkerId);
+  return isCrewRole() && (worker?.allowCrewRateView === "yes" || worker?.allowCrewRateView === true);
+}
+
+function canViewRates() {
+  return canEditRates() || crewCanViewRates();
 }
 
 function getWorker(id) {
@@ -2985,10 +2994,10 @@ function workerProfileRow(worker) {
   const publicPhone = publicWorkerValue(worker, "phone");
   const publicEmail = publicWorkerValue(worker, "email");
   const showLimited = isCrewRole();
-  const showRates = canViewRates();
+  const showRates = canEditRates();
   const info = showLimited
     ? `${publicEmail ? `<p>${escapeHtml(publicEmail)}</p>` : ""}`
-    : `${escapeHtml(worker.skills)}${showRates ? `<p>${currency(worker.defaultDayRate || worker.defaultRate || 0)}/${worker.defaultIncludedHours || 10} hrs</p><p>${accessBadges(worker.accessLevels, "CREW")}</p>${loginStatus(worker)}` : ""}`;
+    : `${escapeHtml(worker.skills)}${showRates ? `<p>${currency(worker.defaultDayRate || worker.defaultRate || 0)}/${worker.defaultIncludedHours || 10} hrs</p>` : ""}${canOwnerEdit() ? `<p>${accessBadges(worker.accessLevels, "CREW")}</p>${loginStatus(worker)}` : ""}`;
   const note = isProductionRole() ? promoterNoteBox(worker.id) : "";
   return `<tr>
     <td>${profileSelect("workers", worker.id)}${profileCell(worker, showLimited && worker.hideHeadshot && worker.id !== state.activeWorkerId, publicEmail)}</td>
@@ -3033,9 +3042,12 @@ function renderTimecards() {
   const eventFilter = $("#timecardEventFilter");
   const filter = $("#timecardFilter");
   const sort = $("#timecardSort");
+  const showRates = canViewRates();
+  if (!showRates && state.timecardSort === "pay") state.timecardSort = "latest";
   if (eventFilter) eventFilter.value = state.timecardEventFilter;
   if (filter) filter.value = state.timecardFilter;
   if (sort) sort.value = state.timecardSort;
+  sort?.querySelector("option[value='pay']")?.toggleAttribute("hidden", !showRates);
   const rows = sortTimecards(filterTimecards(visibleRecords(state.timecards).filter((card) => {
     const worker = getWorker(card.workerId);
     const venue = getVenue(card.venueId);
@@ -3044,15 +3056,19 @@ function renderTimecards() {
     return recordMatchesEventFilter(card, state.timecardEventFilter) && matchesSearch(card, `${worker?.name || ""} ${venue?.name || ""} ${promoter?.name || ""} ${event?.name || ""}`);
   })));
   $("#timecardTableCount").textContent = `${rows.length} shown`;
+  const rateHeaders = showRates ? `<th>Pay Basis</th><th>Est.</th>` : "";
+  const emptyColspan = showRates ? 10 : 8;
+  $("#timecardTable").closest("table").querySelector("thead").innerHTML = `<tr><th>Worker</th><th>Event</th><th>Venue</th><th>Call</th><th>Lunch</th><th>Wrap</th><th>Hours</th>${rateHeaders}<th></th></tr>`;
   $("#timecardTable").innerHTML = rows.length
     ? rows.map((card) => {
         const worker = getWorker(card.workerId);
         const venue = getVenue(card.venueId);
         const event = getEvent(card.eventId);
         const liveAction = card.clockOut || !canAdminEdit() ? "" : `<button class="tiny-button" data-clock-out="${card.id}" type="button">Clock Out</button>`;
-        return `<tr><td><strong>${escapeHtml(worker?.name || "Unknown worker")}</strong></td><td>${escapeHtml(event?.name || card.eventName)}<p>${escapeHtml(card.notes)}</p></td><td>${escapeHtml(venue?.name || "")}</td><td>${formatDate(card.clockIn)}</td><td>${formatDate(card.lunchOut)}${card.lunchIn ? `<p>In: ${formatDate(card.lunchIn)}</p>` : ""}</td><td>${formatDate(card.clockOut) || "Live"}</td><td>${timecardHours(card).toFixed(2)}</td><td>${payBasis(card)}</td><td>${currency(estimatedPay(card))}</td><td>${actionButtons("timecards", card.id, "timecardForm", liveAction, canAdminEdit())}</td></tr>`;
+        const rateCells = showRates ? `<td>${payBasis(card)}</td><td>${currency(estimatedPay(card))}</td>` : "";
+        return `<tr><td><strong>${escapeHtml(worker?.name || "Unknown worker")}</strong></td><td>${escapeHtml(event?.name || card.eventName)}<p>${escapeHtml(card.notes)}</p></td><td>${escapeHtml(venue?.name || "")}</td><td>${formatDate(card.clockIn)}</td><td>${formatDate(card.lunchOut)}${card.lunchIn ? `<p>In: ${formatDate(card.lunchIn)}</p>` : ""}</td><td>${formatDate(card.clockOut) || "Live"}</td><td>${timecardHours(card).toFixed(2)}</td>${rateCells}<td>${actionButtons("timecards", card.id, "timecardForm", liveAction, canAdminEdit())}</td></tr>`;
       }).join("")
-    : `<tr><td colspan="10" class="empty">No timecards match this search.</td></tr>`;
+    : `<tr><td colspan="${emptyColspan}" class="empty">No timecards match this search.</td></tr>`;
 }
 
 function filterTimecards(cards) {
@@ -3965,7 +3981,7 @@ function applyAccessProfile() {
   $$("#promoterForm select[name='loginRole'] option[value='CREW']").forEach((option) => { option.hidden = isProductionRole(); });
   $$(".admin-form").forEach((form) => { form.hidden = !profile.canAdminEdit; });
   $$(".owner-form").forEach((form) => { form.hidden = !profile.canOwnerEdit; });
-  $$(".rate-field").forEach((form) => { form.hidden = !canViewRates(); });
+  $$(".rate-field").forEach((form) => { form.hidden = !canEditRates(); });
   $$(".venue-form").forEach((form) => { form.hidden = !profile.canVenueEdit; });
   $$(".scoped-form").forEach((form) => { form.hidden = !profile.canScopedEdit; });
   $$(".system-form").forEach((form) => { form.hidden = !profile.canSystemEdit; });
