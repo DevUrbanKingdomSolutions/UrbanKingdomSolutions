@@ -1658,6 +1658,10 @@ function assignedAccessProfiles() {
   return assignedAccessForCurrentUser().map((role) => ({ role, profile: accessProfileFor(role) })).filter((item) => item.profile);
 }
 
+function hasAssignedProfilePermission(predicate) {
+  return assignedAccessProfiles().some(({ role, profile }) => predicate(profile, role));
+}
+
 function assignedViews() {
   return Array.from(new Set(assignedAccessProfiles().flatMap((item) => item.profile.views)));
 }
@@ -1700,11 +1704,13 @@ function accessLevelOptionsForForm(form) {
   let roles = accessLevelDefinitions().map((level) => level.id).filter((role) => role !== "ADMIN");
   if (form?.id === "accountAccessForm") return roles;
   if (["clientProfileForm", "workerForm", "promoterForm"].includes(form?.id)) {
-    if (isProductionRole()) {
+    const clientAccessManager = hasAssignedProfilePermission((profile) => profile.effectiveRole === "CLIENT" && profile.canOwnerEdit);
+    const promoterAccessManager = hasAssignedProfilePermission((profile) => profile.effectiveRole === "PROMOTER" && profile.canAdminEdit);
+    if (clientAccessManager) return roles.filter((role) => baseRoleForAccess(role) !== "ADMIN");
+    if (promoterAccessManager) {
       const blocked = new Set(["CLIENT", "CLIENT_ADMIN", "CLIENT_REP", "CLIENT_REP_LEAD", "CLIENT_ACCOUNTING"]);
-      return roles.filter((role) => !blocked.has(role) && baseRoleForAccess(role) !== "CLIENT");
+      return roles.filter((role) => !blocked.has(role) && !["ADMIN", "CLIENT"].includes(baseRoleForAccess(role)));
     }
-    if (isClientRole()) return roles;
     return roles.filter((role) => !["CLIENT", "PRODUCTION"].includes(baseRoleForAccess(role)));
   }
   if (form?.id !== "clientForm") roles = roles.filter((role) => !["CLIENT", "PRODUCTION"].includes(baseRoleForAccess(role)));
