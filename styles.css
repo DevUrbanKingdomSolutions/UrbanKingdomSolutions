@@ -870,6 +870,51 @@ td p {
   box-shadow: 0 0 0 2px rgba(15, 118, 110, 0.12);
 }
 
+.message-thread-card-main {
+  display: grid;
+  gap: 6px;
+}
+
+.message-thread-card-main.direct {
+  grid-template-columns: 40px minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+}
+
+.message-thread-card-top,
+.message-thread-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.message-thread-card-top > span:first-child,
+.message-thread-footer > span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.message-thread-card-main strong {
+  font-size: 16px;
+}
+
+.message-avatar-stack {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  min-width: 90px;
+}
+
+.message-avatar-stack .message-avatar {
+  width: 30px;
+  height: 30px;
+  margin-left: -8px;
+  border: 2px solid #ffffff;
+  font-size: 10px;
+}
+
 .record-card-main strong,
 .record-card-main span,
 .record-card-main p {
@@ -1040,6 +1085,14 @@ td p {
   border-radius: 8px;
   background: #ffffff;
   padding: 10px 12px;
+}
+
+#messageThreadMembers .thread-member-summary {
+  min-width: 260px;
+}
+
+#messageThreadMembers .thread-member-pill {
+  min-width: 170px;
 }
 
 #messageThreadMembers .tiny-button {
@@ -1852,6 +1905,75 @@ body:not(.owner-mode) .rate-field {
   #messageThread {
     min-height: 46dvh;
     max-height: 54dvh;
+  }
+
+  #messages .stack-layout {
+    gap: 12px;
+  }
+
+  .message-thread-card {
+    padding: 12px;
+  }
+
+  .message-thread-footer {
+    align-items: flex-end;
+  }
+
+  #activeMessagePanel {
+    min-height: calc(100dvh - 170px);
+  }
+
+  #messageThreadMembers {
+    padding: 8px 10px;
+  }
+
+  #messageThreadMembers .compact-item {
+    min-width: 148px;
+    padding: 8px 10px;
+  }
+
+  #messageThreadMembers .thread-member-summary {
+    min-width: 230px;
+  }
+
+  #messageThread {
+    min-height: 44dvh;
+    max-height: 50dvh;
+  }
+
+  .chat-thread {
+    padding: 12px;
+  }
+
+  .message-bubble-row {
+    grid-template-columns: 32px minmax(0, 1fr);
+    gap: 8px;
+  }
+
+  .message-bubble-row.own {
+    grid-template-columns: minmax(0, 1fr) 32px;
+  }
+
+  .message-avatar {
+    width: 32px;
+    height: 32px;
+  }
+
+  #sendbirdMessageForm {
+    position: sticky;
+    bottom: calc(64px + env(safe-area-inset-bottom));
+    z-index: 3;
+    grid-template-columns: minmax(0, 1fr) auto;
+    padding: 10px;
+    box-shadow: 0 -8px 18px rgba(29, 36, 40, 0.08);
+  }
+
+  #sendbirdMessageForm input {
+    min-height: 46px;
+  }
+
+  #sendbirdMessageForm button {
+    min-width: 68px;
   }
 
   .mobile-bottom-nav {

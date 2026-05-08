@@ -4060,17 +4060,24 @@ function messagingChannelCards() {
 function eventMessageCard(event, threadType) {
   const crewCount = eventWorkerIds(event).length;
   const active = sendbirdActiveThread?.type === threadType && sendbirdActiveThread?.eventId === event.id;
+  const members = messageThreadPreviewMembers(threadType, event);
   const subtitles = {
     event: `${crewCount} crew / runners`,
     office: "Promoter, production team, and venue contacts",
     crew: `${crewCount} crew / runners and production office`
   };
   return `<article class="record-card message-thread-card ${active ? "selected" : ""}" data-open-message-channel="${threadType}:${event.id}" role="button" tabindex="0">
-    <div>
-      <span>${escapeHtml(event.type || MESSAGE_THREAD_TYPES[threadType]?.label || "Event")}</span>
+    <div class="message-thread-card-main">
+      <div class="message-thread-card-top">
+        <span>${escapeHtml(event.type || MESSAGE_THREAD_TYPES[threadType]?.label || "Event")}</span>
+        ${active ? `<span class="status-pill">Open</span>` : ""}
+      </div>
       <strong>${escapeHtml(event.name)}</strong>
       <p>${escapeHtml(subtitles[threadType] || subtitles.event)}</p>
-      <p>${formatDate(event.startDate)}</p>
+      <div class="message-thread-footer">
+        <span>${formatDate(event.startDate) || "Unscheduled"}</span>
+        ${messageAvatarStack(members)}
+      </div>
     </div>
   </article>`;
 }
@@ -4081,14 +4088,33 @@ function directMessageCards() {
     ? profiles.map((profile) => {
         const active = sendbirdActiveThread?.type === "direct" && sendbirdActiveThread?.profileId === profile.id;
         return `<article class="record-card message-thread-card ${active ? "selected" : ""}" data-open-direct-message="${escapeHtml(profile.id)}" role="button" tabindex="0">
-          <div>
-            <span>${escapeHtml(profile.kind)}</span>
-            <strong>${escapeHtml(profile.label)}</strong>
-            <p>${escapeHtml(profile.email || profile.phone || "")}</p>
+          <div class="message-thread-card-main direct">
+            ${messageAvatar(profile.profile || profile, profile.label)}
+            <div>
+              <div class="message-thread-card-top">
+                <span>${escapeHtml(profile.kind)}</span>
+                ${active ? `<span class="status-pill">Open</span>` : ""}
+              </div>
+              <strong>${escapeHtml(profile.label)}</strong>
+              <p>${escapeHtml(profile.email || profile.phone || "")}</p>
+            </div>
           </div>
         </article>`;
       }).join("")
     : `<div class="compact-item empty">${MESSAGE_THREAD_TYPES.direct.empty}</div>`;
+}
+
+function messageThreadPreviewMembers(threadType, event) {
+  const ids = sendbirdThreadUsers(threadType, event).slice(0, 5);
+  return ids.map((id) => profileForSendbirdUserId(id)).filter(Boolean);
+}
+
+function messageAvatarStack(members = []) {
+  if (!members.length) return "";
+  return `<div class="message-avatar-stack" aria-label="${members.length} thread members">
+    ${members.slice(0, 4).map((member) => messageAvatar(member, member.name || member.contactName || "Member")).join("")}
+    ${members.length > 4 ? `<span class="message-avatar more">+${members.length - 4}</span>` : ""}
+  </div>`;
 }
 
 function firstVisibleMessageThreadTarget(type = state.messagingThreadType) {
@@ -4209,8 +4235,8 @@ function renderActiveThreadMembers() {
   const canManage = canManageActiveThreadMembers();
   const managerLine = canManage ? "You can manage membership for this thread." : "Membership is view only for this access view.";
   const manageButton = canManage ? `<button class="tiny-button" data-manage-message-thread type="button">Manage Users</button>` : "";
-  return `<div class="compact-item"><strong>Thread Members</strong><span>${members.length} member${members.length === 1 ? "" : "s"} · ${managerLine}</span>${manageButton}</div>
-    ${members.map((member) => `<div class="compact-item"><strong>${escapeHtml(member.label)}</strong><span>${escapeHtml(member.kind)}${member.isCurrent ? " · You" : ""}</span></div>`).join("")}`;
+  return `<div class="compact-item thread-member-summary"><strong>Thread Members</strong><span>${members.length} member${members.length === 1 ? "" : "s"} · ${managerLine}</span>${manageButton}</div>
+    ${members.map((member) => `<div class="compact-item thread-member-pill"><strong>${escapeHtml(member.label)}</strong><span>${escapeHtml(member.kind)}${member.isCurrent ? " · You" : ""}</span></div>`).join("")}`;
 }
 
 function runnerStopRow(stop) {
