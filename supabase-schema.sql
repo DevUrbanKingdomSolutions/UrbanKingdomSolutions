@@ -459,3 +459,124 @@ $$;
 -- CREW:
 --   access only their own profile, assigned events/gigs, their own submitted
 --   timecards, and their own vehicle/report records via public.current_worker_id()
+
+create table if not exists public.app_records (
+  id uuid primary key default gen_random_uuid(),
+  client_id uuid not null references public.clients(id) on delete cascade,
+  store_name text not null,
+  record_id text not null,
+  data jsonb not null default '{}'::jsonb,
+  created_by uuid references auth.users(id) on delete set null,
+  updated_by uuid references auth.users(id) on delete set null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (client_id, store_name, record_id)
+);
+
+alter table public.app_records enable row level security;
+
+create index if not exists app_records_client_store_idx on public.app_records (client_id, store_name);
+create index if not exists app_records_data_gin_idx on public.app_records using gin (data);
+
+grant select, insert, update, delete on public.app_records to authenticated;
+
+do $$
+declare
+  policy_record record;
+begin
+  for policy_record in
+    select policyname
+    from pg_policies
+    where schemaname = 'public'
+      and tablename = 'app_records'
+  loop
+    execute format('drop policy if exists %I on public.app_records', policy_record.policyname);
+  end loop;
+end
+$$;
+
+create policy "Clients can manage shared app records"
+on public.app_records
+for all
+to authenticated
+using (
+  public.current_app_role() = 'CLIENT'
+  and client_id = public.current_client_id()
+)
+with check (
+  public.current_app_role() = 'CLIENT'
+  and client_id = public.current_client_id()
+);
+
+create policy "Promoters can read shared production records"
+on public.app_records
+for select
+to authenticated
+using (
+  public.current_app_role() in ('PROMOTER', 'PROMOTER_PRODUCTION_OFFICE')
+  and client_id = public.current_client_id()
+  and store_name in ('workers', 'venues', 'promoters', 'events', 'eventAssignments', 'vehicleLogs', 'accidentReports', 'runnerStops', 'runnerCategories', 'runnerNotes', 'venueContacts', 'productionCompanies', 'productionContacts', 'messageThreadSettings')
+);
+
+create policy "Promoters can manage event operations records"
+on public.app_records
+for all
+to authenticated
+using (
+  public.current_app_role() in ('PROMOTER', 'PROMOTER_PRODUCTION_OFFICE')
+  and client_id = public.current_client_id()
+  and store_name in ('venues', 'events', 'eventAssignments', 'vehicleLogs', 'accidentReports', 'runnerStops', 'runnerCategories', 'runnerNotes', 'venueContacts', 'productionCompanies', 'productionContacts', 'messageThreadSettings')
+)
+with check (
+  public.current_app_role() in ('PROMOTER', 'PROMOTER_PRODUCTION_OFFICE')
+  and client_id = public.current_client_id()
+  and store_name in ('venues', 'events', 'eventAssignments', 'vehicleLogs', 'accidentReports', 'runnerStops', 'runnerCategories', 'runnerNotes', 'venueContacts', 'productionCompanies', 'productionContacts', 'messageThreadSettings')
+);
+
+create policy "Production teams can read linked production records"
+on public.app_records
+for select
+to authenticated
+using (
+  public.current_app_role() = 'PRODUCTION'
+  and client_id = public.current_client_id()
+  and store_name in ('workers', 'venues', 'promoters', 'events', 'eventAssignments', 'vehicleLogs', 'accidentReports', 'runnerStops', 'runnerCategories', 'runnerNotes', 'venueContacts', 'productionCompanies', 'productionContacts', 'messageThreadSettings')
+);
+
+create policy "Crew can read their shared work records"
+on public.app_records
+for select
+to authenticated
+using (
+  public.current_app_role() = 'CREW'
+  and client_id = public.current_client_id()
+  and (
+    store_name in ('venues', 'runnerStops', 'runnerCategories', 'runnerNotes')
+    or (store_name = 'workers' and record_id = public.current_worker_id())
+    or (store_name = 'events' and coalesce(data -> 'workerIds', '[]'::jsonb) ? public.current_worker_id())
+    or (store_name in ('eventAssignments', 'timecards', 'vehicleLogs', 'accidentReports') and data ->> 'workerId' = public.current_worker_id())
+  )
+);
+
+create policy "Crew can manage their submitted app records"
+on public.app_records
+for all
+to authenticated
+using (
+  public.current_app_role() = 'CREW'
+  and client_id = public.current_client_id()
+  and (
+    (store_name = 'workers' and record_id = public.current_worker_id())
+    or (store_name in ('timecards', 'vehicleLogs', 'accidentReports') and data ->> 'workerId' = public.current_worker_id())
+    or store_name in ('runnerCategories', 'runnerNotes')
+  )
+)
+with check (
+  public.current_app_role() = 'CREW'
+  and client_id = public.current_client_id()
+  and (
+    (store_name = 'workers' and record_id = public.current_worker_id())
+    or (store_name in ('timecards', 'vehicleLogs', 'accidentReports') and data ->> 'workerId' = public.current_worker_id())
+    or store_name in ('runnerCategories', 'runnerNotes')
+  )
+);

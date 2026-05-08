@@ -64,6 +64,25 @@ const STORES = [
   "accidentReports",
   "messageThreadSettings"
 ];
+const CLOUD_SYNC_STORES = new Set([
+  "workers",
+  "venues",
+  "promoters",
+  "profileNotes",
+  "events",
+  "eventAssignments",
+  "eventSwaps",
+  "timecards",
+  "runnerStops",
+  "runnerCategories",
+  "runnerNotes",
+  "venueContacts",
+  "productionCompanies",
+  "productionContacts",
+  "vehicleLogs",
+  "accidentReports",
+  "messageThreadSettings"
+]);
 
 const ROLE_ALIASES = {
   admin: "ADMIN",
@@ -224,6 +243,7 @@ ACCESS_PROFILES.PROMOTER_PRODUCTION_OFFICE = ACCESS_PROFILES.PROMOTER_ADMIN;
 let db;
 let supabaseClient;
 let appHasLoaded = false;
+let cloudSyncPaused = false;
 let authState = {
   session: null,
   user: null,
@@ -731,13 +751,17 @@ async function put(storeName, record) {
   const store = await storeTransaction(storeName, "readwrite");
   return new Promise((resolve, reject) => {
     const now = new Date().toISOString();
-    const request = store.put({
+    const savedRecord = {
       ...record,
       id: record.id || crypto.randomUUID(),
       updatedAt: now,
       createdAt: record.createdAt || now
-    });
-    request.onsuccess = () => resolve(request.result);
+    };
+    const request = store.put(savedRecord);
+    request.onsuccess = () => {
+      syncRecordToSupabase(storeName, savedRecord).catch((error) => console.warn("Cloud record sync failed", error));
+      resolve(request.result);
+    };
     request.onerror = () => reject(request.error);
   });
 }
@@ -746,9 +770,88 @@ async function remove(storeName, id) {
   const store = await storeTransaction(storeName, "readwrite");
   return new Promise((resolve, reject) => {
     const request = store.delete(id);
-    request.onsuccess = () => resolve();
+    request.onsuccess = () => {
+      deleteCloudRecord(storeName, id).catch((error) => console.warn("Cloud record delete failed", error));
+      resolve();
+    };
     request.onerror = () => reject(request.error);
   });
+}
+
+function cloudClientId() {
+  return authState.roleRecord?.client_id || activeClientRecord()?.id || "";
+}
+
+function canSyncCloudRecords(storeName) {
+  return !cloudSyncPaused
+    && CLOUD_SYNC_STORES.has(storeName)
+    && !!supabaseClient
+    && !!authState.session
+    && !!authState.roleRecord
+    && !isAdminRole()
+    && !!cloudClientId();
+}
+
+async function syncRecordToSupabase(storeName, record) {
+  if (!canSyncCloudRecords(storeName) || !record?.id) return;
+  const { error } = await supabaseClient
+    .from("app_records")
+    .upsert({
+      client_id: cloudClientId(),
+      store_name: storeName,
+      record_id: String(record.id),
+      data: record,
+      updated_by: authState.user?.id || null
+    }, { onConflict: "client_id,store_name,record_id" });
+  if (error) throw error;
+}
+
+async function deleteCloudRecord(storeName, id) {
+  if (!canSyncCloudRecords(storeName) || !id) return;
+  const { error } = await supabaseClient
+    .from("app_records")
+    .delete()
+    .eq("client_id", cloudClientId())
+    .eq("store_name", storeName)
+    .eq("record_id", String(id));
+  if (error) throw error;
+}
+
+async function hydrateAppRecordsFromSupabase() {
+  if (!supabaseClient || !authState.session || !authState.roleRecord || isAdminRole() || !cloudClientId()) return;
+  const { data, error } = await supabaseClient
+    .from("app_records")
+    .select("store_name, data, updated_at")
+    .eq("client_id", cloudClientId());
+  if (error) {
+    console.warn("Could not load shared app records.", error);
+    return;
+  }
+  cloudSyncPaused = true;
+  try {
+    for (const row of data || []) {
+      if (!CLOUD_SYNC_STORES.has(row.store_name) || !row.data?.id) continue;
+      await put(row.store_name, row.data);
+    }
+  } finally {
+    cloudSyncPaused = false;
+  }
+}
+
+async function syncLocalRecordsToSupabase() {
+  if (!supabaseClient || !authState.session || !authState.roleRecord || isAdminRole() || !cloudClientId()) return;
+  const records = [];
+  for (const storeName of CLOUD_SYNC_STORES) {
+    for (const record of state[storeName] || []) records.push([storeName, record]);
+  }
+  for (const [storeName, record] of records) {
+    try {
+      await syncRecordToSupabase(storeName, record);
+    } catch (error) {
+      console.warn("Could not publish local record to Supabase.", error);
+      break;
+    }
+  }
 }
 
 async function loadState() {
@@ -1880,7 +1983,9 @@ async function applyAuthenticatedSession(session, preferredView = "") {
   await ensureDatabase();
   await hydrateAccessLevelsFromSupabase();
   await hydrateClientSetupData(roleRecord, session.user);
+  await hydrateAppRecordsFromSupabase();
   await loadState();
+  await syncLocalRecordsToSupabase();
   await refreshUserAccessList(false);
   appHasLoaded = true;
   const hashView = location.hash && !setupTypeFromUrl() ? location.hash.replace("#", "") : "";
