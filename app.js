@@ -5045,7 +5045,7 @@ function messageBubble(message) {
 }
 
 function profileForSendbirdUserId(userId) {
-  const id = String(userId || "").trim();
+  const id = baseSendbirdUserId(userId).trim();
   if (!id) return null;
   return [
     ...state.workers,
@@ -5054,7 +5054,7 @@ function profileForSendbirdUserId(userId) {
     ...state.systemProfiles,
     ...state.productionContacts,
     ...state.venueContacts
-  ].find((profile) => [profile.authUserId, profile.id, profile.email].map((value) => String(value || "").trim()).includes(id)) || null;
+  ].find((profile) => [profile.authUserId, profile.id, profile.email].map((value) => baseSendbirdUserId(value).trim()).includes(id)) || null;
 }
 
 function messageAvatar(profile, fallbackName = "User") {
@@ -6214,6 +6214,26 @@ function notificationSubscriberForProfile(profile, fallbackId = "") {
   };
 }
 
+function sendbirdRuntimeScope() {
+  const info = mobileRuntimeInfo();
+  const standalone = window.matchMedia?.("(display-mode: standalone)")?.matches || navigator.standalone;
+  return info.native || standalone ? "app" : "desktop";
+}
+
+function baseSendbirdUserId(value) {
+  return String(value || "").replace(/__(desktop|app)$/i, "");
+}
+
+function scopedSendbirdUserId(value, scope = sendbirdRuntimeScope()) {
+  const base = baseSendbirdUserId(value).trim();
+  return base ? `${base}__${scope}` : "";
+}
+
+function allRuntimeSendbirdUserIds(value) {
+  const base = baseSendbirdUserId(value).trim();
+  return base ? ["desktop", "app"].map((scope) => `${base}__${scope}`) : [];
+}
+
 function notificationSubscriberForWorker(worker) {
   return notificationSubscriberForProfile(worker, worker?.authUserId || worker?.id || worker?.email || "");
 }
@@ -6240,7 +6260,11 @@ async function triggerNovuNotification(workflowId, payload = {}, to = notificati
 }
 
 function sendbirdUserIdForProfile(profile) {
-  return String(profile?.authUserId || profile?.id || profile?.email || "").trim();
+  return baseSendbirdUserId(profile?.authUserId || profile?.id || profile?.email || "");
+}
+
+function currentSendbirdUserId() {
+  return scopedSendbirdUserId(notificationSubscriberForCurrentUser().subscriberId || authState.user?.id || authState.user?.email || "");
 }
 
 function messageMemberFromProfile(kind, profile, label = "") {
@@ -6252,7 +6276,7 @@ function messageMemberFromProfile(kind, profile, label = "") {
     label: label || profile?.name || profile?.contactName || profile?.email || kind,
     email: profile?.email || "",
     phone: profile?.phone || "",
-    isCurrent: id === notificationSubscriberForCurrentUser().subscriberId
+    isCurrent: id === sendbirdUserIdForProfile({ authUserId: notificationSubscriberForCurrentUser().subscriberId })
   };
 }
 
@@ -6470,19 +6494,23 @@ function addSendbirdProfileIds(userIds, profiles) {
 }
 
 function sendbirdUserIdsForEvent(event) {
-  return effectiveThreadMembers("event", event).map((member) => member.id);
+  return sendbirdUserIdsForMembers(effectiveThreadMembers("event", event));
 }
 
 function sendbirdUserIdsForProductionOffice(event) {
-  return effectiveThreadMembers("office", event).map((member) => member.id);
+  return sendbirdUserIdsForMembers(effectiveThreadMembers("office", event));
 }
 
 function sendbirdUserIdsForCrewRunner(event) {
-  return effectiveThreadMembers("crew", event).map((member) => member.id);
+  return sendbirdUserIdsForMembers(effectiveThreadMembers("crew", event));
+}
+
+function sendbirdUserIdsForMembers(members) {
+  return Array.from(new Set(members.flatMap((member) => allRuntimeSendbirdUserIds(member.id))));
 }
 
 function directMessageProfiles() {
-  const currentId = notificationSubscriberForCurrentUser().subscriberId;
+  const currentId = sendbirdUserIdForProfile({ authUserId: notificationSubscriberForCurrentUser().subscriberId });
   const profiles = [];
   const addProfile = (kind, profile, label = "") => {
     const id = sendbirdUserIdForProfile(profile);
@@ -6514,7 +6542,7 @@ function directMessageProfiles() {
 }
 
 function currentThreadUserId() {
-  return notificationSubscriberForCurrentUser().subscriberId || authState.user?.id || authState.user?.email || "";
+  return sendbirdUserIdForProfile({ authUserId: notificationSubscriberForCurrentUser().subscriberId || authState.user?.id || authState.user?.email || "" });
 }
 
 function directThreadKey(profileId) {
@@ -6624,13 +6652,13 @@ function sendbirdThreadName(type, event, directProfile) {
 }
 
 function sendbirdThreadUsers(type, event, directProfile) {
-  const currentId = notificationSubscriberForCurrentUser().subscriberId;
+  const currentId = currentSendbirdUserId();
   const ids = type === "office"
     ? sendbirdUserIdsForProductionOffice(event)
     : type === "crew"
       ? sendbirdUserIdsForCrewRunner(event)
       : type === "direct"
-        ? effectiveThreadMembers("direct", null, directProfile?.id).map((member) => member.id)
+        ? sendbirdUserIdsForMembers(effectiveThreadMembers("direct", null, directProfile?.id))
         : sendbirdUserIdsForEvent(event);
   return Array.from(new Set([currentId, ...ids].filter(Boolean)));
 }
@@ -6723,7 +6751,7 @@ async function connectSendbirdMessaging(options = {}) {
       });
     }
     const profile = notificationSubscriberForCurrentUser();
-    await sendbirdClient.connect(profile.subscriberId);
+    await sendbirdClient.connect(currentSendbirdUserId());
     if (sendbirdClient.updateCurrentUserInfo && profile.firstName) {
       await sendbirdClient.updateCurrentUserInfo(`${profile.firstName} ${profile.lastName}`.trim(), "");
     }
