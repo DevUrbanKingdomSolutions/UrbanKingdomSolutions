@@ -10,7 +10,7 @@
     <title>Production Crew Database</title>
     <link rel="manifest" href="manifest.webmanifest">
     <link rel="icon" href="assets/app-icon.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="styles.css?v=V1.03.041-restore-refresh-view">
+    <link rel="stylesheet" href="styles.css?v=V1.03.042-dashboard-metric-links">
   </head>
   <body>
     <div id="pullRefreshIndicator" class="pull-refresh-indicator" aria-hidden="true">Pull to refresh</div>
@@ -148,22 +148,22 @@
             <div id="crewMobileTasks" class="crew-mobile-tasks"></div>
           </section>
           <div class="metric-grid">
-            <article class="metric">
+            <button class="metric metric-link" data-dashboard-link="events" type="button">
               <span>Events</span>
               <strong id="eventCount">0</strong>
-            </article>
-            <article class="metric">
+            </button>
+            <button class="metric metric-link" data-dashboard-link="timecards" type="button">
               <span>Clocked in</span>
               <strong id="activeTimecards">0</strong>
-            </article>
-            <article class="metric">
+            </button>
+            <button class="metric metric-link" data-dashboard-link="venues" type="button">
               <span>Venues</span>
               <strong id="venueCount">0</strong>
-            </article>
-            <article class="metric">
+            </button>
+            <button class="metric metric-link" data-dashboard-link="payroll" type="button">
               <span>Est. payroll</span>
               <strong id="payrollCount">$0</strong>
-            </article>
+            </button>
           </div>
           <div class="dashboard-grid">
             <section class="panel">
@@ -1419,6 +1419,6 @@
     <div id="modalHost"></div>
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js?v=V1.03.041-restore-refresh-view"></script>
+    <script src="app.js?v=V1.03.042-dashboard-metric-links"></script>
   </body>
 </html>

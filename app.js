@@ -7423,6 +7423,7 @@ function bindEvents() {
     const profileAccessButton = event.target.closest("[data-open-profile-access]");
     const viewRecordButton = event.target.closest("[data-view-record]");
     const mobileGoViewButton = event.target.closest("[data-mobile-go-view]");
+    const dashboardLinkButton = event.target.closest("[data-dashboard-link]");
     const openReportTypeButton = event.target.closest("[data-open-report-type]");
     const requestMobilePermissionsButton = event.target.closest("[data-request-mobile-permissions]");
 
@@ -7441,6 +7442,10 @@ function bindEvents() {
     }
     if (mobileGoViewButton) {
       setView(mobileGoViewButton.dataset.mobileGoView);
+      return;
+    }
+    if (dashboardLinkButton) {
+      setView(dashboardLinkButton.dataset.dashboardLink);
       return;
     }
     if (publicRunnerStatusButton) {

@@ -700,6 +700,20 @@ label textarea:focus {
   padding: 18px;
 }
 
+.metric-link {
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+  width: 100%;
+}
+
+.metric-link:hover,
+.metric-link:focus-visible {
+  border-color: var(--accent);
+  outline: none;
+}
+
 .metric span {
   color: var(--muted);
   font-size: 13px;
