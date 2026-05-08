@@ -446,6 +446,41 @@ function mobileRuntimeInfo() {
   };
 }
 
+async function capturePunchLocation() {
+  const plugin = capacitorBridge()?.Plugins?.Geolocation;
+  try {
+    const position = plugin?.getCurrentPosition
+      ? await plugin.getCurrentPosition({ enableHighAccuracy: true, timeout: 8000 })
+      : await browserCurrentPosition();
+    const coords = position?.coords;
+    if (!coords) return null;
+    return {
+      latitude: coords.latitude,
+      longitude: coords.longitude,
+      accuracy: coords.accuracy || null,
+      capturedAt: new Date().toISOString(),
+      source: plugin?.getCurrentPosition ? "capacitor" : "browser"
+    };
+  } catch (error) {
+    console.warn("Punch location not captured", error);
+    return null;
+  }
+}
+
+function browserCurrentPosition() {
+  return new Promise((resolve, reject) => {
+    if (!navigator.geolocation) {
+      reject(new Error("Geolocation is not available."));
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(resolve, reject, {
+      enableHighAccuracy: true,
+      maximumAge: 60000,
+      timeout: 8000
+    });
+  });
+}
+
 function openDatabase() {
   return new Promise((resolve, reject) => {
     if (!window.indexedDB) {
@@ -3216,10 +3251,10 @@ function clockCard(event) {
       <strong>${escapeHtml(event.name)}</strong>
       <span>${escapeHtml(venue?.name || "No venue")} ${event.startDate ? "- " + formatDate(event.startDate) : ""}</span>
       <div class="punch-summary">
-        ${punchSummaryItem("Call", card?.clockIn)}
-        ${punchSummaryItem("Lunch Out", card?.lunchOut)}
-        ${punchSummaryItem("Lunch In", card?.lunchIn)}
-        ${punchSummaryItem("Wrap", card?.clockOut)}
+        ${punchSummaryItem("Call", card?.clockIn, card?.punchLocations?.clockIn)}
+        ${punchSummaryItem("Lunch Out", card?.lunchOut, card?.punchLocations?.lunchOut)}
+        ${punchSummaryItem("Lunch In", card?.lunchIn, card?.punchLocations?.lunchIn)}
+        ${punchSummaryItem("Wrap", card?.clockOut, card?.punchLocations?.clockOut)}
       </div>
       ${rentalWarning}
     </div>
@@ -3232,9 +3267,10 @@ function clockCard(event) {
   </article>`;
 }
 
-function punchSummaryItem(label, value) {
+function punchSummaryItem(label, value, location) {
   const set = !!value;
-  return `<span class="punch-summary-item ${set ? "is-set" : ""}"><b>${escapeHtml(label)}</b>${set ? escapeHtml(formatDate(value)) : "Not set"}</span>`;
+  const locationText = location ? `<small>Location saved</small>` : "";
+  return `<span class="punch-summary-item ${set ? "is-set" : ""}"><b>${escapeHtml(label)}</b>${set ? escapeHtml(formatDate(value)) : "Not set"}${locationText}</span>`;
 }
 
 function rentalClockWarning(event, card) {
@@ -6199,6 +6235,10 @@ async function crewPunch(eventId, field) {
     }
   }
   card[field] = now;
+  const location = await capturePunchLocation();
+  if (location) {
+    card.punchLocations = { ...(card.punchLocations || {}), [field]: location };
+  }
   if (field === "clockIn" && !card.eventName) card.eventName = event?.name || "";
   if (field === "clockIn" && rentalVehicleRequired(event, card)) {
     const assignment = assignmentForEventWorker(eventId, state.activeWorkerId);
@@ -6223,7 +6263,7 @@ async function crewPunch(eventId, field) {
   await put("timecards", card);
   await loadState();
   setView(state.activeView);
-  toast("Time updated.");
+  toast(location ? "Time updated with location." : "Time updated. Location was not captured.");
 }
 
 function toast(message) {
