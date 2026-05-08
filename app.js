@@ -481,6 +481,45 @@ function browserCurrentPosition() {
   });
 }
 
+function initMobileAppLifecycle() {
+  const appPlugin = capacitorBridge()?.Plugins?.App;
+  if (!appPlugin?.addListener) return;
+  appPlugin.addListener("appStateChange", ({ isActive }) => {
+    document.body.classList.toggle("app-paused", !isActive);
+    if (isActive) refreshMobileRuntimePanels();
+  });
+  appPlugin.addListener("resume", () => {
+    refreshMobileRuntimePanels();
+    loadState().then(render).catch((error) => console.warn("Resume refresh failed", error));
+  });
+  appPlugin.addListener("pause", () => {
+    document.body.classList.add("app-paused");
+  });
+  appPlugin.addListener("backButton", () => {
+    if (document.body.classList.contains("modal-open")) {
+      closeActiveForm();
+      return;
+    }
+    if (document.body.classList.contains("mobile-nav-open")) {
+      closeMobileNavigation();
+      return;
+    }
+    const homeView = roleHomeView(assignedAccessForCurrentUser()[0] || state.accessRole);
+    if (state.activeView && state.activeView !== homeView) {
+      setView(homeView);
+      return;
+    }
+    appPlugin.exitApp?.();
+  });
+}
+
+function refreshMobileRuntimePanels() {
+  renderConnectionBanner();
+  renderMobileDeviceStatus();
+  renderMobileQaPanel();
+  renderMobileLaunchPanel();
+}
+
 function openDatabase() {
   return new Promise((resolve, reject) => {
     if (!window.indexedDB) {
@@ -6753,6 +6792,7 @@ function bindEvents() {
 async function init() {
   showAuthScreen("Checking session...");
   bindEvents();
+  initMobileAppLifecycle();
   clearForm("timecardForm");
   clearForm("reportForm");
   await initializeAuth();
