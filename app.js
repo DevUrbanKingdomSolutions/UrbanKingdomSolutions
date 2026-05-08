@@ -869,6 +869,16 @@ async function syncLocalRecordsToSupabase() {
   }
 }
 
+async function cloudRecordCount() {
+  if (!supabaseClient || !authState.session || !authState.roleRecord || isAdminRole() || !cloudClientId()) return 0;
+  const { count, error } = await supabaseClient
+    .from("app_records")
+    .select("id", { count: "exact", head: true })
+    .eq("client_id", cloudClientId());
+  if (error) throw error;
+  return count || 0;
+}
+
 async function loadState() {
   const [clients, clientReps, accessLevelDefs, eventAccessLinks, workers, venues, promoters, profileNotes, events, eventAssignments, eventSwaps, timecards, runnerStops, runnerCategories, runnerNotes, systemProfiles, venueContacts, productionCompanies, productionContacts, vehicleLogs, accidentReports, messageThreadSettings] = await Promise.all(STORES.map(getAll));
   state = {
@@ -3091,9 +3101,21 @@ function render() {
   renderVenues();
   renderPromoters();
   renderRunnerStops();
+  renderDataTools();
   renderMessaging();
   enhanceResponsiveTables();
   checkRentalPhotoUrgencies();
+}
+
+function renderDataTools() {
+  const status = $("#cloudSyncStatus");
+  if (!status) return;
+  if (isAdminRole()) {
+    status.textContent = "ADMIN cannot sync production data";
+    return;
+  }
+  const localCount = Array.from(CLOUD_SYNC_STORES).reduce((sum, storeName) => sum + (state[storeName]?.length || 0), 0);
+  status.textContent = `Local records ready: ${localCount}`;
 }
 
 function enhanceResponsiveTables() {
@@ -7338,6 +7360,36 @@ async function importData(event) {
   toast("Import complete.");
 }
 
+async function publishCloudData() {
+  if (isAdminRole()) {
+    toast("ADMIN cannot publish production records.");
+    return;
+  }
+  await loadState();
+  const localCount = Array.from(CLOUD_SYNC_STORES).reduce((sum, storeName) => sum + (state[storeName]?.length || 0), 0);
+  if (!localCount) {
+    toast("No local demo records found in this browser.");
+    return;
+  }
+  await syncLocalRecordsToSupabase();
+  const count = await cloudRecordCount();
+  $("#cloudSyncStatus").textContent = `Shared records: ${count}`;
+  toast(`Published ${localCount} local records to cloud.`);
+}
+
+async function pullCloudData() {
+  if (isAdminRole()) {
+    toast("ADMIN cannot pull production records.");
+    return;
+  }
+  await hydrateAppRecordsFromSupabase();
+  await loadState();
+  setView(state.activeView);
+  const count = await cloudRecordCount();
+  $("#cloudSyncStatus").textContent = `Shared records: ${count}`;
+  toast(`Pulled ${count} shared records from cloud.`);
+}
+
 function bindEvents() {
   registerIdleSignOutListeners();
   $("#loginForm").addEventListener("submit", loginWithSupabase);
@@ -7532,6 +7584,14 @@ function bindEvents() {
   });
   $("#exportData").addEventListener("click", exportData);
   $("#importData").addEventListener("change", importData);
+  $("#publishCloudData").addEventListener("click", () => publishCloudData().catch((error) => {
+    console.error(error);
+    toast(error.message || "Cloud publish failed.");
+  }));
+  $("#pullCloudData").addEventListener("click", () => pullCloudData().catch((error) => {
+    console.error(error);
+    toast(error.message || "Cloud pull failed.");
+  }));
 
   document.body.addEventListener("click", async (event) => {
     const editButton = event.target.closest("[data-edit]");

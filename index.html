@@ -10,7 +10,7 @@
     <title>Production Crew Database</title>
     <link rel="manifest" href="manifest.webmanifest">
     <link rel="icon" href="assets/app-icon.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="styles.css?v=V1.03.046-stabilize-access-routing">
+    <link rel="stylesheet" href="styles.css?v=V1.03.047-cloud-sync-tools">
   </head>
   <body>
     <div id="pullRefreshIndicator" class="pull-refresh-indicator" aria-hidden="true">Pull to refresh</div>
@@ -1068,6 +1068,17 @@
           <div class="stack-layout">
             <section class="panel">
               <div class="panel-heading">
+                <h3>Cloud Sync</h3>
+                <span id="cloudSyncStatus" class="muted">Shared records: checking...</span>
+              </div>
+              <p class="muted">Use this on the desktop/browser that can see the demo data, then refresh the mobile app.</p>
+              <div class="row-actions">
+                <button id="publishCloudData" class="secondary-action" type="button">Publish Local Data to Cloud</button>
+                <button id="pullCloudData" class="secondary-action" type="button">Pull Cloud Data</button>
+              </div>
+            </section>
+            <section class="panel">
+              <div class="panel-heading">
                 <h3>Import / Export</h3>
                 <span class="muted">Client and Production Office only</span>
               </div>
@@ -1419,6 +1430,6 @@
     <div id="modalHost"></div>
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js?v=V1.03.046-stabilize-access-routing"></script>
+    <script src="app.js?v=V1.03.047-cloud-sync-tools"></script>
   </body>
 </html>
