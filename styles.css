@@ -1263,6 +1263,12 @@ td p {
   margin-left: auto;
 }
 
+.messages-heading {
+  align-items: center;
+  flex-direction: row;
+  justify-content: space-between;
+}
+
 .inline-create-form {
   display: grid;
   grid-template-columns: minmax(180px, 1fr) auto auto;
@@ -1913,7 +1919,7 @@ body:not(.owner-mode) .rate-field {
 
   .message-new-thread-button {
     width: 28px;
-    margin-left: 0;
+    margin-left: auto;
   }
 
   #sendbirdMessageForm {
