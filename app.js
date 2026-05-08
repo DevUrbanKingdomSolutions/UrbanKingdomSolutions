@@ -1706,15 +1706,13 @@ function accessLevelOptionsForForm(form) {
   let roles = accessLevelDefinitions().map((level) => level.id).filter((role) => role !== "ADMIN");
   if (form?.id === "accountAccessForm") return roles;
   if (["clientProfileForm", "workerForm", "promoterForm"].includes(form?.id)) {
-    const clientAccessManager = isClientRole()
-      || currentProfile().canOwnerEdit
-      || hasAssignedProfilePermission((profile) => profile.effectiveRole === "CLIENT" && profile.canOwnerEdit);
-    const promoterAccessManager = hasAssignedProfilePermission((profile) => profile.effectiveRole === "PROMOTER" && profile.canAdminEdit);
-    if (clientAccessManager) return roles.filter((role) => baseRoleForAccess(role) !== "ADMIN");
-    if (promoterAccessManager) {
+    const serverRole = normalizeRole(authState.roleRecord?.role || state.accessRole);
+    if (serverRole === "CLIENT") return roles.filter((role) => baseRoleForAccess(role) !== "ADMIN");
+    if (serverRole === "PROMOTER") {
       const blocked = new Set(["CLIENT", "CLIENT_ADMIN", "CLIENT_REP", "CLIENT_REP_LEAD", "CLIENT_ACCOUNTING"]);
       return roles.filter((role) => !blocked.has(role) && !["ADMIN", "CLIENT"].includes(baseRoleForAccess(role)));
     }
+    if (serverRole === "ADMIN") return roles;
     return roles.filter((role) => !["CLIENT", "PRODUCTION"].includes(baseRoleForAccess(role)));
   }
   if (form?.id !== "clientForm") roles = roles.filter((role) => !["CLIENT", "PRODUCTION"].includes(baseRoleForAccess(role)));
@@ -1748,16 +1746,13 @@ function accessPickerAllowed(form) {
   if (form.id === "accountAccessForm" || form.id === "accessLevelForm") return true;
   if (form.id === "clientProfileForm") return false;
   if (!["workerForm", "promoterForm"].includes(form.id)) return true;
-  if (form.id === "workerForm" && normalizeRole(authState.roleRecord?.role) === "CREW") return false;
+  const serverRole = normalizeRole(authState.roleRecord?.role || state.accessRole);
+  if (form.id === "workerForm" && serverRole === "CREW") return false;
   const workerId = form.elements?.id?.value || "";
   if (form.id === "workerForm" && workerId && workerId === state.activeWorkerId && assignedAccessForCurrentUser().includes("CREW")) return false;
   const promoterId = form.elements?.id?.value || "";
-  if (form.id === "promoterForm" && normalizeRole(authState.roleRecord?.role) === "PROMOTER" && promoterId && promoterId === state.activePromoterId) return false;
-  const clientAccessManager = isClientRole()
-    || currentProfile().canOwnerEdit
-    || hasAssignedProfilePermission((profile) => profile.effectiveRole === "CLIENT" && profile.canOwnerEdit);
-  const promoterAccessManager = hasAssignedProfilePermission((profile) => profile.effectiveRole === "PROMOTER" && profile.canAdminEdit);
-  return clientAccessManager || promoterAccessManager || canSystemEdit();
+  if (form.id === "promoterForm" && serverRole === "PROMOTER" && promoterId && promoterId === state.activePromoterId) return false;
+  return ["ADMIN", "CLIENT", "PROMOTER"].includes(serverRole);
 }
 
 async function refreshSiteAccessLevelsForForm(formId) {
