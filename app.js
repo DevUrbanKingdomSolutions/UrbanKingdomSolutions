@@ -3589,15 +3589,61 @@ function vehicleCheckRow(group) {
   const vehicleType = vehicleGroupType(group);
   const plate = vehicleGroupPlate(group);
   const logId = group.startLog?.id || group.endLog?.id || "";
+  const status = vehicleChecklistStatus(group);
   return `<tr>
-    <td><strong>${logId ? recordLink("vehicleLogs", logId, event?.name || "Vehicle Check") : escapeHtml(event?.name || "")}</strong><p>${formatDate(event?.startDate)}${event?.endDate ? " - " + formatDate(event.endDate) : ""}</p></td>
+    <td><strong>${logId ? recordLink("vehicleLogs", logId, event?.name || "Vehicle Check") : escapeHtml(event?.name || "")}</strong><p>${formatDate(event?.startDate)}${event?.endDate ? " - " + formatDate(event.endDate) : ""}</p>${vehicleStatusChips(status)}</td>
     <td>${escapeHtml(worker?.name || "")}</td>
     <td><strong>${escapeHtml(vehicleType || "Vehicle")}</strong></td>
     <td>${escapeHtml(plate || "Not set")}</td>
-    <td>${vehiclePhaseCell(group, "Start")}</td>
-    <td>${vehiclePhaseCell(group, "End")}</td>
+    <td>${vehiclePhaseCell(group, "Start")}${vehiclePhotoChecklist(status.start)}</td>
+    <td>${vehiclePhaseCell(group, "End")}${vehiclePhotoChecklist(status.end)}</td>
     <td>${group.logs.map((log) => vehiclePhotoGallery(log)).join("")}</td>
   </tr>`;
+}
+
+function vehicleChecklistStatus(group) {
+  return {
+    start: vehiclePhaseChecklist(group.startLog, "start", ["Front", "Back", "Driver side", "Passenger side", "Gas gauge"], [
+      "startFront",
+      "startBack",
+      "startDriverSide",
+      "startPassengerSide",
+      "startGasGauge"
+    ]),
+    end: vehiclePhaseChecklist(group.endLog, "end", ["Front", "Back", "Driver side", "Passenger side", "Gas gauge"], [
+      "endFront",
+      "endBack",
+      "endDriverSide",
+      "endPassengerSide",
+      "endGasGauge"
+    ])
+  };
+}
+
+function vehiclePhaseChecklist(log, phase, labels, keys) {
+  const photos = log?.vehiclePhotos || {};
+  const items = keys.map((key, index) => ({ label: labels[index], done: !!photos[key] }));
+  const plateDone = !!log?.plateNumber;
+  return {
+    phase,
+    complete: plateDone && items.every((item) => item.done),
+    plateDone,
+    items
+  };
+}
+
+function vehicleStatusChips(status) {
+  const startClass = status.start.complete ? "" : " warn";
+  const endClass = status.end.complete ? "" : " warn";
+  return `<div class="vehicle-status-row"><span class="status-pill${startClass}">Start ${status.start.complete ? "complete" : "missing"}</span><span class="status-pill${endClass}">End ${status.end.complete ? "complete" : "missing"}</span></div>`;
+}
+
+function vehiclePhotoChecklist(status) {
+  const plateClass = status.plateDone ? "is-done" : "is-missing";
+  return `<div class="vehicle-photo-checklist">
+    <span class="${plateClass}">Plate</span>
+    ${status.items.map((item) => `<span class="${item.done ? "is-done" : "is-missing"}">${escapeHtml(item.label)}</span>`).join("")}
+  </div>`;
 }
 
 function vehiclePhaseCell(group, phase) {
