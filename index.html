@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Production Crew Database</title>
-    <link rel="stylesheet" href="styles.css?v=V1.01.026-signout-cache-idle-timeout">
+    <link rel="stylesheet" href="styles.css?v=V1.01.027-vehicle-photo-phase-toggle">
   </head>
   <body>
     <section id="authScreen" class="auth-screen">
@@ -810,7 +810,7 @@
                 </select>
               </label>
               <label>Scheduled date<input name="scheduledDate" type="datetime-local"></label>
-              <div class="photo-fieldset">
+              <div class="photo-fieldset" data-vehicle-photo-section="start">
                 <span>Start photos</span>
                 <label>Front<input name="frontPhoto" type="file" accept="image/*" data-photo-key="startFront"></label>
                 <label>Back<input name="backPhoto" type="file" accept="image/*" data-photo-key="startBack"></label>
@@ -819,7 +819,7 @@
                 <label>Gas gauge<input name="gasGaugePhoto" type="file" accept="image/*" data-photo-key="startGasGauge"></label>
                 <label>Prior damages<input name="priorDamagePhotos" type="file" accept="image/*" multiple data-photo-key="priorDamages"></label>
               </div>
-              <div class="photo-fieldset">
+              <div class="photo-fieldset" data-vehicle-photo-section="end">
                 <span>End photos</span>
                 <label>Front<input name="endFrontPhoto" type="file" accept="image/*" data-photo-key="endFront"></label>
                 <label>Back<input name="endBackPhoto" type="file" accept="image/*" data-photo-key="endBack"></label>
@@ -1183,6 +1183,6 @@
     <div id="modalHost"></div>
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js?v=V1.01.026-signout-cache-idle-timeout"></script>
+    <script src="app.js?v=V1.01.027-vehicle-photo-phase-toggle"></script>
   </body>
 </html>

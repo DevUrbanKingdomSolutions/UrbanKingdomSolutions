@@ -3000,6 +3000,7 @@ function appendTimecardNote(card, message) {
 
 function applyVehicleAssignmentLock(form = $("#vehicleForm")) {
   if (!form) return;
+  updateVehiclePhotoSections(form);
   const log = form.elements.id?.value ? state.vehicleLogs.find((item) => item.id === form.elements.id.value) : null;
   const assignment = log?.assignmentId ? getEventAssignment(log.assignmentId) : assignmentForForm(form);
   if (assignment) {
@@ -3022,6 +3023,17 @@ function applyVehicleAssignmentLock(form = $("#vehicleForm")) {
     const worker = getWorker(assignment?.workerId);
     form.elements.assignmentLabel.value = `${getEvent(assignment?.eventId)?.name || "Event"} - ${worker?.name || "Runner"}`;
   }
+}
+
+function updateVehiclePhotoSections(form = $("#vehicleForm")) {
+  if (!form) return;
+  const phase = String(form.elements.phase?.value || "").toLowerCase();
+  const showStart = phase !== "end";
+  const showEnd = phase !== "start";
+  form.querySelectorAll("[data-vehicle-photo-section]").forEach((section) => {
+    const sectionType = section.dataset.vehiclePhotoSection;
+    section.hidden = sectionType === "start" ? !showStart : !showEnd;
+  });
 }
 
 function updateReportTypeFields(form = $("#reportForm")) {
