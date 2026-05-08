@@ -1699,7 +1699,14 @@ function assignedAccessForCurrentUser() {
 function accessLevelOptionsForForm(form) {
   let roles = accessLevelDefinitions().map((level) => level.id).filter((role) => role !== "ADMIN");
   if (form?.id === "accountAccessForm") return roles;
-  if (["clientProfileForm", "workerForm", "promoterForm"].includes(form?.id)) return roles;
+  if (["clientProfileForm", "workerForm", "promoterForm"].includes(form?.id)) {
+    if (isProductionRole()) {
+      const blocked = new Set(["CLIENT", "CLIENT_ADMIN", "CLIENT_REP", "CLIENT_REP_LEAD", "CLIENT_ACCOUNTING"]);
+      return roles.filter((role) => !blocked.has(role) && baseRoleForAccess(role) !== "CLIENT");
+    }
+    if (isClientRole()) return roles;
+    return roles.filter((role) => !["CLIENT", "PRODUCTION"].includes(baseRoleForAccess(role)));
+  }
   if (form?.id !== "clientForm") roles = roles.filter((role) => !["CLIENT", "PRODUCTION"].includes(baseRoleForAccess(role)));
   return roles;
 }
