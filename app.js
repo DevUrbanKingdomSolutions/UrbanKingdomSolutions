@@ -3171,6 +3171,7 @@ async function selectMessageThreadType(type) {
 }
 
 function renderMessageThread() {
+  const panel = $("#activeMessagePanel");
   const title = $("#activeMessagingTitle");
   const meta = $("#activeMessagingMeta");
   const members = $("#messageThreadMembers");
@@ -3178,6 +3179,14 @@ function renderMessageThread() {
   const typing = $("#messageTypingStatus");
   const form = $("#sendbirdMessageForm");
   if (!title || !meta || !thread || !form) return;
+  if (panel) panel.hidden = !sendbirdActiveChannel;
+  if (!sendbirdActiveChannel) {
+    if (members) members.innerHTML = "";
+    if (typing) typing.innerHTML = "";
+    form.hidden = true;
+    thread.innerHTML = "";
+    return;
+  }
   const channelName = sendbirdActiveChannel?.name || "";
   title.textContent = channelName || MESSAGE_THREAD_TYPES[state.messagingThreadType]?.label || "Messages";
   meta.textContent = activeThreadManagementLabel();
