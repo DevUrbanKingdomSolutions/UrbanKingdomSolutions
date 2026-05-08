@@ -1300,6 +1300,60 @@ async function saveAccountAccess(event) {
   toast("Account access updated.");
 }
 
+async function openProfileAccessForm(storeName) {
+  if (!["workers", "promoters", "clientReps"].includes(storeName)) return;
+  if (!(isClientRole() || isProductionRole() || isAdminRole())) {
+    toast("This access view cannot manage profile access.");
+    return;
+  }
+  await refreshSiteAccessLevelsForForm("profileAccessForm");
+  const sourceForm = storeName === "workers" ? $("#workerForm") : storeName === "promoters" ? $("#promoterForm") : $("#clientProfileForm");
+  const targetId = sourceForm?.elements?.id?.value || "";
+  if (!targetId) {
+    toast("Save the profile first, then manage access.");
+    return;
+  }
+  const profile = state[storeName]?.find((item) => item.id === targetId);
+  if (!profile) {
+    toast("Profile not found yet.");
+    return;
+  }
+  fillForm("profileAccessForm", {
+    targetStore: storeName,
+    targetId,
+    profileName: profile.name || profile.contactName || profile.email || targetId,
+    accessLevels: normalizeAccessLevels(profile.accessLevels, storeName === "promoters" ? "PROMOTER_ADMIN" : storeName === "workers" ? "CREW" : "CLIENT_REP")
+  });
+}
+
+async function saveProfileAccess(event) {
+  event.preventDefault();
+  if (!(isClientRole() || isProductionRole() || isAdminRole())) return;
+  const form = event.currentTarget;
+  const record = await formRecord(form);
+  const storeName = record.targetStore;
+  const targetId = record.targetId;
+  const profile = state[storeName]?.find((item) => item.id === targetId);
+  if (!profile) {
+    toast("Profile not found.");
+    return;
+  }
+  const accessLevels = normalizeAccessLevels(record.accessLevels, storeName === "promoters" ? "PROMOTER_ADMIN" : storeName === "workers" ? "CREW" : "CLIENT_REP");
+  const updated = { ...profile, accessLevels, loginRole: baseRoleForAccess(accessLevels[0] || profile.loginRole) };
+  await put(storeName, updated);
+  try {
+    if (initializeSupabaseClient()) await syncSupabaseRoleForProfile(storeName, updated);
+  } catch (error) {
+    console.error(error);
+    toast("Access saved locally. Supabase role sync needs attention.");
+    return;
+  }
+  closeForm("profileAccessForm");
+  await loadState();
+  setView(state.activeView);
+  toast("Profile access updated.");
+}
+
 function setupStepKey(userId = authState.user?.id) {
   return `productionCrewSetupStep:${userId || "unknown"}`;
 }
@@ -1705,6 +1759,15 @@ function assignedAccessForCurrentUser() {
 function accessLevelOptionsForForm(form) {
   let roles = accessLevelDefinitions().map((level) => level.id).filter((role) => role !== "ADMIN");
   if (form?.id === "accountAccessForm") return roles;
+  if (form?.id === "profileAccessForm") {
+    if (isClientRole()) return roles.filter((role) => baseRoleForAccess(role) !== "ADMIN");
+    if (isProductionRole()) {
+      const blocked = new Set(["CLIENT", "CLIENT_ADMIN", "CLIENT_REP", "CLIENT_REP_LEAD", "CLIENT_ACCOUNTING"]);
+      return roles.filter((role) => !blocked.has(role) && !["ADMIN", "CLIENT"].includes(baseRoleForAccess(role)));
+    }
+    if (isAdminRole()) return roles;
+    return [];
+  }
   if (["clientProfileForm", "workerForm", "promoterForm"].includes(form?.id)) return [];
   if (form?.id !== "clientForm") roles = roles.filter((role) => !["CLIENT", "PRODUCTION"].includes(baseRoleForAccess(role)));
   return roles;
@@ -1735,12 +1798,13 @@ function renderAccessLevelControls(root = document) {
 function accessPickerAllowed(form) {
   if (!form) return true;
   if (form.id === "accountAccessForm" || form.id === "accessLevelForm") return true;
+  if (form.id === "profileAccessForm") return isClientRole() || isProductionRole() || isAdminRole();
   if (["clientProfileForm", "workerForm", "promoterForm"].includes(form.id)) return false;
   return true;
 }
 
 async function refreshSiteAccessLevelsForForm(formId) {
-  if (!["clientProfileForm", "workerForm", "promoterForm", "accessLevelForm", "accountAccessForm"].includes(formId)) return;
+  if (!["clientProfileForm", "workerForm", "promoterForm", "accessLevelForm", "accountAccessForm", "profileAccessForm"].includes(formId)) return;
   try {
     await hydrateAccessLevelsFromSupabase();
     await loadState();
@@ -5833,6 +5897,7 @@ function bindEvents() {
   $("#adminProfileForm").addEventListener("submit", (event) => saveForm(event, "systemProfiles"));
   $("#accessLevelForm").addEventListener("submit", (event) => saveForm(event, "accessLevelDefs"));
   $("#accountAccessForm").addEventListener("submit", saveAccountAccess);
+  $("#profileAccessForm").addEventListener("submit", saveProfileAccess);
   $("#clientForm").addEventListener("submit", (event) => saveForm(event, "clients"));
   $("#clientCompanyProfileForm").addEventListener("submit", (event) => saveForm(event, "clients"));
   $("#clientProfileForm").addEventListener("submit", (event) => saveForm(event, "clientReps"));
@@ -5953,6 +6018,7 @@ function bindEvents() {
     const newMessageThreadButton = event.target.closest("[data-new-message-thread]");
     const manageMessageThreadButton = event.target.closest("[data-manage-message-thread]");
     const notifyProductionOfficeButton = event.target.closest("[data-notify-production-office]");
+    const profileAccessButton = event.target.closest("[data-open-profile-access]");
 
     if (publicRunnerStatusButton) {
       await updatePublicRunnerStatus(publicRunnerStatusButton.dataset.publicRunnerStatus, publicRunnerStatusButton.dataset.status);
@@ -5983,6 +6049,7 @@ function bindEvents() {
       renderMessaging();
     }
     if (notifyProductionOfficeButton) await notifyRunnerToProductionOffice(notifyProductionOfficeButton.dataset.notifyProductionOffice);
+    if (profileAccessButton) await openProfileAccessForm(profileAccessButton.dataset.openProfileAccess);
 
   if (openButton) {
       await refreshSiteAccessLevelsForForm(openButton.dataset.openForm);

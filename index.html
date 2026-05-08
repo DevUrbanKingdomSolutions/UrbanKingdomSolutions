@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Production Crew Database</title>
-    <link rel="stylesheet" href="styles.css?v=V1.01.052-remove-profile-access-ui">
+    <link rel="stylesheet" href="styles.css?v=V1.01.053-profile-access-popup">
   </head>
   <body>
     <section id="authScreen" class="auth-screen">
@@ -654,41 +654,68 @@
                 <button class="ghost-button clear-form" type="button" data-form="workerForm">Clear</button>
               </div>
               <input type="hidden" name="id">
-              <label>Headshot<input name="headshotPhoto" type="file" accept="image/*" data-photo-key="headshot"></label>
-              <label>Name<input name="name" required placeholder="Full name"></label>
-              <label class="owner-form">Primary role<input name="role" placeholder="Stagehand, audio, lighting"></label>
-              <label>Phone<input name="phone" placeholder="(555) 000-0000"></label>
-              <label>Email<input name="email" type="email" placeholder="name@example.com"></label>
-              <label class="owner-form">Login email<input name="loginEmail" type="email" placeholder="login@example.com"></label>
-              <label class="owner-form">Login role
-                <select name="loginRole">
-                  <option value="CREW">Crew / Runner</option>
-                  <option value="PROMOTER">Promoter Admin</option>
-                </select>
-              </label>
-              <label class="owner-form">Supabase user ID<input name="authUserId" placeholder="Paste user ID after setup"></label>
-              <label class="owner-form">Status
-                <select name="status">
-                  <option>Available</option>
-                  <option>Booked</option>
-                  <option>Inactive</option>
-                  <option>Do not call</option>
-                </select>
-              </label>
-              <label class="owner-form rate-field check-label"><input name="allowCrewRateView" type="checkbox" value="yes"> Allow this crew member to view their pay rates</label>
-              <label class="owner-form rate-field">Default day rate<input name="defaultDayRate" type="number" min="0" step="0.01" placeholder="350.00"></label>
-              <label class="owner-form rate-field">Included hours<input name="defaultIncludedHours" type="number" min="0" step="0.25" placeholder="10"></label>
-              <label class="owner-form rate-field">Additional hourly rate<input name="defaultAdditionalRate" type="number" min="0" step="0.01" placeholder="45.00"></label>
-              <label class="owner-form rate-field">Rented vehicle rate<input name="defaultRentedVehicleRate" type="number" min="0" step="0.01" placeholder="25.00"></label>
-              <label class="owner-form rate-field">Personal vehicle rate<input name="defaultPersonalVehicleRate" type="number" min="0" step="0.01" placeholder="75.00"></label>
-              <label class="owner-form">Skills<textarea name="skills" rows="3" placeholder="Forklift, backline, rigging, merch"></textarea></label>
-              <label class="owner-form">Emergency contact<input name="emergency" placeholder="Name and phone"></label>
-              <label>Mailing address<textarea name="mailingAddress" rows="3" placeholder="Street, city, state, zip"></textarea></label>
-              <label class="check-label"><input name="hidePhone" type="checkbox" value="yes"> Hide phone from crew public directory</label>
-              <label class="check-label"><input name="hideEmail" type="checkbox" value="yes"> Hide email from crew public directory</label>
-              <label class="check-label"><input name="hideHeadshot" type="checkbox" value="yes"> Hide headshot from crew public directory</label>
-              <label class="owner-form">Notes<textarea name="notes" rows="3" placeholder="Reliability, rates, preferences"></textarea></label>
+              <div class="photo-fieldset">
+                <span>Profile</span>
+                <label>Headshot<input name="headshotPhoto" type="file" accept="image/*" data-photo-key="headshot"></label>
+                <label>Name<input name="name" required placeholder="Full name"></label>
+                <label class="owner-form">Primary role<input name="role" placeholder="Stagehand, audio, lighting"></label>
+                <button class="tiny-button owner-action" data-open-profile-access="workers" type="button">Manage Access</button>
+                <label>Phone<input name="phone" placeholder="(555) 000-0000"></label>
+                <label>Email<input name="email" type="email" placeholder="name@example.com"></label>
+                <label>Mailing address<textarea name="mailingAddress" rows="3" placeholder="Street, city, state, zip"></textarea></label>
+              </div>
+              <div class="photo-fieldset owner-form">
+                <span>Client Controls</span>
+                <label>Login email<input name="loginEmail" type="email" placeholder="login@example.com"></label>
+                <label>Login role
+                  <select name="loginRole">
+                    <option value="CREW">Crew / Runner</option>
+                    <option value="PROMOTER">Promoter Admin</option>
+                  </select>
+                </label>
+                <label>Supabase user ID<input name="authUserId" placeholder="Paste user ID after setup"></label>
+                <label>Status
+                  <select name="status">
+                    <option>Available</option>
+                    <option>Booked</option>
+                    <option>Inactive</option>
+                    <option>Do not call</option>
+                  </select>
+                </label>
+                <label>Skills<textarea name="skills" rows="3" placeholder="Forklift, backline, rigging, merch"></textarea></label>
+                <label>Emergency contact<input name="emergency" placeholder="Name and phone"></label>
+                <label>Notes<textarea name="notes" rows="3" placeholder="Reliability, rates, preferences"></textarea></label>
+              </div>
+              <div class="photo-fieldset owner-form rate-field">
+                <span>Rates</span>
+                <label class="check-label"><input name="allowCrewRateView" type="checkbox" value="yes"> Allow this crew member to view their pay rates</label>
+                <label>Default day rate<input name="defaultDayRate" type="number" min="0" step="0.01" placeholder="350.00"></label>
+                <label>Included hours<input name="defaultIncludedHours" type="number" min="0" step="0.25" placeholder="10"></label>
+                <label>Additional hourly rate<input name="defaultAdditionalRate" type="number" min="0" step="0.01" placeholder="45.00"></label>
+                <label>Rented vehicle rate<input name="defaultRentedVehicleRate" type="number" min="0" step="0.01" placeholder="25.00"></label>
+                <label>Personal vehicle rate<input name="defaultPersonalVehicleRate" type="number" min="0" step="0.01" placeholder="75.00"></label>
+              </div>
+              <div class="photo-fieldset">
+                <span>Directory Privacy</span>
+                <label class="check-label"><input name="hidePhone" type="checkbox" value="yes"> Hide phone from crew public directory</label>
+                <label class="check-label"><input name="hideEmail" type="checkbox" value="yes"> Hide email from crew public directory</label>
+                <label class="check-label"><input name="hideHeadshot" type="checkbox" value="yes"> Hide headshot from crew public directory</label>
+              </div>
               <button class="primary-action" type="submit">Save / Update & Close</button>
+            </form>
+            <form id="profileAccessForm" class="panel form-panel owner-form">
+              <div class="panel-heading">
+                <h3>Profile Access</h3>
+                <button class="ghost-button clear-form" type="button" data-form="profileAccessForm">Close</button>
+              </div>
+              <input type="hidden" name="targetStore">
+              <input type="hidden" name="targetId">
+              <label>Profile<input name="profileName" readonly></label>
+              <label>Access levels
+                <div class="checkbox-grid" data-access-level-options data-checkbox-group data-name="accessLevels"></div>
+              </label>
+              <p class="form-note">Access changes are managed separately from the public profile details.</p>
+              <button class="primary-action" type="submit">Save Access</button>
             </form>
             <section class="panel table-panel">
               <div class="panel-heading">
@@ -1258,6 +1285,6 @@
     <div id="modalHost"></div>
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js?v=V1.01.052-remove-profile-access-ui"></script>
+    <script src="app.js?v=V1.01.053-profile-access-popup"></script>
   </body>
 </html>
