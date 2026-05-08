@@ -1265,7 +1265,9 @@ td p {
 
 .messages-heading {
   align-items: center;
+  display: grid;
   flex-direction: row;
+  grid-template-columns: 1fr auto;
   justify-content: space-between;
 }
 
@@ -2074,6 +2076,13 @@ body:not(.owner-mode) .rate-field {
   .repeatable-heading {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .panel-heading.messages-heading {
+    align-items: center;
+    display: grid;
+    flex-direction: row;
+    grid-template-columns: 1fr auto;
   }
 
   .panel-tools,
