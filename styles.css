@@ -791,6 +791,41 @@ td p {
   justify-content: flex-end;
 }
 
+.event-options {
+  position: relative;
+  justify-self: end;
+}
+
+.event-options summary {
+  display: inline-flex;
+  align-items: center;
+  list-style: none;
+}
+
+.event-options summary::-webkit-details-marker {
+  display: none;
+}
+
+.event-options-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 5;
+  display: grid;
+  gap: 6px;
+  min-width: 170px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 8px;
+  box-shadow: var(--shadow);
+}
+
+.event-options-menu .tiny-button {
+  width: 100%;
+  text-align: left;
+}
+
 .clock-card {
   grid-template-columns: 1fr;
 }

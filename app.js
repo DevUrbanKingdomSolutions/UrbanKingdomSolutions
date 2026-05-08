@@ -2553,6 +2553,7 @@ function eventCard(event) {
   const adminEventActions = canAdminEdit()
     ? `<button class="tiny-button" data-add-assignment="${event.id}" type="button">Add Runner</button><button class="tiny-button" data-swap-crew="${event.id}" type="button">Swap Crew</button><button class="tiny-button" data-substitute-crew="${event.id}" type="button">Substitution</button>`
     : "";
+  const eventActions = `${publicAccessButton}${adminEventActions}${actionButtons("events", event.id, "eventForm", "", canAdminEdit())}`;
   return `<article class="record-card">
     <div class="record-card-main">
       <strong>${escapeHtml(event.name)}</strong>
@@ -2562,7 +2563,10 @@ function eventCard(event) {
       <p>${escapeHtml(crewLine)}</p>
       ${assignmentTable(event)}
     </div>
-    <div class="row-actions">${publicAccessButton}${adminEventActions}${actionButtons("events", event.id, "eventForm", "", canAdminEdit())}</div>
+    <details class="event-options">
+      <summary class="tiny-button">Options</summary>
+      <div class="event-options-menu">${eventActions}</div>
+    </details>
   </article>`;
 }
 
