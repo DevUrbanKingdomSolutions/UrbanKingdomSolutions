@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#20282c">
     <title>Production Crew Database</title>
-    <link rel="stylesheet" href="styles.css?v=V1.03.007-mobile-messaging-polish">
+    <link rel="stylesheet" href="styles.css?v=V1.03.008-mobile-runtime-status">
   </head>
   <body>
     <section id="authScreen" class="auth-screen">
@@ -138,6 +138,13 @@
             </article>
           </div>
           <div class="dashboard-grid">
+            <section id="mobileDevicePanel" class="panel mobile-device-panel">
+              <div class="panel-heading">
+                <h3>Mobile Device</h3>
+                <span id="mobileDeviceMode" class="muted"></span>
+              </div>
+              <div id="mobileDeviceStatus" class="mobile-device-status"></div>
+            </section>
             <section class="panel">
               <div class="panel-heading">
                 <h3>Currently Clocked In</h3>
@@ -1298,6 +1305,6 @@
     <div id="modalHost"></div>
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js?v=V1.03.007-mobile-messaging-polish"></script>
+    <script src="app.js?v=V1.03.008-mobile-runtime-status"></script>
   </body>
 </html>

@@ -427,6 +427,25 @@ const SMTP_PROVIDER_SETTINGS = {
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => Array.from(document.querySelectorAll(selector));
 
+function capacitorBridge() {
+  return window.Capacitor || null;
+}
+
+function mobileRuntimeInfo() {
+  const capacitor = capacitorBridge();
+  const platform = capacitor?.getPlatform?.() || "web";
+  const native = !!capacitor?.isNativePlatform?.();
+  const plugins = capacitor?.Plugins || {};
+  return {
+    native,
+    platform,
+    online: navigator.onLine !== false,
+    pushReady: !!plugins.PushNotifications,
+    cameraReady: !!plugins.Camera,
+    geolocationReady: !!plugins.Geolocation
+  };
+}
+
 function openDatabase() {
   return new Promise((resolve, reject) => {
     if (!window.indexedDB) {
@@ -2837,6 +2856,7 @@ function renderSelects() {
 
 function renderDashboard() {
   renderCrewMobileHome();
+  renderMobileDeviceStatus();
   if (isAdminRole()) {
     $("#eventCount").textContent = "0";
     $("#activeTimecards").textContent = "0";
@@ -2871,6 +2891,22 @@ function renderDashboard() {
   $("#recentNotes").innerHTML = noteItems.length
     ? noteItems.slice(0, 8).map((item) => `<div class="compact-item"><strong>${escapeHtml(item.type)}: ${escapeHtml(item.name)}</strong><span>${escapeHtml(item.text)}</span></div>`).join("")
     : `<div class="compact-item empty">Notes will appear here as you add them.</div>`;
+}
+
+function renderMobileDeviceStatus() {
+  const panel = $("#mobileDevicePanel");
+  const mode = $("#mobileDeviceMode");
+  const status = $("#mobileDeviceStatus");
+  if (!panel || !mode || !status) return;
+  const info = mobileRuntimeInfo();
+  mode.textContent = info.native ? `${info.platform} app` : "web browser";
+  status.innerHTML = [
+    ["Runtime", info.native ? "Native wrapper" : "Web app", info.native],
+    ["Network", info.online ? "Online" : "Offline", info.online],
+    ["Push Bridge", info.pushReady ? "Available" : "Web only", info.pushReady],
+    ["Camera Bridge", info.cameraReady ? "Available" : "Browser upload", info.cameraReady],
+    ["Location Bridge", info.geolocationReady ? "Available" : "Browser location", info.geolocationReady]
+  ].map(([label, value, ready]) => `<div class="mobile-device-item ${ready ? "ready" : "pending"}"><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></div>`).join("");
 }
 
 function renderCrewMobileHome() {
@@ -6262,6 +6298,8 @@ function bindEvents() {
     state.search = event.target.value.trim().toLowerCase();
     render();
   });
+  window.addEventListener("online", renderMobileDeviceStatus);
+  window.addEventListener("offline", renderMobileDeviceStatus);
   $("#timecardForm select[name='eventId']").addEventListener("change", (event) => {
     const selectedEvent = getEvent(event.target.value);
     if (!selectedEvent) return;

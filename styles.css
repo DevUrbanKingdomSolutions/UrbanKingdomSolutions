@@ -536,6 +536,43 @@ label textarea:focus {
   font-size: 13px;
 }
 
+.mobile-device-status {
+  display: grid;
+  gap: 8px;
+  padding: 14px 16px;
+}
+
+.mobile-device-item {
+  display: grid;
+  grid-template-columns: minmax(110px, 0.7fr) minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfaf6;
+  padding: 10px 12px;
+}
+
+.mobile-device-item span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.mobile-device-item strong {
+  font-size: 13px;
+}
+
+.mobile-device-item.ready {
+  border-color: #b9d8cf;
+  background: #effaf6;
+}
+
+.mobile-device-item.pending {
+  background: #fffaf0;
+}
+
 .metric,
 .panel {
   background: var(--panel);
@@ -1760,6 +1797,14 @@ body:not(.owner-mode) .rate-field {
   body.crew-mode .crew-mobile-home:not([hidden]) {
     display: block;
     margin-bottom: 14px;
+  }
+
+  .mobile-device-panel {
+    order: 3;
+  }
+
+  .mobile-device-item {
+    grid-template-columns: 1fr;
   }
 
   .metric {
