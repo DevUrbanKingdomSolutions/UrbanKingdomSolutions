@@ -10,7 +10,7 @@
     <title>Production Crew Database</title>
     <link rel="manifest" href="manifest.webmanifest">
     <link rel="icon" href="assets/app-icon.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="styles.css?v=V1.03.014-mobile-app-identity">
+    <link rel="stylesheet" href="styles.css?v=V1.03.015-mobile-launch-checklist">
   </head>
   <body>
     <section id="authScreen" class="auth-screen">
@@ -160,6 +160,13 @@
                 <span id="mobileQaCount" class="muted"></span>
               </div>
               <div id="mobileQaList" class="mobile-qa-list"></div>
+            </section>
+            <section id="mobileLaunchPanel" class="panel mobile-launch-panel">
+              <div class="panel-heading">
+                <h3>Mobile Beta Launch</h3>
+                <span id="mobileLaunchCount" class="muted"></span>
+              </div>
+              <div id="mobileLaunchList" class="mobile-launch-list"></div>
             </section>
             <section class="panel">
               <div class="panel-heading">
@@ -1321,6 +1328,6 @@
     <div id="modalHost"></div>
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js?v=V1.03.014-mobile-app-identity"></script>
+    <script src="app.js?v=V1.03.015-mobile-launch-checklist"></script>
   </body>
 </html>

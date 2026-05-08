@@ -2894,6 +2894,7 @@ function renderDashboard() {
   renderCrewMobileHome();
   renderMobileDeviceStatus();
   renderMobileQaPanel();
+  renderMobileLaunchPanel();
   if (isAdminRole()) {
     $("#eventCount").textContent = "0";
     $("#activeTimecards").textContent = "0";
@@ -2999,6 +3000,28 @@ function renderMobileQaPanel() {
   const readyCount = checks.filter(([, ready]) => ready).length;
   count.textContent = `${readyCount}/${checks.length} ready`;
   list.innerHTML = checks.map(([label, ready, detail]) => `<div class="mobile-qa-item ${ready ? "ready" : "pending"}"><span>${escapeHtml(label)}</span><strong>${escapeHtml(detail)}</strong></div>`).join("");
+}
+
+function renderMobileLaunchPanel() {
+  const list = $("#mobileLaunchList");
+  const count = $("#mobileLaunchCount");
+  if (!list || !count) return;
+  const info = mobileRuntimeInfo();
+  const checks = [
+    ["App wrapper", true, "Capacitor iOS/Android folders installed"],
+    ["App identity", true, "Manifest and placeholder icon added"],
+    ["Crew workflow", isCrewRole() ? visibleEvents().length > 0 : state.events.length > 0, "Assigned event flow available"],
+    ["Camera capture", true, "Vehicle/report inputs request camera"],
+    ["Location capture", info.geolocationReady || !!navigator.geolocation, info.geolocationReady ? "Native bridge ready" : "Browser location ready"],
+    ["Push path", info.pushReady, info.pushReady ? "Native bridge ready" : "Needs native-device test"],
+    ["Messaging", !!SENDBIRD_APP_ID, "Sendbird app ID configured"],
+    ["Notifications", !!NOVU_TRIGGER_FUNCTION, "Novu trigger function named"],
+    ["Offline notice", true, "Connection banner active"],
+    ["Store assets", false, "Final logo, screenshots, privacy copy pending"]
+  ];
+  const readyCount = checks.filter(([, ready]) => ready).length;
+  count.textContent = `${readyCount}/${checks.length} ready`;
+  list.innerHTML = checks.map(([label, ready, detail]) => `<div class="mobile-launch-item ${ready ? "ready" : "pending"}"><span>${escapeHtml(label)}</span><strong>${escapeHtml(detail)}</strong></div>`).join("");
 }
 
 function renderConnectionBanner() {
