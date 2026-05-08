@@ -1704,7 +1704,9 @@ function accessLevelOptionsForForm(form) {
   let roles = accessLevelDefinitions().map((level) => level.id).filter((role) => role !== "ADMIN");
   if (form?.id === "accountAccessForm") return roles;
   if (["clientProfileForm", "workerForm", "promoterForm"].includes(form?.id)) {
-    const clientAccessManager = hasAssignedProfilePermission((profile) => profile.effectiveRole === "CLIENT" && profile.canOwnerEdit);
+    const clientAccessManager = isClientRole()
+      || currentProfile().canOwnerEdit
+      || hasAssignedProfilePermission((profile) => profile.effectiveRole === "CLIENT" && profile.canOwnerEdit);
     const promoterAccessManager = hasAssignedProfilePermission((profile) => profile.effectiveRole === "PROMOTER" && profile.canAdminEdit);
     if (clientAccessManager) return roles.filter((role) => baseRoleForAccess(role) !== "ADMIN");
     if (promoterAccessManager) {
@@ -2408,9 +2410,9 @@ function activeClientRecord() {
 function activeClientRepRecord() {
   const clientId = authState.roleRecord?.client_id || "";
   const userId = authState.user?.id || "";
-  const email = authState.user?.email || "";
+  const email = normalizedMatchValue(authState.user?.email || "");
   return state.clientReps.find((rep) => rep.authUserId === userId)
-    || state.clientReps.find((rep) => rep.clientId === clientId && rep.email === email)
+    || state.clientReps.find((rep) => rep.clientId === clientId && normalizedMatchValue(rep.email) === email)
     || null;
 }
 
