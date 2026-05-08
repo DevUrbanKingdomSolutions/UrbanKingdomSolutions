@@ -1058,17 +1058,18 @@ td p {
 .icon-button {
   display: inline-grid;
   place-items: center;
-  width: 34px;
-  height: 34px;
+  width: 28px;
+  height: 28px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: #ffffff;
   color: var(--accent-dark);
   cursor: pointer;
   font: inherit;
-  font-size: 22px;
+  font-size: 18px;
   font-weight: 800;
   line-height: 1;
+  padding: 0;
 }
 
 .icon-button:hover,
@@ -1911,7 +1912,7 @@ body:not(.owner-mode) .rate-field {
   }
 
   .message-new-thread-button {
-    width: 100%;
+    width: 28px;
     margin-left: 0;
   }
 
