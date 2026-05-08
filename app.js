@@ -249,7 +249,8 @@ let state = {
   runnerCategory: "All",
   directoryTab: "crew",
   payrollView: localStorage.getItem("productionCrewPayrollView") || "worker",
-  messagingThreadType: localStorage.getItem("productionCrewMessagingThreadType") || "event"
+  messagingThreadType: localStorage.getItem("productionCrewMessagingThreadType") || "event",
+  collapsedNavGroups: JSON.parse(localStorage.getItem("productionCrewCollapsedNavGroups") || "{}")
 };
 
 const NAV_GROUPS = {
@@ -3362,14 +3363,33 @@ function setView(viewId) {
 
 function renderNavigation() {
   const groups = NAV_GROUPS[state.accessRole] || NAV_GROUPS[effectiveAccessRole()] || NAV_GROUPS.CLIENT_ADMIN;
-  $(".nav-list").innerHTML = groups.map((group) => {
-    const heading = group.label ? `<div class="nav-group-label">${group.label}</div>` : "";
+  $(".nav-list").innerHTML = groups.map((group, index) => {
     const items = group.items
       .filter(([view]) => currentProfile().views.includes(view))
       .map(([view, label]) => `<button class="nav-item ${state.activeView === view ? "active" : ""}" data-view="${view}" type="button">${label}</button>`)
       .join("");
-    return `${heading}${items}`;
+    if (!items) return "";
+    if (!group.label) return `<div class="nav-group nav-group-plain">${items}</div>`;
+    const key = navGroupKey(group, index);
+    const isCollapsed = !!state.collapsedNavGroups[key];
+    return `<section class="nav-group ${isCollapsed ? "collapsed" : ""}">
+      <button class="nav-group-toggle" data-nav-group="${escapeHtml(key)}" type="button" aria-expanded="${String(!isCollapsed)}">
+        <span>${escapeHtml(group.label)}</span>
+        <span class="nav-group-caret">${isCollapsed ? "+" : "-"}</span>
+      </button>
+      <div class="nav-group-items" ${isCollapsed ? "hidden" : ""}>${items}</div>
+    </section>`;
   }).join("");
+}
+
+function navGroupKey(group, index) {
+  return `${state.accessRole}:${group.label || `group-${index}`}`;
+}
+
+function toggleNavGroup(key) {
+  state.collapsedNavGroups[key] = !state.collapsedNavGroups[key];
+  localStorage.setItem("productionCrewCollapsedNavGroups", JSON.stringify(state.collapsedNavGroups));
+  renderNavigation();
 }
 
 function applyAccessProfile() {
@@ -5153,6 +5173,11 @@ function bindEvents() {
   $("#setupLogoutButton").addEventListener("click", clearSavedLogin);
   $("#logoutButton").addEventListener("click", logout);
   $(".nav-list").addEventListener("click", (event) => {
+    const groupToggle = event.target.closest("[data-nav-group]");
+    if (groupToggle) {
+      toggleNavGroup(groupToggle.dataset.navGroup);
+      return;
+    }
     const button = event.target.closest("[data-view]");
     if (button) setView(button.dataset.view);
   });

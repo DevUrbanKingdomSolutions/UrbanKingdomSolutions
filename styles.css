@@ -154,13 +154,43 @@ button {
   gap: 8px;
 }
 
-.nav-group-label {
-  grid-column: 1 / -1;
-  margin: 14px 8px 2px;
+.nav-group {
+  display: grid;
+  gap: 8px;
+}
+
+.nav-group-items {
+  display: grid;
+  gap: 8px;
+}
+
+.nav-group-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 34px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  padding: 10px 8px 4px;
   color: #8fa0a3;
   font-size: 11px;
   font-weight: 900;
   letter-spacing: 0.08em;
+  text-align: left;
+}
+
+.nav-group-toggle:hover {
+  color: #ffffff;
+}
+
+.nav-group-caret {
+  font-size: 14px;
+  letter-spacing: 0;
+}
+
+.nav-group.collapsed {
+  gap: 0;
 }
 
 .nav-item,
