@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Production Crew app icon">
+  <rect width="512" height="512" rx="96" fill="#20282c"/>
+  <path d="M96 158c0-34 28-62 62-62h196c34 0 62 28 62 62v196c0 34-28 62-62 62H158c-34 0-62-28-62-62V158z" fill="#fffdf8"/>
+  <path d="M148 190c0-24 19-43 43-43h130c24 0 43 19 43 43v132c0 24-19 43-43 43H191c-24 0-43-19-43-43V190z" fill="#0f766e"/>
+  <path d="M204 236h48c31 0 52-19 52-48 0-28-21-46-52-46h-92v228h44V236zm0-39v-16h44c8 0 13 3 13 8 0 6-5 8-13 8h-44z" fill="#fffdf8" transform="translate(10 0)"/>
+  <path d="M329 330c-14 14-33 22-57 22-55 0-93-38-93-94s38-94 93-94c25 0 45 8 59 22l-28 32c-8-8-18-12-31-12-29 0-49 21-49 52s20 52 49 52c13 0 24-4 32-13l25 33z" fill="#fffdf8"/>
+</svg>

@@ -1,0 +1,19 @@
+{
+  "name": "Production Crew",
+  "short_name": "Crew",
+  "description": "Entertainment production crew, events, timecards, vehicles, reports, and messaging.",
+  "start_url": "index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f5f3ee",
+  "theme_color": "#20282c",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "assets/app-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
