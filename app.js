@@ -13,6 +13,8 @@ const NOVU_TRIGGER_FUNCTION = "trigger-novu-notification";
 const SENDBIRD_APP_ID = "2B54A2B2-CB8E-43DE-A7F8-B53059C09AB3";
 const SENDBIRD_CHAT_SDK_URL = "https://esm.sh/@sendbird/chat";
 const SENDBIRD_GROUP_CHANNEL_SDK_URL = "https://esm.sh/@sendbird/chat/groupChannel";
+const IDLE_SIGN_OUT_MINUTES = 10;
+const IDLE_SIGN_OUT_MS = IDLE_SIGN_OUT_MINUTES * 60 * 1000;
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
   rentalPhotoUrgent: "rental-photo-urgent",
@@ -192,6 +194,8 @@ let sendbirdMessages = [];
 let sendbirdActiveThread = null;
 let sendbirdTypingUsers = [];
 let sendbirdTypingPoller = null;
+let idleSignOutTimer = null;
+let signOutReloading = false;
 let sendbirdConnectionState = {
   status: "disconnected",
   errorCode: "",
@@ -1194,6 +1198,7 @@ function openCurrentClientSetupStep() {
 
 async function applyAuthenticatedSession(session, preferredView = "") {
   if (!session) {
+    stopIdleSignOutTimer();
     authState = { session: null, user: null, roleRecord: null, pendingSetup: false };
     appHasLoaded = false;
     showAuthScreen("Log in with your Supabase account.");
@@ -1203,6 +1208,7 @@ async function applyAuthenticatedSession(session, preferredView = "") {
   authState.session = session;
   authState.user = session.user;
   if (authState.pendingSetup) {
+    stopIdleSignOutTimer();
     showSetupScreen(session);
     return;
   }
@@ -1228,6 +1234,7 @@ async function applyAuthenticatedSession(session, preferredView = "") {
   if (location.hash !== `#${homeView}`) history.replaceState(null, "", `#${homeView}`);
   setView(homeView);
   openCurrentClientSetupStep();
+  resetIdleSignOutTimer();
 }
 
 async function initializeAuth() {
@@ -1361,22 +1368,82 @@ async function completeAccountSetup(event) {
 
 async function logout() {
   if (!supabaseClient) return;
+  stopIdleSignOutTimer();
   appHasLoaded = false;
   authState = { session: null, user: null, roleRecord: null, pendingSetup: false };
   showAuthScreen("Logging out...");
   await supabaseClient.auth.signOut();
-  showAuthScreen("Logged out. Sign in again when ready.");
+  await refreshAppCacheAfterSignOut("Logged out. Sign in again when ready.");
 }
 
 async function clearSavedLogin() {
+  stopIdleSignOutTimer();
   initializeSupabaseClient();
   appHasLoaded = false;
   authState = { session: null, user: null, roleRecord: null, pendingSetup: false };
   if (supabaseClient) await supabaseClient.auth.signOut({ scope: "local" });
+  await refreshAppCacheAfterSignOut("Saved login cleared. Sign in again.");
+}
+
+function clearLocalSessionCache() {
+  sendbirdActiveChannel = null;
+  sendbirdActiveThread = null;
+  sendbirdMessages = [];
+  sendbirdTypingUsers = [];
+  sendbirdConnectionState = { status: "disconnected", errorCode: "", errorMessage: "" };
   Object.keys(localStorage)
-    .filter((key) => key.startsWith("sb-"))
+    .filter((key) => key.startsWith("sb-") || key.startsWith("productionCrewActive") || key === "productionCrewMessagingThreadType" || key === "productionCrewPayrollView" || key === "productionCrewCollapsedNavGroups")
     .forEach((key) => localStorage.removeItem(key));
-  showAuthScreen("Saved login cleared. Sign in again.");
+  sessionStorage.clear();
+}
+
+async function clearBrowserAppCaches() {
+  if (!("caches" in window)) return;
+  const cacheNames = await caches.keys();
+  await Promise.all(cacheNames.map((name) => caches.delete(name)));
+}
+
+async function refreshAppCacheAfterSignOut(message) {
+  clearLocalSessionCache();
+  try {
+    await clearBrowserAppCaches();
+  } catch (error) {
+    console.warn(error);
+  }
+  showAuthScreen(message);
+  if (signOutReloading || isPublicEventRoute()) return;
+  signOutReloading = true;
+  window.setTimeout(() => {
+    const url = new URL(window.location.href);
+    url.searchParams.set("signedOutAt", String(Date.now()));
+    url.hash = "";
+    window.location.replace(url.toString());
+  }, 350);
+}
+
+function stopIdleSignOutTimer() {
+  window.clearTimeout(idleSignOutTimer);
+  idleSignOutTimer = null;
+}
+
+function resetIdleSignOutTimer() {
+  stopIdleSignOutTimer();
+  if (!authState.session || authState.pendingSetup || isPublicEventRoute()) return;
+  idleSignOutTimer = window.setTimeout(() => {
+    toast(`Signed out after ${IDLE_SIGN_OUT_MINUTES} minutes of inactivity.`);
+    logout().catch((error) => {
+      console.error(error);
+      showAuthScreen("Signed out after inactivity.");
+    });
+  }, IDLE_SIGN_OUT_MS);
+}
+
+function registerIdleSignOutListeners() {
+  if (window.__productionCrewIdleListenersRegistered) return;
+  window.__productionCrewIdleListenersRegistered = true;
+  ["click", "keydown", "pointermove", "touchstart", "scroll"].forEach((eventName) => {
+    window.addEventListener(eventName, resetIdleSignOutTimer, { passive: true });
+  });
 }
 
 function matchesSearch(record, extra = "") {
@@ -5171,6 +5238,7 @@ async function importData(event) {
 }
 
 function bindEvents() {
+  registerIdleSignOutListeners();
   $("#loginForm").addEventListener("submit", loginWithSupabase);
   $("#setupForm").addEventListener("submit", completeAccountSetup);
   $("#clearSessionButton").addEventListener("click", clearSavedLogin);
