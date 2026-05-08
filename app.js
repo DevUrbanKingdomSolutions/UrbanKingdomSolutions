@@ -2460,6 +2460,20 @@ function hasAssignedAccess(role) {
   return assignedAccessForCurrentUser().includes(role);
 }
 
+function dataScopeRole() {
+  if (isAdminRole()) return "ADMIN";
+  const baseRoles = assignedAccessForCurrentUser().map(baseRoleForAccess);
+  if (baseRoles.includes("CLIENT")) return "CLIENT";
+  if (baseRoles.includes("PROMOTER")) return "PROMOTER";
+  if (baseRoles.includes("PRODUCTION")) return "PRODUCTION";
+  if (baseRoles.includes("CREW")) return "CREW";
+  return effectiveAccessRole();
+}
+
+function hasDataScope(role) {
+  return dataScopeRole() === role;
+}
+
 function canEditRates() {
   return currentProfile().canViewRates || (hasAssignedAccess("CLIENT_ACCOUNTING") && hasAssignedAccess("CLIENT_REP_LEAD"));
 }
@@ -2723,10 +2737,11 @@ async function ensureDefaultAssignmentsForEvent(eventRecord) {
 
 function visibleEvents() {
   if (isAdminRole()) return [];
-  if (isProductionRole()) {
+  if (hasDataScope("CLIENT")) return state.events;
+  if (hasDataScope("PROMOTER")) {
     return state.events.filter((event) => !state.activePromoterId || event.promoterId === state.activePromoterId);
   }
-  if (isProductionTeamRole()) {
+  if (hasDataScope("PRODUCTION")) {
     const email = normalizedMatchValue(authState.user?.email || "");
     const eventIds = new Set(state.eventAccessLinks
       .filter((link) => {
@@ -2738,34 +2753,33 @@ function visibleEvents() {
       .filter(Boolean));
     return state.events.filter((event) => eventIds.has(event.id));
   }
-  if (!isCrewRole()) return state.events;
   return state.events.filter((event) => eventWorkerIds(event).includes(state.activeWorkerId));
 }
 
 function isEventVisible(eventId) {
   if (isAdminRole()) return false;
-  if (isProductionRole()) {
+  if (hasDataScope("CLIENT")) return true;
+  if (hasDataScope("PROMOTER")) {
     const event = getEvent(eventId);
     return !!event && (!state.activePromoterId || event.promoterId === state.activePromoterId);
   }
-  if (isProductionTeamRole()) return visibleEvents().some((event) => event.id === eventId);
-  if (!isCrewRole()) return true;
+  if (hasDataScope("PRODUCTION")) return visibleEvents().some((event) => event.id === eventId);
   const event = getEvent(eventId);
   return !!event && eventWorkerIds(event).includes(state.activeWorkerId);
 }
 
 function visibleRecords(records) {
   if (isAdminRole()) return [];
-  if (isProductionRole()) {
+  if (hasDataScope("CLIENT")) return records;
+  if (hasDataScope("PROMOTER")) {
     return records.filter((record) => {
       if (record.promoterId && state.activePromoterId && record.promoterId !== state.activePromoterId) return false;
       return !record.eventId || isEventVisible(record.eventId);
     });
   }
-  if (isProductionTeamRole()) {
+  if (hasDataScope("PRODUCTION")) {
     return records.filter((record) => record.eventId && isEventVisible(record.eventId));
   }
-  if (!isCrewRole()) return records;
   return records.filter((record) => {
     if (record.workerId !== state.activeWorkerId) return false;
     return !!record.eventId && isEventVisible(record.eventId);
@@ -2778,20 +2792,20 @@ function assignedWorkerIdsForVisibleEvents() {
 
 function visibleWorkers() {
   if (isAdminRole()) return [];
-  if (isClientRole()) return state.workers;
-  if (isProductionTeamRole()) {
+  if (hasDataScope("CLIENT")) return state.workers;
+  if (hasDataScope("PRODUCTION")) {
     const ids = assignedWorkerIdsForVisibleEvents();
     return state.workers.filter((worker) => ids.has(worker.id));
   }
-  if (isCrewRole()) return state.workers;
+  if (hasDataScope("CREW")) return state.workers;
   const ids = assignedWorkerIdsForVisibleEvents();
   return state.workers.filter((worker) => ids.has(worker.id));
 }
 
 function visiblePromoters() {
   if (isAdminRole()) return [];
-  if (isClientRole()) return state.promoters;
-  if (!isProductionRole()) return [];
+  if (hasDataScope("CLIENT")) return state.promoters;
+  if (!hasDataScope("PROMOTER")) return [];
   const active = getPromoter(state.activePromoterId);
   return state.promoters.filter((promoter) => {
     if (!active?.companyName) return promoter.id === state.activePromoterId;
@@ -2801,7 +2815,7 @@ function visiblePromoters() {
 
 function visibleVenues() {
   if (isAdminRole()) return [];
-  if (isClientRole() || isProductionRole()) return state.venues;
+  if (hasDataScope("CLIENT") || hasDataScope("PROMOTER")) return state.venues;
   const venueIds = new Set(visibleEvents().map((event) => event.venueId).filter(Boolean));
   return state.venues.filter((venue) => venueIds.has(venue.id));
 }
@@ -3465,9 +3479,9 @@ function renderDashboard() {
 
   const noteItems = [
     ...visibleEvents().map((item) => ({ type: "Event", name: item.name, text: item.notes, updatedAt: item.updatedAt })),
-    ...((isClientRole() || isProductionRole()) ? state.venues.map((item) => ({ type: "Venue", name: item.name, text: item.notes || item.parking, updatedAt: item.updatedAt })) : []),
-    ...((isClientRole() || isProductionRole()) ? visiblePromoters().map((item) => ({ type: "Promoter", name: promoterLabel(item), text: item.notes, updatedAt: item.updatedAt })) : []),
-    ...((isClientRole() || isProductionRole()) ? state.runnerStops.map((item) => ({ type: "Runner", name: item.name, text: item.notes || item.bestUse, updatedAt: item.updatedAt })) : [])
+    ...((hasDataScope("CLIENT") || hasDataScope("PROMOTER")) ? state.venues.map((item) => ({ type: "Venue", name: item.name, text: item.notes || item.parking, updatedAt: item.updatedAt })) : []),
+    ...((hasDataScope("CLIENT") || hasDataScope("PROMOTER")) ? visiblePromoters().map((item) => ({ type: "Promoter", name: promoterLabel(item), text: item.notes, updatedAt: item.updatedAt })) : []),
+    ...((hasDataScope("CLIENT") || hasDataScope("PROMOTER")) ? state.runnerStops.map((item) => ({ type: "Runner", name: item.name, text: item.notes || item.bestUse, updatedAt: item.updatedAt })) : [])
   ].filter((item) => item.text).sort((a, b) => new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0));
 
   $("#recentNotes").innerHTML = noteItems.length
