@@ -2602,10 +2602,11 @@ function assignmentTable(event) {
   if (!assignments.length) return `<p>No detailed runner assignments yet.</p>`;
   return `<table class="mini-table"><thead><tr><th>Runner</th><th>Dates</th><th>Vehicle</th><th>License Plate</th><th>Rate</th><th></th></tr></thead><tbody>${assignments.map((assignment) => {
     const worker = getWorker(assignment.workerId);
+    const plate = assignmentLicensePlate(assignment);
     const actions = canAdminEdit()
       ? `<div class="row-actions"><button class="tiny-button" data-edit="eventAssignments" data-id="${assignment.id}" data-form="eventAssignmentForm" type="button">Edit</button><button class="tiny-button danger" data-delete="eventAssignments" data-id="${assignment.id}" type="button">Delete</button></div>`
       : "";
-    return `<tr><td>${escapeHtml(worker?.name || "Unassigned")}</td><td>${formatDate(assignment.startDate)}<p>${formatDate(assignment.endDate)}</p></td><td>${escapeHtml(assignment.vehicleUse || "No Vehicle")}<p>${escapeHtml(assignment.vehicleType || "")}</p></td><td>${escapeHtml(assignmentLicensePlate(assignment))}</td><td>${canViewRates() ? assignmentPayLine(assignment, event) : ""}</td><td>${actions}</td></tr>`;
+    return `<tr><td>${escapeHtml(worker?.name || "Unassigned")}</td><td>${formatDate(assignment.startDate)}<p>${formatDate(assignment.endDate)}</p></td><td>${escapeHtml(assignment.vehicleUse || "No Vehicle")}<p>${escapeHtml(assignment.vehicleType || "")}</p><p>Plate: ${escapeHtml(plate || "Not set")}</p></td><td>${escapeHtml(plate || "Not set")}</td><td>${canViewRates() ? assignmentPayLine(assignment, event) : ""}</td><td>${actions}</td></tr>`;
   }).join("")}</tbody></table>`;
 }
 
