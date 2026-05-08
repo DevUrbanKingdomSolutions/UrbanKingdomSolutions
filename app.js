@@ -2395,9 +2395,8 @@ function userAccessRoleCell(row) {
   const role = normalizeRole(row.role);
   const levels = accessLevelsForUserAccessRow(row);
   const roleLabel = ACCESS_LEVEL_LABELS[role] || role;
-  const uniqueLevels = levels.filter((level) => accessLevelLabel(level) !== roleLabel);
-  const siteAccess = uniqueLevels.length ? `<p>Site access: ${accessBadges(uniqueLevels, "")}</p>` : "";
-  return `<span class="status-pill">${escapeHtml(roleLabel)}</span>${siteAccess}`;
+  const siteAccess = levels.length ? accessBadges(levels, "") : `<span class="status-pill muted">None</span>`;
+  return `<p><strong>Server Access:</strong> <span class="status-pill">${escapeHtml(roleLabel)}</span></p><p><strong>Site Access:</strong> ${siteAccess}</p>`;
 }
 
 function userAccessProfileLabel(row) {
