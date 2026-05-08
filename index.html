@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Production Crew Database</title>
-    <link rel="stylesheet" href="styles.css?v=V1.01.039-client-rep-lead-access">
+    <link rel="stylesheet" href="styles.css?v=V1.01.040-admin-account-access-manager">
   </head>
   <body>
     <section id="authScreen" class="auth-screen">
@@ -365,6 +365,32 @@
               </label>
               <label>Description<textarea name="description" rows="3" placeholder="What this access level is for"></textarea></label>
               <button class="primary-action" type="submit">Save Access Level</button>
+            </form>
+            <form id="accountAccessForm" class="panel form-panel system-form">
+              <div class="panel-heading">
+                <h3>Manage Account Access</h3>
+                <button class="ghost-button clear-form" type="button" data-form="accountAccessForm">Close</button>
+              </div>
+              <input type="hidden" name="userId">
+              <input type="hidden" name="clientId">
+              <input type="hidden" name="workerId">
+              <input type="hidden" name="promoterId">
+              <input type="hidden" name="profileStore">
+              <input type="hidden" name="profileId">
+              <label>Email<input name="email" readonly></label>
+              <label>Supabase security level
+                <select name="role">
+                  <option value="CLIENT">Client</option>
+                  <option value="PROMOTER">Promoter</option>
+                  <option value="PRODUCTION">Production</option>
+                  <option value="CREW">Crew / Runner</option>
+                </select>
+              </label>
+              <label>Site access levels
+                <div class="checkbox-grid" data-access-level-options data-checkbox-group data-name="accessLevels"></div>
+              </label>
+              <p class="form-note">Saving updates the site access on the profile and the Supabase security level for this login account.</p>
+              <button class="primary-action" type="submit">Save Account Access</button>
             </form>
             <section class="panel table-panel">
               <div class="panel-heading">
@@ -1256,6 +1282,6 @@
     <div id="modalHost"></div>
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js?v=V1.01.039-client-rep-lead-access"></script>
+    <script src="app.js?v=V1.01.040-admin-account-access-manager"></script>
   </body>
 </html>

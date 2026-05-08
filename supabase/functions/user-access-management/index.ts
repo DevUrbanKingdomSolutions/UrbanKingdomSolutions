@@ -32,6 +32,9 @@ Deno.serve(async (request) => {
     if (action === "delete") {
       return await deleteUserAccount(admin, callerData.user.id, callerRole, String(body.userId || ""));
     }
+    if (action === "update") {
+      return await updateUserAccess(admin, callerData.user.id, callerRole, body);
+    }
     return await listUserAccounts(admin, callerRole);
   } catch (error) {
     return new Response(JSON.stringify({ error: error.message || "User access request failed." }), {
@@ -61,12 +64,19 @@ async function listUserAccounts(admin: any, callerRole: any) {
   if (clientsError) throw clientsError;
   const clientNames = new Map((clients || []).map((client: any) => [client.id, client.name]));
 
+  const { data: clientReps, error: repsError } = await admin
+    .from("client_reps")
+    .select("id,client_id,auth_user_id,email,name,access_levels");
+  if (repsError) throw repsError;
+  const repsByUserId = new Map((clientReps || []).filter((rep: any) => rep.auth_user_id).map((rep: any) => [rep.auth_user_id, rep]));
+
   const { data: authUsers, error: usersError } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
   if (usersError) throw usersError;
   const authById = new Map((authUsers.users || []).map((user: any) => [user.id, user]));
 
   const users = (roles || []).map((role: any) => {
     const authUser = authById.get(role.user_id);
+    const clientRep = repsByUserId.get(role.user_id);
     return {
       userId: role.user_id,
       email: authUser?.email || "",
@@ -75,12 +85,53 @@ async function listUserAccounts(admin: any, callerRole: any) {
       clientName: clientNames.get(role.client_id) || "",
       workerId: role.worker_id || "",
       promoterId: role.promoter_id || "",
+      profileId: clientRep?.id || "",
+      profileName: clientRep?.name || "",
+      accessLevels: clientRep?.access_levels || [],
       createdAt: authUser?.created_at || "",
       lastSignInAt: authUser?.last_sign_in_at || ""
     };
   });
 
   return new Response(JSON.stringify({ users }), {
+    headers: { ...corsHeaders, "Content-Type": "application/json" }
+  });
+}
+
+async function updateUserAccess(admin: any, callerUserId: string, callerRole: any, body: any) {
+  if (callerRole?.role !== "ADMIN") throw new Error("Only ADMIN can manage login access.");
+  const userId = String(body.userId || "");
+  if (!userId) throw new Error("User ID is required.");
+  if (userId === callerUserId) throw new Error("ADMIN cannot change their own login access here.");
+
+  const allowedRoles = new Set(["CLIENT", "PROMOTER", "PRODUCTION", "CREW"]);
+  const role = String(body.role || "").trim().toUpperCase();
+  if (!allowedRoles.has(role)) throw new Error("Choose a valid Supabase security level.");
+
+  const accessLevels = Array.isArray(body.accessLevels)
+    ? body.accessLevels.map((level: unknown) => String(level || "").trim()).filter(Boolean)
+    : [];
+
+  const payload = {
+    user_id: userId,
+    role,
+    client_id: body.clientId || null,
+    worker_id: role === "CREW" ? body.workerId || null : null,
+    promoter_id: role === "PROMOTER" ? body.promoterId || null : null,
+    updated_at: new Date().toISOString()
+  };
+  const roleUpdate = await admin.from("user_roles").upsert(payload, { onConflict: "user_id" });
+  if (roleUpdate.error) throw roleUpdate.error;
+
+  if (String(body.profileStore || "") === "clientReps" && body.profileId) {
+    const repUpdate = await admin
+      .from("client_reps")
+      .update({ access_levels: accessLevels, updated_at: new Date().toISOString() })
+      .eq("id", body.profileId);
+    if (repUpdate.error) throw repUpdate.error;
+  }
+
+  return new Response(JSON.stringify({ status: "updated", role, accessLevels }), {
     headers: { ...corsHeaders, "Content-Type": "application/json" }
   });
 }

@@ -1199,6 +1199,105 @@ async function deleteUserAccount(userId) {
   toast("User account deleted.");
 }
 
+function profileForUserAccessRow(row) {
+  const email = normalizedMatchValue(row.email || "");
+  const clientRep = state.clientReps.find((item) => item.authUserId === row.userId)
+    || state.clientReps.find((item) => row.clientId && item.clientId === row.clientId && normalizedMatchValue(item.email) === email);
+  if (clientRep) return { store: "clientReps", profile: clientRep, accessFallback: "CLIENT_REP" };
+  const promoter = state.promoters.find((item) => item.authUserId === row.userId)
+    || state.promoters.find((item) => item.id === row.promoterId)
+    || state.promoters.find((item) => normalizedMatchValue(item.email) === email);
+  if (promoter) return { store: "promoters", profile: promoter, accessFallback: "PROMOTER_ADMIN" };
+  const worker = state.workers.find((item) => item.authUserId === row.userId)
+    || state.workers.find((item) => item.id === row.workerId)
+    || state.workers.find((item) => normalizedMatchValue(item.email) === email);
+  if (worker) return { store: "workers", profile: worker, accessFallback: "CREW" };
+  return { store: "", profile: null, accessFallback: normalizeRole(row.role) };
+}
+
+function accessLevelsForUserAccessRow(row) {
+  const matched = profileForUserAccessRow(row);
+  return normalizeAccessLevels(row.accessLevels || matched.profile?.accessLevels, matched.accessFallback);
+}
+
+function supabaseRoleFromAccessLevels(levels, fallback = "CLIENT") {
+  const baseRoles = normalizeAccessLevels(levels, fallback).map(baseRoleForAccess);
+  if (baseRoles.includes("CLIENT")) return "CLIENT";
+  if (baseRoles.includes("PROMOTER")) return "PROMOTER";
+  if (baseRoles.includes("PRODUCTION")) return "PRODUCTION";
+  if (baseRoles.includes("CREW")) return "CREW";
+  return normalizeRole(fallback);
+}
+
+async function openAccountAccessForm(userId) {
+  if (!isAdminRole() || !userId) return;
+  await refreshSiteAccessLevelsForForm("accountAccessForm");
+  const row = state.userAccessRows.find((item) => item.userId === userId);
+  if (!row) {
+    toast("Refresh user accounts first.");
+    return;
+  }
+  const matched = profileForUserAccessRow(row);
+  const accessLevels = accessLevelsForUserAccessRow(row);
+  fillForm("accountAccessForm", {
+    userId: row.userId,
+    email: row.email || "",
+    role: supabaseRoleFromAccessLevels(accessLevels, row.role),
+    clientId: row.clientId || matched.profile?.clientId || authState.roleRecord?.client_id || "",
+    workerId: row.workerId || (matched.store === "workers" ? matched.profile?.id : "") || "",
+    promoterId: row.promoterId || (matched.store === "promoters" ? matched.profile?.id : "") || "",
+    profileStore: matched.store,
+    profileId: matched.profile?.id || "",
+    accessLevels
+  });
+}
+
+async function saveAccountAccess(event) {
+  event.preventDefault();
+  if (!isAdminRole()) return;
+  if (!initializeSupabaseClient()) {
+    toast("Supabase login is not configured.");
+    return;
+  }
+  const form = event.currentTarget;
+  const record = await formRecord(form);
+  const accessLevels = normalizeAccessLevels(record.accessLevels, "");
+  if (!accessLevels.length) {
+    toast("Select at least one site access level.");
+    return;
+  }
+  const role = supabaseRoleFromAccessLevels(accessLevels, record.role);
+  const matched = record.profileStore && record.profileId
+    ? { store: record.profileStore, profile: state[record.profileStore]?.find((item) => item.id === record.profileId) }
+    : profileForUserAccessRow({ ...record, role });
+  if (matched.profile && matched.store) {
+    await put(matched.store, { ...matched.profile, accessLevels, loginRole: role });
+  }
+  const { error } = await supabaseClient.functions.invoke(USER_ACCESS_FUNCTION, {
+    body: {
+      action: "update",
+      userId: record.userId,
+      role,
+      clientId: record.clientId || authState.roleRecord?.client_id || null,
+      workerId: role === "CREW" ? record.workerId || null : null,
+      promoterId: role === "PROMOTER" ? record.promoterId || null : null,
+      accessLevels,
+      profileStore: matched.store || "",
+      profileId: matched.profile?.id || ""
+    }
+  });
+  if (error) {
+    console.error(error);
+    toast(await loginSetupErrorMessage(error));
+    return;
+  }
+  closeForm("accountAccessForm");
+  await loadState();
+  await refreshUserAccessList(false);
+  setView(state.activeView);
+  toast("Account access updated.");
+}
+
 function setupStepKey(userId = authState.user?.id) {
   return `productionCrewSetupStep:${userId || "unknown"}`;
 }
@@ -1599,6 +1698,7 @@ function assignedAccessForCurrentUser() {
 
 function accessLevelOptionsForForm(form) {
   let roles = accessLevelDefinitions().map((level) => level.id).filter((role) => role !== "ADMIN");
+  if (form?.id === "accountAccessForm") return roles;
   if (["clientProfileForm", "workerForm", "promoterForm"].includes(form?.id)) return roles;
   if (form?.id !== "clientForm") roles = roles.filter((role) => !["CLIENT", "PRODUCTION"].includes(baseRoleForAccess(role)));
   return roles;
@@ -1617,7 +1717,7 @@ function renderAccessLevelControls(root = document) {
 }
 
 async function refreshSiteAccessLevelsForForm(formId) {
-  if (!["clientProfileForm", "workerForm", "promoterForm", "accessLevelForm"].includes(formId)) return;
+  if (!["clientProfileForm", "workerForm", "promoterForm", "accessLevelForm", "accountAccessForm"].includes(formId)) return;
   try {
     await hydrateAccessLevelsFromSupabase();
     await loadState();
@@ -2234,7 +2334,7 @@ function renderUserAccessTable(tableId, countId, rows) {
   if (!table || !count) return;
   count.textContent = `${rows.length} users`;
   table.innerHTML = rows.length
-    ? rows.map((row) => `<tr><td><strong>${escapeHtml(row.email || "No email")}</strong><p>${escapeHtml(row.userId || "")}</p></td><td><span class="status-pill">${escapeHtml(accessLevelLabel(normalizeRole(row.role)))}</span></td><td>${escapeHtml(row.clientName || row.clientId || "")}</td><td>${escapeHtml(userAccessProfileLabel(row))}</td><td>${userAccessActions(row)}</td></tr>`).join("")
+    ? rows.map((row) => `<tr><td><strong>${escapeHtml(row.email || "No email")}</strong><p>${escapeHtml(row.userId || "")}</p></td><td><span class="status-pill">${escapeHtml(accessLevelLabel(normalizeRole(row.role)))}</span><p>${accessBadges(accessLevelsForUserAccessRow(row), normalizeRole(row.role))}</p></td><td>${escapeHtml(row.clientName || row.clientId || "")}</td><td>${escapeHtml(userAccessProfileLabel(row))}</td><td>${userAccessActions(row)}</td></tr>`).join("")
     : `<tr><td colspan="5" class="empty">Refresh to load user accounts.</td></tr>`;
 }
 
@@ -2252,7 +2352,7 @@ function userAccessProfileLabel(row) {
 
 function userAccessActions(row) {
   if (!isAdminRole() || row.role === "ADMIN" || row.userId === authState.user?.id) return "";
-  return `<button class="tiny-button danger" data-delete-user-account="${row.userId}" type="button">Delete Account</button>`;
+  return `<div class="row-actions"><button class="tiny-button" data-manage-account-access="${row.userId}" type="button">Manage Access</button><button class="tiny-button danger" data-delete-user-account="${row.userId}" type="button">Delete Account</button></div>`;
 }
 
 function openClientCompanyView(clientId) {
@@ -5680,6 +5780,7 @@ function bindEvents() {
   });
   $("#adminProfileForm").addEventListener("submit", (event) => saveForm(event, "systemProfiles"));
   $("#accessLevelForm").addEventListener("submit", (event) => saveForm(event, "accessLevelDefs"));
+  $("#accountAccessForm").addEventListener("submit", saveAccountAccess);
   $("#clientForm").addEventListener("submit", (event) => saveForm(event, "clients"));
   $("#clientCompanyProfileForm").addEventListener("submit", (event) => saveForm(event, "clients"));
   $("#clientProfileForm").addEventListener("submit", (event) => saveForm(event, "clientReps"));
@@ -5791,6 +5892,7 @@ function bindEvents() {
     const publicRunnerStatusButton = event.target.closest("[data-public-runner-status]");
     const refreshUsersButton = event.target.closest("[data-refresh-users]");
     const deleteUserButton = event.target.closest("[data-delete-user-account]");
+    const manageAccountAccessButton = event.target.closest("[data-manage-account-access]");
     const connectSendbirdButton = event.target.closest("[data-connect-sendbird]");
     const openEventChannelButton = event.target.closest("[data-open-event-channel]");
     const messageThreadTypeButton = event.target.closest("[data-message-thread-type]");
@@ -5806,6 +5908,7 @@ function bindEvents() {
     }
     if (refreshUsersButton) await refreshUserAccessList();
     if (deleteUserButton) await deleteUserAccount(deleteUserButton.dataset.deleteUserAccount);
+    if (manageAccountAccessButton) await openAccountAccessForm(manageAccountAccessButton.dataset.manageAccountAccess);
     if (connectSendbirdButton) await connectSendbirdMessaging();
     if (openEventChannelButton) await openEventMessagingChannel(openEventChannelButton.dataset.openEventChannel);
     if (messageThreadTypeButton) {
