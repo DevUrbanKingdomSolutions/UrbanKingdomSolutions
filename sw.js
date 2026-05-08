@@ -1,9 +1,9 @@
-const APP_SHELL_CACHE = "production-crew-shell-v1.03.036";
+const APP_SHELL_CACHE = "production-crew-shell-v1.03.037";
 const APP_SHELL_ASSETS = [
   "./",
   "./index.html",
-  "./styles.css?v=V1.03.036-fix-sendbird-instance",
-  "./app.js?v=V1.03.036-fix-sendbird-instance",
+  "./styles.css?v=V1.03.037-crew-contractor-company",
+  "./app.js?v=V1.03.037-crew-contractor-company",
   "./manifest.webmanifest",
   "./assets/app-icon.svg"
 ];

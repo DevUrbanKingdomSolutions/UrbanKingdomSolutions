@@ -1622,8 +1622,21 @@ async function openQuickProfileForm(targetStore) {
   });
   $("#quickProfileTitle").textContent = quickProfileTitle(targetStore);
   $("#quickProfileNote").textContent = quickProfileNote(targetStore);
-  $("#quickProfileForm").querySelector(".quick-company-field").hidden = targetStore === "workers";
+  updateQuickProfileCompanyFields();
   renderAccessLevelControls($("#quickProfileForm"));
+}
+
+function updateQuickProfileCompanyFields() {
+  const form = $("#quickProfileForm");
+  if (!form) return;
+  const targetStore = form.elements.targetStore?.value || "";
+  const contractorField = form.querySelector(".quick-contractor-field");
+  const companyField = form.querySelector(".quick-company-field");
+  const isCrew = targetStore === "workers";
+  const showCompany = !isCrew || form.elements.paidThroughCompany?.checked;
+  if (contractorField) contractorField.hidden = !isCrew;
+  if (companyField) companyField.hidden = !showCompany;
+  if (isCrew && !showCompany && form.elements.companyName) form.elements.companyName.value = "";
 }
 
 async function saveQuickProfile(event) {
@@ -1684,6 +1697,7 @@ async function saveQuickProfile(event) {
     };
     await put("promoters", promoter);
   } else {
+    const contractorCompany = record.paidThroughCompany === "yes" ? String(record.companyName || "").trim() : "";
     const worker = {
       id,
       clientId: record.clientId || authState.roleRecord?.client_id || "",
@@ -1691,6 +1705,8 @@ async function saveQuickProfile(event) {
       role: "Crew / Runner",
       email,
       loginEmail: email,
+      contractorCompany,
+      companyName: contractorCompany,
       status: "Available",
       accessLevels,
       loginRole: supabaseRoleFromAccessLevels(accessLevels, "CREW"),
@@ -7171,6 +7187,7 @@ function bindEvents() {
   $("#accountAccessForm").addEventListener("submit", saveAccountAccess);
   $("#profileAccessForm").addEventListener("submit", saveProfileAccess);
   $("#quickProfileForm").addEventListener("submit", saveQuickProfile);
+  $("#quickProfileForm").elements.paidThroughCompany.addEventListener("change", updateQuickProfileCompanyFields);
   $("#clientForm").addEventListener("submit", (event) => saveForm(event, "clients"));
   $("#clientPackageForm").addEventListener("submit", saveClientPackages);
   $("#clientCompanyProfileForm").addEventListener("submit", (event) => saveForm(event, "clients"));

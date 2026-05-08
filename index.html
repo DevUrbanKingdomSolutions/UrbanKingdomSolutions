@@ -10,7 +10,7 @@
     <title>Production Crew Database</title>
     <link rel="manifest" href="manifest.webmanifest">
     <link rel="icon" href="assets/app-icon.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="styles.css?v=V1.03.036-fix-sendbird-instance">
+    <link rel="stylesheet" href="styles.css?v=V1.03.037-crew-contractor-company">
   </head>
   <body>
     <section id="authScreen" class="auth-screen">
@@ -819,6 +819,7 @@
               </div>
               <input type="hidden" name="targetStore">
               <input type="hidden" name="clientId">
+              <label class="quick-contractor-field check-label"><input name="paidThroughCompany" type="checkbox" value="yes"> Paid through contractor company</label>
               <label class="quick-company-field">Company / organization<input name="companyName" placeholder="Company name"></label>
               <div class="form-grid">
                 <label>First name<input name="firstName" required placeholder="First"></label>
@@ -1418,6 +1419,6 @@
     <div id="modalHost"></div>
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js?v=V1.03.036-fix-sendbird-instance"></script>
+    <script src="app.js?v=V1.03.037-crew-contractor-company"></script>
   </body>
 </html>
