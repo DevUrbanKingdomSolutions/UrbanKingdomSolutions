@@ -594,7 +594,8 @@ label textarea:focus {
 }
 
 .mobile-qa-list,
-.mobile-launch-list {
+.mobile-launch-list,
+.mobile-install-list {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
@@ -602,7 +603,8 @@ label textarea:focus {
 }
 
 .mobile-qa-item,
-.mobile-launch-item {
+.mobile-launch-item,
+.mobile-install-item {
   display: grid;
   gap: 4px;
   border: 1px solid var(--line);
@@ -612,7 +614,8 @@ label textarea:focus {
 }
 
 .mobile-qa-item span,
-.mobile-launch-item span {
+.mobile-launch-item span,
+.mobile-install-item span {
   color: var(--muted);
   font-size: 11px;
   font-weight: 900;
@@ -620,8 +623,10 @@ label textarea:focus {
 }
 
 .mobile-qa-item strong,
-.mobile-launch-item strong {
+.mobile-launch-item strong,
+.mobile-install-item strong {
   font-size: 13px;
+  line-height: 1.35;
 }
 
 .mobile-qa-item.ready,
@@ -1887,8 +1892,13 @@ body:not(.owner-mode) .rate-field {
     order: 5;
   }
 
+  .mobile-install-panel {
+    order: 6;
+  }
+
   .mobile-qa-list,
-  .mobile-launch-list {
+  .mobile-launch-list,
+  .mobile-install-list {
     grid-template-columns: 1fr;
   }
 
