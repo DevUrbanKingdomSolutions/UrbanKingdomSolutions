@@ -233,6 +233,7 @@ let sendbirdConnectionState = {
   errorCode: "",
   errorMessage: ""
 };
+let sendbirdAutoConnectAttempted = false;
 
 const MESSAGE_THREAD_TYPES = {
   event: {
@@ -1784,6 +1785,7 @@ async function applyAuthenticatedSession(session, preferredView = "") {
   setView(homeView);
   openCurrentClientSetupStep();
   resetIdleSignOutTimer();
+  autoConnectMessagingAfterLogin();
 }
 
 async function initializeAuth() {
@@ -1980,6 +1982,7 @@ function clearLocalSessionCache() {
   sendbirdMessages = [];
   sendbirdTypingUsers = [];
   sendbirdConnectionState = { status: "disconnected", errorCode: "", errorMessage: "" };
+  sendbirdAutoConnectAttempted = false;
   Object.keys(localStorage)
     .filter((key) => key.startsWith("sb-") || key.startsWith("productionCrewActive") || key === "productionCrewMessagingThreadType" || key === "productionCrewPayrollView" || key === "productionCrewCollapsedNavGroups")
     .forEach((key) => localStorage.removeItem(key));
@@ -4776,19 +4779,9 @@ function renderMessaging() {
 }
 
 function renderMessagingConnectionStatus(configured, connected) {
-  if (connected) {
-    return `<div class="compact-item"><strong>Connected</strong><span>Messaging is ready.</span></div>`;
-  }
-  if (!configured) {
-    return `<div class="compact-item empty"><strong>Setup needed</strong><span>Add the Sendbird Application ID before connecting.</span></div>`;
-  }
-  if (sendbirdConnectionState.status === "error") {
-    return `<div class="compact-item empty"><strong>Connection error</strong><span>Messaging could not connect.</span></div>`;
-  }
-  if (sendbirdConnectionState.status === "connecting") {
-    return `<div class="compact-item"><strong>Connecting</strong><span>Opening the messaging session.</span></div>`;
-  }
-  return `<div class="compact-item"><strong>Disconnected</strong><span>Connect messaging to open or create threads.</span></div>`;
+  if (connected) return `<span class="connected">Connected</span>`;
+  if (sendbirdConnectionState.status === "connecting") return `<span class="connecting">Connecting</span>`;
+  return `<span class="disconnected">${configured ? "Not connected" : "Not configured"}</span>`;
 }
 
 function renderMessagingError() {
@@ -4798,8 +4791,8 @@ function renderMessagingError() {
     errorBox.innerHTML = "";
     return;
   }
-  const code = sendbirdConnectionState.errorCode ? `<p>Error code: ${escapeHtml(sendbirdConnectionState.errorCode)}</p>` : "";
-  errorBox.innerHTML = `<div class="compact-item empty"><strong>What happened</strong><span>${escapeHtml(sendbirdConnectionState.errorMessage || "Sendbird returned an error.")}</span>${code}</div>`;
+  const code = sendbirdConnectionState.errorCode ? ` Error code: ${sendbirdConnectionState.errorCode}.` : "";
+  errorBox.textContent = `${sendbirdConnectionState.errorMessage || "Sendbird returned an error."}${code}`;
 }
 
 function renderMessagingThreadTabs() {
@@ -4901,13 +4894,6 @@ async function selectMessageThreadType(type) {
   sendbirdActiveThread = null;
   sendbirdMessages = [];
   renderMessaging();
-  const target = firstVisibleMessageThreadTarget(state.messagingThreadType);
-  if (!target) {
-    toast("No visible thread is available in this section yet.");
-    return;
-  }
-  if (target.type === "direct") await openDirectMessageChannel(target.profileId);
-  else await openMessageChannel(target.type, target.eventId);
 }
 
 function renderMessageThread() {
@@ -6560,7 +6546,15 @@ function sendbirdErrorDetails(error) {
   };
 }
 
-async function connectSendbirdMessaging() {
+function autoConnectMessagingAfterLogin() {
+  if (sendbirdAutoConnectAttempted || !SENDBIRD_APP_ID || !authState.session) return;
+  sendbirdAutoConnectAttempted = true;
+  connectSendbirdMessaging({ quiet: true }).catch((error) => {
+    console.error(error);
+  });
+}
+
+async function connectSendbirdMessaging(options = {}) {
   if (!SENDBIRD_APP_ID) {
     sendbirdConnectionState = {
       status: "error",
@@ -6592,7 +6586,7 @@ async function connectSendbirdMessaging() {
     startSendbirdTypingPoller();
     await ensureDueEventMessageChannels();
     renderMessaging();
-    toast("Messaging connected.");
+    if (!options.quiet) toast("Messaging connected.");
   } catch (error) {
     console.error(error);
     sendbirdConnectionState = { status: "error", ...sendbirdErrorDetails(error) };

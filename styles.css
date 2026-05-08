@@ -1234,6 +1234,32 @@ td p {
   color: #ffffff;
 }
 
+.messaging-status-line {
+  margin: 0 16px 16px;
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.messaging-status-line .connected {
+  color: #1f8a4c;
+}
+
+.messaging-status-line .disconnected {
+  color: #b42318;
+}
+
+.messaging-status-line .connecting {
+  color: #8a5a00;
+}
+
+.messaging-error-line {
+  margin: -8px 16px 16px;
+  color: #8a1f16;
+  font-size: 13px;
+}
+
 #messageThreadMembers {
   display: flex;
   gap: 8px;
