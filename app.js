@@ -3090,7 +3090,12 @@ function clockCard(event) {
     <div class="record-card-main">
       <strong>${escapeHtml(event.name)}</strong>
       <span>${escapeHtml(venue?.name || "No venue")} ${event.startDate ? "- " + formatDate(event.startDate) : ""}</span>
-      <p>Call: ${formatDate(card?.clockIn) || "Not set"} | Lunch out: ${formatDate(card?.lunchOut) || "Not set"} | Lunch in: ${formatDate(card?.lunchIn) || "Not set"} | Wrap: ${formatDate(card?.clockOut) || "Not set"}</p>
+      <div class="punch-summary">
+        ${punchSummaryItem("Call", card?.clockIn)}
+        ${punchSummaryItem("Lunch Out", card?.lunchOut)}
+        ${punchSummaryItem("Lunch In", card?.lunchIn)}
+        ${punchSummaryItem("Wrap", card?.clockOut)}
+      </div>
       ${rentalWarning}
     </div>
     <div class="clock-actions">
@@ -3100,6 +3105,11 @@ function clockCard(event) {
       <button class="primary-action" data-time-punch="clockOut" data-event-id="${event.id}" type="button">Wrap</button>
     </div>
   </article>`;
+}
+
+function punchSummaryItem(label, value) {
+  const set = !!value;
+  return `<span class="punch-summary-item ${set ? "is-set" : ""}"><b>${escapeHtml(label)}</b>${set ? escapeHtml(formatDate(value)) : "Not set"}</span>`;
 }
 
 function rentalClockWarning(event, card) {
