@@ -1507,8 +1507,22 @@ function roleHomeView(role = state.accessRole) {
 }
 
 function protectedViewFor(viewId) {
-  const profile = currentProfile();
-  return profile.views.includes(viewId) ? viewId : roleHomeView();
+  const role = accessRoleForView(viewId);
+  if (role) return viewId;
+  return roleHomeView(assignedAccessForCurrentUser()[0] || state.accessRole);
+}
+
+function assignedAccessProfiles() {
+  return assignedAccessForCurrentUser().map((role) => ({ role, profile: accessProfileFor(role) })).filter((item) => item.profile);
+}
+
+function assignedViews() {
+  return Array.from(new Set(assignedAccessProfiles().flatMap((item) => item.profile.views)));
+}
+
+function accessRoleForView(viewId) {
+  if (currentProfile().views.includes(viewId)) return state.accessRole;
+  return assignedAccessProfiles().find((item) => item.profile.views.includes(viewId))?.role || "";
 }
 
 function assignedAccessForRole(role) {
@@ -3688,21 +3702,45 @@ function setView(viewId) {
     showAuthScreen("Log in to continue.");
     return;
   }
+  const nextRole = accessRoleForView(viewId);
+  if (nextRole) state.accessRole = nextRole;
   viewId = protectedViewFor(viewId);
   state.activeView = viewId;
+  applyAccessProfile();
   $$(".view").forEach((view) => view.classList.toggle("active-view", view.id === viewId));
   $$(".nav-item").forEach((button) => button.classList.toggle("active", button.dataset.view === viewId));
-  const label = (NAV_GROUPS[effectiveAccessRole()] || []).flatMap((group) => group.items).find(([view]) => view === viewId)?.[1];
+  const label = combinedNavGroups().flatMap((group) => group.items).find(([view]) => view === viewId)?.[1];
   $("#viewTitle").textContent = label || $(`.nav-item[data-view="${viewId}"]`)?.textContent || "Dashboard";
   if (location.hash !== `#${viewId}`) history.replaceState(null, "", `#${viewId}`);
   if (requestedView !== viewId) toast("That view is restricted for your role.");
 }
 
+function combinedNavGroups() {
+  const assigned = assignedAccessProfiles();
+  const groups = [];
+  const seenViews = new Set();
+  assigned.forEach(({ role, profile }) => {
+    const roleGroups = NAV_GROUPS[role] || NAV_GROUPS[profile.effectiveRole] || [];
+    roleGroups.forEach((group) => {
+      const items = group.items.filter(([view]) => profile.views.includes(view) && !seenViews.has(view));
+      if (!items.length) return;
+      items.forEach(([view]) => seenViews.add(view));
+      const label = group.label || "";
+      let existing = groups.find((item) => (item.label || "") === label);
+      if (!existing) {
+        existing = { label, items: [] };
+        groups.push(existing);
+      }
+      existing.items.push(...items);
+    });
+  });
+  return groups;
+}
+
 function renderNavigation() {
-  const groups = NAV_GROUPS[state.accessRole] || NAV_GROUPS[effectiveAccessRole()] || NAV_GROUPS.CLIENT_ADMIN;
+  const groups = combinedNavGroups();
   $(".nav-list").innerHTML = groups.map((group, index) => {
     const items = group.items
-      .filter(([view]) => currentProfile().views.includes(view))
       .map(([view, label]) => `<button class="nav-item ${state.activeView === view ? "active" : ""}" data-view="${view}" type="button">${label}</button>`)
       .join("");
     if (!items) return "";
@@ -3763,7 +3801,7 @@ function applyAccessProfile() {
   $$(".scoped-action").forEach((button) => { button.hidden = !profile.canScopedEdit; });
   $$(".system-action").forEach((button) => { button.hidden = !profile.canSystemEdit; });
   $$(".worker-action").forEach((button) => { button.hidden = !(isClientRole() || isCrewRole()); });
-  if (!profile.views.includes(state.activeView)) setView(profile.views[0]);
+  if (!assignedViews().includes(state.activeView)) setView(roleHomeView(assignedAccess[0] || state.accessRole));
 }
 
 function renderAccessRoleOptions() {
@@ -3772,7 +3810,7 @@ function renderAccessRoleOptions() {
   const select = $("#accessViewSelect");
   select.innerHTML = assignedAccess.map((role) => `<option value="${escapeHtml(role)}">${escapeHtml(accessLevelLabel(role))}</option>`).join("");
   select.value = state.accessRole;
-  control.hidden = assignedAccess.length <= 1;
+  control.hidden = true;
   $("#sessionRole").textContent = accessLevelLabel(state.accessRole);
   $("#sessionEmail").textContent = authState.user?.email || "Signed in";
 }
