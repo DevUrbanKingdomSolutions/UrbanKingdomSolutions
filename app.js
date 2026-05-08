@@ -28,6 +28,7 @@ const SENDBIRD_SDK_MODULE_SOURCES = [
 const IDLE_SIGN_OUT_MINUTES = 10;
 const IDLE_SIGN_OUT_MS = IDLE_SIGN_OUT_MINUTES * 60 * 1000;
 const ACTIVE_BROWSER_SESSION_KEY = "productionCrewActiveBrowserSession";
+const LAST_ACTIVE_VIEW_KEY = "productionCrewLastActiveView";
 const PULL_REFRESH_THRESHOLD = 92;
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -1882,7 +1883,10 @@ async function applyAuthenticatedSession(session, preferredView = "") {
   await loadState();
   await refreshUserAccessList(false);
   appHasLoaded = true;
-  const homeView = state.activeView && currentProfile().views.includes(state.activeView) ? state.activeView : roleHomeView();
+  const hashView = location.hash && !setupTypeFromUrl() ? location.hash.replace("#", "") : "";
+  const savedView = sessionStorage.getItem(LAST_ACTIVE_VIEW_KEY) || "";
+  const requestedView = preferredView || hashView || savedView || state.activeView;
+  const homeView = requestedView && assignedViews().includes(requestedView) ? requestedView : roleHomeView();
   if (location.hash !== `#${homeView}`) history.replaceState(null, "", `#${homeView}`);
   setView(homeView);
   openCurrentClientSetupStep();
@@ -5193,6 +5197,7 @@ function setView(viewId) {
   if (nextRole) state.accessRole = nextRole;
   viewId = protectedViewFor(viewId);
   state.activeView = viewId;
+  sessionStorage.setItem(LAST_ACTIVE_VIEW_KEY, viewId);
   applyAccessProfile();
   $$(".view").forEach((view) => view.classList.toggle("active-view", view.id === viewId));
   $$(".nav-item").forEach((button) => button.classList.toggle("active", button.dataset.view === viewId));
