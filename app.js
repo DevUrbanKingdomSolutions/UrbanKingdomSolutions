@@ -2160,19 +2160,42 @@ function accessLevelLabel(role) {
 
 function quickProfileAccessOptions(targetStore) {
   const roles = accessLevelDefinitions().map((level) => level.id).filter((role) => role !== "ADMIN");
-  if (targetStore === "promoters" && isProductionRole()) {
-    return roles.filter((role) => baseRoleForAccess(role) === "PROMOTER");
+  if (isProductionRole()) {
+    return roles.filter((role) => !["ADMIN", "CLIENT"].includes(baseRoleForAccess(role)));
   }
-  if (targetStore === "promoters") {
-    return roles.filter((role) => baseRoleForAccess(role) === "PROMOTER");
+  if (isClientRole()) {
+    return roles.filter((role) => baseRoleForAccess(role) !== "ADMIN");
   }
-  if (targetStore === "workers") {
-    return roles.filter((role) => baseRoleForAccess(role) === "CREW");
-  }
-  if (targetStore === "clients") {
+  if (targetStore === "clients" || isAdminRole()) {
     return roles.filter((role) => baseRoleForAccess(role) === "CLIENT");
   }
   return roles;
+}
+
+function quickProfileTargetsForCurrentUser() {
+  const targets = [];
+  if (isAdminRole()) {
+    targets.push({ store: "clients", label: "Client" });
+  }
+  if (canOwnerEdit()) {
+    targets.push({ store: "workers", label: "Crew / Runner" });
+    targets.push({ store: "promoters", label: "Promoter Rep" });
+  } else if (isProductionRole()) {
+    targets.push({ store: "workers", label: "Crew / Runner" });
+    targets.push({ store: "promoters", label: "Promoter Rep" });
+  }
+  return targets;
+}
+
+function renderGlobalAddMenu() {
+  const menu = $("#globalAddMenu");
+  const options = $("#globalAddMenuOptions");
+  if (!menu || !options) return;
+  const targets = quickProfileTargetsForCurrentUser();
+  menu.hidden = !targets.length;
+  options.innerHTML = targets.map((target) => (
+    `<button class="tiny-button" data-open-quick-profile="${escapeHtml(target.store)}" type="button">Add ${escapeHtml(target.label)}</button>`
+  )).join("");
 }
 
 function quickProfileDefaultAccess(targetStore) {
@@ -5198,6 +5221,7 @@ function applyAccessProfile() {
   renderAccessRoleOptions();
   renderAccessLevelControls();
   renderNavigation();
+  renderGlobalAddMenu();
   $("#crewScopeControl").hidden = !isCrewRole();
   $("#promoterScopeControl").hidden = !isProductionRole();
   $("#exportData").hidden = !profile.canImportExport;
@@ -7226,6 +7250,7 @@ function bindEvents() {
     const requestMobilePermissionsButton = event.target.closest("[data-request-mobile-permissions]");
 
     if (quickProfileButton) {
+      $("#globalAddMenu")?.removeAttribute("open");
       await openQuickProfileForm(quickProfileButton.dataset.openQuickProfile);
       return;
     }

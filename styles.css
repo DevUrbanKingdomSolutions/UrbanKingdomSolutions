@@ -284,6 +284,10 @@ button {
   align-items: center;
 }
 
+.global-add-menu {
+  justify-self: auto;
+}
+
 .connection-banner {
   display: grid;
   gap: 3px;

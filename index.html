@@ -10,7 +10,7 @@
     <title>Production Crew Database</title>
     <link rel="manifest" href="manifest.webmanifest">
     <link rel="icon" href="assets/app-icon.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="styles.css?v=V1.03.032-scroll-access-options">
+    <link rel="stylesheet" href="styles.css?v=V1.03.033-global-add-menu">
   </head>
   <body>
     <section id="authScreen" class="auth-screen">
@@ -110,6 +110,10 @@
             <h2 id="viewTitle">Dashboard</h2>
           </div>
           <div class="topbar-tools">
+            <details id="globalAddMenu" class="record-options global-add-menu" hidden>
+              <summary class="tiny-button">Add</summary>
+              <div id="globalAddMenuOptions" class="record-options-menu"></div>
+            </details>
             <div class="session-pill">
               <span id="sessionEmail">Not signed in</span>
               <strong id="sessionRole">ROLE</strong>
@@ -1414,6 +1418,6 @@
     <div id="modalHost"></div>
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js?v=V1.03.032-scroll-access-options"></script>
+    <script src="app.js?v=V1.03.033-global-add-menu"></script>
   </body>
 </html>
