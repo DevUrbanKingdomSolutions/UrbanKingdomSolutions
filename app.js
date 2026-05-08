@@ -3195,7 +3195,7 @@ function messageBubble(message) {
   const senderName = message.sender?.nickname || message.sender?.userId || "Message";
   const senderId = message.sender?.userId || "";
   const isOwn = senderId && senderId === sendbirdClient?.currentUser?.userId;
-  const sentAt = message.createdAt ? formatDateTime(message.createdAt) : "";
+  const sentAt = message.createdAt ? formatDate(message.createdAt) : "";
   return `<article class="message-bubble-row ${isOwn ? "own" : ""}">
     <div class="message-avatar">${escapeHtml(initialsForName(senderName))}</div>
     <div class="message-bubble">
