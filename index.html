@@ -10,7 +10,7 @@
     <title>Production Crew Database</title>
     <link rel="manifest" href="manifest.webmanifest">
     <link rel="icon" href="assets/app-icon.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="styles.css?v=V1.03.039-split-messaging-sessions">
+    <link rel="stylesheet" href="styles.css?v=V1.03.040-simplify-messaging-status">
   </head>
   <body>
     <div id="pullRefreshIndicator" class="pull-refresh-indicator" aria-hidden="true">Pull to refresh</div>
@@ -1085,11 +1085,10 @@
         <section id="messages" class="view">
           <div class="stack-layout">
             <section class="panel">
-              <div class="panel-heading">
-                <h3>Messaging Connection</h3>
+              <div class="messaging-status-header">
+                <div id="messagingStatus" class="messaging-status-line"></div>
                 <button id="connectSendbirdButton" class="tiny-button" data-connect-sendbird type="button">Connect Messaging</button>
               </div>
-              <div id="messagingStatus" class="messaging-status-line"></div>
               <div id="messagingError" class="messaging-error-line"></div>
             </section>
             <section class="panel">
@@ -1420,6 +1419,6 @@
     <div id="modalHost"></div>
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js?v=V1.03.039-split-messaging-sessions"></script>
+    <script src="app.js?v=V1.03.040-simplify-messaging-status"></script>
   </body>
 </html>
