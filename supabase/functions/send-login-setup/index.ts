@@ -136,15 +136,28 @@ async function sendInviteEmail(admin: any, route, to, inviteLink, profileType, r
 
   const label = profileType === "client" || profileType === "clientRep" ? "client account" : profileType === "promoter" ? "promoter account" : profileType === "production" ? "production team account" : "crew account";
   const subject = resetPassword ? "Reset your Production Crew password" : "Set up your Production Crew account";
-  const actionText = resetPassword ? "reset your password" : `create your ${label}`;
-  const actionLabel = resetPassword ? "Reset your password" : "Set up your account";
+  const actionText = resetPassword ? "reset your password" : `activate your ${label}`;
+  const actionLabel = resetPassword ? "Open password reset" : "Open login page";
+  const mobileInstructions = [
+    "Mobile setup:",
+    "iPhone: open the site in Safari, tap Share, then Add to Home Screen.",
+    "Android: open the site in Chrome, tap the menu, then Install app or Add to Home screen.",
+    "After installing, open Production Crew and choose Activate Account."
+  ];
   const result = await transporter.sendMail({
     to,
     from: `${fromName} <${fromEmail}>`,
     replyTo,
     subject,
-    text: `Use this secure link to ${actionText}: ${inviteLink}`,
-    html: `<p>Use this secure link to ${actionText}.</p><p><a href="${inviteLink}">${actionLabel}</a></p>`
+    text: `Use this secure link to ${actionText}: ${inviteLink}\n\n${mobileInstructions.join("\n")}`,
+    html: `<p>Use this secure link to ${actionText}.</p>
+      <p><a href="${inviteLink}">${actionLabel}</a></p>
+      <p><strong>Mobile setup</strong></p>
+      <ul>
+        <li>iPhone: open the site in Safari, tap Share, then Add to Home Screen.</li>
+        <li>Android: open the site in Chrome, tap the menu, then Install app or Add to Home screen.</li>
+        <li>After installing, open Production Crew and choose Activate Account.</li>
+      </ul>`
   });
   const accepted = (result.accepted || []).map(String);
   const rejected = (result.rejected || []).map(String);

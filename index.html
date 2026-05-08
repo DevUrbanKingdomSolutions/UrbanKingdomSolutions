@@ -10,7 +10,7 @@
     <title>Production Crew Database</title>
     <link rel="manifest" href="manifest.webmanifest">
     <link rel="icon" href="assets/app-icon.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="styles.css?v=V1.03.029-mobile-section-scroll">
+    <link rel="stylesheet" href="styles.css?v=V1.03.030-activate-account-flow">
   </head>
   <body>
     <section id="authScreen" class="auth-screen">
@@ -25,8 +25,25 @@
         <label>Email<input name="email" type="email" required autocomplete="email" placeholder="you@example.com"></label>
         <label>Password<input name="password" type="password" required autocomplete="current-password" placeholder="Password"></label>
         <button class="primary-action" type="submit">Log In</button>
+        <button id="activateAccountButton" class="secondary-action" type="button">Activate Account</button>
         <button id="clearSessionButton" class="ghost-button" type="button">Clear Saved Login</button>
         <p id="authMessage" class="auth-message"></p>
+      </form>
+    </section>
+
+    <section id="activateScreen" class="auth-screen" hidden>
+      <form id="activateForm" class="auth-card">
+        <div class="brand">
+          <div class="brand-mark">PC</div>
+          <div>
+            <h1>Activate Account</h1>
+            <p>Confirm your invite email</p>
+          </div>
+        </div>
+        <label>Email<input name="email" type="email" required autocomplete="email" placeholder="you@example.com"></label>
+        <button class="primary-action" type="submit">Continue Setup</button>
+        <button id="activateBackButton" class="ghost-button" type="button">Back to Login</button>
+        <p id="activateMessage" class="auth-message"></p>
       </form>
     </section>
 
@@ -1377,6 +1394,6 @@
     <div id="modalHost"></div>
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js?v=V1.03.029-mobile-section-scroll"></script>
+    <script src="app.js?v=V1.03.030-activate-account-flow"></script>
   </body>
 </html>

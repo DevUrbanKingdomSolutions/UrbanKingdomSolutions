@@ -226,6 +226,8 @@ let idleSignOutTimer = null;
 let signOutReloading = false;
 let installPromptEvent = null;
 let appInstallState = window.matchMedia?.("(display-mode: standalone)").matches || navigator.standalone ? "installed" : "checking";
+let pendingActivationSession = null;
+let pendingActivationType = "";
 let sendbirdConnectionState = {
   status: "disconnected",
   errorCode: "",
@@ -947,6 +949,7 @@ function isSupabaseConfigured() {
 
 function showAuthScreen(message = "") {
   $("#authScreen").hidden = false;
+  $("#activateScreen").hidden = true;
   $("#setupScreen").hidden = true;
   $("#publicEventScreen").hidden = true;
   $("#appShell").hidden = true;
@@ -955,8 +958,20 @@ function showAuthScreen(message = "") {
   $("#authMessage").textContent = message;
 }
 
+function showActivateScreen(message = "") {
+  $("#authScreen").hidden = true;
+  $("#activateScreen").hidden = false;
+  $("#setupScreen").hidden = true;
+  $("#publicEventScreen").hidden = true;
+  $("#appShell").hidden = true;
+  $("#activateMessage").textContent = message;
+  const email = pendingActivationSession?.user?.email || "";
+  if (email) $("#activateForm").elements.email.value = email;
+}
+
 function showSetupScreen(session, message = "Set your password to finish setup.") {
   $("#authScreen").hidden = true;
+  $("#activateScreen").hidden = true;
   $("#setupScreen").hidden = false;
   $("#publicEventScreen").hidden = true;
   $("#appShell").hidden = true;
@@ -970,6 +985,7 @@ function showSetupScreen(session, message = "Set your password to finish setup."
 
 function showPublicEventScreen(message = "Loading event access...") {
   $("#authScreen").hidden = true;
+  $("#activateScreen").hidden = true;
   $("#setupScreen").hidden = true;
   $("#publicEventScreen").hidden = false;
   $("#appShell").hidden = true;
@@ -978,6 +994,7 @@ function showPublicEventScreen(message = "Loading event access...") {
 
 function showAppShell() {
   $("#authScreen").hidden = true;
+  $("#activateScreen").hidden = true;
   $("#setupScreen").hidden = true;
   $("#publicEventScreen").hidden = true;
   $("#appShell").hidden = false;
@@ -1605,6 +1622,8 @@ async function applyAuthenticatedSession(session, preferredView = "") {
   if (!session) {
     stopIdleSignOutTimer();
     authState = { session: null, user: null, roleRecord: null, pendingSetup: false };
+    pendingActivationSession = null;
+    pendingActivationType = "";
     appHasLoaded = false;
     showAuthScreen("Log in with your Supabase account.");
     return;
@@ -1659,6 +1678,14 @@ async function initializeAuth() {
     return;
   }
   authState.pendingSetup = Boolean(data.session && needsPasswordSetup(setupType));
+  if (authState.pendingSetup && data.session) {
+    pendingActivationSession = data.session;
+    pendingActivationType = setupType;
+    authState.session = data.session;
+    authState.user = data.session.user;
+    showAuthScreen("Account link verified. Choose Activate Account to finish setup.");
+    return;
+  }
   try {
     await applyAuthenticatedSession(data.session);
   } catch (error) {
@@ -1669,9 +1696,10 @@ async function initializeAuth() {
   supabaseClient.auth.onAuthStateChange((_event, session) => {
     window.setTimeout(() => {
       if (authState.pendingSetup && session) {
+        pendingActivationSession = session;
         authState.session = session;
         authState.user = session.user;
-        showSetupScreen(session);
+        showAuthScreen("Account link verified. Choose Activate Account to finish setup.");
         return;
       }
       applyAuthenticatedSession(session).catch((error) => {
@@ -1705,6 +1733,30 @@ async function loginWithSupabase(event) {
     console.error(error);
     setAuthMessage(error.message || "Could not load your assigned role.");
   }
+}
+
+async function startAccountActivation(event) {
+  event.preventDefault();
+  if (!initializeSupabaseClient()) {
+    $("#activateMessage").textContent = "Supabase login is not configured.";
+    return;
+  }
+  const form = event.currentTarget;
+  const email = normalizedMatchValue(form.elements.email.value);
+  const session = pendingActivationSession || authState.session || (await supabaseClient.auth.getSession()).data?.session;
+  if (!session || !needsPasswordSetup(pendingActivationType || setupTypeFromUrl())) {
+    $("#activateMessage").textContent = "Open the setup link from your email first, then activate here.";
+    return;
+  }
+  if (email !== normalizedMatchValue(session.user?.email)) {
+    $("#activateMessage").textContent = "That email does not match this setup link.";
+    return;
+  }
+  pendingActivationSession = session;
+  authState.pendingSetup = true;
+  authState.session = session;
+  authState.user = session.user;
+  showSetupScreen(session);
 }
 
 function profileViewForRole(role) {
@@ -1741,6 +1793,8 @@ async function completeAccountSetup(event) {
     return;
   }
   authState.pendingSetup = false;
+  pendingActivationSession = null;
+  pendingActivationType = "";
   const sessionResult = await supabaseClient.auth.getSession();
   const session = sessionResult.data?.session || authState.session;
   const roleRecord = await fetchUserRole(session);
@@ -1776,6 +1830,8 @@ async function logout() {
   stopIdleSignOutTimer();
   appHasLoaded = false;
   authState = { session: null, user: null, roleRecord: null, pendingSetup: false };
+  pendingActivationSession = null;
+  pendingActivationType = "";
   showAuthScreen("Logging out...");
   await supabaseClient.auth.signOut();
   await refreshAppCacheAfterSignOut("Logged out. Sign in again when ready.");
@@ -1786,6 +1842,8 @@ async function clearSavedLogin() {
   initializeSupabaseClient();
   appHasLoaded = false;
   authState = { session: null, user: null, roleRecord: null, pendingSetup: false };
+  pendingActivationSession = null;
+  pendingActivationType = "";
   if (supabaseClient) await supabaseClient.auth.signOut({ scope: "local" });
   await refreshAppCacheAfterSignOut("Saved login cleared. Sign in again.");
 }
@@ -6757,6 +6815,9 @@ async function importData(event) {
 function bindEvents() {
   registerIdleSignOutListeners();
   $("#loginForm").addEventListener("submit", loginWithSupabase);
+  $("#activateForm").addEventListener("submit", startAccountActivation);
+  $("#activateAccountButton").addEventListener("click", () => showActivateScreen("Enter the email address that received the setup link."));
+  $("#activateBackButton").addEventListener("click", () => showAuthScreen(""));
   $("#setupForm").addEventListener("submit", completeAccountSetup);
   $("#clearSessionButton").addEventListener("click", clearSavedLogin);
   $("#setupLogoutButton").addEventListener("click", clearSavedLogin);
