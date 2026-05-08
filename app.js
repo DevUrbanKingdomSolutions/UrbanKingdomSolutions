@@ -11,8 +11,20 @@ const USER_ACCESS_FUNCTION = "user-access-management";
 const RENTAL_PHOTO_NOTIFICATION_FUNCTION = "send-rental-photo-notification";
 const NOVU_TRIGGER_FUNCTION = "trigger-novu-notification";
 const SENDBIRD_APP_ID = "2B54A2B2-CB8E-43DE-A7F8-B53059C09AB3";
-const SENDBIRD_CHAT_SDK_URL = "https://esm.sh/@sendbird/chat";
-const SENDBIRD_GROUP_CHANNEL_SDK_URL = "https://esm.sh/@sendbird/chat/groupChannel";
+const SENDBIRD_SDK_MODULE_SOURCES = [
+  {
+    chat: "https://esm.sh/@sendbird/chat@4?bundle",
+    groupChannel: "https://esm.sh/@sendbird/chat@4/groupChannel?bundle"
+  },
+  {
+    chat: "https://cdn.jsdelivr.net/npm/@sendbird/chat/+esm",
+    groupChannel: "https://cdn.jsdelivr.net/npm/@sendbird/chat/groupChannel/+esm"
+  },
+  {
+    chat: "https://esm.run/@sendbird/chat",
+    groupChannel: "https://esm.run/@sendbird/chat/groupChannel"
+  }
+];
 const IDLE_SIGN_OUT_MINUTES = 10;
 const IDLE_SIGN_OUT_MS = IDLE_SIGN_OUT_MINUTES * 60 * 1000;
 const NOVU_WORKFLOWS = {
@@ -6540,10 +6552,38 @@ async function ensureSendbirdConnected() {
 }
 
 function sendbirdErrorDetails(error) {
+  if (error?.name === "SendbirdSdkLoadError") {
+    return {
+      errorCode: "SDK_LOAD",
+      errorMessage: error.message || "Could not load the Sendbird messaging tools."
+    };
+  }
   return {
     errorCode: String(error?.code || error?.errorCode || error?.status || ""),
     errorMessage: error?.message || "Could not connect Sendbird messaging."
   };
+}
+
+async function loadSendbirdSdkModules() {
+  const errors = [];
+  for (const source of SENDBIRD_SDK_MODULE_SOURCES) {
+    try {
+      const [chatModule, groupChannelModule] = await Promise.all([
+        import(source.chat),
+        import(source.groupChannel)
+      ]);
+      return {
+        SendbirdChat: chatModule.default,
+        GroupChannelModule: groupChannelModule.GroupChannelModule
+      };
+    } catch (error) {
+      errors.push(error?.message || String(error));
+    }
+  }
+  const message = errors.find(Boolean) || "Importing a module script failed.";
+  const sdkError = new Error(`Could not load Sendbird messaging tools. ${message}`);
+  sdkError.name = "SendbirdSdkLoadError";
+  throw sdkError;
 }
 
 function autoConnectMessagingAfterLogin() {
@@ -6567,10 +6607,7 @@ async function connectSendbirdMessaging(options = {}) {
   try {
     sendbirdConnectionState = { status: "connecting", errorCode: "", errorMessage: "" };
     renderMessaging();
-    const [{ default: SendbirdChat }, { GroupChannelModule }] = await Promise.all([
-      import(SENDBIRD_CHAT_SDK_URL),
-      import(SENDBIRD_GROUP_CHANNEL_SDK_URL)
-    ]);
+    const { SendbirdChat, GroupChannelModule } = await loadSendbirdSdkModules();
     if (!sendbirdClient) {
       sendbirdClient = SendbirdChat.init({
         appId: SENDBIRD_APP_ID,
