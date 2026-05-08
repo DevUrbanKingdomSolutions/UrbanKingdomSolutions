@@ -1969,8 +1969,21 @@ body:not(.owner-mode) .rate-field {
     min-width: 0;
   }
 
+  .table-panel {
+    display: flex;
+    flex-direction: column;
+    max-height: min(72dvh, 680px);
+  }
+
+  .table-panel .panel-heading {
+    flex: 0 0 auto;
+  }
+
   .table-wrap {
     max-height: none;
+    flex: 1 1 auto;
+    min-height: 220px;
+    overflow: auto;
     -webkit-overflow-scrolling: touch;
   }
 
@@ -2191,7 +2204,7 @@ body:not(.owner-mode) .rate-field {
 
 @media (max-width: 640px) {
   .table-wrap {
-    overflow: visible;
+    overflow: auto;
   }
 
   .table-wrap > table {
