@@ -13,16 +13,16 @@ const NOVU_TRIGGER_FUNCTION = "trigger-novu-notification";
 const SENDBIRD_APP_ID = "2B54A2B2-CB8E-43DE-A7F8-B53059C09AB3";
 const SENDBIRD_SDK_MODULE_SOURCES = [
   {
-    chat: "https://esm.sh/@sendbird/chat@4?bundle",
-    groupChannel: "https://esm.sh/@sendbird/chat@4/groupChannel?bundle"
+    chat: "https://esm.sh/@sendbird/chat@4.22.0",
+    groupChannel: "https://esm.sh/@sendbird/chat@4.22.0/groupChannel"
   },
   {
-    chat: "https://cdn.jsdelivr.net/npm/@sendbird/chat/+esm",
-    groupChannel: "https://cdn.jsdelivr.net/npm/@sendbird/chat/groupChannel/+esm"
+    chat: "https://cdn.jsdelivr.net/npm/@sendbird/chat@4.22.0/+esm",
+    groupChannel: "https://cdn.jsdelivr.net/npm/@sendbird/chat@4.22.0/groupChannel/+esm"
   },
   {
-    chat: "https://esm.run/@sendbird/chat",
-    groupChannel: "https://esm.run/@sendbird/chat/groupChannel"
+    chat: "https://esm.run/@sendbird/chat@4.22.0",
+    groupChannel: "https://esm.run/@sendbird/chat@4.22.0/groupChannel"
   }
 ];
 const IDLE_SIGN_OUT_MINUTES = 10;
@@ -6564,6 +6564,23 @@ function sendbirdErrorDetails(error) {
   };
 }
 
+function sendbirdNeedsCleanReconnect(error) {
+  const code = String(error?.code || error?.errorCode || error?.status || "");
+  const message = String(error?.message || "").toLowerCase();
+  return code === "700100" || message.includes("instance id");
+}
+
+function resetSendbirdRuntimeCache() {
+  sendbirdActiveChannel = null;
+  sendbirdActiveThread = null;
+  sendbirdMessages = [];
+  sendbirdTypingUsers = [];
+  sendbirdClient = null;
+  Object.keys(localStorage)
+    .filter((key) => key.startsWith("sb-") || key.toLowerCase().includes("sendbird"))
+    .forEach((key) => localStorage.removeItem(key));
+}
+
 async function loadSendbirdSdkModules() {
   const errors = [];
   for (const source of SENDBIRD_SDK_MODULE_SOURCES) {
@@ -6605,6 +6622,7 @@ async function connectSendbirdMessaging(options = {}) {
     return;
   }
   try {
+    if (options.clean) resetSendbirdRuntimeCache();
     sendbirdConnectionState = { status: "connecting", errorCode: "", errorMessage: "" };
     renderMessaging();
     const { SendbirdChat, GroupChannelModule } = await loadSendbirdSdkModules();
@@ -6626,6 +6644,10 @@ async function connectSendbirdMessaging(options = {}) {
     if (!options.quiet) toast("Messaging connected.");
   } catch (error) {
     console.error(error);
+    if (!options.clean && sendbirdNeedsCleanReconnect(error)) {
+      resetSendbirdRuntimeCache();
+      return connectSendbirdMessaging({ ...options, clean: true });
+    }
     sendbirdConnectionState = { status: "error", ...sendbirdErrorDetails(error) };
     renderMessaging();
   }
