@@ -1100,6 +1100,40 @@ td p {
   font-size: 13px;
 }
 
+.repeatable-section {
+  display: grid;
+  gap: 10px;
+  margin: 12px 16px 0;
+}
+
+.repeatable-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  color: #334046;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.repeatable-list {
+  display: grid;
+  gap: 10px;
+}
+
+.repeatable-card {
+  display: grid;
+  gap: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfaf6;
+  padding: 12px;
+}
+
+.repeatable-card label {
+  margin: 0;
+}
+
 .payroll-view {
   padding: 16px;
 }

@@ -579,6 +579,7 @@ function fillForm(formId, record) {
   });
   renderViewOptionControls(form);
   if (formId === "eventForm") renderEventAssignmentManager(form, record.id || "");
+  if (formId === "venueForm") renderVenueContactEditor(record.id || "");
   if (Array.isArray(record.views)) {
     const viewGroup = form.querySelector(`[data-checkbox-group][data-name="views"]`);
     viewGroup?.querySelectorAll("input[type='checkbox']").forEach((input) => {
@@ -605,6 +606,7 @@ function clearForm(formId) {
     form.elements.clockIn.value = toLocalInputValue(new Date());
   }
   if (formId === "eventForm") renderEventAssignmentManager(form, "");
+  if (formId === "venueForm") renderVenueContactEditor("");
   if (formId === "eventAssignmentForm") {
     form.elements.status.value = "Confirmed";
     form.elements.vehicleUse.value = "No Vehicle";
@@ -3285,8 +3287,64 @@ function renderVenues() {
   const rows = visibleVenues().filter((venue) => matchesSearch(venue));
   $("#venueTableCount").textContent = `${rows.length} shown`;
   $("#venueTable").innerHTML = rows.length
-    ? rows.map((venue) => `<tr><td><strong>${escapeHtml(venue.name)}</strong><p>${escapeHtml(venue.notes)}</p></td><td>${escapeHtml(venue.address)}</td><td>${escapeHtml(venue.contactName)}<p>${escapeHtml(venue.phone)} ${escapeHtml(venue.email)}</p></td><td>${escapeHtml(venue.parking)}</td><td>${actionButtons("venues", venue.id, "venueForm", "", canVenueEdit())}</td></tr>`).join("")
+    ? rows.map((venue) => `<tr><td><strong>${escapeHtml(venue.name)}</strong><p>${escapeHtml(venue.notes)}</p></td><td>${escapeHtml(venue.address)}</td><td>${venueContactSummary(venue)}</td><td>${escapeHtml(venue.parking)}</td><td>${actionButtons("venues", venue.id, "venueForm", "", canVenueEdit())}</td></tr>`).join("")
     : `<tr><td colspan="5" class="empty">No venues match this search.</td></tr>`;
+}
+
+function venueContactsForVenue(venueId) {
+  return state.venueContacts.filter((contact) => contact.venueId === venueId);
+}
+
+function venueContactSummary(venue) {
+  const additional = venueContactsForVenue(venue.id);
+  const main = venue.contactName ? `<strong>${escapeHtml(venue.contactName)}</strong><p>${escapeHtml(venue.phone)} ${escapeHtml(venue.email)}</p>` : "";
+  const extra = additional.length
+    ? additional.map((contact) => `<p>${escapeHtml(contact.name || contact.contactName || "Contact")}${contact.title ? `, ${escapeHtml(contact.title)}` : ""} · ${escapeHtml(contact.phone || "")} ${escapeHtml(contact.email || "")}</p>`).join("")
+    : "";
+  return main || extra ? `${main}${extra}` : `<span class="muted">No contacts</span>`;
+}
+
+function renderVenueContactEditor(venueId = "") {
+  const list = $("#venueContactList");
+  if (!list) return;
+  const contacts = venueId ? venueContactsForVenue(venueId) : [];
+  list.innerHTML = contacts.length
+    ? contacts.map((contact) => venueContactEditorRow(contact)).join("")
+    : venueContactEditorRow({});
+}
+
+function venueContactEditorRow(contact = {}) {
+  return `<div class="repeatable-card" data-venue-contact-row data-contact-id="${escapeHtml(contact.id || "")}">
+    <label>Name<input data-contact-field="name" value="${escapeHtml(contact.name || contact.contactName || "")}" placeholder="Contact name"></label>
+    <label>Title / office<input data-contact-field="title" value="${escapeHtml(contact.title || "")}" placeholder="Box office, security, dock, GM"></label>
+    <label>Phone<input data-contact-field="phone" value="${escapeHtml(contact.phone || "")}" placeholder="(555) 000-0000"></label>
+    <label>Email<input data-contact-field="email" type="email" value="${escapeHtml(contact.email || "")}" placeholder="contact@venue.com"></label>
+    <label>Notes<textarea data-contact-field="notes" rows="2" placeholder="Best use, hours, preferences">${escapeHtml(contact.notes || "")}</textarea></label>
+    <button class="tiny-button danger" data-remove-venue-contact type="button">Remove</button>
+  </div>`;
+}
+
+async function saveVenueContactsForVenue(venueId, form) {
+  if (!venueId || !form) return;
+  const rows = Array.from(form.querySelectorAll("[data-venue-contact-row]"));
+  for (const contact of venueContactsForVenue(venueId)) await remove("venueContacts", contact.id);
+  for (const row of rows) {
+    const record = {};
+    row.querySelectorAll("[data-contact-field]").forEach((field) => {
+      record[field.dataset.contactField] = field.value || "";
+    });
+    if (!Object.values(record).some((value) => String(value || "").trim())) continue;
+    await put("venueContacts", {
+      id: row.dataset.contactId || crypto.randomUUID(),
+      venueId,
+      name: record.name,
+      contactName: record.name,
+      title: record.title,
+      phone: record.phone,
+      email: record.email,
+      notes: record.notes
+    });
+  }
 }
 
 function renderPromoters() {
@@ -3933,7 +3991,9 @@ async function saveForm(event, storeName) {
   }
 
   let loginSyncMessage = "";
-  await put(storeName, merged);
+  const savedId = await put(storeName, merged);
+  merged.id = merged.id || savedId;
+  if (storeName === "venues") await saveVenueContactsForVenue(merged.id, form);
   if (storeName === "events") {
     await syncWorkerBookingForEvent(merged, existing || {});
     await ensureDefaultAssignmentsForEvent(merged);
@@ -3999,6 +4059,11 @@ async function deleteRecord(storeName, id) {
   if (storeName === "clients") {
     for (const rep of state.clientReps.filter((item) => item.clientId === id)) {
       await remove("clientReps", rep.id);
+    }
+  }
+  if (storeName === "venues") {
+    for (const contact of state.venueContacts.filter((item) => item.venueId === id)) {
+      await remove("venueContacts", contact.id);
     }
   }
   if (storeName === "events") await releaseWorkerBookingsForEvent(id);
@@ -5614,6 +5679,8 @@ function bindEvents() {
     const viewClientCompanyButton = event.target.closest("[data-view-client-company]");
     const editViewedClientButton = event.target.closest("#editViewedClientCompany");
     const eventAccessButton = event.target.closest("[data-event-access]");
+    const addVenueContactButton = event.target.closest("[data-add-venue-contact]");
+    const removeVenueContactButton = event.target.closest("[data-remove-venue-contact]");
     const vehiclePhaseButton = event.target.closest("[data-vehicle-phase]");
     const addAssignmentButton = event.target.closest("[data-add-assignment]");
     const formAddAssignmentButton = event.target.closest("[data-form-add-assignment]");
@@ -5688,6 +5755,16 @@ function bindEvents() {
     if (eventAccessButton) {
       const eventRecord = getEvent(eventAccessButton.dataset.eventAccess);
       if (eventRecord) await createEventAccessLink(eventRecord);
+    }
+    if (addVenueContactButton) {
+      $("#venueContactList").insertAdjacentHTML("beforeend", venueContactEditorRow({}));
+      return;
+    }
+    if (removeVenueContactButton) {
+      const row = removeVenueContactButton.closest("[data-venue-contact-row]");
+      row?.remove();
+      if (!$("#venueContactList").querySelector("[data-venue-contact-row]")) renderVenueContactEditor("");
+      return;
     }
     if (vehiclePhaseButton) openVehiclePhaseForm(vehiclePhaseButton);
     if (addAssignmentButton) openAssignmentForm(addAssignmentButton.dataset.addAssignment);
