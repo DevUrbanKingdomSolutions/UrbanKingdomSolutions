@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Production Crew Database</title>
-    <link rel="stylesheet" href="styles.css?v=V1.01.054-promoter-profile-sections">
+    <link rel="stylesheet" href="styles.css?v=V1.01.055-remove-login-role-fields">
   </head>
   <body>
     <section id="authScreen" class="auth-screen">
@@ -324,11 +324,6 @@
               <label>First client rep<input name="contactName" placeholder="Name"></label>
               <label>Company email<input name="email" type="email" placeholder="client@example.com"></label>
               <label>Rep login email<input name="loginEmail" type="email" placeholder="owner-login@example.com"></label>
-              <label>Login role
-                <select name="loginRole">
-                  <option value="CLIENT">Client Admin</option>
-                </select>
-              </label>
               <label>Supabase user ID<input name="authUserId" placeholder="Paste user ID after setup"></label>
               <label>Phone<input name="phone" placeholder="(555) 000-0000"></label>
               <label>Status
@@ -667,12 +662,6 @@
               <div class="photo-fieldset owner-form">
                 <span>Client Controls</span>
                 <label>Login email<input name="loginEmail" type="email" placeholder="login@example.com"></label>
-                <label>Login role
-                  <select name="loginRole">
-                    <option value="CREW">Crew / Runner</option>
-                    <option value="PROMOTER">Promoter Admin</option>
-                  </select>
-                </label>
                 <label>Supabase user ID<input name="authUserId" placeholder="Paste user ID after setup"></label>
                 <label>Status
                   <select name="status">
@@ -1163,12 +1152,6 @@
               <div class="photo-fieldset promoter-login-field">
                 <span>Login</span>
                 <label>Login email<input name="loginEmail" type="email" placeholder="login@example.com"></label>
-                <label>Login role
-                  <select name="loginRole">
-                    <option value="PROMOTER">Promoter Admin</option>
-                    <option value="CREW">Crew / Runner</option>
-                  </select>
-                </label>
                 <label>Supabase user ID<input name="authUserId" placeholder="Paste user ID after setup"></label>
               </div>
               <div class="photo-fieldset">
@@ -1295,6 +1278,6 @@
     <div id="modalHost"></div>
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js?v=V1.01.054-promoter-profile-sections"></script>
+    <script src="app.js?v=V1.01.055-remove-login-role-fields"></script>
   </body>
 </html>
