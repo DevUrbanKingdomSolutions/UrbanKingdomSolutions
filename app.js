@@ -2387,8 +2387,16 @@ function renderUserAccessTable(tableId, countId, rows) {
   if (!table || !count) return;
   count.textContent = `${rows.length} users`;
   table.innerHTML = rows.length
-    ? rows.map((row) => `<tr><td><strong>${escapeHtml(row.email || "No email")}</strong><p>${escapeHtml(row.userId || "")}</p></td><td><span class="status-pill">${escapeHtml(accessLevelLabel(normalizeRole(row.role)))}</span><p>${accessBadges(accessLevelsForUserAccessRow(row), normalizeRole(row.role))}</p></td><td>${escapeHtml(row.clientName || row.clientId || "")}</td><td>${escapeHtml(userAccessProfileLabel(row))}</td><td>${userAccessActions(row)}</td></tr>`).join("")
+    ? rows.map((row) => `<tr><td><strong>${escapeHtml(row.email || "No email")}</strong><p>${escapeHtml(row.userId || "")}</p></td><td>${userAccessRoleCell(row)}</td><td>${escapeHtml(row.clientName || row.clientId || "")}</td><td>${escapeHtml(userAccessProfileLabel(row))}</td><td>${userAccessActions(row)}</td></tr>`).join("")
     : `<tr><td colspan="5" class="empty">Refresh to load user accounts.</td></tr>`;
+}
+
+function userAccessRoleCell(row) {
+  const role = normalizeRole(row.role);
+  const levels = accessLevelsForUserAccessRow(row);
+  const roleLabel = ACCESS_LEVEL_LABELS[role] || role;
+  const badges = levels.length ? accessBadges(levels, "") : `<span class="status-pill">${escapeHtml(roleLabel)}</span>`;
+  return `<span class="status-pill">${escapeHtml(roleLabel)}</span><p>Site access: ${badges}</p>`;
 }
 
 function userAccessProfileLabel(row) {
@@ -4012,12 +4020,12 @@ function applyAccessProfile() {
   $$("#promoterForm select[name='loginRole'] option[value='CREW']").forEach((option) => { option.hidden = isProductionRole(); });
   $$(".admin-form").forEach((form) => { form.hidden = !profile.canAdminEdit; });
   $$(".owner-form").forEach((form) => { form.hidden = !profile.canOwnerEdit; });
+  $$(".rate-field").forEach((form) => { form.hidden = !canEditRates(); });
   $$("[data-access-manager-field]").forEach((field) => {
     const allowed = accessPickerAllowed(field.closest("form"));
     field.hidden = !allowed;
     field.style.display = allowed ? "" : "none";
   });
-  $$(".rate-field").forEach((form) => { form.hidden = !canEditRates(); });
   $$(".venue-form").forEach((form) => { form.hidden = !profile.canVenueEdit; });
   $$(".scoped-form").forEach((form) => { form.hidden = !profile.canScopedEdit; });
   $$(".system-form").forEach((form) => { form.hidden = !profile.canSystemEdit; });
