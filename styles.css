@@ -1669,3 +1669,79 @@ body:not(.owner-mode) .rate-field {
     color: #176346;
   }
 }
+
+@media (max-width: 640px) {
+  .table-wrap {
+    overflow: visible;
+  }
+
+  .table-wrap > table {
+    min-width: 0;
+  }
+
+  .table-wrap > table,
+  .table-wrap > table tbody,
+  .table-wrap > table tr,
+  .table-wrap > table td {
+    display: block;
+    width: 100%;
+  }
+
+  .table-wrap > table thead {
+    display: none;
+  }
+
+  .table-wrap > table tbody {
+    display: grid;
+    gap: 10px;
+    padding: 12px;
+  }
+
+  .table-wrap > table tr {
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: #ffffff;
+    box-shadow: 0 8px 22px rgba(29, 36, 40, 0.06);
+    overflow: hidden;
+  }
+
+  .table-wrap > table td {
+    display: grid;
+    grid-template-columns: minmax(92px, 32%) minmax(0, 1fr);
+    gap: 10px;
+    min-height: 42px;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--line);
+    font-size: 13px;
+  }
+
+  .table-wrap > table td:last-child {
+    border-bottom: 0;
+  }
+
+  .table-wrap > table td::before {
+    content: attr(data-label);
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 900;
+    text-transform: uppercase;
+  }
+
+  .table-wrap > table td[colspan] {
+    display: block;
+  }
+
+  .table-wrap > table td[colspan]::before {
+    content: "";
+  }
+
+  .table-wrap > table .row-actions {
+    justify-content: flex-start;
+  }
+
+  .table-wrap > table .tiny-button,
+  .table-wrap > table .primary-action,
+  .table-wrap > table .secondary-action {
+    min-height: 38px;
+  }
+}

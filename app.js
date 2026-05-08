@@ -2384,7 +2384,21 @@ function render() {
   renderPromoters();
   renderRunnerStops();
   renderMessaging();
+  enhanceResponsiveTables();
   checkRentalPhotoUrgencies();
+}
+
+function enhanceResponsiveTables() {
+  $$(".table-wrap > table").forEach((table) => {
+    const headers = Array.from(table.querySelectorAll("thead th")).map((header) => header.textContent.trim());
+    table.querySelectorAll("tbody tr").forEach((row) => {
+      const cells = Array.from(row.children).filter((cell) => cell.tagName === "TD");
+      cells.forEach((cell, index) => {
+        if (cell.colSpan > 1) return;
+        cell.dataset.label = headers[index] || "";
+      });
+    });
+  });
 }
 
 function renderAdmin() {
