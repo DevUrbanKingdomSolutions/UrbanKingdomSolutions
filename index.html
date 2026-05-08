@@ -10,7 +10,7 @@
     <title>Production Crew Database</title>
     <link rel="manifest" href="manifest.webmanifest">
     <link rel="icon" href="assets/app-icon.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="styles.css?v=V1.03.019-admin-mobile-beta-tools">
+    <link rel="stylesheet" href="styles.css?v=V1.03.020-mobile-app-admin-page">
   </head>
   <body>
     <section id="authScreen" class="auth-screen">
@@ -144,30 +144,6 @@
             </article>
           </div>
           <div class="dashboard-grid">
-            <section id="mobileDevicePanel" class="panel mobile-device-panel">
-              <div class="panel-heading">
-                <h3>Mobile Device</h3>
-                <div class="panel-tools">
-                  <span id="mobileDeviceMode" class="muted"></span>
-                  <button class="tiny-button" data-request-mobile-permissions type="button">Prepare Permissions</button>
-                </div>
-              </div>
-              <div id="mobileDeviceStatus" class="mobile-device-status"></div>
-            </section>
-            <section id="mobileQaPanel" class="panel mobile-qa-panel">
-              <div class="panel-heading">
-                <h3>Mobile Beta QA</h3>
-                <span id="mobileQaCount" class="muted"></span>
-              </div>
-              <div id="mobileQaList" class="mobile-qa-list"></div>
-            </section>
-            <section id="mobileLaunchPanel" class="panel mobile-launch-panel">
-              <div class="panel-heading">
-                <h3>Mobile Beta Launch</h3>
-                <span id="mobileLaunchCount" class="muted"></span>
-              </div>
-              <div id="mobileLaunchList" class="mobile-launch-list"></div>
-            </section>
             <section class="panel">
               <div class="panel-heading">
                 <h3>Currently Clocked In</h3>
@@ -240,6 +216,35 @@
             </div>
             <button class="primary-action" type="submit">Save / Update & Close</button>
           </form>
+        </section>
+
+        <section id="mobileApp" class="view" aria-labelledby="viewTitle">
+          <div class="dashboard-grid">
+            <section id="mobileDevicePanel" class="panel mobile-device-panel">
+              <div class="panel-heading">
+                <h3>Mobile Device</h3>
+                <div class="panel-tools">
+                  <span id="mobileDeviceMode" class="muted"></span>
+                  <button class="tiny-button" data-request-mobile-permissions type="button">Prepare Permissions</button>
+                </div>
+              </div>
+              <div id="mobileDeviceStatus" class="mobile-device-status"></div>
+            </section>
+            <section id="mobileQaPanel" class="panel mobile-qa-panel">
+              <div class="panel-heading">
+                <h3>Mobile Beta QA</h3>
+                <span id="mobileQaCount" class="muted"></span>
+              </div>
+              <div id="mobileQaList" class="mobile-qa-list"></div>
+            </section>
+            <section id="mobileLaunchPanel" class="panel mobile-launch-panel">
+              <div class="panel-heading">
+                <h3>Mobile Beta Launch</h3>
+                <span id="mobileLaunchCount" class="muted"></span>
+              </div>
+              <div id="mobileLaunchList" class="mobile-launch-list"></div>
+            </section>
+          </div>
         </section>
 
         <section id="adminProfile" class="view" aria-labelledby="viewTitle">
@@ -1328,6 +1333,6 @@
     <div id="modalHost"></div>
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js?v=V1.03.019-admin-mobile-beta-tools"></script>
+    <script src="app.js?v=V1.03.020-mobile-app-admin-page"></script>
   </body>
 </html>

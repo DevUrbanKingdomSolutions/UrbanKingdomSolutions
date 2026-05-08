@@ -85,7 +85,7 @@ const ACCESS_PROFILES = {
   ADMIN: {
     label: "ADMIN",
     baseRole: "ADMIN",
-    views: ["adminProfile", "admin"],
+    views: ["adminProfile", "admin", "mobileApp"],
     canAdminEdit: false,
     canOwnerEdit: false,
     canVenueEdit: false,
@@ -297,7 +297,8 @@ let state = {
 const NAV_GROUPS = {
   ADMIN: [
     { items: [["adminProfile", "My Profile"]] },
-    { items: [["admin", "Admin Console"]] }
+    { items: [["admin", "Admin Console"]] },
+    { label: "MOBILE APP", items: [["mobileApp", "App Dashboard"]] }
   ],
   CLIENT_ADMIN: [
     { items: [["dashboard", "Dashboard"]] },
