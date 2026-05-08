@@ -27,6 +27,8 @@ const SENDBIRD_SDK_MODULE_SOURCES = [
 ];
 const IDLE_SIGN_OUT_MINUTES = 10;
 const IDLE_SIGN_OUT_MS = IDLE_SIGN_OUT_MINUTES * 60 * 1000;
+const ACTIVE_BROWSER_SESSION_KEY = "productionCrewActiveBrowserSession";
+const PULL_REFRESH_THRESHOLD = 92;
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
   rentalPhotoUrgent: "rental-photo-urgent",
@@ -246,6 +248,12 @@ let sendbirdConnectionState = {
   errorMessage: ""
 };
 let sendbirdAutoConnectAttempted = false;
+let pullRefreshState = {
+  tracking: false,
+  startY: 0,
+  armed: false,
+  refreshing: false
+};
 
 const MESSAGE_THREAD_TYPES = {
   event: {
@@ -500,6 +508,25 @@ function mobileRuntimeInfo() {
   };
 }
 
+function markActiveBrowserSession() {
+  sessionStorage.setItem(ACTIVE_BROWSER_SESSION_KEY, "active");
+}
+
+async function clearPersistedLoginForFreshOpen() {
+  if (isPublicEventRoute() || setupTypeFromUrl()) {
+    markActiveBrowserSession();
+    return;
+  }
+  if (sessionStorage.getItem(ACTIVE_BROWSER_SESSION_KEY)) return;
+  markActiveBrowserSession();
+  if (!initializeSupabaseClient()) return;
+  try {
+    await supabaseClient.auth.signOut({ scope: "local" });
+  } catch (error) {
+    console.warn("Fresh-open login reset failed", error);
+  }
+}
+
 function initPushRegistrationListeners() {
   const push = capacitorBridge()?.Plugins?.PushNotifications;
   if (!push?.addListener || pushRegistrationListenersReady) return;
@@ -582,6 +609,53 @@ function initMobileAppLifecycle() {
     }
     appPlugin.exitApp?.();
   });
+}
+
+function updatePullRefreshIndicator(distance = 0) {
+  const indicator = $("#pullRefreshIndicator");
+  if (!indicator) return;
+  const active = distance > 16 || pullRefreshState.refreshing;
+  const ready = distance >= PULL_REFRESH_THRESHOLD || pullRefreshState.refreshing;
+  indicator.classList.toggle("show", active);
+  indicator.classList.toggle("ready", ready);
+  indicator.textContent = pullRefreshState.refreshing ? "Refreshing" : ready ? "Release to refresh" : "Pull to refresh";
+}
+
+function initPullToRefresh() {
+  if (!("ontouchstart" in window)) return;
+  window.addEventListener("touchstart", (event) => {
+    if (pullRefreshState.refreshing || document.body.classList.contains("modal-open")) return;
+    if (window.scrollY > 0) return;
+    pullRefreshState = {
+      tracking: true,
+      startY: event.touches[0]?.clientY || 0,
+      armed: false,
+      refreshing: false
+    };
+  }, { passive: true });
+  window.addEventListener("touchmove", (event) => {
+    if (!pullRefreshState.tracking || pullRefreshState.refreshing) return;
+    const distance = Math.max(0, (event.touches[0]?.clientY || 0) - pullRefreshState.startY);
+    pullRefreshState.armed = distance >= PULL_REFRESH_THRESHOLD;
+    updatePullRefreshIndicator(distance);
+  }, { passive: true });
+  window.addEventListener("touchend", () => {
+    if (!pullRefreshState.tracking) return;
+    const shouldRefresh = pullRefreshState.armed;
+    pullRefreshState.tracking = false;
+    if (!shouldRefresh) {
+      updatePullRefreshIndicator(0);
+      return;
+    }
+    pullRefreshState.refreshing = true;
+    markActiveBrowserSession();
+    updatePullRefreshIndicator(PULL_REFRESH_THRESHOLD);
+    window.setTimeout(() => window.location.reload(), 120);
+  }, { passive: true });
+  window.addEventListener("touchcancel", () => {
+    pullRefreshState = { tracking: false, startY: 0, armed: false, refreshing: false };
+    updatePullRefreshIndicator(0);
+  }, { passive: true });
 }
 
 function refreshMobileRuntimePanels() {
@@ -7486,8 +7560,10 @@ async function init() {
   showAuthScreen("Checking session...");
   bindEvents();
   initMobileAppLifecycle();
+  initPullToRefresh();
   initPushRegistrationListeners();
   await registerAppShellServiceWorker();
+  await clearPersistedLoginForFreshOpen();
   clearForm("timecardForm");
   clearForm("reportForm");
   await initializeAuth();

@@ -820,6 +820,35 @@ body.modal-open {
   overflow: hidden;
 }
 
+.pull-refresh-indicator {
+  position: fixed;
+  top: max(10px, env(safe-area-inset-top));
+  left: 50%;
+  z-index: 50;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.96);
+  color: var(--muted);
+  padding: 8px 14px;
+  box-shadow: var(--shadow);
+  font-size: 12px;
+  font-weight: 900;
+  opacity: 0;
+  pointer-events: none;
+  text-transform: uppercase;
+  transform: translate(-50%, -18px);
+  transition: opacity 160ms ease, transform 160ms ease, color 160ms ease;
+}
+
+.pull-refresh-indicator.show {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+.pull-refresh-indicator.ready {
+  color: var(--accent);
+}
+
 .form-panel label {
   display: grid;
   gap: 6px;
