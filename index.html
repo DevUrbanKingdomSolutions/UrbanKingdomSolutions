@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Production Crew Database</title>
-    <link rel="stylesheet" href="styles.css?v=V1.01.032-vehicle-list-controls">
+    <link rel="stylesheet" href="styles.css?v=V1.01.033-list-sort-filter-controls">
   </head>
   <body>
     <section id="authScreen" class="auth-screen">
@@ -735,6 +735,28 @@
                   <button class="tiny-button admin-action" data-open-form="timecardForm" type="button">Add Timecard</button>
                 </div>
               </div>
+              <div class="list-controls">
+                <label>Event
+                  <select id="timecardEventFilter"></select>
+                </label>
+                <label>Filter
+                  <select id="timecardFilter">
+                    <option value="all">All timecards</option>
+                    <option value="live">Live only</option>
+                    <option value="complete">Complete only</option>
+                    <option value="missing-lunch">Missing lunch</option>
+                  </select>
+                </label>
+                <label>Sort
+                  <select id="timecardSort">
+                    <option value="latest">Latest call time</option>
+                    <option value="worker">Worker name</option>
+                    <option value="event">Event name</option>
+                    <option value="hours">Hours worked</option>
+                    <option value="pay">Estimated pay</option>
+                  </select>
+                </label>
+              </div>
               <div class="table-wrap">
                 <table>
                   <thead><tr><th>Worker</th><th>Event</th><th>Venue</th><th>Call</th><th>Lunch</th><th>Wrap</th><th>Hours</th><th>Pay Basis</th><th>Est.</th><th></th></tr></thead>
@@ -839,6 +861,9 @@
                 </div>
               </div>
               <div class="list-controls">
+                <label>Event
+                  <select id="vehicleEventFilter"></select>
+                </label>
                 <label>Filter
                   <select id="vehicleFilter">
                     <option value="all">All vehicles</option>
@@ -996,6 +1021,27 @@
                   <span id="reportTableCount" class="muted"></span>
                   <button class="tiny-button scoped-action" data-open-form="reportForm" type="button">Add Report</button>
                 </div>
+              </div>
+              <div class="list-controls">
+                <label>Event
+                  <select id="reportEventFilter"></select>
+                </label>
+                <label>Filter
+                  <select id="reportFilter">
+                    <option value="all">All reports</option>
+                    <option value="injury">Injury reports</option>
+                    <option value="vehicle">Vehicle damage</option>
+                    <option value="photos">Has photos</option>
+                  </select>
+                </label>
+                <label>Sort
+                  <select id="reportSort">
+                    <option value="latest">Latest report</option>
+                    <option value="event">Event name</option>
+                    <option value="worker">Worker name</option>
+                    <option value="type">Report type</option>
+                  </select>
+                </label>
               </div>
               <div class="table-wrap">
                 <table>
@@ -1203,6 +1249,6 @@
     <div id="modalHost"></div>
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js?v=V1.01.032-vehicle-list-controls"></script>
+    <script src="app.js?v=V1.01.033-list-sort-filter-controls"></script>
   </body>
 </html>

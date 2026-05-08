@@ -253,8 +253,15 @@ let state = {
   runnerCategory: "All",
   directoryTab: "crew",
   payrollView: localStorage.getItem("productionCrewPayrollView") || "worker",
+  timecardEventFilter: localStorage.getItem("productionCrewTimecardEventFilter") || "all",
+  timecardFilter: localStorage.getItem("productionCrewTimecardFilter") || "all",
+  timecardSort: localStorage.getItem("productionCrewTimecardSort") || "latest",
+  vehicleEventFilter: localStorage.getItem("productionCrewVehicleEventFilter") || "all",
   vehicleFilter: localStorage.getItem("productionCrewVehicleFilter") || "all",
   vehicleSort: localStorage.getItem("productionCrewVehicleSort") || "latest",
+  reportEventFilter: localStorage.getItem("productionCrewReportEventFilter") || "all",
+  reportFilter: localStorage.getItem("productionCrewReportFilter") || "all",
+  reportSort: localStorage.getItem("productionCrewReportSort") || "latest",
   messagingThreadType: localStorage.getItem("productionCrewMessagingThreadType") || "event",
   collapsedNavGroups: JSON.parse(localStorage.getItem("productionCrewCollapsedNavGroups") || "{}")
 };
@@ -2832,13 +2839,20 @@ function promoterNoteBox(workerId) {
 }
 
 function renderTimecards() {
-  const rows = visibleRecords(state.timecards).filter((card) => {
+  renderEventFilterOptions("#timecardEventFilter", state.timecardEventFilter);
+  const eventFilter = $("#timecardEventFilter");
+  const filter = $("#timecardFilter");
+  const sort = $("#timecardSort");
+  if (eventFilter) eventFilter.value = state.timecardEventFilter;
+  if (filter) filter.value = state.timecardFilter;
+  if (sort) sort.value = state.timecardSort;
+  const rows = sortTimecards(filterTimecards(visibleRecords(state.timecards).filter((card) => {
     const worker = getWorker(card.workerId);
     const venue = getVenue(card.venueId);
     const promoter = getPromoter(card.promoterId);
     const event = getEvent(card.eventId);
-    return matchesSearch(card, `${worker?.name || ""} ${venue?.name || ""} ${promoter?.name || ""} ${event?.name || ""}`);
-  });
+    return recordMatchesEventFilter(card, state.timecardEventFilter) && matchesSearch(card, `${worker?.name || ""} ${venue?.name || ""} ${promoter?.name || ""} ${event?.name || ""}`);
+  })));
   $("#timecardTableCount").textContent = `${rows.length} shown`;
   $("#timecardTable").innerHTML = rows.length
     ? rows.map((card) => {
@@ -2849,6 +2863,25 @@ function renderTimecards() {
         return `<tr><td><strong>${escapeHtml(worker?.name || "Unknown worker")}</strong></td><td>${escapeHtml(event?.name || card.eventName)}<p>${escapeHtml(card.notes)}</p></td><td>${escapeHtml(venue?.name || "")}</td><td>${formatDate(card.clockIn)}</td><td>${formatDate(card.lunchOut)}${card.lunchIn ? `<p>In: ${formatDate(card.lunchIn)}</p>` : ""}</td><td>${formatDate(card.clockOut) || "Live"}</td><td>${timecardHours(card).toFixed(2)}</td><td>${payBasis(card)}</td><td>${currency(estimatedPay(card))}</td><td>${actionButtons("timecards", card.id, "timecardForm", liveAction, canAdminEdit())}</td></tr>`;
       }).join("")
     : `<tr><td colspan="10" class="empty">No timecards match this search.</td></tr>`;
+}
+
+function filterTimecards(cards) {
+  return cards.filter((card) => {
+    if (state.timecardFilter === "live") return !card.clockOut;
+    if (state.timecardFilter === "complete") return !!card.clockOut;
+    if (state.timecardFilter === "missing-lunch") return !card.lunchOut || !card.lunchIn;
+    return true;
+  });
+}
+
+function sortTimecards(cards) {
+  return [...cards].sort((a, b) => {
+    if (state.timecardSort === "worker") return listText(getWorker(a.workerId)?.name).localeCompare(listText(getWorker(b.workerId)?.name));
+    if (state.timecardSort === "event") return listText(getEvent(a.eventId)?.name || a.eventName).localeCompare(listText(getEvent(b.eventId)?.name || b.eventName));
+    if (state.timecardSort === "hours") return timecardHours(b) - timecardHours(a);
+    if (state.timecardSort === "pay") return estimatedPay(b) - estimatedPay(a);
+    return new Date(b.clockIn || b.createdAt || 0) - new Date(a.clockIn || a.createdAt || 0);
+  });
 }
 
 function renderPayroll() {
@@ -2942,13 +2975,32 @@ function monthLabel(value) {
   return new Date(value).toLocaleString([], { month: "long", year: "numeric" });
 }
 
+function renderEventFilterOptions(selector, selectedValue) {
+  const select = $(selector);
+  if (!select) return;
+  const currentEvents = visibleEvents();
+  select.innerHTML = `<option value="all">All events</option>${currentEvents.map((event) => `<option value="${event.id}">${escapeHtml(event.name)}</option>`).join("")}`;
+  select.value = currentEvents.some((event) => event.id === selectedValue) ? selectedValue : "all";
+}
+
+function recordMatchesEventFilter(record, filterValue) {
+  return !filterValue || filterValue === "all" || record.eventId === filterValue;
+}
+
+function listText(value) {
+  return String(value || "").toLowerCase();
+}
+
 function renderVehicles() {
+  renderEventFilterOptions("#vehicleEventFilter", state.vehicleEventFilter);
   const logs = visibleRecords(state.vehicleLogs).filter((log) => matchesSearch(log, `${getEvent(log.eventId)?.name || ""} ${getWorker(log.workerId)?.name || ""}`));
   const filter = $("#vehicleFilter");
   const sort = $("#vehicleSort");
+  const eventFilter = $("#vehicleEventFilter");
+  if (eventFilter) eventFilter.value = state.vehicleEventFilter;
   if (filter) filter.value = state.vehicleFilter;
   if (sort) sort.value = state.vehicleSort;
-  const rows = sortVehicleRows(filterVehicleRows(groupedVehicleRows(logs)));
+  const rows = sortVehicleRows(filterVehicleRows(groupedVehicleRows(logs).filter((group) => recordMatchesEventFilter(group, state.vehicleEventFilter))));
   $("#vehicleTableCount").textContent = `${rows.length} shown`;
   $("#vehicleTable").innerHTML = rows.length
     ? rows.map(vehicleCheckRow).join("")
@@ -2968,12 +3020,11 @@ function filterVehicleRows(rows) {
 
 function sortVehicleRows(rows) {
   const sortValue = state.vehicleSort;
-  const text = (value) => String(value || "").toLowerCase();
   return [...rows].sort((a, b) => {
-    if (sortValue === "event") return text(getEvent(a.eventId)?.name).localeCompare(text(getEvent(b.eventId)?.name));
-    if (sortValue === "worker") return text(getWorker(a.workerId)?.name).localeCompare(text(getWorker(b.workerId)?.name));
-    if (sortValue === "plate") return text(vehicleGroupPlate(a)).localeCompare(text(vehicleGroupPlate(b)));
-    if (sortValue === "vehicle") return text(vehicleGroupType(a)).localeCompare(text(vehicleGroupType(b)));
+    if (sortValue === "event") return listText(getEvent(a.eventId)?.name).localeCompare(listText(getEvent(b.eventId)?.name));
+    if (sortValue === "worker") return listText(getWorker(a.workerId)?.name).localeCompare(listText(getWorker(b.workerId)?.name));
+    if (sortValue === "plate") return listText(vehicleGroupPlate(a)).localeCompare(listText(vehicleGroupPlate(b)));
+    if (sortValue === "vehicle") return listText(vehicleGroupType(a)).localeCompare(listText(vehicleGroupType(b)));
     return new Date(b.startLog?.scheduledDate || b.endLog?.scheduledDate || 0) - new Date(a.startLog?.scheduledDate || a.endLog?.scheduledDate || 0);
   });
 }
@@ -3039,11 +3090,37 @@ function vehiclePhaseCell(group, phase) {
 }
 
 function renderReports() {
-  const rows = visibleRecords(state.accidentReports).filter((report) => matchesSearch(report, `${getEvent(report.eventId)?.name || ""} ${getWorker(report.workerId)?.name || ""}`));
+  renderEventFilterOptions("#reportEventFilter", state.reportEventFilter);
+  const eventFilter = $("#reportEventFilter");
+  const filter = $("#reportFilter");
+  const sort = $("#reportSort");
+  if (eventFilter) eventFilter.value = state.reportEventFilter;
+  if (filter) filter.value = state.reportFilter;
+  if (sort) sort.value = state.reportSort;
+  const rows = sortReports(filterReports(visibleRecords(state.accidentReports).filter((report) => recordMatchesEventFilter(report, state.reportEventFilter) && matchesSearch(report, `${getEvent(report.eventId)?.name || ""} ${getWorker(report.workerId)?.name || ""}`))));
   $("#reportTableCount").textContent = `${rows.length} shown`;
   $("#reportTable").innerHTML = rows.length
     ? rows.map((report) => `<tr><td>${escapeHtml(report.type)}</td><td>${escapeHtml(getEvent(report.eventId)?.name || "")}</td><td>${escapeHtml(getWorker(report.workerId)?.name || "")}</td><td><strong>${escapeHtml(report.title)}</strong><p>${escapeHtml(report.details)}</p></td><td>${formatDate(report.reportedAt)}</td><td>${photoGallery(report.photos || (report.photoData ? [report.photoData] : []))}</td><td>${actionButtons("accidentReports", report.id, "reportForm", "", canScopedEdit())}</td></tr>`).join("")
     : `<tr><td colspan="7" class="empty">No accident reports match this search.</td></tr>`;
+}
+
+function filterReports(reports) {
+  return reports.filter((report) => {
+    const type = listText(report.type);
+    if (state.reportFilter === "injury") return type.includes("injury");
+    if (state.reportFilter === "vehicle") return type.includes("vehicle");
+    if (state.reportFilter === "photos") return (report.photos || []).length || report.photoData;
+    return true;
+  });
+}
+
+function sortReports(reports) {
+  return [...reports].sort((a, b) => {
+    if (state.reportSort === "event") return listText(getEvent(a.eventId)?.name).localeCompare(listText(getEvent(b.eventId)?.name));
+    if (state.reportSort === "worker") return listText(getWorker(a.workerId)?.name).localeCompare(listText(getWorker(b.workerId)?.name));
+    if (state.reportSort === "type") return listText(a.type).localeCompare(listText(b.type));
+    return new Date(b.reportedAt || b.createdAt || 0) - new Date(a.reportedAt || a.createdAt || 0);
+  });
 }
 
 function vehiclePhotoGallery(log) {
@@ -5452,6 +5529,26 @@ function bindEvents() {
     if (event.target.matches("[data-report-type], select[name='eventId'], select[name='workerId']")) updateReportTypeFields($("#reportForm"));
   });
   $("#vehicleForm").addEventListener("change", () => applyVehicleAssignmentLock($("#vehicleForm")));
+  $("#timecardEventFilter").addEventListener("change", (event) => {
+    state.timecardEventFilter = event.target.value;
+    localStorage.setItem("productionCrewTimecardEventFilter", state.timecardEventFilter);
+    renderTimecards();
+  });
+  $("#timecardFilter").addEventListener("change", (event) => {
+    state.timecardFilter = event.target.value;
+    localStorage.setItem("productionCrewTimecardFilter", state.timecardFilter);
+    renderTimecards();
+  });
+  $("#timecardSort").addEventListener("change", (event) => {
+    state.timecardSort = event.target.value;
+    localStorage.setItem("productionCrewTimecardSort", state.timecardSort);
+    renderTimecards();
+  });
+  $("#vehicleEventFilter").addEventListener("change", (event) => {
+    state.vehicleEventFilter = event.target.value;
+    localStorage.setItem("productionCrewVehicleEventFilter", state.vehicleEventFilter);
+    renderVehicles();
+  });
   $("#vehicleFilter").addEventListener("change", (event) => {
     state.vehicleFilter = event.target.value;
     localStorage.setItem("productionCrewVehicleFilter", state.vehicleFilter);
@@ -5461,6 +5558,21 @@ function bindEvents() {
     state.vehicleSort = event.target.value;
     localStorage.setItem("productionCrewVehicleSort", state.vehicleSort);
     renderVehicles();
+  });
+  $("#reportEventFilter").addEventListener("change", (event) => {
+    state.reportEventFilter = event.target.value;
+    localStorage.setItem("productionCrewReportEventFilter", state.reportEventFilter);
+    renderReports();
+  });
+  $("#reportFilter").addEventListener("change", (event) => {
+    state.reportFilter = event.target.value;
+    localStorage.setItem("productionCrewReportFilter", state.reportFilter);
+    renderReports();
+  });
+  $("#reportSort").addEventListener("change", (event) => {
+    state.reportSort = event.target.value;
+    localStorage.setItem("productionCrewReportSort", state.reportSort);
+    renderReports();
   });
   $$("[data-smtp-provider]").forEach((select) => {
     select.addEventListener("change", () => updateSmtpForm(select.form, true));
