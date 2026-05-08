@@ -349,6 +349,17 @@ button {
   gap: 8px;
 }
 
+.checkbox-grid[data-access-level-options] {
+  max-height: min(320px, 42vh);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 4px;
+}
+
+.checkbox-grid[data-access-level-options]:not(:empty) {
+  padding-block: 2px;
+}
+
 .checkbox-option {
   display: grid;
   grid-template-columns: auto 1fr;
@@ -2039,6 +2050,10 @@ body:not(.owner-mode) .rate-field {
 
   .form-panel.modal-form > .primary-action {
     min-height: 48px;
+  }
+
+  .checkbox-grid[data-access-level-options] {
+    max-height: min(280px, 34dvh);
   }
 
   .photo-fieldset {
