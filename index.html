@@ -10,7 +10,7 @@
     <title>Production Crew Database</title>
     <link rel="manifest" href="manifest.webmanifest">
     <link rel="icon" href="assets/app-icon.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="styles.css?v=V1.03.030-activate-account-flow">
+    <link rel="stylesheet" href="styles.css?v=V1.03.031-quick-profile-invites">
   </head>
   <body>
     <section id="authScreen" class="auth-screen">
@@ -510,7 +510,7 @@
                 <h3>Client Accounts</h3>
                 <div class="panel-tools">
                   <span id="clientTableCount" class="muted"></span>
-                  <button class="tiny-button system-action" data-open-form="clientForm" type="button">Add Client</button>
+                  <button class="tiny-button system-action" data-open-quick-profile="clients" type="button">Add Client</button>
                 </div>
               </div>
               <div class="table-wrap">
@@ -808,6 +808,25 @@
               <p class="form-note">Access changes are managed separately from the public profile details.</p>
               <button class="primary-action" type="submit">Save Access</button>
             </form>
+            <form id="quickProfileForm" class="panel form-panel">
+              <div class="panel-heading">
+                <h3 id="quickProfileTitle">Add Person</h3>
+                <button class="ghost-button clear-form" type="button" data-form="quickProfileForm">Close</button>
+              </div>
+              <input type="hidden" name="targetStore">
+              <input type="hidden" name="clientId">
+              <label class="quick-company-field">Company / organization<input name="companyName" placeholder="Company name"></label>
+              <div class="form-grid">
+                <label>First name<input name="firstName" required placeholder="First"></label>
+                <label>Last name<input name="lastName" required placeholder="Last"></label>
+              </div>
+              <label>Email<input name="email" type="email" required placeholder="name@example.com"></label>
+              <label>Site access
+                <div class="checkbox-grid" data-access-level-options data-checkbox-group data-name="accessLevels"></div>
+              </label>
+              <p id="quickProfileNote" class="form-note">This creates a lightweight login-ready profile. The person can finish phone, address, headshot, and deeper profile details during setup.</p>
+              <button class="primary-action" type="submit">Create Person</button>
+            </form>
             <section id="recordView" class="panel form-panel">
               <div class="panel-heading">
                 <h3 id="recordViewTitle">Profile</h3>
@@ -820,7 +839,8 @@
                 <h3>Crew / Runner Profiles</h3>
                 <div class="panel-tools">
                   <span id="workerTableCount" class="muted"></span>
-                  <button class="tiny-button worker-action" data-open-form="workerForm" type="button">Add / Edit Profile</button>
+                  <button class="tiny-button owner-action" data-open-quick-profile="workers" type="button">Add Crew / Runner</button>
+                  <button class="tiny-button crew-action" data-open-form="workerForm" type="button">Edit My Profile</button>
                 </div>
               </div>
               <div class="bulk-actions owner-form">
@@ -1313,7 +1333,7 @@
                 <h3>Promoter Companies & Reps</h3>
                 <div class="panel-tools">
                   <span id="promoterTableCount" class="muted"></span>
-                  <button class="tiny-button admin-action" data-open-form="promoterForm" type="button">Add Promoter Rep</button>
+                  <button class="tiny-button admin-action" data-open-quick-profile="promoters" type="button">Add Promoter Rep</button>
                 </div>
               </div>
               <div class="bulk-actions owner-form">
@@ -1394,6 +1414,6 @@
     <div id="modalHost"></div>
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js?v=V1.03.030-activate-account-flow"></script>
+    <script src="app.js?v=V1.03.031-quick-profile-invites"></script>
   </body>
 </html>

@@ -1134,7 +1134,7 @@ async function syncSupabaseClientRep(record) {
     email: record.email || "",
     phone: record.phone || "",
     mailing_address: record.mailingAddress || "",
-    access_levels: normalizeAccessLevels(record.accessLevels, "CLIENT_REP"),
+    access_levels: ensureClientRepAccessLevels(record.accessLevels),
     smtp_provider: record.smtpProvider || "",
     smtp_from_name: record.smtpFromName || "",
     smtp_from_email: record.smtpFromEmail || "",
@@ -1181,7 +1181,7 @@ function mapSupabaseClientRep(record) {
     email: record.email || "",
     phone: record.phone || "",
     mailingAddress: record.mailing_address || "",
-    accessLevels: normalizeAccessLevels(record.access_levels, "CLIENT_REP"),
+    accessLevels: ensureClientRepAccessLevels(record.access_levels),
     smtpProvider: record.smtp_provider || "",
     smtpFromName: record.smtp_from_name || "",
     smtpFromEmail: record.smtp_from_email || "",
@@ -1416,6 +1416,19 @@ async function deleteUserAccount(userId) {
 
 function profileForUserAccessRow(row) {
   const email = normalizedMatchValue(row.email || "");
+  if (normalizeRole(row.role) === "CLIENT" && row.profileId) {
+    const profile = state.clientReps.find((item) => item.id === row.profileId)
+      || state.clientReps.find((item) => item.authUserId === row.userId)
+      || {
+        id: row.profileId,
+        authUserId: row.userId,
+        clientId: row.clientId || "",
+        name: row.profileName || "",
+        email: row.email || "",
+        accessLevels: row.accessLevels || []
+      };
+    return { store: "clientReps", profile, accessFallback: "CLIENT_REP" };
+  }
   const clientRep = state.clientReps.find((item) => item.authUserId === row.userId)
     || state.clientReps.find((item) => row.clientId && item.clientId === row.clientId && normalizedMatchValue(item.email) === email);
   if (clientRep) return { store: "clientReps", profile: clientRep, accessFallback: "CLIENT_REP" };
@@ -1432,7 +1445,8 @@ function profileForUserAccessRow(row) {
 
 function accessLevelsForUserAccessRow(row) {
   const matched = profileForUserAccessRow(row);
-  return normalizeAccessLevels(row.accessLevels || matched.profile?.accessLevels, matched.accessFallback);
+  const levels = normalizeAccessLevels(row.accessLevels || matched.profile?.accessLevels, matched.accessFallback);
+  return matched.store === "clientReps" ? ensureClientRepAccessLevels(levels) : levels;
 }
 
 function supabaseRoleFromAccessLevels(levels, fallback = "CLIENT") {
@@ -1476,7 +1490,7 @@ async function saveAccountAccess(event) {
   }
   const form = event.currentTarget;
   const record = await formRecord(form);
-  const accessLevels = normalizeAccessLevels(record.accessLevels, "");
+  let accessLevels = normalizeAccessLevels(record.accessLevels, "");
   if (!accessLevels.length) {
     toast("Select at least one site access level.");
     return;
@@ -1485,6 +1499,7 @@ async function saveAccountAccess(event) {
   const matched = record.profileStore && record.profileId
     ? { store: record.profileStore, profile: state[record.profileStore]?.find((item) => item.id === record.profileId) }
     : profileForUserAccessRow({ ...record, role });
+  if (role === "CLIENT" || matched.store === "clientReps") accessLevels = ensureClientRepAccessLevels(accessLevels);
   if (matched.profile && matched.store) {
     await put(matched.store, { ...matched.profile, accessLevels, loginRole: role });
   }
@@ -1535,7 +1550,9 @@ async function openProfileAccessForm(storeName) {
     targetStore: storeName,
     targetId,
     profileName: profile.name || profile.contactName || profile.email || targetId,
-    accessLevels: normalizeAccessLevels(profile.accessLevels, storeName === "promoters" ? "PROMOTER_ADMIN" : storeName === "workers" ? "CREW" : "CLIENT_REP")
+    accessLevels: storeName === "clientReps"
+      ? ensureClientRepAccessLevels(profile.accessLevels)
+      : normalizeAccessLevels(profile.accessLevels, storeName === "promoters" ? "PROMOTER_ADMIN" : storeName === "workers" ? "CREW" : "CLIENT_REP")
   });
 }
 
@@ -1551,7 +1568,9 @@ async function saveProfileAccess(event) {
     toast("Profile not found.");
     return;
   }
-  const accessLevels = normalizeAccessLevels(record.accessLevels, storeName === "promoters" ? "PROMOTER_ADMIN" : storeName === "workers" ? "CREW" : "CLIENT_REP");
+  const accessLevels = storeName === "clientReps"
+    ? ensureClientRepAccessLevels(record.accessLevels)
+    : normalizeAccessLevels(record.accessLevels, storeName === "promoters" ? "PROMOTER_ADMIN" : storeName === "workers" ? "CREW" : "CLIENT_REP");
   const updated = { ...profile, accessLevels, loginRole: baseRoleForAccess(accessLevels[0] || profile.loginRole) };
   await put(storeName, updated);
   try {
@@ -1565,6 +1584,112 @@ async function saveProfileAccess(event) {
   await loadState();
   setView(state.activeView);
   toast("Profile access updated.");
+}
+
+async function openQuickProfileForm(targetStore) {
+  if (!["clients", "workers", "promoters"].includes(targetStore)) return;
+  if (targetStore === "clients" && !canSystemEdit()) {
+    toast("Only ADMIN can add client accounts.");
+    return;
+  }
+  if (targetStore === "workers" && !canOwnerEdit()) {
+    toast("This access view cannot add crew profiles.");
+    return;
+  }
+  if (targetStore === "promoters" && !(canOwnerEdit() || isProductionRole())) {
+    toast("This access view cannot add promoter profiles.");
+    return;
+  }
+  await refreshSiteAccessLevelsForForm("quickProfileForm");
+  const clientId = targetStore === "clients" ? "" : authState.roleRecord?.client_id || activeClientRecord()?.id || "";
+  fillForm("quickProfileForm", {
+    targetStore,
+    clientId,
+    accessLevels: quickProfileDefaultAccess(targetStore)
+  });
+  $("#quickProfileTitle").textContent = quickProfileTitle(targetStore);
+  $("#quickProfileNote").textContent = quickProfileNote(targetStore);
+  $("#quickProfileForm").querySelector(".quick-company-field").hidden = targetStore === "workers";
+  renderAccessLevelControls($("#quickProfileForm"));
+}
+
+async function saveQuickProfile(event) {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const record = await formRecord(form);
+  const targetStore = record.targetStore;
+  const firstName = String(record.firstName || "").trim();
+  const lastName = String(record.lastName || "").trim();
+  const fullName = `${firstName} ${lastName}`.trim();
+  const email = String(record.email || "").trim().toLowerCase();
+  if (!fullName || !email) {
+    toast("Add a name and email first.");
+    return;
+  }
+  const accessLevels = targetStore === "clients"
+    ? ensureClientRepAccessLevels(record.accessLevels, "CLIENT_ADMIN")
+    : normalizeAccessLevels(record.accessLevels, quickProfileDefaultAccess(targetStore)[0]);
+  const id = crypto.randomUUID();
+  let syncMessage = "";
+
+  if (targetStore === "clients") {
+    if (!canSystemEdit()) return;
+    const companyName = String(record.companyName || "").trim() || `${fullName} Company`;
+    const client = {
+      id,
+      name: companyName,
+      contactName: fullName,
+      email,
+      loginEmail: email,
+      status: "Setup Needed",
+      packageLayouts: ["LOCAL_PRODUCTION_SERVICES"],
+      accessLevels,
+      notes: "Created from quick add."
+    };
+    await put("clients", client);
+    try {
+      syncMessage = await syncSupabaseClientAccount(client) || syncMessage;
+      const rep = await upsertClientRepForClientAccount(client);
+      syncMessage = await syncSupabaseClientRep(rep) || syncMessage;
+    } catch (error) {
+      console.error(error);
+      syncMessage = "Saved locally. Supabase sync needs attention.";
+    }
+  } else if (targetStore === "promoters") {
+    const companyName = String(record.companyName || "").trim() || "Independent";
+    const promoter = {
+      id,
+      clientId: record.clientId || authState.roleRecord?.client_id || "",
+      companyName,
+      name: fullName,
+      contactName: "Promoter Rep",
+      email,
+      loginEmail: email,
+      accessLevels,
+      loginRole: supabaseRoleFromAccessLevels(accessLevels, "PROMOTER"),
+      notes: "Created from quick add."
+    };
+    await put("promoters", promoter);
+  } else {
+    const worker = {
+      id,
+      clientId: record.clientId || authState.roleRecord?.client_id || "",
+      name: fullName,
+      role: "Crew / Runner",
+      email,
+      loginEmail: email,
+      status: "Available",
+      accessLevels,
+      loginRole: supabaseRoleFromAccessLevels(accessLevels, "CREW"),
+      notes: "Created from quick add."
+    };
+    await put("workers", worker);
+  }
+
+  closeForm("quickProfileForm");
+  await loadState();
+  setView(targetStore === "clients" ? "admin" : targetStore);
+  toast(syncMessage || "Person created. Use Send Login Setup when ready.");
 }
 
 function setupStepKey(userId = authState.user?.id) {
@@ -1813,6 +1938,7 @@ async function completeAccountSetup(event) {
       name: form.elements.name.value,
       email: session.user.email || "",
       phone: form.elements.phone.value,
+      accessLevels: ensureClientRepAccessLevels(existingRep?.accessLevels, hydratedSetup.repCount === 0 ? "CLIENT_ADMIN" : "CLIENT_REP"),
       emailRoutingStatus: existingRep?.emailRoutingStatus || "Not configured"
     });
     await loadState();
@@ -2001,7 +2127,7 @@ function assignedAccessForCurrentUser() {
   if (baseRole === "ADMIN") return ["ADMIN"];
   if (baseRole === "CLIENT") {
     const rep = activeClientRepRecord();
-    let roles = normalizeAccessLevels(rep?.accessLevels, "CLIENT_ADMIN").filter((role) => accessProfileFor(role));
+    let roles = ensureClientRepAccessLevels(rep?.accessLevels, "CLIENT_ADMIN").filter((role) => accessProfileFor(role));
     if (roles.includes("CLIENT_ACCOUNTING") && roles.includes("CLIENT_REP") && !roles.includes("CLIENT_REP_LEAD") && !roles.includes("CLIENT_ADMIN")) {
       roles = roles.filter((role) => role !== "CLIENT_ACCOUNTING");
     }
@@ -2013,6 +2139,7 @@ function assignedAccessForCurrentUser() {
 function accessLevelOptionsForForm(form) {
   let roles = accessLevelDefinitions().map((level) => level.id).filter((role) => role !== "ADMIN");
   if (form?.id === "accountAccessForm") return roles;
+  if (form?.id === "quickProfileForm") return quickProfileAccessOptions(form.elements.targetStore?.value || "");
   if (form?.id === "profileAccessForm") {
     if (isClientRole()) return roles.filter((role) => baseRoleForAccess(role) !== "ADMIN");
     if (isProductionRole()) {
@@ -2029,6 +2156,41 @@ function accessLevelOptionsForForm(form) {
 
 function accessLevelLabel(role) {
   return accessLevelDefinition(role)?.name || ACCESS_LEVEL_LABELS[role] || role.replaceAll("_", " ");
+}
+
+function quickProfileAccessOptions(targetStore) {
+  const roles = accessLevelDefinitions().map((level) => level.id).filter((role) => role !== "ADMIN");
+  if (targetStore === "promoters" && isProductionRole()) {
+    return roles.filter((role) => baseRoleForAccess(role) === "PROMOTER");
+  }
+  if (targetStore === "promoters") {
+    return roles.filter((role) => baseRoleForAccess(role) === "PROMOTER");
+  }
+  if (targetStore === "workers") {
+    return roles.filter((role) => baseRoleForAccess(role) === "CREW");
+  }
+  if (targetStore === "clients") {
+    return roles.filter((role) => baseRoleForAccess(role) === "CLIENT");
+  }
+  return roles;
+}
+
+function quickProfileDefaultAccess(targetStore) {
+  if (targetStore === "clients") return ["CLIENT_ADMIN"];
+  if (targetStore === "promoters") return ["PROMOTER_ADMIN"];
+  return ["CREW"];
+}
+
+function quickProfileTitle(targetStore) {
+  if (targetStore === "clients") return "Add Client Admin";
+  if (targetStore === "promoters") return "Add Promoter Rep";
+  return "Add Crew / Runner";
+}
+
+function quickProfileNote(targetStore) {
+  if (targetStore === "clients") return "Creates the client company shell and first login-ready client rep. They finish the company and profile setup after activation.";
+  if (targetStore === "promoters") return "Creates a lightweight promoter rep profile. Company and rep details can be expanded after activation.";
+  return "Creates a lightweight crew/runner profile connected to this client. They finish phone, address, headshot, and directory privacy during setup.";
 }
 
 function renderAccessLevelControls(root = document) {
@@ -2051,14 +2213,14 @@ function renderAccessLevelControls(root = document) {
 
 function accessPickerAllowed(form) {
   if (!form) return true;
-  if (form.id === "accountAccessForm" || form.id === "accessLevelForm") return true;
+  if (form.id === "accountAccessForm" || form.id === "accessLevelForm" || form.id === "quickProfileForm") return true;
   if (form.id === "profileAccessForm") return isClientRole() || isProductionRole() || isAdminRole();
   if (["clientProfileForm", "workerForm", "promoterForm"].includes(form.id)) return false;
   return true;
 }
 
 async function refreshSiteAccessLevelsForForm(formId) {
-  if (!["clientProfileForm", "workerForm", "promoterForm", "accessLevelForm", "accountAccessForm", "profileAccessForm"].includes(formId)) return;
+  if (!["clientProfileForm", "workerForm", "promoterForm", "accessLevelForm", "accountAccessForm", "profileAccessForm", "quickProfileForm"].includes(formId)) return;
   try {
     await hydrateAccessLevelsFromSupabase();
     await loadState();
@@ -2134,6 +2296,12 @@ function normalizeAccessLevels(levels, fallback) {
   const values = Array.isArray(levels) ? levels : String(levels || "").split(",");
   const clean = values.map((level) => normalizeAccessLevel(level)).filter(Boolean);
   return clean.length ? Array.from(new Set(clean)) : [normalizeAccessLevel(fallback)].filter(Boolean);
+}
+
+function ensureClientRepAccessLevels(levels, fallback = "CLIENT_REP") {
+  const normalized = normalizeAccessLevels(levels, fallback);
+  const hasClientAccess = normalized.some((level) => baseRoleForAccess(level) === "CLIENT");
+  return hasClientAccess ? normalized : Array.from(new Set([fallback, ...normalized]));
 }
 
 function canAdminEdit() {
@@ -2978,7 +3146,7 @@ function clientRepFromClientAccount(client) {
     email,
     phone: client.phone || existing?.phone || "",
     mailingAddress: existing?.mailingAddress || "",
-    accessLevels: normalizeAccessLevels(existing?.accessLevels, "CLIENT_ADMIN"),
+    accessLevels: ensureClientRepAccessLevels(existing?.accessLevels || client.accessLevels, "CLIENT_ADMIN"),
     emailRoutingStatus: existing?.emailRoutingStatus || "Not configured"
   };
 }
@@ -5056,6 +5224,7 @@ function applyAccessProfile() {
   $$(".scoped-action").forEach((button) => { button.hidden = !profile.canScopedEdit; });
   $$(".system-action").forEach((button) => { button.hidden = !profile.canSystemEdit; });
   $$(".worker-action").forEach((button) => { button.hidden = !(isClientRole() || isCrewRole()); });
+  $$(".crew-action").forEach((button) => { button.hidden = !isCrewRole(); });
   if (!assignedViews().includes(state.activeView)) setView(roleHomeView(assignedAccess[0] || state.accessRole));
 }
 
@@ -5161,7 +5330,7 @@ async function saveForm(event, storeName) {
       clientId: authState.roleRecord?.client_id || record.clientId || "",
       authUserId: authState.user?.id || record.authUserId || "",
       email: record.email || authState.user?.email || "",
-      accessLevels: normalizeAccessLevels(record.accessLevels || activeClientRepRecord()?.accessLevels, clientSetupStep() === "rep" ? "CLIENT_ADMIN" : "CLIENT_REP"),
+      accessLevels: ensureClientRepAccessLevels(record.accessLevels || activeClientRepRecord()?.accessLevels, clientSetupStep() === "rep" ? "CLIENT_ADMIN" : "CLIENT_REP"),
       emailRoutingStatus: record.emailRoutingStatus || "Not configured"
     };
   }
@@ -6924,6 +7093,7 @@ function bindEvents() {
   $("#accessLevelForm").addEventListener("submit", (event) => saveForm(event, "accessLevelDefs"));
   $("#accountAccessForm").addEventListener("submit", saveAccountAccess);
   $("#profileAccessForm").addEventListener("submit", saveProfileAccess);
+  $("#quickProfileForm").addEventListener("submit", saveQuickProfile);
   $("#clientForm").addEventListener("submit", (event) => saveForm(event, "clients"));
   $("#clientPackageForm").addEventListener("submit", saveClientPackages);
   $("#clientCompanyProfileForm").addEventListener("submit", (event) => saveForm(event, "clients"));
@@ -7008,6 +7178,7 @@ function bindEvents() {
   document.body.addEventListener("click", async (event) => {
     const editButton = event.target.closest("[data-edit]");
     const openButton = event.target.closest("[data-open-form]");
+    const quickProfileButton = event.target.closest("[data-open-quick-profile]");
     const deleteButton = event.target.closest("[data-delete]");
     const clockButton = event.target.closest("[data-clock-out]");
     const punchButton = event.target.closest("[data-time-punch]");
@@ -7054,6 +7225,10 @@ function bindEvents() {
     const openReportTypeButton = event.target.closest("[data-open-report-type]");
     const requestMobilePermissionsButton = event.target.closest("[data-request-mobile-permissions]");
 
+    if (quickProfileButton) {
+      await openQuickProfileForm(quickProfileButton.dataset.openQuickProfile);
+      return;
+    }
     if (requestMobilePermissionsButton) {
       await requestMobilePermissions();
       return;

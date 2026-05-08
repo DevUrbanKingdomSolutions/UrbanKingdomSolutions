@@ -37,7 +37,7 @@ Deno.serve(async (request) => {
     }
     return await listUserAccounts(admin, callerRole);
   } catch (error) {
-    return new Response(JSON.stringify({ error: error.message || "User access request failed." }), {
+    return new Response(JSON.stringify({ error: errorMessage(error, "User access request failed.") }), {
       status: 400,
       headers: { ...corsHeaders, "Content-Type": "application/json" }
     });
@@ -75,8 +75,8 @@ async function listUserAccounts(admin: any, callerRole: any) {
   const authById = new Map((authUsers.users || []).map((user: any) => [user.id, user]));
 
   const users = (roles || []).map((role: any) => {
-    const authUser = authById.get(role.user_id);
-    const clientRep = repsByUserId.get(role.user_id);
+    const authUser = authById.get(role.user_id) as any;
+    const clientRep = repsByUserId.get(role.user_id) as any;
     return {
       userId: role.user_id,
       email: authUser?.email || "",
@@ -108,9 +108,10 @@ async function updateUserAccess(admin: any, callerUserId: string, callerRole: an
   const role = String(body.role || "").trim().toUpperCase();
   if (!allowedRoles.has(role)) throw new Error("Choose a valid Supabase security level.");
 
-  const accessLevels = Array.isArray(body.accessLevels)
+  let accessLevels = Array.isArray(body.accessLevels)
     ? body.accessLevels.map((level: unknown) => String(level || "").trim()).filter(Boolean)
     : [];
+  if (role === "CLIENT") accessLevels = ensureClientRepAccessLevels(accessLevels);
 
   const payload = {
     user_id: userId,
@@ -123,17 +124,36 @@ async function updateUserAccess(admin: any, callerUserId: string, callerRole: an
   const roleUpdate = await admin.from("user_roles").upsert(payload, { onConflict: "user_id" });
   if (roleUpdate.error) throw roleUpdate.error;
 
-  if (String(body.profileStore || "") === "clientReps" && body.profileId) {
-    const repUpdate = await admin
+  if (role === "CLIENT") {
+    let repQuery = admin
       .from("client_reps")
-      .update({ access_levels: accessLevels, updated_at: new Date().toISOString() })
-      .eq("id", body.profileId);
+      .update({ access_levels: accessLevels, auth_user_id: userId, updated_at: new Date().toISOString() });
+    repQuery = body.profileId ? repQuery.eq("id", body.profileId) : repQuery.eq("auth_user_id", userId);
+    const repUpdate = await repQuery;
     if (repUpdate.error) throw repUpdate.error;
   }
 
   return new Response(JSON.stringify({ status: "updated", role, accessLevels }), {
     headers: { ...corsHeaders, "Content-Type": "application/json" }
   });
+}
+
+function baseRoleForSiteAccess(level: string) {
+  const value = String(level || "").trim().toUpperCase();
+  if (value.startsWith("CLIENT")) return "CLIENT";
+  if (value.startsWith("PROMOTER")) return "PROMOTER";
+  if (value.startsWith("PRODUCTION")) return "PRODUCTION";
+  if (value === "CREW" || value === "RUNNER" || value === "CREW/RUNNER") return "CREW";
+  return value;
+}
+
+function errorMessage(error: unknown, fallback: string) {
+  return error instanceof Error ? error.message : fallback;
+}
+
+function ensureClientRepAccessLevels(levels: string[]) {
+  const clean = Array.from(new Set((levels || []).map((level) => String(level || "").trim()).filter(Boolean)));
+  return clean.some((level) => baseRoleForSiteAccess(level) === "CLIENT") ? clean : ["CLIENT_REP", ...clean];
 }
 
 async function deleteUserAccount(admin: any, callerUserId: string, callerRole: any, userId: string) {
