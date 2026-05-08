@@ -4801,6 +4801,11 @@ function runnerCategoriesAddedThisYear(workerId = state.activeWorkerId) {
   return runnerCategoryWindow(workerId).used;
 }
 
+function hasUnlimitedRunnerCategoryAccess() {
+  const roles = assignedAccessForCurrentUser();
+  return roles.includes("CLIENT_REP") || roles.includes("CLIENT_REP_LEAD");
+}
+
 function runnerNotesAddedThisYear(stopId, workerId = state.activeWorkerId) {
   const year = new Date().getFullYear();
   return state.runnerNotes.filter((note) => note.stopId === stopId && note.workerId === workerId && Number(note.createdYear) === year).length;
@@ -4809,9 +4814,14 @@ function runnerNotesAddedThisYear(stopId, workerId = state.activeWorkerId) {
 function renderRunnerCategoryCreator() {
   const form = $("#runnerCategoryForm");
   const limit = $("#runnerCategoryLimit");
-  const visible = isCrewRole();
+  const visible = isCrewRole() || hasUnlimitedRunnerCategoryAccess();
   form.hidden = !visible;
   if (!visible) return;
+  if (hasUnlimitedRunnerCategoryAccess()) {
+    limit.textContent = "";
+    form.querySelector("button").disabled = false;
+    return;
+  }
   const windowInfo = runnerCategoryWindow();
   const used = windowInfo.used;
   const remaining = Math.max(0, 3 - used);
@@ -6577,7 +6587,7 @@ async function sendRentalUrgentNotification(card) {
 
 async function addRunnerCategory(event) {
   event.preventDefault();
-  if (!isCrewRole() || !state.activeWorkerId) return;
+  if (!(isCrewRole() || hasUnlimitedRunnerCategoryAccess())) return;
   const input = event.currentTarget.elements.name;
   const name = normalizeCategoryName(input.value);
   if (!name) {
@@ -6591,14 +6601,14 @@ async function addRunnerCategory(event) {
     toast("That category already exists.");
     return;
   }
-  if (runnerCategoriesAddedThisYear() >= 3) {
+  if (!hasUnlimitedRunnerCategoryAccess() && runnerCategoriesAddedThisYear() >= 3) {
     toast("This worker has used all 3 category adds for this year.");
     return;
   }
   const year = new Date().getFullYear();
   await put("runnerCategories", {
     name,
-    createdByWorkerId: state.activeWorkerId,
+    createdByWorkerId: state.activeWorkerId || authState.user?.id || "",
     createdYear: year
   });
   state.runnerCategory = name;
