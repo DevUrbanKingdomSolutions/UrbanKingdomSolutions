@@ -10,7 +10,7 @@
     <title>Production Crew Database</title>
     <link rel="manifest" href="manifest.webmanifest">
     <link rel="icon" href="assets/app-icon.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="styles.css?v=V1.03.022-pwa-app-shell">
+    <link rel="stylesheet" href="styles.css?v=V1.03.023-pwa-install-button">
   </head>
   <body>
     <section id="authScreen" class="auth-screen">
@@ -247,7 +247,10 @@
             <section class="panel mobile-install-panel">
               <div class="panel-heading">
                 <h3>Install On Phone</h3>
-                <span class="muted">Testing shortcut</span>
+                <div class="panel-tools">
+                  <span id="mobileInstallStatus" class="muted">Checking...</span>
+                  <button id="mobileInstallButton" class="tiny-button" type="button" hidden>Install App</button>
+                </div>
               </div>
               <div class="mobile-install-list">
                 <div class="mobile-install-item">
@@ -1353,6 +1356,6 @@
     <div id="modalHost"></div>
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js?v=V1.03.022-pwa-app-shell"></script>
+    <script src="app.js?v=V1.03.023-pwa-install-button"></script>
   </body>
 </html>

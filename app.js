@@ -224,6 +224,8 @@ let sendbirdTypingUsers = [];
 let sendbirdTypingPoller = null;
 let idleSignOutTimer = null;
 let signOutReloading = false;
+let installPromptEvent = null;
+let appInstallState = window.matchMedia?.("(display-mode: standalone)").matches || navigator.standalone ? "installed" : "checking";
 let sendbirdConnectionState = {
   status: "disconnected",
   errorCode: "",
@@ -539,6 +541,7 @@ function refreshMobileRuntimePanels() {
   renderMobileDeviceStatus();
   renderMobileQaPanel();
   renderMobileLaunchPanel();
+  renderMobileInstallPanel();
 }
 
 function openDatabase() {
@@ -3115,6 +3118,47 @@ function renderMobileLaunchPanel() {
   const readyCount = checks.filter(([, ready]) => ready).length;
   count.textContent = `${readyCount}/${checks.length} ready`;
   list.innerHTML = checks.map(([label, ready, detail]) => `<div class="mobile-launch-item ${ready ? "ready" : "pending"}"><span>${escapeHtml(label)}</span><strong>${escapeHtml(detail)}</strong></div>`).join("");
+}
+
+function renderMobileInstallPanel() {
+  const status = $("#mobileInstallStatus");
+  const button = $("#mobileInstallButton");
+  if (!status || !button) return;
+  if (!isAdminRole()) {
+    status.textContent = "";
+    button.hidden = true;
+    return;
+  }
+  const canPrompt = !!installPromptEvent;
+  const secureWeb = ["http:", "https:"].includes(window.location.protocol);
+  const installed = appInstallState === "installed" || window.matchMedia?.("(display-mode: standalone)").matches || navigator.standalone;
+  if (installed) {
+    status.textContent = "Installed";
+    button.hidden = true;
+  } else if (canPrompt) {
+    status.textContent = "Ready";
+    button.hidden = false;
+  } else if (secureWeb) {
+    status.textContent = "Use browser menu";
+    button.hidden = true;
+  } else {
+    status.textContent = "Deploy to test";
+    button.hidden = true;
+  }
+}
+
+async function promptMobileAppInstall() {
+  if (!installPromptEvent) {
+    toast("Use Safari Share or Chrome menu to add it to your phone.");
+    renderMobileInstallPanel();
+    return;
+  }
+  installPromptEvent.prompt();
+  const choice = await installPromptEvent.userChoice.catch(() => null);
+  appInstallState = choice?.outcome === "accepted" ? "installed" : "dismissed";
+  installPromptEvent = null;
+  renderMobileInstallPanel();
+  toast(appInstallState === "installed" ? "App install started." : "Install skipped for now.");
 }
 
 async function registerAppShellServiceWorker() {
@@ -6502,6 +6546,7 @@ function bindEvents() {
   $("#clearSessionButton").addEventListener("click", clearSavedLogin);
   $("#setupLogoutButton").addEventListener("click", clearSavedLogin);
   $("#logoutButton").addEventListener("click", logout);
+  $("#mobileInstallButton")?.addEventListener("click", promptMobileAppInstall);
   $("#mobileMenuButton").addEventListener("click", toggleMobileNavigation);
   $("#mobileBottomNav").addEventListener("click", (event) => {
     const button = event.target.closest("[data-mobile-view]");
@@ -6548,6 +6593,18 @@ function bindEvents() {
     renderConnectionBanner();
     renderMobileDeviceStatus();
     toast("Offline. Some cloud features will pause until signal returns.");
+  });
+  window.addEventListener("beforeinstallprompt", (event) => {
+    event.preventDefault();
+    installPromptEvent = event;
+    appInstallState = "ready";
+    renderMobileInstallPanel();
+  });
+  window.addEventListener("appinstalled", () => {
+    installPromptEvent = null;
+    appInstallState = "installed";
+    renderMobileInstallPanel();
+    toast("Production Crew installed on this device.");
   });
   $("#timecardForm select[name='eventId']").addEventListener("change", (event) => {
     const selectedEvent = getEvent(event.target.value);
