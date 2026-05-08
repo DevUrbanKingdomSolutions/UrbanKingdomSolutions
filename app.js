@@ -722,7 +722,9 @@ function renderClientPackageControls(form) {
   if (!group) return;
   group.innerHTML = clientPackageDefinitions().map((pkg) => {
     const status = pkg.status === "Active" ? "" : ` <em class="muted">(${escapeHtml(pkg.status)})</em>`;
-    return `<label class="checkbox-option package-option"><input type="checkbox" value="${escapeHtml(pkg.id)}"><span><strong>${escapeHtml(pkg.name)}</strong>${status}<small>${escapeHtml(pkg.description)}</small></span></label>`;
+    const disabled = pkg.status === "Active" ? "" : " disabled";
+    const stateClass = pkg.status === "Active" ? "is-active" : "is-muted";
+    return `<label class="checkbox-option package-option ${stateClass}"><input type="checkbox" value="${escapeHtml(pkg.id)}"${disabled}><span><strong>${escapeHtml(pkg.name)}</strong>${status}<small>${escapeHtml(pkg.description)}</small></span></label>`;
   }).join("");
 }
 
@@ -2599,8 +2601,48 @@ function renderAdmin() {
   renderUserAccessTable("adminUserTable", "adminUserTableCount", state.userAccessRows.filter((row) => normalizeRole(row.role) === "ADMIN"));
   $("#clientTableCount").textContent = `${state.clients.length} clients`;
   $("#clientTable").innerHTML = state.clients.length
-    ? state.clients.map((client) => `<tr><td><button class="link-button" data-view-client-company="${client.id}" type="button"><strong>${escapeHtml(client.name)}</strong></button><p>${escapeHtml(client.email)}</p><p>${clientPackageBadges(client.packageLayouts)}</p></td><td>${escapeHtml(client.contactName)}<p>${escapeHtml(client.phone)}</p></td><td><span class="status-pill">${escapeHtml(client.status || "Active")}</span></td><td>${escapeHtml(client.notes)}${loginStatus(client)}</td><td>${actionButtons("clients", client.id, "clientForm", loginSetupButton("clients", client), canSystemEdit())}</td></tr>`).join("")
+    ? state.clients.map((client) => `<tr><td><button class="link-button" data-view-client-company="${client.id}" type="button"><strong>${escapeHtml(client.name)}</strong></button><p>${escapeHtml(client.email)}</p><p>${clientPackageBadges(client.packageLayouts)}</p></td><td>${escapeHtml(client.contactName)}<p>${escapeHtml(client.phone)}</p></td><td><span class="status-pill">${escapeHtml(client.status || "Active")}</span></td><td>${escapeHtml(client.notes)}${loginStatus(client)}</td><td>${actionButtons("clients", client.id, "clientForm", `<button class="tiny-button system-action" data-manage-client-packages="${client.id}" type="button">Packages</button>${loginSetupButton("clients", client)}`, canSystemEdit())}</td></tr>`).join("")
     : `<tr><td colspan="5" class="empty">No client accounts yet.</td></tr>`;
+}
+
+function openClientPackageForm(clientId) {
+  if (!canSystemEdit()) return;
+  const client = state.clients.find((item) => item.id === clientId);
+  if (!client) return;
+  clearForm("clientPackageForm");
+  $("#clientPackageSummary").innerHTML = `<div class="compact-item"><strong>${escapeHtml(client.name || "Client company")}</strong><span>${escapeHtml(client.email || "")}</span></div>`;
+  fillForm("clientPackageForm", {
+    id: client.id,
+    packageLayouts: normalizeClientPackages(client.packageLayouts)
+  });
+}
+
+async function saveClientPackages(event) {
+  event.preventDefault();
+  if (!canSystemEdit()) return;
+  const form = event.currentTarget;
+  const client = state.clients.find((item) => item.id === form.elements.id.value);
+  if (!client) {
+    toast("Select a client first.");
+    return;
+  }
+  const selected = Array.from(form.querySelectorAll(`[data-checkbox-group][data-name="packageLayouts"] input[type="checkbox"]:checked:not(:disabled)`)).map((input) => input.value);
+  const updated = {
+    ...client,
+    packageLayouts: normalizeClientPackages(selected)
+  };
+  await put("clients", updated);
+  let message = "Client packages saved.";
+  try {
+    message = await syncSupabaseClientAccount(updated) || message;
+  } catch (error) {
+    console.error(error);
+    message = "Saved locally. Supabase package sync needs attention.";
+  }
+  await loadState();
+  setView("admin");
+  closeForm("clientPackageForm");
+  toast(message);
 }
 
 function renderAccessLevels() {
@@ -6766,6 +6808,7 @@ function bindEvents() {
   $("#accountAccessForm").addEventListener("submit", saveAccountAccess);
   $("#profileAccessForm").addEventListener("submit", saveProfileAccess);
   $("#clientForm").addEventListener("submit", (event) => saveForm(event, "clients"));
+  $("#clientPackageForm").addEventListener("submit", saveClientPackages);
   $("#clientCompanyProfileForm").addEventListener("submit", (event) => saveForm(event, "clients"));
   $("#clientProfileForm").addEventListener("submit", (event) => saveForm(event, "clientReps"));
   $("#workerForm").addEventListener("submit", (event) => saveForm(event, "workers"));
@@ -6878,6 +6921,7 @@ function bindEvents() {
     const refreshUsersButton = event.target.closest("[data-refresh-users]");
     const deleteUserButton = event.target.closest("[data-delete-user-account]");
     const manageAccountAccessButton = event.target.closest("[data-manage-account-access]");
+    const manageClientPackagesButton = event.target.closest("[data-manage-client-packages]");
     const connectSendbirdButton = event.target.closest("[data-connect-sendbird]");
     const openEventChannelButton = event.target.closest("[data-open-event-channel]");
     const messageThreadTypeButton = event.target.closest("[data-message-thread-type]");
@@ -6911,6 +6955,10 @@ function bindEvents() {
     if (refreshUsersButton) await refreshUserAccessList();
     if (deleteUserButton) await deleteUserAccount(deleteUserButton.dataset.deleteUserAccount);
     if (manageAccountAccessButton) await openAccountAccessForm(manageAccountAccessButton.dataset.manageAccountAccess);
+    if (manageClientPackagesButton) {
+      openClientPackageForm(manageClientPackagesButton.dataset.manageClientPackages);
+      return;
+    }
     if (connectSendbirdButton) await connectSendbirdMessaging();
     if (openEventChannelButton) await openEventMessagingChannel(openEventChannelButton.dataset.openEventChannel);
     if (messageThreadTypeButton) {

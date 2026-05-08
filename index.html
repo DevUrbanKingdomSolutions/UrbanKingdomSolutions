@@ -10,7 +10,7 @@
     <title>Production Crew Database</title>
     <link rel="manifest" href="manifest.webmanifest">
     <link rel="icon" href="assets/app-icon.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="styles.css?v=V1.03.024-client-packages">
+    <link rel="stylesheet" href="styles.css?v=V1.03.025-admin-package-manager">
   </head>
   <body>
     <section id="authScreen" class="auth-screen">
@@ -407,6 +407,19 @@
               </label>
               <label>System notes<textarea name="notes" rows="4" placeholder="Configuration notes, support details, onboarding status"></textarea></label>
               <button class="primary-action" type="submit">Save Company & Rep</button>
+            </form>
+            <form id="clientPackageForm" class="panel form-panel system-form">
+              <div class="panel-heading">
+                <h3>Client Package Layouts</h3>
+                <button class="ghost-button clear-form" type="button" data-form="clientPackageForm">Close</button>
+              </div>
+              <input type="hidden" name="id">
+              <div id="clientPackageSummary" class="compact-list"></div>
+              <label>Package layouts
+                <div class="checkbox-grid package-grid" data-package-options data-checkbox-group data-name="packageLayouts"></div>
+              </label>
+              <p class="form-note">Planned packages are visible here for roadmap clarity, but stay disabled until their pages, data rules, and security model exist.</p>
+              <button class="primary-action" type="submit">Save Packages</button>
             </form>
             <form id="accessLevelForm" class="panel form-panel system-form">
               <div class="panel-heading">
@@ -1364,6 +1377,6 @@
     <div id="modalHost"></div>
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js?v=V1.03.024-client-packages"></script>
+    <script src="app.js?v=V1.03.025-admin-package-manager"></script>
   </body>
 </html>
