@@ -3402,7 +3402,10 @@ function renderProductionBoard() {
         const promoter = getPromoter(event.promoterId);
         const crew = eventWorkerIds(event).map((id) => getWorker(id)?.name).filter(Boolean).join(", ");
         const publicAccessButton = `<button class="tiny-button" data-event-access="${event.id}" type="button">Production Link</button>`;
-        return `<article class="record-card"><div><span>${escapeHtml(event.type || "Event")}</span><strong>${escapeHtml(event.name)}</strong><p>${escapeHtml(venue?.name || "")}</p><p>${escapeHtml(promoterLabel(promoter))}</p><p>${escapeHtml(crew || "No runners assigned")}</p></div><div><span>${formatDate(event.startDate)}</span><span>${formatDate(event.endDate)}</span><div class="row-actions">${publicAccessButton}</div></div></article>`;
+        const gigDirectoryButton = eventGigSearchText(event, venue)
+          ? `<button class="tiny-button" data-event-gig-search="${event.id}" type="button">City Resources</button>`
+          : "";
+        return `<article class="record-card"><div><span>${escapeHtml(event.type || "Event")}</span><strong>${escapeHtml(event.name)}</strong><p>${escapeHtml(venue?.name || "")}</p><p>${escapeHtml(promoterLabel(promoter))}</p><p>${escapeHtml(crew || "No runners assigned")}</p></div><div><span>${formatDate(event.startDate)}</span><span>${formatDate(event.endDate)}</span><div class="row-actions">${gigDirectoryButton}${publicAccessButton}</div></div></article>`;
       }).join("")
     : `<div class="compact-item empty">No production-board events match this view.</div>`;
 
@@ -3420,11 +3423,17 @@ function renderPublicEventAccess(data) {
   const venue = data.venue || {};
   const promoter = data.promoter || {};
   const crew = data.crew || [];
+  const gigResources = data.gigResources || [];
+  const citySearch = data.gigResourceSearch || eventGigSearchText(event, venue);
+  const resourceButton = citySearch
+    ? `<button class="tiny-button" data-public-gig-resources type="button">City Resources</button>`
+    : "";
   $("#publicEventContent").innerHTML = `<div class="public-event-summary">
     <span>${escapeHtml(event.type || "Event")}</span>
     <h1>${escapeHtml(event.name || "Production Event")}</h1>
     <p>${escapeHtml(formatDate(event.startDate))}${event.endDate ? " - " + escapeHtml(formatDate(event.endDate)) : ""}</p>
     <p>${escapeHtml(venue.name || "Venue not listed")}</p>
+    <div class="row-actions">${resourceButton}</div>
   </div>
   <div class="public-event-grid">
     <section>
@@ -3445,7 +3454,24 @@ function renderPublicEventAccess(data) {
     <div class="public-runner-list">
       ${crew.length ? crew.map((worker) => publicRunnerCard(worker)).join("") : `<div class="compact-item empty">No runners are assigned to this event.</div>`}
     </div>
+  </section>
+  <section id="publicGigResources" class="public-runner-panel">
+    <h3>City Resources${citySearch ? `: ${escapeHtml(citySearch)}` : ""}</h3>
+    <div class="public-runner-list">
+      ${gigResources.length ? gigResources.map((stop) => publicGigResourceCard(stop)).join("") : `<div class="compact-item empty">No city resources were attached to this event link yet.</div>`}
+    </div>
   </section>`;
+}
+
+function publicGigResourceCard(stop) {
+  const location = [stop.city, stop.state].filter(Boolean).join(", ");
+  return `<article class="compact-item">
+    <strong>${escapeHtml(stop.name || "Resource")}</strong>
+    <span>${escapeHtml(stop.category || "Gig Directory")}${location ? ` - ${escapeHtml(location)}` : ""}</span>
+    <p>${escapeHtml(stop.address || "")}</p>
+    <p>${escapeHtml(stop.phone || "")}${stop.hours ? ` | ${escapeHtml(stop.hours)}` : ""}</p>
+    <p>${escapeHtml(stop.bestUse || "")}</p>
+  </article>`;
 }
 
 function publicRunnerCard(worker) {
@@ -3600,8 +3626,8 @@ function canOpenView(view) {
   return combinedNavGroups().some((group) => group.items.some(([itemView]) => itemView === view));
 }
 
-function eventGigSearchText(event) {
-  const venue = getVenue(event?.venueId);
+function eventGigSearchText(event, venueOverride = null) {
+  const venue = venueOverride || getVenue(event?.venueId);
   const explicit = [event?.city, event?.state].filter(Boolean).join(" ");
   if (explicit) return explicit;
   const address = venue?.address || "";
@@ -3609,6 +3635,16 @@ function eventGigSearchText(event) {
   if (parts.length >= 3) return `${parts.at(-3)} ${parts.at(-2)}`;
   if (parts.length >= 2) return parts.at(-2);
   return venue?.city || venue?.state ? [venue.city, venue.state].filter(Boolean).join(" ") : "";
+}
+
+function gigResourcesForEvent(event, venueOverride = null) {
+  const search = eventGigSearchText(event, venueOverride).toLowerCase();
+  if (!search) return [];
+  const terms = search.split(/\s+/).map((term) => term.trim()).filter(Boolean);
+  return state.runnerStops.filter((stop) => {
+    const haystack = [stop.city, stop.state, stop.address, stop.name, stop.category, stop.bestUse].join(" ").toLowerCase();
+    return terms.every((term) => haystack.includes(term));
+  }).slice(0, 20);
 }
 
 function openGigDirectoryForEvent(eventId) {
@@ -5424,7 +5460,8 @@ function eventAccessSnapshot(event) {
       runnerStatus: worker.runnerStatus || "Available"
     };
   });
-  return { event, venue, promoter, crew };
+  const gigResourceSearch = eventGigSearchText(event, venue);
+  return { event, venue, promoter, crew, gigResourceSearch, gigResources: gigResourcesForEvent(event, venue) };
 }
 
 function publicEventUrl(token) {
@@ -6927,6 +6964,7 @@ function bindEvents() {
     const swapCrewButton = event.target.closest("[data-swap-crew]");
     const substituteCrewButton = event.target.closest("[data-substitute-crew]");
     const publicRunnerStatusButton = event.target.closest("[data-public-runner-status]");
+    const publicGigResourcesButton = event.target.closest("[data-public-gig-resources]");
     const refreshUsersButton = event.target.closest("[data-refresh-users]");
     const deleteUserButton = event.target.closest("[data-delete-user-account]");
     const manageAccountAccessButton = event.target.closest("[data-manage-account-access]");
@@ -6959,6 +6997,10 @@ function bindEvents() {
     }
     if (publicRunnerStatusButton) {
       await updatePublicRunnerStatus(publicRunnerStatusButton.dataset.publicRunnerStatus, publicRunnerStatusButton.dataset.status);
+      return;
+    }
+    if (publicGigResourcesButton) {
+      $("#publicGigResources")?.scrollIntoView({ behavior: "smooth", block: "start" });
       return;
     }
     if (refreshUsersButton) await refreshUserAccessList();

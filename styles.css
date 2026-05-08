@@ -60,6 +60,11 @@ button {
   margin-top: 18px;
 }
 
+.public-event-summary .row-actions {
+  justify-content: flex-start;
+  margin-top: 12px;
+}
+
 .public-event-summary h1 {
   margin: 8px 0;
   color: #172126;
