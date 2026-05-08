@@ -2930,11 +2930,63 @@ function monthLabel(value) {
 }
 
 function renderVehicles() {
-  const rows = visibleRecords(state.vehicleLogs).filter((log) => matchesSearch(log, `${getEvent(log.eventId)?.name || ""} ${getWorker(log.workerId)?.name || ""}`));
+  const logs = visibleRecords(state.vehicleLogs).filter((log) => matchesSearch(log, `${getEvent(log.eventId)?.name || ""} ${getWorker(log.workerId)?.name || ""}`));
+  const rows = groupedVehicleRows(logs);
   $("#vehicleTableCount").textContent = `${rows.length} shown`;
   $("#vehicleTable").innerHTML = rows.length
-    ? rows.map((log) => `<tr><td>${escapeHtml(getEvent(log.eventId)?.name || "")}</td><td>${escapeHtml(getWorker(log.workerId)?.name || "")}</td><td><strong>${escapeHtml(log.vehicleType)}</strong><p>${escapeHtml(log.plateNumber)}</p></td><td>${escapeHtml(log.gasGauge)}</td><td>${escapeHtml(log.phase)}<p>${formatDate(log.scheduledDate)}</p></td><td>${vehiclePhotoGallery(log)}</td><td>${actionButtons("vehicleLogs", log.id, "vehicleForm", "", canScopedEdit())}</td></tr>`).join("")
-    : `<tr><td colspan="7" class="empty">No vehicle checks match this search.</td></tr>`;
+    ? rows.map(vehicleCheckRow).join("")
+    : `<tr><td colspan="6" class="empty">No vehicle checks match this search.</td></tr>`;
+}
+
+function groupedVehicleRows(logs) {
+  const groups = new Map();
+  logs.forEach((log) => {
+    const key = log.assignmentId || `${log.eventId || ""}:${log.workerId || ""}:${log.vehicleType || ""}:${log.plateNumber || ""}`;
+    const group = groups.get(key) || {
+      key,
+      eventId: log.eventId || "",
+      workerId: log.workerId || "",
+      assignmentId: log.assignmentId || "",
+      vehicleType: log.vehicleType || "",
+      plateNumber: log.plateNumber || "",
+      startLog: null,
+      endLog: null,
+      logs: []
+    };
+    group.logs.push(log);
+    if (String(log.phase || "").toLowerCase() === "end") group.endLog = log;
+    else group.startLog = log;
+    group.eventId = group.eventId || log.eventId || "";
+    group.workerId = group.workerId || log.workerId || "";
+    group.assignmentId = group.assignmentId || log.assignmentId || "";
+    group.vehicleType = group.vehicleType || log.vehicleType || "";
+    group.plateNumber = group.plateNumber || log.plateNumber || "";
+    groups.set(key, group);
+  });
+  return Array.from(groups.values()).sort((a, b) => new Date(b.startLog?.scheduledDate || b.endLog?.scheduledDate || 0) - new Date(a.startLog?.scheduledDate || a.endLog?.scheduledDate || 0));
+}
+
+function vehicleCheckRow(group) {
+  const event = getEvent(group.eventId);
+  const worker = getWorker(group.workerId);
+  const vehicleType = group.vehicleType || group.startLog?.vehicleType || group.endLog?.vehicleType || "";
+  const plate = group.plateNumber || group.startLog?.plateNumber || group.endLog?.plateNumber || "";
+  return `<tr>
+    <td><strong>${escapeHtml(event?.name || "")}</strong><p>${formatDate(event?.startDate)}${event?.endDate ? " - " + formatDate(event.endDate) : ""}</p></td>
+    <td>${escapeHtml(worker?.name || "")}</td>
+    <td><strong>${escapeHtml(vehicleType || "Vehicle")}</strong><p>${escapeHtml(plate)}</p></td>
+    <td>${vehiclePhaseCell(group, "Start")}</td>
+    <td>${vehiclePhaseCell(group, "End")}</td>
+    <td>${group.logs.map((log) => vehiclePhotoGallery(log)).join("")}</td>
+  </tr>`;
+}
+
+function vehiclePhaseCell(group, phase) {
+  const log = phase === "End" ? group.endLog : group.startLog;
+  const disabled = canScopedEdit() ? "" : "disabled";
+  const buttonLabel = log ? `View / Edit ${phase}` : `Add ${phase}`;
+  const meta = log ? `${escapeHtml(log.gasGauge || "")}<p>${formatDate(log.scheduledDate)}</p>` : `<p class="muted">Not started</p>`;
+  return `${meta}<button class="tiny-button" data-vehicle-phase="${phase}" data-log-id="${escapeHtml(log?.id || "")}" data-event-id="${escapeHtml(group.eventId)}" data-worker-id="${escapeHtml(group.workerId)}" data-assignment-id="${escapeHtml(group.assignmentId)}" type="button" ${disabled}>${buttonLabel}</button>`;
 }
 
 function renderReports() {
@@ -3034,6 +3086,22 @@ function updateVehiclePhotoSections(form = $("#vehicleForm")) {
     const sectionType = section.dataset.vehiclePhotoSection;
     section.hidden = sectionType === "start" ? !showStart : !showEnd;
   });
+}
+
+function openVehiclePhaseForm(button) {
+  const logId = button.dataset.logId || "";
+  if (logId) {
+    fillForm("vehicleForm", state.vehicleLogs.find((log) => log.id === logId) || {});
+    return;
+  }
+  clearForm("vehicleForm");
+  const form = $("#vehicleForm");
+  form.elements.phase.value = button.dataset.vehiclePhase || "Start";
+  form.elements.eventId.value = button.dataset.eventId || "";
+  form.elements.workerId.value = button.dataset.workerId || "";
+  if (form.elements.assignmentId) form.elements.assignmentId.value = button.dataset.assignmentId || "";
+  applyVehicleAssignmentLock(form);
+  openForm("vehicleForm");
 }
 
 function updateReportTypeFields(form = $("#reportForm")) {
@@ -5375,6 +5443,7 @@ function bindEvents() {
     const viewClientCompanyButton = event.target.closest("[data-view-client-company]");
     const editViewedClientButton = event.target.closest("#editViewedClientCompany");
     const eventAccessButton = event.target.closest("[data-event-access]");
+    const vehiclePhaseButton = event.target.closest("[data-vehicle-phase]");
     const addAssignmentButton = event.target.closest("[data-add-assignment]");
     const formAddAssignmentButton = event.target.closest("[data-form-add-assignment]");
     const swapCrewButton = event.target.closest("[data-swap-crew]");
@@ -5449,6 +5518,7 @@ function bindEvents() {
       const eventRecord = getEvent(eventAccessButton.dataset.eventAccess);
       if (eventRecord) await createEventAccessLink(eventRecord);
     }
+    if (vehiclePhaseButton) openVehiclePhaseForm(vehiclePhaseButton);
     if (addAssignmentButton) openAssignmentForm(addAssignmentButton.dataset.addAssignment);
     if (formAddAssignmentButton?.dataset.formAddAssignment) openAssignmentForm(formAddAssignmentButton.dataset.formAddAssignment);
     if (swapCrewButton) openCrewSwapForm(swapCrewButton.dataset.swapCrew);
