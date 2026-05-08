@@ -5079,10 +5079,9 @@ function renderMessagingError() {
 function renderMessagingThreadTabs() {
   const tabs = $("#messagingThreadTabs");
   if (!tabs) return;
-  const threadButtons = Object.entries(MESSAGE_THREAD_TYPES)
+  tabs.innerHTML = Object.entries(MESSAGE_THREAD_TYPES)
     .map(([type, config]) => `<button class="tab-button ${state.messagingThreadType === type ? "active" : ""}" data-message-thread-type="${type}" type="button">${config.label}</button>`)
     .join("");
-  tabs.innerHTML = `${threadButtons}<button class="tiny-button message-new-thread-button" data-new-message-thread type="button">+ New Thread</button>`;
 }
 
 function messagingChannelCards() {

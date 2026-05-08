@@ -1,9 +1,9 @@
-const APP_SHELL_CACHE = "production-crew-shell-v1.03.047";
+const APP_SHELL_CACHE = "production-crew-shell-v1.03.048";
 const APP_SHELL_ASSETS = [
   "./",
   "./index.html",
-  "./styles.css?v=V1.03.047-cloud-sync-tools",
-  "./app.js?v=V1.03.047-cloud-sync-tools",
+  "./styles.css?v=V1.03.048-move-new-thread-button",
+  "./app.js?v=V1.03.048-move-new-thread-button",
   "./manifest.webmanifest",
   "./assets/app-icon.svg"
 ];
