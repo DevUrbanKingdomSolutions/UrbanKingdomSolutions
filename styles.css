@@ -1322,6 +1322,55 @@ td p {
   color: var(--warn);
 }
 
+.report-badge-row,
+.report-summary-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.status-pill.report-type {
+  background: #e7f4ef;
+  color: #176346;
+}
+
+.status-pill.report-type.vehicle {
+  background: #e8eef8;
+  color: #285080;
+}
+
+.report-summary-chips span {
+  display: grid;
+  gap: 2px;
+  min-width: 120px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfaf6;
+  padding: 7px 9px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.report-summary-chips b {
+  color: var(--ink);
+  font-size: 11px;
+  text-transform: uppercase;
+}
+
+.report-fields {
+  margin: 14px 16px 0;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfaf6;
+}
+
+.report-fields label {
+  margin-right: 0;
+  margin-left: 0;
+}
+
 .profile-cell {
   display: grid;
   grid-template-columns: 44px minmax(0, 1fr);
@@ -1757,6 +1806,16 @@ body:not(.owner-mode) .rate-field {
 
   .vehicle-photo-checklist span {
     min-height: 28px;
+  }
+
+  .report-summary-chips {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .report-fields {
+    margin-right: 12px;
+    margin-left: 12px;
   }
 
   .tab-row {

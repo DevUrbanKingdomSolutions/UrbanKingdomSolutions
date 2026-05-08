@@ -3665,8 +3665,46 @@ function renderReports() {
   const rows = sortReports(filterReports(visibleRecords(state.accidentReports).filter((report) => recordMatchesEventFilter(report, state.reportEventFilter) && matchesSearch(report, `${getEvent(report.eventId)?.name || ""} ${getWorker(report.workerId)?.name || ""}`))));
   $("#reportTableCount").textContent = `${rows.length} shown`;
   $("#reportTable").innerHTML = rows.length
-    ? rows.map((report) => `<tr><td>${escapeHtml(report.type)}</td><td>${escapeHtml(getEvent(report.eventId)?.name || "")}</td><td>${escapeHtml(getWorker(report.workerId)?.name || "")}</td><td><strong>${recordLink("accidentReports", report.id, report.title)}</strong><p>${escapeHtml(report.details)}</p></td><td>${formatDate(report.reportedAt)}</td><td>${photoGallery(report.photos || (report.photoData ? [report.photoData] : []))}</td><td>${actionButtons("accidentReports", report.id, "reportForm", "", canScopedEdit())}</td></tr>`).join("")
+    ? rows.map(reportTableRow).join("")
     : `<tr><td colspan="7" class="empty">No accident reports match this search.</td></tr>`;
+}
+
+function reportTableRow(report) {
+  const event = getEvent(report.eventId);
+  const worker = getWorker(report.workerId);
+  const photos = report.photos || (report.photoData ? [report.photoData] : []);
+  return `<tr>
+    <td>${reportTypeBadge(report)}${reportUrgencyBadges(report)}</td>
+    <td>${escapeHtml(event?.name || "")}</td>
+    <td>${escapeHtml(worker?.name || "")}</td>
+    <td><strong>${recordLink("accidentReports", report.id, report.title)}</strong><p>${escapeHtml(report.details)}</p>${reportSummaryChips(report)}</td>
+    <td>${formatDate(report.reportedAt)}</td>
+    <td>${photos.length ? `<span class="status-pill">${photos.length} photo${photos.length === 1 ? "" : "s"}</span>${photoGallery(photos)}` : `<span class="status-pill warn">No photos</span>`}</td>
+    <td>${actionButtons("accidentReports", report.id, "reportForm", "", canScopedEdit())}</td>
+  </tr>`;
+}
+
+function reportTypeBadge(report) {
+  const isVehicle = listText(report.type).includes("vehicle");
+  return `<span class="status-pill report-type ${isVehicle ? "vehicle" : "injury"}">${escapeHtml(report.type || "Report")}</span>`;
+}
+
+function reportUrgencyBadges(report) {
+  const badges = [];
+  if (report.medicalAssistanceNeeded === "Yes" || report.emergencyServicesCalled === "Yes") badges.push("Medical");
+  if (report.policeReportNumber) badges.push("Police report");
+  if (report.insuranceInfo) badges.push("Insurance");
+  return badges.length ? `<div class="report-badge-row">${badges.map((label) => `<span class="status-pill warn">${escapeHtml(label)}</span>`).join("")}</div>` : "";
+}
+
+function reportSummaryChips(report) {
+  const chips = [];
+  if (report.injuredPersonName) chips.push(["Injured", report.injuredPersonName]);
+  if (report.bodyPartInjured) chips.push(["Body part", report.bodyPartInjured]);
+  if (report.incidentLocation) chips.push(["Location", report.incidentLocation]);
+  if (report.driverName) chips.push(["Driver", report.driverName]);
+  if (report.vehicleInfo) chips.push(["Vehicle", report.vehicleInfo]);
+  return chips.length ? `<div class="report-summary-chips">${chips.slice(0, 4).map(([label, value]) => `<span><b>${escapeHtml(label)}</b>${escapeHtml(value)}</span>`).join("")}</div>` : "";
 }
 
 function filterReports(reports) {
@@ -3808,6 +3846,15 @@ function updateReportTypeFields(form = $("#reportForm")) {
     section.hidden = section.dataset.reportSection !== type;
   });
   if (type === "Vehicle Damage") autofillVehicleReport(form);
+}
+
+function openReportFormForType(type = "Injury Report") {
+  clearForm("reportForm");
+  const form = $("#reportForm");
+  form.elements.type.value = type;
+  if (isCrewRole()) form.elements.workerId.value = state.activeWorkerId;
+  updateReportTypeFields(form);
+  openForm("reportForm");
 }
 
 function rentedVehicleLogForAssignment(assignment, phase = "Start") {
@@ -6354,7 +6401,12 @@ function bindEvents() {
     const profileAccessButton = event.target.closest("[data-open-profile-access]");
     const viewRecordButton = event.target.closest("[data-view-record]");
     const mobileGoViewButton = event.target.closest("[data-mobile-go-view]");
+    const openReportTypeButton = event.target.closest("[data-open-report-type]");
 
+    if (openReportTypeButton) {
+      openReportFormForType(openReportTypeButton.dataset.openReportType);
+      return;
+    }
     if (mobileGoViewButton) {
       setView(mobileGoViewButton.dataset.mobileGoView);
       return;
