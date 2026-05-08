@@ -913,6 +913,12 @@ td p {
   font-weight: 800;
 }
 
+.message-avatar.image {
+  display: block;
+  object-fit: cover;
+  border: 1px solid var(--line);
+}
+
 .message-bubble {
   border: 1px solid var(--line);
   border-radius: 14px 14px 14px 4px;

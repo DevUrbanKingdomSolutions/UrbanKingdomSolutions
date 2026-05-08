@@ -3203,20 +3203,38 @@ function renderMessageThread() {
 function messageBubble(message) {
   const senderName = message.sender?.nickname || message.sender?.userId || "Message";
   const senderId = message.sender?.userId || "";
+  const senderProfile = profileForSendbirdUserId(senderId);
+  const displayName = senderProfile?.name || senderProfile?.contactName || senderName;
   const isOwn = senderId && senderId === sendbirdClient?.currentUser?.userId;
   const sentAt = message.createdAt ? formatDate(message.createdAt) : "";
   return `<article class="message-bubble-row ${isOwn ? "own" : ""}">
-    <div class="message-avatar">${escapeHtml(initialsForName(senderName))}</div>
+    ${messageAvatar(senderProfile, displayName)}
     <div class="message-bubble">
-      <div class="message-meta"><strong>${escapeHtml(isOwn ? "You" : senderName)}</strong><span>${escapeHtml(sentAt)}</span></div>
+      <div class="message-meta"><strong>${escapeHtml(isOwn ? "You" : displayName)}</strong><span>${escapeHtml(sentAt)}</span></div>
       <p>${escapeHtml(message.message || "")}</p>
     </div>
   </article>`;
 }
 
-function initialsForName(name) {
-  const parts = String(name || "User").trim().split(/\s+/).filter(Boolean);
-  return (parts.length > 1 ? `${parts[0][0]}${parts[1][0]}` : parts[0]?.slice(0, 2) || "U").toUpperCase();
+function profileForSendbirdUserId(userId) {
+  const id = String(userId || "").trim();
+  if (!id) return null;
+  return [
+    ...state.workers,
+    ...state.promoters,
+    ...state.clientReps,
+    ...state.systemProfiles,
+    ...state.productionContacts,
+    ...state.venueContacts
+  ].find((profile) => [profile.authUserId, profile.id, profile.email].map((value) => String(value || "").trim()).includes(id)) || null;
+}
+
+function messageAvatar(profile, fallbackName = "User") {
+  const label = profile?.name || profile?.contactName || fallbackName;
+  if (profile?.headshotData && !profile.hideHeadshot) {
+    return `<img class="message-avatar image" src="${profile.headshotData}" alt="${escapeHtml(label)} headshot">`;
+  }
+  return `<div class="message-avatar">${escapeHtml(initialsFor(label))}</div>`;
 }
 
 function renderTypingStatus() {
