@@ -5172,12 +5172,13 @@ function visibleNotifications() {
   const currentId = currentThreadUserId();
   return state.appNotifications
     .filter((notification) => notification.type !== "system" || isAdminRole())
+    .filter((notification) => !notification.readAt)
     .filter((notification) => !notification.recipientId || !currentId || notification.recipientId === currentId)
     .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
 }
 
 function unreadNotificationCount() {
-  return visibleNotifications().filter((notification) => !notification.readAt).length;
+  return visibleNotifications().length;
 }
 
 function renderNotifications() {
@@ -5228,7 +5229,9 @@ async function ensureWelcomeNotification() {
     title: "Notifications are ready",
     body: "System notices now appear in the System / Admin thread.",
     type: "system",
-    viewId: "",
+    viewId: "messages",
+    threadType: "system",
+    threadKey: "system-admin",
     recipientId: ""
   });
   await loadState();
@@ -5251,7 +5254,7 @@ async function markNotificationsRead() {
 }
 
 async function clearReadNotifications() {
-  const read = visibleNotifications().filter((notification) => notification.readAt);
+  const read = state.appNotifications.filter((notification) => notification.readAt);
   for (const notification of read) {
     await remove("appNotifications", notification.id);
   }
@@ -5263,6 +5266,7 @@ async function openNotification(id) {
   if (!notification) return;
   if (!notification.readAt) await put("appNotifications", { ...notification, readAt: new Date().toISOString() });
   if (notification.viewId) setView(notification.viewId);
+  if (notification.threadType && notification.threadKey) await openPermanentMessageChannel(notification.threadType, notification.threadKey);
   const center = $("#notificationCenter");
   if (center) center.open = false;
   await loadState();
