@@ -1,5 +1,5 @@
 const DB_NAME = "productionCrewDatabase";
-const DB_VERSION = 12;
+const DB_VERSION = 13;
 const SUPABASE_URL = "https://nnhqrhaltkmymnwxydwr.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5uaHFyaGFsdGtteW1ud3h5ZHdyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgwMjMxNDgsImV4cCI6MjA5MzU5OTE0OH0.X9iGhE61WehM57133LKCWMfXXDHmcb2rhw-ZPCKAJos";
 const LOGIN_SETUP_FUNCTION = "send-login-setup";
@@ -63,7 +63,8 @@ const STORES = [
   "productionContacts",
   "vehicleLogs",
   "accidentReports",
-  "messageThreadSettings"
+  "messageThreadSettings",
+  "appNotifications"
 ];
 const CLOUD_SYNC_STORES = new Set([
   "workers",
@@ -317,6 +318,7 @@ let state = {
   vehicleLogs: [],
   accidentReports: [],
   messageThreadSettings: [],
+  appNotifications: [],
   clients: [],
   clientReps: [],
   accessLevelDefs: [],
@@ -883,7 +885,7 @@ async function cloudRecordCount() {
 }
 
 async function loadState() {
-  const [clients, clientReps, accessLevelDefs, eventAccessLinks, workers, venues, promoters, profileNotes, events, eventAssignments, eventSwaps, timecards, runnerStops, runnerCategories, runnerNotes, systemProfiles, venueContacts, productionCompanies, productionContacts, vehicleLogs, accidentReports, messageThreadSettings] = await Promise.all(STORES.map(getAll));
+  const [clients, clientReps, accessLevelDefs, eventAccessLinks, workers, venues, promoters, profileNotes, events, eventAssignments, eventSwaps, timecards, runnerStops, runnerCategories, runnerNotes, systemProfiles, venueContacts, productionCompanies, productionContacts, vehicleLogs, accidentReports, messageThreadSettings, appNotifications] = await Promise.all(STORES.map(getAll));
   state = {
     ...state,
     clients: sortByName(clients),
@@ -907,7 +909,8 @@ async function loadState() {
     productionContacts: sortByName(productionContacts),
     vehicleLogs: vehicleLogs.sort((a, b) => new Date(b.scheduledDate || b.createdAt || 0) - new Date(a.scheduledDate || a.createdAt || 0)),
     accidentReports: accidentReports.sort((a, b) => new Date(b.reportedAt || b.createdAt || 0) - new Date(a.reportedAt || a.createdAt || 0)),
-    messageThreadSettings
+    messageThreadSettings,
+    appNotifications: appNotifications.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
   };
   if (!state.activeWorkerId && state.workers[0]) state.activeWorkerId = state.workers[0].id;
   if (!state.activePromoterId && state.promoters[0]) state.activePromoterId = state.promoters[0].id;
@@ -2023,6 +2026,7 @@ async function applyAuthenticatedSession(session, preferredView = "") {
   await hydrateClientSetupData(roleRecord, session.user);
   await hydrateAppRecordsFromSupabase();
   await loadState();
+  await ensureWelcomeNotification();
   await syncLocalRecordsToSupabase();
   await refreshUserAccessList(false);
   appHasLoaded = true;
@@ -3106,6 +3110,7 @@ function render() {
   renderRunnerStops();
   renderDataTools();
   renderMessaging();
+  renderNotifications();
   enhanceResponsiveTables();
   checkRentalPhotoUrgencies();
 }
@@ -5060,6 +5065,97 @@ function renderMessaging() {
     channelList.innerHTML = messagingChannelCards();
   }
   renderMessageThread();
+}
+
+function visibleNotifications() {
+  const currentId = currentThreadUserId();
+  return state.appNotifications
+    .filter((notification) => !notification.recipientId || !currentId || notification.recipientId === currentId)
+    .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+}
+
+function unreadNotificationCount() {
+  return visibleNotifications().filter((notification) => !notification.readAt).length;
+}
+
+function renderNotifications() {
+  const badge = $("#notificationBadge");
+  const list = $("#notificationList");
+  if (!badge || !list) return;
+  const notifications = visibleNotifications();
+  const unread = unreadNotificationCount();
+  badge.hidden = unread <= 0;
+  badge.textContent = String(Math.min(unread, 99));
+  list.innerHTML = notifications.length
+    ? notifications.slice(0, 20).map((notification) => notificationListItem(notification)).join("")
+    : `<div class="notification-empty">No notifications yet.</div>`;
+}
+
+function notificationListItem(notification) {
+  const created = notification.createdAt ? formatDate(notification.createdAt) : "";
+  return `<article class="notification-item ${notification.readAt ? "" : "unread"}" data-notification-id="${escapeHtml(notification.id)}">
+    <div>
+      <strong>${escapeHtml(notification.title || "Notification")}</strong>
+      <p>${escapeHtml(notification.body || "")}</p>
+      <span>${escapeHtml(created)}</span>
+    </div>
+    ${notification.viewId ? `<button class="tiny-button" data-open-notification="${escapeHtml(notification.id)}" type="button">Open</button>` : ""}
+  </article>`;
+}
+
+async function createAppNotification({ title, body = "", type = "info", viewId = "", recordId = "", recipientId = "" }) {
+  if (!title) return;
+  await put("appNotifications", {
+    title,
+    body,
+    type,
+    viewId,
+    recordId,
+    recipientId
+  });
+  await loadState();
+}
+
+async function ensureWelcomeNotification() {
+  if (!authState.session) return;
+  const id = `welcome-${authState.user?.id || authState.user?.email || "local"}`;
+  if (state.appNotifications.some((notification) => notification.id === id)) return;
+  await put("appNotifications", {
+    id,
+    title: "Notifications are ready",
+    body: "In-app alerts will appear here before push notifications are turned on.",
+    type: "system",
+    viewId: "messages",
+    recipientId: currentThreadUserId()
+  });
+  await loadState();
+}
+
+async function markNotificationsRead() {
+  const now = new Date().toISOString();
+  const notifications = visibleNotifications().filter((notification) => !notification.readAt);
+  for (const notification of notifications) {
+    await put("appNotifications", { ...notification, readAt: now });
+  }
+  await loadState();
+}
+
+async function clearReadNotifications() {
+  const read = visibleNotifications().filter((notification) => notification.readAt);
+  for (const notification of read) {
+    await remove("appNotifications", notification.id);
+  }
+  await loadState();
+}
+
+async function openNotification(id) {
+  const notification = state.appNotifications.find((item) => item.id === id);
+  if (!notification) return;
+  if (!notification.readAt) await put("appNotifications", { ...notification, readAt: new Date().toISOString() });
+  if (notification.viewId) setView(notification.viewId);
+  const center = $("#notificationCenter");
+  if (center) center.open = false;
+  await loadState();
 }
 
 function renderMessagingConnectionStatus(configured, connected) {
@@ -7485,6 +7581,8 @@ function bindEvents() {
   $("#clearSessionButton").addEventListener("click", clearSavedLogin);
   $("#setupLogoutButton").addEventListener("click", clearSavedLogin);
   $("#logoutButton").addEventListener("click", logout);
+  $("#markNotificationsRead").addEventListener("click", markNotificationsRead);
+  $("#clearReadNotifications").addEventListener("click", clearReadNotifications);
   $("#mobileInstallButton")?.addEventListener("click", promptMobileAppInstall);
   $("#mobileMenuButton").addEventListener("click", toggleMobileNavigation);
   $("#mobileBottomNav").addEventListener("click", (event) => {
@@ -7728,7 +7826,12 @@ function bindEvents() {
     const dashboardLinkButton = event.target.closest("[data-dashboard-link]");
     const openReportTypeButton = event.target.closest("[data-open-report-type]");
     const requestMobilePermissionsButton = event.target.closest("[data-request-mobile-permissions]");
+    const openNotificationButton = event.target.closest("[data-open-notification]");
 
+    if (openNotificationButton) {
+      await openNotification(openNotificationButton.dataset.openNotification);
+      return;
+    }
     if (quickProfileButton) {
       $("#globalAddMenu")?.removeAttribute("open");
       await openQuickProfileForm(quickProfileButton.dataset.openQuickProfile);

@@ -288,6 +288,101 @@ button {
   justify-self: auto;
 }
 
+.notification-center {
+  position: relative;
+}
+
+.notification-bell {
+  position: relative;
+  min-width: 38px;
+}
+
+.notification-bell strong {
+  position: absolute;
+  top: -7px;
+  right: -7px;
+  min-width: 18px;
+  height: 18px;
+  border: 2px solid #ffffff;
+  border-radius: 999px;
+  background: #c4472f;
+  color: #ffffff;
+  font-size: 10px;
+  line-height: 14px;
+  text-align: center;
+}
+
+.notification-panel {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  z-index: 40;
+  width: min(360px, calc(100vw - 32px));
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: var(--shadow);
+  padding: 12px;
+}
+
+.notification-panel-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.notification-panel-heading h3 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.notification-list {
+  display: grid;
+  gap: 8px;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.notification-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfaf6;
+  padding: 10px;
+}
+
+.notification-item.unread {
+  border-color: #e7b84d;
+  background: #fff8e8;
+}
+
+.notification-item strong,
+.notification-item p {
+  margin: 0;
+}
+
+.notification-item p {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.notification-item span,
+.notification-empty {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.notification-clear-button {
+  width: 100%;
+  margin-top: 10px;
+}
+
 .connection-banner {
   display: grid;
   gap: 3px;
@@ -2020,8 +2115,16 @@ body:not(.owner-mode) .rate-field {
   .topbar-tools {
     grid-column: 1 / -1;
     display: grid;
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
     gap: 8px;
+  }
+
+  .notification-panel {
+    position: fixed;
+    top: calc(86px + env(safe-area-inset-top));
+    right: 14px;
+    left: 14px;
+    width: auto;
   }
 
   .connection-banner {
