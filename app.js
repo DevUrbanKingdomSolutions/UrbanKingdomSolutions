@@ -257,6 +257,8 @@ let sendbirdMessages = [];
 let sendbirdActiveThread = null;
 let sendbirdTypingUsers = [];
 let sendbirdTypingPoller = null;
+let sendbirdMessageRefreshPoller = null;
+let sendbirdMessageRefreshInFlight = false;
 let idleSignOutTimer = null;
 let signOutReloading = false;
 let installPromptEvent = null;
@@ -6958,6 +6960,7 @@ async function connectSendbirdMessaging(options = {}) {
     }
     sendbirdConnectionState = { status: "connected", errorCode: "", errorMessage: "" };
     startSendbirdTypingPoller();
+    startSendbirdMessageRefreshPoller();
     await ensureDueEventMessageChannels();
     renderMessaging();
     if (!options.quiet) toast("Messaging connected.");
@@ -6984,6 +6987,39 @@ async function loadSendbirdMessages(channel) {
   return [];
 }
 
+function sendbirdMessageKey(message) {
+  return String(message?.messageId || message?.reqId || message?.requestId || "");
+}
+
+function mergeVisibleSendbirdMessages(loadedMessages = []) {
+  const merged = [...loadedMessages];
+  sendbirdMessages
+    .filter((message) => message?.isLocalOwn && !sendbirdMessageKey(message))
+    .forEach((message) => merged.push(message));
+  sendbirdMessages
+    .filter((message) => message?.isLocalOwn && sendbirdMessageKey(message))
+    .forEach((message) => {
+      const key = sendbirdMessageKey(message);
+      if (!merged.some((item) => sendbirdMessageKey(item) === key)) merged.push(message);
+    });
+  return merged.sort((a, b) => Number(a?.createdAt || 0) - Number(b?.createdAt || 0));
+}
+
+async function refreshActiveSendbirdMessages(options = {}) {
+  if (!sendbirdActiveChannel || sendbirdMessageRefreshInFlight) return;
+  sendbirdMessageRefreshInFlight = true;
+  try {
+    const loadedMessages = await loadSendbirdMessages(sendbirdActiveChannel);
+    sendbirdMessages = options.keepLocal ? mergeVisibleSendbirdMessages(loadedMessages) : loadedMessages;
+    renderMessageThread();
+    if (options.scrollToBottom) scrollActiveMessageThreadToBottom();
+  } catch (error) {
+    console.warn(error);
+  } finally {
+    sendbirdMessageRefreshInFlight = false;
+  }
+}
+
 function refreshSendbirdTypingUsers() {
   if (!sendbirdActiveChannel || typeof sendbirdActiveChannel.getTypingUsers !== "function") {
     sendbirdTypingUsers = [];
@@ -6999,6 +7035,15 @@ function startSendbirdTypingPoller() {
   sendbirdTypingPoller = window.setInterval(() => {
     if (state.activeView === "messages" && sendbirdActiveChannel) refreshSendbirdTypingUsers();
   }, 2500);
+}
+
+function startSendbirdMessageRefreshPoller() {
+  if (sendbirdMessageRefreshPoller) return;
+  sendbirdMessageRefreshPoller = window.setInterval(() => {
+    if (state.activeView === "messages" && sendbirdActiveChannel) {
+      refreshActiveSendbirdMessages({ keepLocal: true });
+    }
+  }, 1500);
 }
 
 async function syncSendbirdChannelMembers(channel, userIds) {
@@ -7059,6 +7104,7 @@ async function openMessageChannel(type, eventId, options = {}) {
     sendbirdActiveChannel = channel;
     sendbirdActiveThread = { type: threadType, eventId: eventRecord.id };
     sendbirdMessages = await loadSendbirdMessages(sendbirdActiveChannel);
+    startSendbirdMessageRefreshPoller();
     refreshSendbirdTypingUsers();
     renderMessaging();
     if (!options.silent) toast(`${MESSAGE_THREAD_TYPES[threadType].label} opened.`);
@@ -7091,6 +7137,7 @@ async function openDirectMessageChannel(profileId) {
     await syncSendbirdChannelMembers(sendbirdActiveChannel, sendbirdThreadUsers("direct", null, directProfile));
     sendbirdActiveThread = { type: "direct", profileId: directProfile.id };
     sendbirdMessages = await loadSendbirdMessages(sendbirdActiveChannel);
+    startSendbirdMessageRefreshPoller();
     refreshSendbirdTypingUsers();
     renderMessaging();
     toast("Direct message opened.");
@@ -7128,16 +7175,12 @@ async function sendSendbirdMessage(event) {
   try {
     const sentMessage = await sendbirdActiveChannel.sendUserMessage({ message });
     if (typeof sendbirdActiveChannel.endTyping === "function") sendbirdActiveChannel.endTyping();
-    const loadedMessages = await loadSendbirdMessages(sendbirdActiveChannel);
     const deliveredMessage = { ...(sentMessage || optimisticMessage), isLocalOwn: true, deliveryStatus: "delivered" };
-    const deliveredId = String(deliveredMessage.messageId || "");
-    const loadedIncludesSentMessage = deliveredId && loadedMessages.some((item) => String(item.messageId || "") === deliveredId);
-    sendbirdMessages = loadedMessages.length
-      ? (loadedIncludesSentMessage ? loadedMessages : [...loadedMessages, deliveredMessage])
-      : sendbirdMessages.map((item) => item.messageId === optimisticId ? deliveredMessage : item);
+    sendbirdMessages = sendbirdMessages.map((item) => item.messageId === optimisticId ? deliveredMessage : item);
     refreshSendbirdTypingUsers();
     renderMessageThread();
     scrollActiveMessageThreadToBottom();
+    refreshActiveSendbirdMessages({ keepLocal: true, scrollToBottom: true });
   } catch (error) {
     console.error(error);
     sendbirdMessages = sendbirdMessages.filter((item) => item.messageId !== optimisticId);
