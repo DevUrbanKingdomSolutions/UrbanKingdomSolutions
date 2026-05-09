@@ -2077,18 +2077,15 @@ body:not(.owner-mode) .rate-field {
   }
 
   .topbar {
-    position: sticky;
-    top: 0;
-    z-index: 12;
+    position: static;
     display: grid;
     grid-template-columns: auto minmax(0, 1fr);
     align-items: center;
     gap: 10px;
-    margin: -14px -14px 14px;
-    padding: calc(10px + env(safe-area-inset-top)) 14px 10px;
-    border-bottom: 1px solid var(--line);
-    background: rgba(245, 243, 238, 0.96);
-    backdrop-filter: blur(12px);
+    margin: 0 0 14px;
+    padding: 0 0 10px;
+    border-bottom: 1px solid rgba(195, 186, 169, 0.55);
+    background: transparent;
   }
 
   .mobile-menu-button {
@@ -2105,7 +2102,7 @@ body:not(.owner-mode) .rate-field {
   }
 
   .topbar h2 {
-    font-size: 24px;
+    font-size: 22px;
   }
 
   .eyebrow {
@@ -2114,9 +2111,19 @@ body:not(.owner-mode) .rate-field {
 
   .topbar-tools {
     grid-column: 1 / -1;
-    display: grid;
-    grid-template-columns: minmax(0, 1fr);
+    display: flex;
     gap: 8px;
+    overflow-x: auto;
+    padding-bottom: 2px;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .topbar-tools > * {
+    flex: 0 0 auto;
+  }
+
+  .topbar-tools .search-input {
+    min-width: 210px;
   }
 
   .notification-panel {
@@ -2339,17 +2346,84 @@ body:not(.owner-mode) .rate-field {
     max-width: 96%;
   }
 
-  #messageThread {
-    min-height: 46dvh;
-    max-height: 54dvh;
+  #messages .stack-layout {
+    gap: 10px;
   }
 
-  #messages .stack-layout {
-    gap: 12px;
+  #messages .panel {
+    border-radius: 8px;
+  }
+
+  #messages .stack-layout > .panel:first-child {
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  #messages .stack-layout > .panel:first-child .record-grid {
+    padding: 6px 0 0;
+  }
+
+  #messages .stack-layout > .panel:first-child .tab-row {
+    gap: 6px;
+    padding: 6px 0 10px;
+    border-bottom: 0;
+    background: transparent;
+  }
+
+  #messages .stack-layout > .panel:first-child .tab-button {
+    min-height: 32px;
+    border-radius: 999px;
+    padding: 6px 12px;
+    font-size: 12px;
+  }
+
+  #messages .stack-layout > .panel:first-child .inline-create-form {
+    margin: 0 0 8px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 10px;
   }
 
   .message-thread-card {
-    padding: 12px;
+    border-color: rgba(195, 186, 169, 0.62);
+    border-radius: 8px;
+    padding: 10px 12px;
+    box-shadow: none;
+  }
+
+  .message-thread-card.selected {
+    background: #eef8f6;
+    box-shadow: inset 3px 0 0 var(--accent);
+  }
+
+  .message-thread-card-main {
+    gap: 4px;
+  }
+
+  .message-thread-card-top,
+  .message-thread-footer {
+    gap: 8px;
+  }
+
+  .message-thread-card-main strong {
+    font-size: 15px;
+  }
+
+  .message-thread-card-main p {
+    margin: 0;
+    font-size: 13px;
+    line-height: 1.35;
+  }
+
+  .message-thread-footer .message-avatar-stack {
+    min-width: 0;
+  }
+
+  .message-avatar-stack .message-avatar {
+    width: 24px;
+    height: 24px;
+    font-size: 9px;
   }
 
   .message-thread-footer {
@@ -2357,29 +2431,34 @@ body:not(.owner-mode) .rate-field {
   }
 
   #activeMessagePanel {
-    min-height: calc(100dvh - 170px);
+    min-height: calc(100dvh - 150px);
+    overflow: hidden;
   }
 
   #messageThreadMembers {
-    padding: 8px 10px;
+    gap: 6px;
+    padding: 6px 8px;
+    background: #ffffff;
   }
 
   #messageThreadMembers .compact-item {
-    min-width: 148px;
-    padding: 8px 10px;
+    min-width: 138px;
+    padding: 7px 9px;
   }
 
   #messageThreadMembers .thread-member-summary {
-    min-width: 230px;
+    min-width: min(240px, 78vw);
   }
 
   #messageThread {
-    min-height: 44dvh;
-    max-height: 50dvh;
+    min-height: 58dvh;
+    max-height: 62dvh;
+    background: #f7f5ef;
   }
 
   .chat-thread {
-    padding: 12px 12px 104px;
+    gap: 10px;
+    padding: 12px 10px 116px;
   }
 
   .message-bubble-row {
@@ -2401,12 +2480,13 @@ body:not(.owner-mode) .rate-field {
     bottom: calc(64px + env(safe-area-inset-bottom));
     z-index: 3;
     grid-template-columns: minmax(0, 1fr) auto;
-    padding: 10px;
+    gap: 8px;
+    padding: 9px 10px;
     box-shadow: 0 -8px 18px rgba(29, 36, 40, 0.08);
   }
 
   #sendbirdMessageForm input {
-    min-height: 46px;
+    min-height: 44px;
   }
 
   #sendbirdMessageForm button {
