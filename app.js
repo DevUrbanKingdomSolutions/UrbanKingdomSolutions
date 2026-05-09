@@ -30,6 +30,7 @@ const IDLE_SIGN_OUT_MINUTES = 10;
 const IDLE_SIGN_OUT_MS = IDLE_SIGN_OUT_MINUTES * 60 * 1000;
 const ACTIVE_BROWSER_SESSION_KEY = "productionCrewActiveBrowserSession";
 const LAST_ACTIVE_VIEW_KEY = "productionCrewLastActiveView";
+const POST_SETUP_PERMISSION_PROMPT_KEY = "productionCrewPostSetupPermissionPrompt";
 const PULL_REFRESH_THRESHOLD = 92;
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -547,6 +548,62 @@ function mobileRuntimeInfo() {
     cameraReady: !!plugins.Camera,
     geolocationReady: !!plugins.Geolocation
   };
+}
+
+function mobilePermissionStorageKey() {
+  return `productionCrewMobilePermissions:${authState.user?.id || authState.user?.email || "local"}`;
+}
+
+async function checkMobilePermissions() {
+  const plugins = capacitorBridge()?.Plugins || {};
+  const result = {
+    location: "unavailable",
+    camera: "unavailable",
+    push: "unavailable"
+  };
+  try {
+    if (plugins.Geolocation?.checkPermissions) {
+      const permissions = await plugins.Geolocation.checkPermissions();
+      result.location = permissions.location || permissions.coarseLocation || "prompt";
+    } else if (navigator.geolocation) {
+      result.location = "prompt";
+    }
+  } catch (error) {
+    result.location = "prompt";
+  }
+  try {
+    if (plugins.Camera?.checkPermissions) {
+      const permissions = await plugins.Camera.checkPermissions();
+      result.camera = permissions.camera || permissions.photos || "prompt";
+    } else {
+      result.camera = "prompt";
+    }
+  } catch (error) {
+    result.camera = "prompt";
+  }
+  try {
+    if (plugins.PushNotifications?.checkPermissions) {
+      const permissions = await plugins.PushNotifications.checkPermissions();
+      result.push = permissions.receive || "prompt";
+    } else if ("Notification" in window) {
+      result.push = Notification.permission || "default";
+    }
+  } catch (error) {
+    result.push = "prompt";
+  }
+  return result;
+}
+
+function mobilePermissionsNeedSetup(permissions) {
+  return !["granted", "prompt-with-rationale"].includes(permissions.location)
+    || !["granted", "limited"].includes(permissions.camera)
+    || !["granted"].includes(permissions.push);
+}
+
+function shouldCheckPhonePermissions() {
+  const info = mobileRuntimeInfo();
+  const standalone = window.matchMedia?.("(display-mode: standalone)")?.matches || navigator.standalone;
+  return info.native || standalone;
 }
 
 function markActiveBrowserSession() {
@@ -2037,6 +2094,12 @@ async function applyAuthenticatedSession(session, preferredView = "") {
   if (location.hash !== `#${homeView}`) history.replaceState(null, "", `#${homeView}`);
   setView(homeView);
   openCurrentClientSetupStep();
+  if (sessionStorage.getItem(POST_SETUP_PERMISSION_PROMPT_KEY)) {
+    sessionStorage.removeItem(POST_SETUP_PERMISSION_PROMPT_KEY);
+    await maybePromptForMobilePermissions({ force: true });
+  } else {
+    await maybePromptForMobilePermissions();
+  }
   resetIdleSignOutTimer();
   autoConnectMessagingAfterLogin();
 }
@@ -2203,6 +2266,7 @@ async function completeAccountSetup(event) {
     ? "clientCompanyProfile"
     : profileViewForRole(roleRecord.role);
   if (location.hash !== `#${profileView}`) history.replaceState(null, "", `#${profileView}`);
+  sessionStorage.setItem(POST_SETUP_PERMISSION_PROMPT_KEY, "1");
   await applyAuthenticatedSession({ ...session, user: data.user || session.user }, profileView);
 }
 
@@ -3683,11 +3747,7 @@ function renderMobileDeviceStatus() {
   ].map(([label, value, ready]) => `<div class="mobile-device-item ${ready ? "ready" : "pending"}"><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></div>`).join("");
 }
 
-async function requestMobilePermissions() {
-  if (!isAdminRole()) {
-    toast("Only ADMIN can use mobile beta permission tools.");
-    return;
-  }
+async function requestMobilePermissions(options = {}) {
   const plugins = capacitorBridge()?.Plugins || {};
   const results = [];
   try {
@@ -3702,6 +3762,16 @@ async function requestMobilePermissions() {
     }
   } catch (error) {
     results.push("Location: not granted");
+  }
+  try {
+    if (plugins.Camera?.requestPermissions) {
+      const result = await plugins.Camera.requestPermissions();
+      results.push(`Camera: ${result.camera || result.photos || "requested"}`);
+    } else {
+      results.push("Camera: browser prompt when used");
+    }
+  } catch (error) {
+    results.push("Camera: not granted");
   }
   try {
     if (plugins.PushNotifications?.requestPermissions) {
@@ -3721,7 +3791,28 @@ async function requestMobilePermissions() {
     results.push("Push: not granted");
   }
   renderMobileDeviceStatus();
-  toast(results.join(" · "));
+  localStorage.setItem(mobilePermissionStorageKey(), new Date().toISOString());
+  toast(options.message || results.join(" · "));
+  return results;
+}
+
+async function maybePromptForMobilePermissions({ force = false } = {}) {
+  if (!authState.session) return;
+  if (!shouldCheckPhonePermissions()) return;
+  const alreadyPrompted = localStorage.getItem(mobilePermissionStorageKey());
+  if (!force && alreadyPrompted) return;
+  const permissions = await checkMobilePermissions();
+  if (!mobilePermissionsNeedSetup(permissions)) {
+    localStorage.setItem(mobilePermissionStorageKey(), new Date().toISOString());
+    return;
+  }
+  const shouldRequest = window.confirm("Production Crew needs phone permissions for location, camera/photo flows, and notifications. Set those now?");
+  if (!shouldRequest) {
+    localStorage.setItem(mobilePermissionStorageKey(), new Date().toISOString());
+    toast("You can set phone permissions later from Mobile Beta.");
+    return;
+  }
+  await requestMobilePermissions({ message: "Phone permissions checked." });
 }
 
 function renderMobileQaPanel() {
