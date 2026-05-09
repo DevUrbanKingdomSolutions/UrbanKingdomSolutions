@@ -1384,7 +1384,7 @@ td p {
 .chat-thread {
   display: grid;
   gap: 12px;
-  padding: 18px;
+  padding: 18px 18px 28px;
 }
 
 .chat-thread-empty {
@@ -2268,7 +2268,7 @@ body:not(.owner-mode) .rate-field {
   }
 
   .chat-thread {
-    padding: 12px;
+    padding: 12px 12px 104px;
   }
 
   .message-bubble-row {

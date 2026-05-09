@@ -5214,6 +5214,14 @@ function renderMessageThread() {
   if (typing) typing.innerHTML = renderTypingStatus();
 }
 
+function scrollActiveMessageThreadToBottom() {
+  const thread = $("#messageThread");
+  if (!thread) return;
+  window.requestAnimationFrame(() => {
+    thread.scrollTop = thread.scrollHeight;
+  });
+}
+
 function messageBubble(message) {
   const senderName = message.sender?.nickname || message.sender?.userId || "Message";
   const senderId = message.sender?.userId || "";
@@ -7099,15 +7107,34 @@ async function sendSendbirdMessage(event) {
   const input = event.currentTarget.elements.message;
   const message = String(input.value || "").trim();
   if (!message) return;
+  const optimisticId = `local-${Date.now()}`;
+  const optimisticMessage = {
+    messageId: optimisticId,
+    message,
+    createdAt: Date.now(),
+    sender: {
+      userId: sendbirdClient?.currentUser?.userId || currentSendbirdUserId(),
+      nickname: sendbirdClient?.currentUser?.nickname || "You"
+    }
+  };
+  input.value = "";
+  sendbirdMessages = [...sendbirdMessages, optimisticMessage];
+  renderMessageThread();
+  scrollActiveMessageThreadToBottom();
   try {
-    await sendbirdActiveChannel.sendUserMessage({ message });
+    const sentMessage = await sendbirdActiveChannel.sendUserMessage({ message });
     if (typeof sendbirdActiveChannel.endTyping === "function") sendbirdActiveChannel.endTyping();
-    input.value = "";
-    sendbirdMessages = await loadSendbirdMessages(sendbirdActiveChannel);
+    const loadedMessages = await loadSendbirdMessages(sendbirdActiveChannel);
+    sendbirdMessages = loadedMessages.length
+      ? loadedMessages
+      : sendbirdMessages.map((item) => item.messageId === optimisticId ? sentMessage || optimisticMessage : item);
     refreshSendbirdTypingUsers();
     renderMessageThread();
+    scrollActiveMessageThreadToBottom();
   } catch (error) {
     console.error(error);
+    sendbirdMessages = sendbirdMessages.filter((item) => item.messageId !== optimisticId);
+    renderMessageThread();
     toast(error.message || "Could not send message.");
   }
 }
