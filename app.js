@@ -5144,14 +5144,22 @@ function directMessageCards() {
 }
 
 function messageThreadPreviewMembers(threadType, event) {
-  const ids = sendbirdThreadUsers(threadType, event).slice(0, 5);
-  return ids.map((id) => profileForSendbirdUserId(id)).filter(Boolean);
+  const seen = new Set();
+  return sendbirdThreadUsers(threadType, event)
+    .map((id) => profileForSendbirdUserId(id))
+    .filter((member) => {
+      const id = sendbirdUserIdForProfile(member);
+      if (!id || seen.has(id)) return false;
+      seen.add(id);
+      return true;
+    })
+    .slice(0, 5);
 }
 
 function messageAvatarStack(members = []) {
   if (!members.length) return "";
   return `<div class="message-avatar-stack" aria-label="${members.length} thread members">
-    ${members.slice(0, 4).map((member) => messageAvatar(member, member.name || member.contactName || "Member")).join("")}
+    ${members.slice(0, 4).map((member) => messageAvatar(member, member.name || member.contactName || member.label || "Member")).join("")}
     ${members.length > 4 ? `<span class="message-avatar more">+${members.length - 4}</span>` : ""}
   </div>`;
 }
