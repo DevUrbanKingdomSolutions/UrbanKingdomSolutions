@@ -122,7 +122,7 @@ const ACCESS_PROFILES = {
   ADMIN: {
     label: "ADMIN",
     baseRole: "ADMIN",
-    views: ["adminProfile", "admin", "mobileApp"],
+    views: ["adminProfile", "admin", "messages", "mobileApp"],
     canAdminEdit: false,
     canOwnerEdit: false,
     canVenueEdit: false,
@@ -358,6 +358,7 @@ const NAV_GROUPS = {
   ADMIN: [
     { items: [["adminProfile", "My Profile"]] },
     { items: [["admin", "Admin Console"]] },
+    { items: [["messages", "Messages"]] },
     { label: "MOBILE APP", items: [["mobileApp", "App Dashboard"]] }
   ],
   CLIENT_ADMIN: [
