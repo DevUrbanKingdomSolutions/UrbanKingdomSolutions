@@ -5171,6 +5171,7 @@ function renderMessaging() {
 function visibleNotifications() {
   const currentId = currentThreadUserId();
   return state.appNotifications
+    .filter((notification) => notification.type !== "system" || isAdminRole())
     .filter((notification) => !notification.recipientId || !currentId || notification.recipientId === currentId)
     .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
 }
@@ -5218,18 +5219,26 @@ async function createAppNotification({ title, body = "", type = "info", viewId =
 }
 
 async function ensureWelcomeNotification() {
-  if (!authState.session) return;
-  const id = `welcome-${authState.user?.id || authState.user?.email || "local"}`;
+  if (!authState.session || !isAdminRole()) return;
+  await removeLegacyWelcomeNotifications();
+  const id = "system-notifications-ready";
   if (state.appNotifications.some((notification) => notification.id === id)) return;
   await put("appNotifications", {
     id,
     title: "Notifications are ready",
-    body: "In-app alerts will appear here before push notifications are turned on.",
+    body: "System notices now appear in the System / Admin thread.",
     type: "system",
-    viewId: "messages",
-    recipientId: currentThreadUserId()
+    viewId: "",
+    recipientId: ""
   });
   await loadState();
+}
+
+async function removeLegacyWelcomeNotifications() {
+  const legacy = state.appNotifications.filter((notification) => String(notification.id || "").startsWith("welcome-"));
+  for (const notification of legacy) {
+    await remove("appNotifications", notification.id);
+  }
 }
 
 async function markNotificationsRead() {
