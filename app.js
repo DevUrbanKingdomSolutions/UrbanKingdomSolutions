@@ -294,6 +294,14 @@ const MESSAGE_THREAD_TYPES = {
     label: "Crew Runner",
     empty: "Crew runner threads appear here for assigned events."
   },
+  adminClient: {
+    label: "Admin / Client",
+    empty: "Admin and client support threads appear here."
+  },
+  system: {
+    label: "System / Admin",
+    empty: "System admin notices appear here."
+  },
   direct: {
     label: "Direct Message",
     empty: "Direct message contacts appear here when profiles are visible to this access view."
@@ -5142,7 +5150,8 @@ function renderRunnerStops() {
 function renderMessaging() {
   const status = $("#messagingStatus");
   if (!status) return;
-  if (!MESSAGE_THREAD_TYPES[state.messagingThreadType]) state.messagingThreadType = "event";
+  const visibleTypes = new Set(visibleMessageThreadTypes().map(([type]) => type));
+  if (!MESSAGE_THREAD_TYPES[state.messagingThreadType] || !visibleTypes.has(state.messagingThreadType)) state.messagingThreadType = "event";
   renderMessagingThreadTabs();
   const configured = !!SENDBIRD_APP_ID;
   const connected = !!sendbirdClient?.currentUser;
@@ -5269,13 +5278,22 @@ function renderMessagingError() {
 function renderMessagingThreadTabs() {
   const tabs = $("#messagingThreadTabs");
   if (!tabs) return;
-  tabs.innerHTML = Object.entries(MESSAGE_THREAD_TYPES)
+  tabs.innerHTML = visibleMessageThreadTypes()
     .map(([type, config]) => `<button class="tab-button ${state.messagingThreadType === type ? "active" : ""}" data-message-thread-type="${type}" type="button">${config.label}</button>`)
     .join("");
 }
 
+function visibleMessageThreadTypes() {
+  return Object.entries(MESSAGE_THREAD_TYPES).filter(([type]) => {
+    if (type === "adminClient") return isAdminRole() || isClientRole();
+    if (type === "system") return isAdminRole();
+    return true;
+  });
+}
+
 function messagingChannelCards() {
   if (state.messagingThreadType === "direct") return directMessageCards();
+  if (state.messagingThreadType === "adminClient" || state.messagingThreadType === "system") return permanentMessageCards(state.messagingThreadType);
   const threadType = state.messagingThreadType;
   const events = visibleEvents()
     .filter((event) => eventWorkerIds(event).length || isClientRole() || isProductionRole() || isProductionTeamRole())
@@ -5284,6 +5302,65 @@ function messagingChannelCards() {
   return events.length
     ? events.map((event) => eventMessageCard(event, threadType)).join("")
     : `<div class="compact-item empty">${empty}</div>`;
+}
+
+function permanentMessageCards(threadType) {
+  const threads = permanentMessageThreadTargets(threadType);
+  const empty = MESSAGE_THREAD_TYPES[threadType]?.empty || MESSAGE_THREAD_TYPES.event.empty;
+  return threads.length
+    ? threads.map((thread) => permanentMessageCard(thread)).join("")
+    : `<div class="compact-item empty">${empty}</div>`;
+}
+
+function permanentMessageThreadTargets(threadType) {
+  if (threadType === "system") {
+    return isAdminRole()
+      ? [{
+          type: "system",
+          key: "system-admin",
+          title: "System Updates",
+          label: "System / Admin",
+          subtitle: "Errors, installs, sync notices, and service health",
+          meta: "Permanent"
+        }]
+      : [];
+  }
+  if (threadType !== "adminClient" || !(isAdminRole() || isClientRole())) return [];
+  if (isClientRole()) {
+    const client = activeClientRecord();
+    if (!client) return [];
+    return [{
+      type: "adminClient",
+      key: client.id,
+      title: "Admin Support",
+      label: "Admin / Client",
+      subtitle: "Permanent support thread with system admin",
+      meta: client.name || "Client"
+    }];
+  }
+  return state.clients.map((client) => ({
+    type: "adminClient",
+    key: client.id,
+    title: client.name || "Client Account",
+    label: "Admin / Client",
+    subtitle: client.contactName || client.email || "Client support thread",
+    meta: "Permanent"
+  }));
+}
+
+function permanentMessageCard(thread) {
+  const active = sendbirdActiveThread?.type === thread.type && sendbirdActiveThread?.profileId === thread.key;
+  return `<article class="record-card message-thread-card ${active ? "selected" : ""}" data-open-permanent-message="${escapeHtml(thread.type)}:${escapeHtml(thread.key)}" role="button" tabindex="0">
+    <div class="message-thread-card-main">
+      <div class="message-thread-card-top">
+        <span>${escapeHtml(thread.label)}</span>
+        ${active ? `<span class="status-pill">Open</span>` : ""}
+      </div>
+      <strong>${escapeHtml(thread.title)}</strong>
+      <p>${escapeHtml(thread.subtitle)}</p>
+      <div class="message-thread-footer"><span>${escapeHtml(thread.meta)}</span></div>
+    </div>
+  </article>`;
 }
 
 function eventMessageCard(event, threadType) {
@@ -5335,7 +5412,7 @@ function directMessageCards() {
 
 function messageThreadPreviewMembers(threadType, event) {
   const seen = new Set();
-  return sendbirdThreadUsers(threadType, event)
+  return sendbirdThreadUsers(threadType, event, null)
     .map((id) => profileForSendbirdUserId(id))
     .filter((member) => {
       const id = sendbirdUserIdForProfile(member);
@@ -5358,6 +5435,10 @@ function firstVisibleMessageThreadTarget(type = state.messagingThreadType) {
   if (type === "direct") {
     const profile = directMessageProfiles().find((item) => canViewMessageThread("direct", null, item.id));
     return profile ? { type: "direct", profileId: profile.id } : null;
+  }
+  if (type === "adminClient" || type === "system") {
+    const thread = permanentMessageThreadTargets(type)[0];
+    return thread ? { type, profileId: thread.key } : null;
   }
   const eventRecord = visibleEvents()
     .filter((event) => eventWorkerIds(event).length || isClientRole() || isProductionRole() || isProductionTeamRole())
@@ -5396,12 +5477,36 @@ function renderMessageThread() {
   meta.textContent = activeThreadManagementLabel();
   if (members) members.innerHTML = renderActiveThreadMembers();
   form.hidden = !sendbirdActiveChannel;
+  const visibleMessages = activeThreadVisibleMessages();
   thread.innerHTML = sendbirdActiveChannel
-    ? (sendbirdMessages.length
-        ? `<div class="chat-thread">${sendbirdMessages.map((message) => messageBubble(message)).join("")}</div>`
+    ? (visibleMessages.length
+        ? `<div class="chat-thread">${visibleMessages.map((message) => messageBubble(message)).join("")}</div>`
         : `<div class="chat-thread-empty">No messages loaded yet.</div>`)
     : `<div class="chat-thread-empty">Choose a message thread from the list.</div>`;
   if (typing) typing.innerHTML = renderTypingStatus();
+}
+
+function activeThreadVisibleMessages() {
+  if (sendbirdActiveThread?.type !== "system") return sendbirdMessages;
+  return [
+    ...systemAdminThreadMessages(),
+    ...sendbirdMessages
+  ].sort((a, b) => Number(a?.createdAt || 0) - Number(b?.createdAt || 0));
+}
+
+function systemAdminThreadMessages() {
+  return state.appNotifications
+    .filter((notification) => notification.type === "system")
+    .slice(0, 20)
+    .map((notification) => ({
+      messageId: `notice-${notification.id}`,
+      message: `${notification.title}${notification.body ? `\n${notification.body}` : ""}`,
+      createdAt: new Date(notification.createdAt || Date.now()).getTime(),
+      sender: {
+        userId: "system_ops",
+        nickname: "System"
+      }
+    }));
 }
 
 function scrollActiveMessageThreadToBottom() {
@@ -5433,6 +5538,8 @@ function messageBubble(message) {
 function profileForSendbirdUserId(userId) {
   const id = baseSendbirdUserId(userId).trim();
   if (!id) return null;
+  if (id === "adminProfile") return activeAdminProfile();
+  if (id === "system_ops") return { id: "system_ops", name: "System", contactName: "System" };
   return [
     ...state.workers,
     ...state.promoters,
@@ -5465,6 +5572,8 @@ function activeThreadManagementLabel() {
   if (["event", "office"].includes(type)) return "Permanent event thread. Eligible members are kept synced from the event.";
   if (type === "crew") return "Crew runner thread. Production team manages event crew access.";
   if (type === "direct") return "Direct message. Members are controlled by the people in this conversation.";
+  if (type === "adminClient") return "Permanent admin and client support thread.";
+  if (type === "system") return "System notices for admins. Use this for install, error, and health updates.";
   return "Created thread. At least one thread admin must remain assigned.";
 }
 
@@ -6593,7 +6702,10 @@ function notificationSubscriberForCurrentUser() {
   const promoter = getPromoter(state.activePromoterId);
   const clientRep = activeClientRepRecord();
   const profile = isCrewRole() ? worker : isProductionRole() ? promoter : isClientRole() ? clientRep : activeAdminProfile();
-  return notificationSubscriberForProfile(profile, authState.user?.id || profile?.id || authState.user?.email || "");
+  const fallbackId = isAdminRole()
+    ? profile?.authUserId || profile?.id || authState.user?.id || authState.user?.email || ""
+    : authState.user?.id || profile?.id || authState.user?.email || "";
+  return notificationSubscriberForProfile(profile, fallbackId);
 }
 
 function notificationSubscriberForProfile(profile, fallbackId = "") {
@@ -6668,6 +6780,17 @@ function messageMemberFromProfile(kind, profile, label = "") {
     email: profile?.email || "",
     phone: profile?.phone || "",
     isCurrent: id === sendbirdUserIdForProfile({ authUserId: notificationSubscriberForCurrentUser().subscriberId })
+  };
+}
+
+function syntheticMessageMember(id, kind, label, email = "") {
+  return {
+    id,
+    kind,
+    label,
+    email,
+    phone: "",
+    isCurrent: id === currentThreadUserId()
   };
 }
 
@@ -6759,10 +6882,27 @@ function directMessageMembers(profileId) {
   ]);
 }
 
+function adminClientMembers(clientId = "") {
+  const clientReps = state.clientReps.filter((rep) => !clientId || rep.clientId === clientId);
+  return uniqueMessageMembers([
+    syntheticMessageMember("adminProfile", "Admin", "System Admin"),
+    ...clientReps.map((rep) => messageMemberFromProfile("Client", rep))
+  ]);
+}
+
+function systemAdminMembers() {
+  return uniqueMessageMembers([
+    syntheticMessageMember("system_ops", "System", "System"),
+    syntheticMessageMember("adminProfile", "Admin", "System Admin")
+  ]);
+}
+
 function membersForMessageThread(type, event, directProfileId = "") {
   if (type === "office") return productionOfficeMembers(event);
   if (type === "crew") return crewRunnerMembers(event);
   if (type === "direct") return directMessageMembers(directProfileId);
+  if (type === "adminClient") return adminClientMembers(directProfileId);
+  if (type === "system") return systemAdminMembers();
   return eventMessageMembers(event);
 }
 
@@ -6770,7 +6910,9 @@ function activeThreadMemberProfiles() {
   if (!sendbirdActiveThread) return [];
   const members = sendbirdActiveThread.type === "direct"
     ? effectiveThreadMembers("direct", null, sendbirdActiveThread.profileId)
-    : effectiveThreadMembers(sendbirdActiveThread.type, getEvent(sendbirdActiveThread.eventId));
+    : ["adminClient", "system"].includes(sendbirdActiveThread.type)
+      ? effectiveThreadMembers(sendbirdActiveThread.type, null, sendbirdActiveThread.profileId || "")
+      : effectiveThreadMembers(sendbirdActiveThread.type, getEvent(sendbirdActiveThread.eventId));
   const current = notificationSubscriberForCurrentUser();
   if (!current.subscriberId || members.some((member) => member.id === current.subscriberId)) return members;
   return uniqueMessageMembers([
@@ -6896,6 +7038,10 @@ function sendbirdUserIdsForCrewRunner(event) {
   return sendbirdUserIdsForMembers(effectiveThreadMembers("crew", event));
 }
 
+function sendbirdUserIdsForPermanentThread(type, key = "") {
+  return sendbirdUserIdsForMembers(effectiveThreadMembers(type, null, key));
+}
+
 function sendbirdUserIdsForMembers(members) {
   return Array.from(new Set(members.flatMap((member) => allRuntimeSendbirdUserIds(member.id))));
 }
@@ -6942,6 +7088,8 @@ function directThreadKey(profileId) {
 
 function messageThreadKey(type, eventId = "", profileId = "") {
   if (type === "direct") return directThreadKey(profileId);
+  if (type === "adminClient") return `adminClient:${profileId || eventId || activeClientRecord()?.id || "client"}`;
+  if (type === "system") return "system:admin";
   return `${type}:${eventId}`;
 }
 
@@ -6955,6 +7103,7 @@ function builtInThreadMembers(type, event, directProfileId = "") {
 
 function threadAvailableMembers(type, event, directProfileId = "") {
   if (type === "direct") return directMessageMembers(directProfileId);
+  if (type === "adminClient" || type === "system") return builtInThreadMembers(type, event, directProfileId);
   const base = builtInThreadMembers(type, event, directProfileId);
   const extras = directMessageProfiles().filter((profile) => !base.some((member) => member.id === profile.id));
   return uniqueMessageMembers([...base, ...extras]);
@@ -7039,6 +7188,10 @@ function sendbirdThreadName(type, event, directProfile) {
   if (type === "office") return `${event?.name || "Event"} - Production Office`;
   if (type === "crew") return `${event?.name || "Event"} - Crew Runner`;
   if (type === "direct") return directProfile?.label || "Direct Message";
+  if (type === "adminClient") return isAdminRole()
+    ? `${state.clients.find((client) => client.id === directProfile?.id)?.name || "Client"} - Admin Support`
+    : "Admin Support";
+  if (type === "system") return "System Updates";
   return event?.name || "Event Thread";
 }
 
@@ -7050,6 +7203,8 @@ function sendbirdThreadUsers(type, event, directProfile) {
       ? sendbirdUserIdsForCrewRunner(event)
       : type === "direct"
         ? sendbirdUserIdsForMembers(effectiveThreadMembers("direct", null, directProfile?.id))
+        : ["adminClient", "system"].includes(type)
+          ? sendbirdUserIdsForPermanentThread(type, directProfile?.id || "")
         : sendbirdUserIdsForEvent(event);
   return Array.from(new Set([currentId, ...ids].filter(Boolean)));
 }
@@ -7332,6 +7487,40 @@ async function openDirectMessageChannel(profileId) {
   } catch (error) {
     console.error(error);
     toast(error.message || "Could not open direct message.");
+  }
+}
+
+async function openPermanentMessageChannel(type, key) {
+  const thread = permanentMessageThreadTargets(type).find((item) => item.key === key);
+  if (!thread) {
+    toast("That message thread is not available in this access view.");
+    return;
+  }
+  const client = await ensureSendbirdConnected();
+  if (!client?.groupChannel) {
+    toast("Messaging could not connect.");
+    return;
+  }
+  try {
+    await ensureMessageThreadSetting(type, null, key);
+    const threadRef = { id: key };
+    sendbirdActiveChannel = await client.groupChannel.createChannel({
+      name: sendbirdThreadName(type, null, threadRef),
+      invitedUserIds: sendbirdThreadUsers(type, null, threadRef),
+      isDistinct: true,
+      customType: type,
+      data: JSON.stringify({ threadType: type, threadKey: key })
+    });
+    await syncSendbirdChannelMembers(sendbirdActiveChannel, sendbirdThreadUsers(type, null, threadRef));
+    sendbirdActiveThread = { type, profileId: key };
+    sendbirdMessages = await loadSendbirdMessages(sendbirdActiveChannel);
+    startSendbirdMessageRefreshPoller();
+    refreshSendbirdTypingUsers();
+    renderMessaging();
+    toast(`${MESSAGE_THREAD_TYPES[type].label} opened.`);
+  } catch (error) {
+    console.error(error);
+    toast(error.message || "Could not open message thread.");
   }
 }
 
@@ -7908,6 +8097,7 @@ function bindEvents() {
     const messageThreadTypeButton = event.target.closest("[data-message-thread-type]");
     const openMessageChannelButton = event.target.closest("[data-open-message-channel]");
     const openDirectMessageButton = event.target.closest("[data-open-direct-message]");
+    const openPermanentMessageButton = event.target.closest("[data-open-permanent-message]");
     const newMessageThreadButton = event.target.closest("[data-new-message-thread]");
     const manageMessageThreadButton = event.target.closest("[data-manage-message-thread]");
     const notifyProductionOfficeButton = event.target.closest("[data-notify-production-office]");
@@ -7968,6 +8158,10 @@ function bindEvents() {
     if (openMessageChannelButton) {
       const [type, eventId] = openMessageChannelButton.dataset.openMessageChannel.split(":");
       await openMessageChannel(type, eventId);
+    }
+    if (openPermanentMessageButton) {
+      const [type, ...keyParts] = openPermanentMessageButton.dataset.openPermanentMessage.split(":");
+      await openPermanentMessageChannel(type, keyParts.join(":"));
     }
     if (openDirectMessageButton) await openDirectMessageChannel(openDirectMessageButton.dataset.openDirectMessage);
     if (manageMessageThreadButton) openMessageThreadManageForm();
