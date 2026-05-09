@@ -2372,6 +2372,12 @@ body:not(.owner-mode) .rate-field {
     box-shadow: none;
   }
 
+  #messages .stack-layout > .panel:nth-child(2) {
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
   #messages .stack-layout > .panel:first-child .record-grid {
     padding: 6px 0 0;
   }
@@ -2402,7 +2408,7 @@ body:not(.owner-mode) .rate-field {
   }
 
   #messages .messages-heading {
-    padding: 2px 2px 10px;
+    padding: 0 2px 8px;
   }
 
   #messages .messages-heading h3 {
@@ -2421,6 +2427,61 @@ body:not(.owner-mode) .rate-field {
 
   #messages.message-chat-open #activeMessagePanel {
     display: grid;
+  }
+
+  .mobile-message-sections {
+    display: grid;
+    gap: 18px;
+  }
+
+  .mobile-message-section {
+    display: grid;
+    gap: 8px;
+  }
+
+  .mobile-message-section-heading {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .mobile-message-section-heading h4 {
+    margin: 0;
+    color: var(--ink);
+    font-size: 13px;
+    font-weight: 900;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .mobile-message-event-controls {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: 0.8fr 1.2fr;
+    gap: 8px;
+  }
+
+  .mobile-message-event-controls select {
+    min-width: 0;
+    min-height: 38px;
+  }
+
+  .mobile-message-direct-toggle {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .mobile-message-direct-toggle .tab-button {
+    width: 100%;
+    border-radius: 999px;
+  }
+
+  .mobile-message-list {
+    display: grid;
+    gap: 0;
+    border-top: 1px solid rgba(195, 186, 169, 0.62);
   }
 
   .message-thread-card {
@@ -2482,12 +2543,17 @@ body:not(.owner-mode) .rate-field {
   }
 
   .active-message-heading {
+    position: sticky;
+    top: 0;
+    z-index: 5;
     display: grid;
     grid-template-columns: auto minmax(0, 1fr);
     gap: 4px 10px;
     align-items: center;
     padding: 4px 2px 10px;
     border-bottom: 1px solid rgba(195, 186, 169, 0.56);
+    background: rgba(245, 243, 238, 0.97);
+    backdrop-filter: blur(12px);
   }
 
   .active-message-heading h3 {
@@ -2553,12 +2619,14 @@ body:not(.owner-mode) .rate-field {
   }
 
   #sendbirdMessageForm {
-    position: sticky;
+    position: fixed;
+    right: 14px;
+    left: 14px;
     bottom: calc(64px + env(safe-area-inset-bottom));
     z-index: 3;
     grid-template-columns: minmax(0, 1fr) auto;
     gap: 8px;
-    margin: 0 -2px;
+    margin: 0;
     padding: 9px 2px;
     border-top: 0;
     background: rgba(245, 243, 238, 0.96);

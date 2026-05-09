@@ -351,6 +351,9 @@ let state = {
   reportFilter: localStorage.getItem("productionCrewReportFilter") || "all",
   reportSort: localStorage.getItem("productionCrewReportSort") || "latest",
   messagingThreadType: localStorage.getItem("productionCrewMessagingThreadType") || "event",
+  messageEventFilter: localStorage.getItem("productionCrewMessageEventFilter") || "current",
+  selectedMessageEventId: localStorage.getItem("productionCrewSelectedMessageEventId") || "",
+  messageDirectScope: localStorage.getItem("productionCrewMessageDirectScope") || "event",
   collapsedNavGroups: JSON.parse(localStorage.getItem("productionCrewCollapsedNavGroups") || "{}")
 };
 
@@ -5327,26 +5330,111 @@ function isMobileMessageLayout() {
 }
 
 function mobileMessagingChatCards() {
-  const cards = [];
-  visibleMessageThreadTypes().forEach(([type]) => {
-    if (type === "direct") {
-      directMessageProfiles()
-        .filter((profile) => canViewMessageThread("direct", null, profile.id))
-        .forEach((profile) => cards.push(directMessageCard(profile)));
-      return;
-    }
-    if (type === "adminClient" || type === "system") {
-      permanentMessageThreadTargets(type).forEach((thread) => cards.push(permanentMessageCard(thread)));
-      return;
-    }
-    visibleEvents()
-      .filter((event) => eventWorkerIds(event).length || isClientRole() || isProductionRole() || isProductionTeamRole())
-      .filter((event) => canViewMessageThread(type, event))
-      .forEach((event) => cards.push(eventMessageCard(event, type)));
-  });
-  return cards.length
-    ? cards.join("")
-    : `<div class="compact-item empty">No chats are available for this access view yet.</div>`;
+  const eventThreads = mobileEventThreadCards();
+  const directProfiles = mobileDirectMessageProfiles();
+  const permanentThreads = ["adminClient", "system"].flatMap((type) => visibleMessageThreadTypes().some(([visibleType]) => visibleType === type) ? permanentMessageThreadTargets(type) : []);
+  return `<div class="mobile-message-sections">
+    <section class="mobile-message-section">
+      <div class="mobile-message-section-heading">
+        <h4>Event Threads</h4>
+        ${mobileMessageEventControls()}
+      </div>
+      <div class="mobile-message-list">${eventThreads || `<div class="compact-item empty">No event threads are available for this schedule view.</div>`}</div>
+    </section>
+    ${permanentThreads.length ? `<section class="mobile-message-section">
+      <div class="mobile-message-section-heading"><h4>Permanent Threads</h4></div>
+      <div class="mobile-message-list">${permanentThreads.map((thread) => permanentMessageCard(thread)).join("")}</div>
+    </section>` : ""}
+    <section class="mobile-message-section">
+      <div class="mobile-message-section-heading">
+        <h4>Direct Messages</h4>
+        <button class="tiny-button" data-new-message-thread type="button">New</button>
+      </div>
+      <div class="mobile-message-direct-toggle">
+        <button class="tab-button ${state.messageDirectScope === "event" ? "active" : ""}" data-message-direct-scope="event" type="button">Event Contacts</button>
+        <button class="tab-button ${state.messageDirectScope === "all" ? "active" : ""}" data-message-direct-scope="all" type="button">All Contacts</button>
+      </div>
+      <div class="mobile-message-list">${directProfiles.length
+        ? directProfiles.map((profile) => directMessageCard(profile)).join("")
+        : `<div class="compact-item empty">No direct message contacts are available yet.</div>`}</div>
+    </section>
+  </div>`;
+}
+
+function messageEventPool() {
+  return visibleEvents()
+    .filter((event) => eventWorkerIds(event).length || isClientRole() || isProductionRole() || isProductionTeamRole())
+    .sort((a, b) => new Date(a.startDate || a.endDate || a.createdAt || 0) - new Date(b.startDate || b.endDate || b.createdAt || 0));
+}
+
+function eventScheduleBucket(event) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const start = new Date(event?.startDate || event?.endDate || event?.createdAt || 0);
+  const end = new Date(event?.endDate || event?.startDate || event?.createdAt || 0);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return "future";
+  start.setHours(0, 0, 0, 0);
+  end.setHours(23, 59, 59, 999);
+  if (end < today) return "past";
+  if (start <= today && end >= today) return "current";
+  return "future";
+}
+
+function defaultMessageEventId(events = messageEventPool()) {
+  const current = events.find((event) => eventScheduleBucket(event) === "current");
+  if (current) return current.id;
+  const future = events.find((event) => eventScheduleBucket(event) === "future");
+  return future?.id || events[0]?.id || "";
+}
+
+function selectedMessageEvent(events = messageEventPool()) {
+  const available = events.filter((event) => state.messageEventFilter === "all" || eventScheduleBucket(event) === state.messageEventFilter);
+  const selected = available.find((event) => event.id === state.selectedMessageEventId);
+  if (selected) return selected;
+  const fallbackId = state.messageEventFilter === "current" ? defaultMessageEventId(events) : available[0]?.id || defaultMessageEventId(events);
+  const fallback = events.find((event) => event.id === fallbackId) || available[0] || null;
+  if (fallback && state.selectedMessageEventId !== fallback.id) {
+    state.selectedMessageEventId = fallback.id;
+    localStorage.setItem("productionCrewSelectedMessageEventId", fallback.id);
+  }
+  return fallback;
+}
+
+function mobileMessageEventControls() {
+  const events = messageEventPool();
+  const filtered = events.filter((event) => state.messageEventFilter === "all" || eventScheduleBucket(event) === state.messageEventFilter);
+  const selected = selectedMessageEvent(events);
+  const eventOptions = filtered.length ? filtered : events;
+  return `<div class="mobile-message-event-controls">
+    <select data-message-event-filter aria-label="Filter event threads">
+      ${[["current", "Current"], ["future", "Future"], ["past", "Past"], ["all", "All"]].map(([value, label]) => `<option value="${value}" ${state.messageEventFilter === value ? "selected" : ""}>${label}</option>`).join("")}
+    </select>
+    <select data-message-event-select aria-label="Choose event">
+      ${eventOptions.length
+        ? eventOptions.map((event) => `<option value="${escapeHtml(event.id)}" ${selected?.id === event.id ? "selected" : ""}>${escapeHtml(event.name || "Event")}</option>`).join("")
+        : `<option value="">No events</option>`}
+    </select>
+  </div>`;
+}
+
+function mobileEventThreadCards() {
+  const event = selectedMessageEvent();
+  if (!event) return "";
+  return ["event", "office", "crew"]
+    .filter((type) => visibleMessageThreadTypes().some(([visibleType]) => visibleType === type))
+    .filter((type) => canViewMessageThread(type, event))
+    .map((type) => eventMessageCard(event, type))
+    .join("");
+}
+
+function mobileDirectMessageProfiles() {
+  const all = directMessageProfiles().filter((profile) => canViewMessageThread("direct", null, profile.id));
+  if (state.messageDirectScope === "all") return all;
+  const event = selectedMessageEvent();
+  if (!event) return all;
+  const eventMemberIds = new Set(builtInThreadMembers("event", event).map((member) => member.id));
+  const scoped = all.filter((profile) => eventMemberIds.has(profile.id));
+  return scoped.length ? scoped : all;
 }
 
 function permanentMessageCards(threadType) {
@@ -5437,10 +5525,10 @@ function eventMessageCard(event, threadType) {
   return `<article class="record-card message-thread-card ${active ? "selected" : ""}" data-open-message-channel="${threadType}:${event.id}" role="button" tabindex="0">
     <div class="message-thread-card-main">
       <div class="message-thread-card-top">
-        <span>${escapeHtml(event.type || MESSAGE_THREAD_TYPES[threadType]?.label || "Event")}</span>
+        <span>${escapeHtml(MESSAGE_THREAD_TYPES[threadType]?.label || "Event Thread")}</span>
         ${active ? `<span class="status-pill">Open</span>` : ""}
       </div>
-      <strong>${escapeHtml(event.name)}</strong>
+      <strong>${escapeHtml(sendbirdThreadName(threadType, event))}</strong>
       <p>${escapeHtml(subtitles[threadType] || subtitles.event)}</p>
       <div class="message-thread-footer">
         <span>${formatDate(event.startDate) || "Unscheduled"}</span>
@@ -7270,6 +7358,22 @@ async function ensureSendbirdConnected() {
   return sendbirdClient?.currentUser ? sendbirdClient : null;
 }
 
+async function savedSendbirdChannel(client, setting) {
+  if (!client?.groupChannel || !setting?.channelUrl) return null;
+  try {
+    return await client.groupChannel.getChannel(setting.channelUrl);
+  } catch (error) {
+    console.warn("Saved Sendbird channel could not be opened.", error);
+    return null;
+  }
+}
+
+async function saveSendbirdChannelUrl(setting, channel) {
+  if (!setting?.threadKey || !channel?.url || setting.channelUrl === channel.url) return;
+  await put("messageThreadSettings", { ...setting, channelUrl: channel.url });
+  await loadState();
+}
+
 function sendbirdErrorDetails(error) {
   if (error?.name === "SendbirdSdkLoadError") {
     return {
@@ -7488,16 +7592,20 @@ async function openMessageChannel(type, eventId, options = {}) {
     return;
   }
   const threadType = MESSAGE_THREAD_TYPES[type] ? type : "event";
-  await ensureMessageThreadSetting(threadType, eventRecord);
+  const setting = await ensureMessageThreadSetting(threadType, eventRecord);
   const userIds = sendbirdThreadUsers(threadType, eventRecord);
   try {
-    const channel = await client.groupChannel.createChannel({
-      name: sendbirdThreadName(threadType, eventRecord),
-      invitedUserIds: userIds,
-      isDistinct: true,
-      customType: threadType,
-      data: JSON.stringify({ eventId: eventRecord.id, threadType })
-    });
+    let channel = await savedSendbirdChannel(client, setting);
+    if (!channel) {
+      channel = await client.groupChannel.createChannel({
+        name: sendbirdThreadName(threadType, eventRecord),
+        invitedUserIds: userIds,
+        isDistinct: false,
+        customType: threadType,
+        data: JSON.stringify({ eventId: eventRecord.id, threadType, threadKey: setting.threadKey })
+      });
+      await saveSendbirdChannelUrl(setting, channel);
+    }
     await syncSendbirdChannelMembers(channel, userIds);
     if (options.keepCurrent) return channel;
     sendbirdActiveChannel = channel;
@@ -7526,14 +7634,18 @@ async function openDirectMessageChannel(profileId) {
     return;
   }
   try {
-    await ensureMessageThreadSetting("direct", null, directProfile.id);
-    sendbirdActiveChannel = await client.groupChannel.createChannel({
-      name: sendbirdThreadName("direct", null, directProfile),
-      invitedUserIds: sendbirdThreadUsers("direct", null, directProfile),
-      isDistinct: true,
-      customType: "direct",
-      data: JSON.stringify({ threadType: "direct", profileId: directProfile.id })
-    });
+    const setting = await ensureMessageThreadSetting("direct", null, directProfile.id);
+    sendbirdActiveChannel = await savedSendbirdChannel(client, setting);
+    if (!sendbirdActiveChannel) {
+      sendbirdActiveChannel = await client.groupChannel.createChannel({
+        name: sendbirdThreadName("direct", null, directProfile),
+        invitedUserIds: sendbirdThreadUsers("direct", null, directProfile),
+        isDistinct: false,
+        customType: "direct",
+        data: JSON.stringify({ threadType: "direct", profileId: directProfile.id, threadKey: setting.threadKey })
+      });
+      await saveSendbirdChannelUrl(setting, sendbirdActiveChannel);
+    }
     await syncSendbirdChannelMembers(sendbirdActiveChannel, sendbirdThreadUsers("direct", null, directProfile));
     sendbirdActiveThread = { type: "direct", profileId: directProfile.id };
     sendbirdMessages = await loadSendbirdMessages(sendbirdActiveChannel);
@@ -7560,15 +7672,19 @@ async function openPermanentMessageChannel(type, key) {
     return;
   }
   try {
-    await ensureMessageThreadSetting(type, null, key);
+    const setting = await ensureMessageThreadSetting(type, null, key);
     const threadRef = { id: key };
-    sendbirdActiveChannel = await client.groupChannel.createChannel({
-      name: sendbirdThreadName(type, null, threadRef),
-      invitedUserIds: sendbirdThreadUsers(type, null, threadRef),
-      isDistinct: true,
-      customType: type,
-      data: JSON.stringify({ threadType: type, threadKey: key })
-    });
+    sendbirdActiveChannel = await savedSendbirdChannel(client, setting);
+    if (!sendbirdActiveChannel) {
+      sendbirdActiveChannel = await client.groupChannel.createChannel({
+        name: sendbirdThreadName(type, null, threadRef),
+        invitedUserIds: sendbirdThreadUsers(type, null, threadRef),
+        isDistinct: false,
+        customType: type,
+        data: JSON.stringify({ threadType: type, threadKey: key })
+      });
+      await saveSendbirdChannelUrl(setting, sendbirdActiveChannel);
+    }
     await syncSendbirdChannelMembers(sendbirdActiveChannel, sendbirdThreadUsers(type, null, threadRef));
     sendbirdActiveThread = { type, profileId: key };
     sendbirdMessages = await loadSendbirdMessages(sendbirdActiveChannel);
@@ -8154,6 +8270,9 @@ function bindEvents() {
     const connectSendbirdButton = event.target.closest("[data-connect-sendbird]");
     const openEventChannelButton = event.target.closest("[data-open-event-channel]");
     const messageThreadTypeButton = event.target.closest("[data-message-thread-type]");
+    const messageEventFilter = event.target.closest("[data-message-event-filter]");
+    const messageEventSelect = event.target.closest("[data-message-event-select]");
+    const messageDirectScopeButton = event.target.closest("[data-message-direct-scope]");
     const openMessageChannelButton = event.target.closest("[data-open-message-channel]");
     const openDirectMessageButton = event.target.closest("[data-open-direct-message]");
     const openPermanentMessageButton = event.target.closest("[data-open-permanent-message]");
@@ -8215,6 +8334,26 @@ function bindEvents() {
       await selectMessageThreadType(messageThreadTypeButton.dataset.messageThreadType);
       return;
     }
+    if (messageEventFilter) {
+      state.messageEventFilter = messageEventFilter.value || "current";
+      localStorage.setItem("productionCrewMessageEventFilter", state.messageEventFilter);
+      const fallback = selectedMessageEvent();
+      if (fallback) localStorage.setItem("productionCrewSelectedMessageEventId", fallback.id);
+      renderMessaging();
+      return;
+    }
+    if (messageEventSelect) {
+      state.selectedMessageEventId = messageEventSelect.value || "";
+      localStorage.setItem("productionCrewSelectedMessageEventId", state.selectedMessageEventId);
+      renderMessaging();
+      return;
+    }
+    if (messageDirectScopeButton) {
+      state.messageDirectScope = messageDirectScopeButton.dataset.messageDirectScope === "all" ? "all" : "event";
+      localStorage.setItem("productionCrewMessageDirectScope", state.messageDirectScope);
+      renderMessaging();
+      return;
+    }
     if (openMessageChannelButton) {
       const [type, eventId] = openMessageChannelButton.dataset.openMessageChannel.split(":");
       await openMessageChannel(type, eventId);
@@ -8235,9 +8374,11 @@ function bindEvents() {
     }
     if (manageMessageThreadButton) openMessageThreadManageForm();
     if (newMessageThreadButton) {
-      toast("Custom thread setup is next. Use Direct Message for new private threads right now.");
+      toast(isMobileMessageLayout() ? "Choose a contact to start a direct message." : "Custom event thread setup is next. Use Direct Message for new private threads right now.");
       state.messagingThreadType = "direct";
+      state.messageDirectScope = "all";
       localStorage.setItem("productionCrewMessagingThreadType", state.messagingThreadType);
+      localStorage.setItem("productionCrewMessageDirectScope", state.messageDirectScope);
       sendbirdActiveChannel = null;
       sendbirdActiveThread = null;
       sendbirdMessages = [];
@@ -8333,6 +8474,24 @@ function bindEvents() {
     if (directoryTab) {
       state.directoryTab = directoryTab.dataset.directoryTab;
       renderDirectory();
+    }
+  });
+
+  document.body.addEventListener("change", (event) => {
+    const messageEventFilter = event.target.closest("[data-message-event-filter]");
+    const messageEventSelect = event.target.closest("[data-message-event-select]");
+    if (messageEventFilter) {
+      state.messageEventFilter = messageEventFilter.value || "current";
+      localStorage.setItem("productionCrewMessageEventFilter", state.messageEventFilter);
+      const fallback = selectedMessageEvent();
+      if (fallback) localStorage.setItem("productionCrewSelectedMessageEventId", fallback.id);
+      renderMessaging();
+      return;
+    }
+    if (messageEventSelect) {
+      state.selectedMessageEventId = messageEventSelect.value || "";
+      localStorage.setItem("productionCrewSelectedMessageEventId", state.selectedMessageEventId);
+      renderMessaging();
     }
   });
 
