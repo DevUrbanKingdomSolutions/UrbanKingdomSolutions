@@ -10,7 +10,7 @@
     <title>Production Crew Database</title>
     <link rel="manifest" href="manifest.webmanifest">
     <link rel="icon" href="assets/app-icon.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="styles.css?v=V1.03.065-mobile-message-layout">
+    <link rel="stylesheet" href="styles.css?v=V1.03.066-mobile-message-chat-flow">
   </head>
   <body>
     <div id="pullRefreshIndicator" class="pull-refresh-indicator" aria-hidden="true">Pull to refresh</div>
@@ -1125,7 +1125,8 @@
               <div id="messagingChannelList" class="record-grid"></div>
             </section>
             <section id="activeMessagePanel" class="panel" hidden>
-              <div class="panel-heading">
+              <div class="panel-heading active-message-heading">
+                <button class="tiny-button message-back-button" data-close-mobile-message type="button">Back</button>
                 <h3 id="activeMessagingTitle">Event Thread</h3>
                 <span id="activeMessagingMeta" class="muted"></span>
               </div>
@@ -1445,6 +1446,6 @@
     <div id="modalHost"></div>
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js?v=V1.03.065-mobile-message-layout"></script>
+    <script src="app.js?v=V1.03.066-mobile-message-chat-flow"></script>
   </body>
 </html>

@@ -5151,8 +5151,11 @@ function renderRunnerStops() {
 function renderMessaging() {
   const status = $("#messagingStatus");
   if (!status) return;
+  const messagesView = $("#messages");
   const visibleTypes = new Set(visibleMessageThreadTypes().map(([type]) => type));
   if (!MESSAGE_THREAD_TYPES[state.messagingThreadType] || !visibleTypes.has(state.messagingThreadType)) state.messagingThreadType = "event";
+  if (messagesView) messagesView.classList.toggle("message-chat-open", !!sendbirdActiveChannel);
+  document.body.classList.toggle("mobile-message-chat-open", state.activeView === "messages" && !!sendbirdActiveChannel && isMobileMessageLayout());
   renderMessagingThreadTabs();
   const configured = !!SENDBIRD_APP_ID;
   const connected = !!sendbirdClient?.currentUser;
@@ -5306,6 +5309,7 @@ function visibleMessageThreadTypes() {
 }
 
 function messagingChannelCards() {
+  if (isMobileMessageLayout()) return mobileMessagingChatCards();
   if (state.messagingThreadType === "direct") return directMessageCards();
   if (state.messagingThreadType === "adminClient" || state.messagingThreadType === "system") return permanentMessageCards(state.messagingThreadType);
   const threadType = state.messagingThreadType;
@@ -5316,6 +5320,33 @@ function messagingChannelCards() {
   return events.length
     ? events.map((event) => eventMessageCard(event, threadType)).join("")
     : `<div class="compact-item empty">${empty}</div>`;
+}
+
+function isMobileMessageLayout() {
+  return window.matchMedia?.("(max-width: 860px)")?.matches || false;
+}
+
+function mobileMessagingChatCards() {
+  const cards = [];
+  visibleMessageThreadTypes().forEach(([type]) => {
+    if (type === "direct") {
+      directMessageProfiles()
+        .filter((profile) => canViewMessageThread("direct", null, profile.id))
+        .forEach((profile) => cards.push(directMessageCard(profile)));
+      return;
+    }
+    if (type === "adminClient" || type === "system") {
+      permanentMessageThreadTargets(type).forEach((thread) => cards.push(permanentMessageCard(thread)));
+      return;
+    }
+    visibleEvents()
+      .filter((event) => eventWorkerIds(event).length || isClientRole() || isProductionRole() || isProductionTeamRole())
+      .filter((event) => canViewMessageThread(type, event))
+      .forEach((event) => cards.push(eventMessageCard(event, type)));
+  });
+  return cards.length
+    ? cards.join("")
+    : `<div class="compact-item empty">No chats are available for this access view yet.</div>`;
 }
 
 function permanentMessageCards(threadType) {
@@ -5377,6 +5408,23 @@ function permanentMessageCard(thread) {
   </article>`;
 }
 
+function directMessageCard(profile) {
+  const active = sendbirdActiveThread?.type === "direct" && sendbirdActiveThread?.profileId === profile.id;
+  return `<article class="record-card message-thread-card ${active ? "selected" : ""}" data-open-direct-message="${escapeHtml(profile.id)}" role="button" tabindex="0">
+    <div class="message-thread-card-main direct">
+      ${messageAvatar(profile.profile || profile, profile.label)}
+      <div>
+        <div class="message-thread-card-top">
+          <span>${escapeHtml(profile.kind)}</span>
+          ${active ? `<span class="status-pill">Open</span>` : ""}
+        </div>
+        <strong>${escapeHtml(profile.label)}</strong>
+        <p>${escapeHtml(profile.email || profile.phone || "")}</p>
+      </div>
+    </div>
+  </article>`;
+}
+
 function eventMessageCard(event, threadType) {
   const crewCount = eventWorkerIds(event).length;
   const active = sendbirdActiveThread?.type === threadType && sendbirdActiveThread?.eventId === event.id;
@@ -5405,22 +5453,7 @@ function eventMessageCard(event, threadType) {
 function directMessageCards() {
   const profiles = directMessageProfiles().filter((profile) => canViewMessageThread("direct", null, profile.id));
   return profiles.length
-    ? profiles.map((profile) => {
-        const active = sendbirdActiveThread?.type === "direct" && sendbirdActiveThread?.profileId === profile.id;
-        return `<article class="record-card message-thread-card ${active ? "selected" : ""}" data-open-direct-message="${escapeHtml(profile.id)}" role="button" tabindex="0">
-          <div class="message-thread-card-main direct">
-            ${messageAvatar(profile.profile || profile, profile.label)}
-            <div>
-              <div class="message-thread-card-top">
-                <span>${escapeHtml(profile.kind)}</span>
-                ${active ? `<span class="status-pill">Open</span>` : ""}
-              </div>
-              <strong>${escapeHtml(profile.label)}</strong>
-              <p>${escapeHtml(profile.email || profile.phone || "")}</p>
-            </div>
-          </div>
-        </article>`;
-      }).join("")
+    ? profiles.map((profile) => directMessageCard(profile)).join("")
     : `<div class="compact-item empty">${MESSAGE_THREAD_TYPES.direct.empty}</div>`;
 }
 
@@ -5478,6 +5511,8 @@ function renderMessageThread() {
   const typing = $("#messageTypingStatus");
   const form = $("#sendbirdMessageForm");
   if (!title || !meta || !thread || !form) return;
+  $("#messages")?.classList.toggle("message-chat-open", !!sendbirdActiveChannel);
+  document.body.classList.toggle("mobile-message-chat-open", state.activeView === "messages" && !!sendbirdActiveChannel && isMobileMessageLayout());
   if (panel) panel.hidden = !sendbirdActiveChannel;
   if (!sendbirdActiveChannel) {
     if (members) members.innerHTML = "";
@@ -7471,6 +7506,7 @@ async function openMessageChannel(type, eventId, options = {}) {
     startSendbirdMessageRefreshPoller();
     refreshSendbirdTypingUsers();
     renderMessaging();
+    if (isMobileMessageLayout()) $("#messages")?.scrollIntoView({ block: "start" });
     if (!options.silent) toast(`${MESSAGE_THREAD_TYPES[threadType].label} opened.`);
   } catch (error) {
     console.error(error);
@@ -7504,6 +7540,7 @@ async function openDirectMessageChannel(profileId) {
     startSendbirdMessageRefreshPoller();
     refreshSendbirdTypingUsers();
     renderMessaging();
+    if (isMobileMessageLayout()) $("#messages")?.scrollIntoView({ block: "start" });
     toast("Direct message opened.");
   } catch (error) {
     console.error(error);
@@ -7538,6 +7575,7 @@ async function openPermanentMessageChannel(type, key) {
     startSendbirdMessageRefreshPoller();
     refreshSendbirdTypingUsers();
     renderMessaging();
+    if (isMobileMessageLayout()) $("#messages")?.scrollIntoView({ block: "start" });
     toast(`${MESSAGE_THREAD_TYPES[type].label} opened.`);
   } catch (error) {
     console.error(error);
@@ -8121,6 +8159,7 @@ function bindEvents() {
     const openPermanentMessageButton = event.target.closest("[data-open-permanent-message]");
     const newMessageThreadButton = event.target.closest("[data-new-message-thread]");
     const manageMessageThreadButton = event.target.closest("[data-manage-message-thread]");
+    const closeMobileMessageButton = event.target.closest("[data-close-mobile-message]");
     const notifyProductionOfficeButton = event.target.closest("[data-notify-production-office]");
     const profileAccessButton = event.target.closest("[data-open-profile-access]");
     const viewRecordButton = event.target.closest("[data-view-record]");
@@ -8185,6 +8224,15 @@ function bindEvents() {
       await openPermanentMessageChannel(type, keyParts.join(":"));
     }
     if (openDirectMessageButton) await openDirectMessageChannel(openDirectMessageButton.dataset.openDirectMessage);
+    if (closeMobileMessageButton) {
+      sendbirdActiveChannel = null;
+      sendbirdActiveThread = null;
+      sendbirdMessages = [];
+      sendbirdTypingUsers = [];
+      renderMessaging();
+      $("#messages")?.scrollIntoView({ block: "start" });
+      return;
+    }
     if (manageMessageThreadButton) openMessageThreadManageForm();
     if (newMessageThreadButton) {
       toast("Custom thread setup is next. Use Direct Message for new private threads right now.");
