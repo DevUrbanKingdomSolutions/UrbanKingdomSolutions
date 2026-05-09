@@ -5425,7 +5425,7 @@ function messageThreadPreviewMembers(threadType, event) {
   return sendbirdThreadUsers(threadType, event, null)
     .map((id) => profileForSendbirdUserId(id))
     .filter((member) => {
-      const id = sendbirdUserIdForProfile(member);
+      const id = messageMemberIdentityKey(member);
       if (!id || seen.has(id)) return false;
       seen.add(id);
       return true;
@@ -5532,7 +5532,7 @@ function messageBubble(message) {
   const senderId = message.sender?.userId || "";
   const senderProfile = profileForSendbirdUserId(senderId);
   const displayName = senderProfile?.name || senderProfile?.contactName || senderName;
-  const isOwn = !!message.isLocalOwn || !!message.deliveryStatus || (senderId && senderId === sendbirdClient?.currentUser?.userId);
+  const isOwn = !!message.isLocalOwn || !!message.deliveryStatus || (senderId && baseSendbirdUserId(senderId) === baseSendbirdUserId(sendbirdClient?.currentUser?.userId));
   const sentAt = message.createdAt ? formatDate(message.createdAt) : "";
   const deliveryStatus = isOwn ? (message.deliveryStatus === "sending" ? "Sending..." : "Delivered") : "";
   return `<article class="message-bubble-row ${isOwn ? "own" : ""}">
@@ -6804,10 +6804,15 @@ function syntheticMessageMember(id, kind, label, email = "") {
   };
 }
 
+function messageMemberIdentityKey(member) {
+  return baseSendbirdUserId(member?.authUserId || member?.id || member?.email || "").trim();
+}
+
 function uniqueMessageMembers(members) {
   const byId = new Map();
   members.filter(Boolean).forEach((member) => {
-    if (!byId.has(member.id)) byId.set(member.id, member);
+    const key = messageMemberIdentityKey(member);
+    if (key && !byId.has(key)) byId.set(key, member);
   });
   return Array.from(byId.values()).sort((a, b) => a.label.localeCompare(b.label));
 }
@@ -6924,7 +6929,8 @@ function activeThreadMemberProfiles() {
       ? effectiveThreadMembers(sendbirdActiveThread.type, null, sendbirdActiveThread.profileId || "")
       : effectiveThreadMembers(sendbirdActiveThread.type, getEvent(sendbirdActiveThread.eventId));
   const current = notificationSubscriberForCurrentUser();
-  if (!current.subscriberId || members.some((member) => member.id === current.subscriberId)) return members;
+  const currentId = baseSendbirdUserId(current.subscriberId).trim();
+  if (!currentId || members.some((member) => messageMemberIdentityKey(member) === currentId)) return members;
   return uniqueMessageMembers([
     ...members,
     {
@@ -7341,7 +7347,8 @@ async function loadSendbirdMessages(channel) {
 }
 
 function sendbirdMessageKey(message) {
-  return String(message?.messageId || message?.reqId || message?.requestId || "");
+  const key = String(message?.messageId || message?.reqId || message?.requestId || "");
+  return key.startsWith("local-") ? "" : key;
 }
 
 function mergeVisibleSendbirdMessages(loadedMessages = []) {
