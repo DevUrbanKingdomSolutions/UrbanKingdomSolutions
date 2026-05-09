@@ -5227,11 +5227,11 @@ function messageBubble(message) {
   const senderId = message.sender?.userId || "";
   const senderProfile = profileForSendbirdUserId(senderId);
   const displayName = senderProfile?.name || senderProfile?.contactName || senderName;
-  const isOwn = senderId && senderId === sendbirdClient?.currentUser?.userId;
+  const isOwn = !!message.isLocalOwn || !!message.deliveryStatus || (senderId && senderId === sendbirdClient?.currentUser?.userId);
   const sentAt = message.createdAt ? formatDate(message.createdAt) : "";
   const deliveryStatus = isOwn ? (message.deliveryStatus === "sending" ? "Sending..." : "Delivered") : "";
   return `<article class="message-bubble-row ${isOwn ? "own" : ""}">
-    ${messageAvatar(senderProfile, displayName)}
+    ${isOwn ? "" : messageAvatar(senderProfile, displayName)}
     <div class="message-bubble">
       <div class="message-meta"><strong>${escapeHtml(isOwn ? "You" : displayName)}</strong><span>${escapeHtml(sentAt)}</span></div>
       <p>${escapeHtml(message.message || "")}</p>
@@ -7113,6 +7113,7 @@ async function sendSendbirdMessage(event) {
   const optimisticMessage = {
     messageId: optimisticId,
     message,
+    isLocalOwn: true,
     deliveryStatus: "sending",
     createdAt: Date.now(),
     sender: {
@@ -7128,7 +7129,7 @@ async function sendSendbirdMessage(event) {
     const sentMessage = await sendbirdActiveChannel.sendUserMessage({ message });
     if (typeof sendbirdActiveChannel.endTyping === "function") sendbirdActiveChannel.endTyping();
     const loadedMessages = await loadSendbirdMessages(sendbirdActiveChannel);
-    const deliveredMessage = { ...(sentMessage || optimisticMessage), deliveryStatus: "delivered" };
+    const deliveredMessage = { ...(sentMessage || optimisticMessage), isLocalOwn: true, deliveryStatus: "delivered" };
     const deliveredId = String(deliveredMessage.messageId || "");
     const loadedIncludesSentMessage = deliveredId && loadedMessages.some((item) => String(item.messageId || "") === deliveredId);
     sendbirdMessages = loadedMessages.length

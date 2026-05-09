@@ -1402,13 +1402,8 @@ td p {
 }
 
 .message-bubble-row.own {
-  grid-template-columns: minmax(0, 1fr) 36px;
+  grid-template-columns: minmax(0, 1fr);
   justify-self: end;
-}
-
-.message-bubble-row.own .message-avatar {
-  grid-column: 2;
-  grid-row: 1;
 }
 
 .message-bubble-row.own .message-bubble {
@@ -2290,7 +2285,7 @@ body:not(.owner-mode) .rate-field {
   }
 
   .message-bubble-row.own {
-    grid-template-columns: minmax(0, 1fr) 32px;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .message-avatar {
