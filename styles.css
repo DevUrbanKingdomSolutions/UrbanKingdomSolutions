@@ -3747,6 +3747,29 @@ body:not(.owner-mode) .rate-field {
     -webkit-overflow-scrolling: touch;
   }
 
+  #timecards.active-view {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  #timecards .split-layout {
+    display: flex;
+    min-height: 0;
+    flex: 1 1 auto;
+    flex-direction: column;
+  }
+
+  #timecards .table-panel {
+    flex: 1 1 auto;
+    max-height: none;
+    min-height: 0;
+  }
+
+  #timecards .table-wrap {
+    min-height: 0;
+  }
+
   #events,
   #events .split-layout,
   #events .panel,

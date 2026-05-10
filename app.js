@@ -3591,6 +3591,8 @@ function timecardDetailRows(record) {
   const venue = getVenue(record.venueId || event?.venueId);
   const promoter = getPromoter(record.promoterId || event?.promoterId);
   const rateDetails = canViewRates() ? [["Pay Basis", payBasis(record)], ["Estimated Pay", currency(estimatedPay(record))]] : [];
+  const sections = [["Notes", crewVisibleTimecardNotes(record)]];
+  if (canViewTimecardAdminNotes()) sections.push(["Client Admin Notes", record.adminNotes]);
   return {
     title: worker?.name || "Timecard",
     subtitle: event?.name || record.eventName || "Timecard",
@@ -3606,7 +3608,7 @@ function timecardDetailRows(record) {
       ["Hours", timecardHours(record).toFixed(2)],
       ...rateDetails
     ],
-    sections: [["Notes", record.notes]]
+    sections
   };
 }
 
@@ -5133,7 +5135,7 @@ function renderTimecards() {
         const event = getEvent(card.eventId);
         const liveAction = card.clockOut || !canAdminEdit() ? "" : `<button class="tiny-button" data-clock-out="${card.id}" type="button">Clock Out</button>`;
         const rateCells = showRates ? `<td>${payBasis(card)}</td><td>${currency(estimatedPay(card))}</td>` : "";
-        return `<tr><td><strong>${recordLink("timecards", card.id, worker?.name || "Unknown crew member")}</strong></td><td>${escapeHtml(event?.name || card.eventName)}<p>${escapeHtml(card.notes)}</p></td><td>${escapeHtml(venue?.name || "")}</td><td>${formatDate(card.clockIn)}</td><td>Out: ${formatDate(card.lunchOut) || "Not set"}<p>In: ${formatDate(card.lunchIn) || "Not set"}</p></td><td>${formatDate(card.clockOut) || "Live"}</td><td>${timecardHours(card).toFixed(2)}</td>${rateCells}<td>${actionButtons("timecards", card.id, "timecardForm", liveAction, canAdminEdit())}</td></tr>`;
+        return `<tr><td><strong>${recordLink("timecards", card.id, worker?.name || "Unknown crew member")}</strong></td><td>${escapeHtml(event?.name || card.eventName)}<p>${escapeHtml(timecardTableNotes(card))}</p></td><td>${escapeHtml(venue?.name || "")}</td><td>${formatDate(card.clockIn)}</td><td>Out: ${formatDate(card.lunchOut) || "Not set"}<p>In: ${formatDate(card.lunchIn) || "Not set"}</p></td><td>${formatDate(card.clockOut) || "Live"}</td><td>${timecardHours(card).toFixed(2)}</td>${rateCells}<td>${actionButtons("timecards", card.id, "timecardForm", liveAction, canAdminEdit())}</td></tr>`;
       }).join("")
     : `<tr><td colspan="${emptyColspan}" class="empty">No timecards match this search.</td></tr>`;
 }
@@ -5532,6 +5534,39 @@ function appendTimecardNote(card, message) {
   const existing = String(card.notes || "").trim();
   if (existing.includes(message)) return existing;
   return [existing, message].filter(Boolean).join("\n");
+}
+
+function appendTimecardAdminNote(card, message) {
+  const existing = String(card.adminNotes || "").trim();
+  if (existing.includes(message)) return existing;
+  return [existing, message].filter(Boolean).join("\n");
+}
+
+function canViewTimecardAdminNotes() {
+  const roles = assignedAccessForCurrentUser();
+  return roles.includes("CLIENT_ADMIN") || roles.includes("CLIENT_ACCOUNTING");
+}
+
+function timecardTableNotes(card) {
+  const notes = [crewVisibleTimecardNotes(card)];
+  if (canViewTimecardAdminNotes()) notes.push(card.adminNotes);
+  return notes.filter(Boolean).join("\n");
+}
+
+function crewVisibleTimecardNotes(card) {
+  if (canViewTimecardAdminNotes()) return card.notes || "";
+  const adminOnlyFragments = [
+    "Rental vehicle start-photo reminder was sent",
+    "Urgent rental vehicle start-photo reminder was sent",
+    "Rental vehicle end photos were required at Wrap",
+    "A wrap attempt was made before end photos",
+    "Bypassed after the 5 minute warning window"
+  ];
+  return String(card.notes || "")
+    .split(/\n+/)
+    .filter((line) => !adminOnlyFragments.some((fragment) => line.includes(fragment)))
+    .join("\n")
+    .trim();
 }
 
 function applyVehicleAssignmentLock(form = $("#vehicleForm")) {
@@ -8471,7 +8506,7 @@ async function sendRentalUrgentNotification(card) {
     await put("timecards", {
       ...card,
       rentalUrgentNotificationSentAt: new Date().toISOString(),
-      notes: appendTimecardNote(card, "Urgent rental vehicle start-photo reminder was sent because start photos and plate number were still missing after 15 minutes.")
+      adminNotes: appendTimecardAdminNote(card, "Urgent rental vehicle start-photo reminder was sent because start photos and plate number were still missing after 15 minutes.")
     });
     await loadState();
     setView(state.activeView);
@@ -8621,7 +8656,7 @@ async function crewPunch(eventId, field) {
       const warning = "Rental vehicle end photos were required at Wrap. A wrap attempt was made before end photos and plate number were submitted.";
       if (!bypassAt || Number.isNaN(bypassAt.getTime())) {
         card.rentalPhotoBypassAfter = new Date(nowDate.getTime() + 5 * 60000).toISOString();
-        card.notes = appendTimecardNote(card, warning);
+        card.adminNotes = appendTimecardAdminNote(card, warning);
         await put("timecards", card);
         await loadState();
         setView("vehicles");
@@ -8633,7 +8668,7 @@ async function crewPunch(eventId, field) {
         toast(`End vehicle photos are still required. Bypass opens in ${minutes} minute(s).`);
         return;
       }
-      card.notes = appendTimecardNote(card, `${warning} Bypassed after the 5 minute warning window.`);
+      card.adminNotes = appendTimecardAdminNote(card, `${warning} Bypassed after the 5 minute warning window.`);
       card.rentalPhotoBypassUsedAt = nowDate.toISOString();
     }
   }
@@ -8654,7 +8689,7 @@ async function crewPunch(eventId, field) {
         const result = await sendRentalPhotoNotification(event, worker, card, "start_reminder");
         if (result.ok) {
           card.rentalStartNotificationSentAt = new Date().toISOString();
-          card.notes = appendTimecardNote(card, "Rental vehicle start-photo reminder was sent at Call Time.");
+          card.adminNotes = appendTimecardAdminNote(card, "Rental vehicle start-photo reminder was sent at Call Time.");
         }
         if (result.message) toast(result.message);
       } else {
