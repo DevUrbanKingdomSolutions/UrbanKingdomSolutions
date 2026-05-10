@@ -1,5 +1,5 @@
 {
-  "version": "V1.04.031",
-  "title": "V1.04.031 update installed",
-  "body": "Kept admin/client identity colors from switching on Time Clock and linked crew punches to the logged-in person."
+  "version": "V1.04.032",
+  "title": "V1.04.032 update installed",
+  "body": "Reworked the active nav highlight into one smooth white-to-role-color gradient with no separate tab seam."
 }

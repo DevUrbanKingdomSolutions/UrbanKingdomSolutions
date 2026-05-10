@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.04.031",
-  title: "V1.04.031 update installed",
-  body: "Kept admin/client identity colors from switching on Time Clock and linked crew punches to the logged-in person."
+  version: "V1.04.032",
+  title: "V1.04.032 update installed",
+  body: "Reworked the active nav highlight into one smooth white-to-role-color gradient with no separate tab seam."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
