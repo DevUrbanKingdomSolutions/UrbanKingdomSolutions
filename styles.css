@@ -1533,6 +1533,33 @@ table {
   min-width: 760px;
 }
 
+.timecard-week-table {
+  min-width: 760px;
+}
+
+.timecard-week-heading td {
+  background: #edf2f5;
+  color: #29343a;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.timecard-list-row {
+  cursor: pointer;
+}
+
+.timecard-list-row:hover,
+.timecard-list-row:focus {
+  background: #f7faf9;
+  outline: none;
+}
+
+.timecard-list-row:nth-of-type(even) {
+  background: #fbfcfc;
+}
+
 th,
 td {
   padding: 12px 14px;
@@ -4385,5 +4412,66 @@ body:not(.owner-mode) .rate-field {
   .table-wrap > table .primary-action,
   .table-wrap > table .secondary-action {
     min-height: 38px;
+  }
+
+  #timecards .table-wrap {
+    width: 100%;
+    overflow-x: auto;
+    overflow-y: auto;
+    overscroll-behavior-x: contain;
+    overscroll-behavior-y: contain;
+  }
+
+  #timecards .table-wrap > table,
+  #timecards .table-wrap > table tbody,
+  #timecards .table-wrap > table tr {
+    display: revert;
+    width: auto;
+  }
+
+  #timecards .table-wrap > table {
+    min-width: 690px;
+  }
+
+  #timecards .table-wrap > table thead {
+    display: table-header-group;
+  }
+
+  #timecards .table-wrap > table tbody {
+    padding: 0;
+  }
+
+  #timecards .table-wrap > table tr {
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    overflow: visible;
+  }
+
+  #timecards .table-wrap > table td {
+    display: table-cell;
+    width: auto;
+    min-height: 0;
+    padding: 11px 12px;
+    border-bottom: 1px solid var(--line);
+    font-size: 13px;
+    white-space: nowrap;
+  }
+
+  #timecards .table-wrap > table td:first-child {
+    min-width: 190px;
+    white-space: normal;
+  }
+
+  #timecards .table-wrap > table td::before,
+  #timecards .table-wrap > table td[colspan]::before {
+    content: "";
+    display: none;
+  }
+
+  #timecards .timecard-week-heading td {
+    display: table-cell;
+    padding: 9px 12px;
+    white-space: normal;
   }
 }

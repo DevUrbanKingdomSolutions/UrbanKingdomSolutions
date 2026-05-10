@@ -3183,6 +3183,35 @@ function timecardWorkDate(card) {
   return card?.workDate || String(card?.clockIn || card?.createdAt || "").slice(0, 10) || localDateKey();
 }
 
+function timecardWeekStartDate(card) {
+  const source = timecardWorkDate(card);
+  const date = new Date(`${source}T12:00:00`);
+  if (Number.isNaN(date.getTime())) return null;
+  date.setDate(date.getDate() - date.getDay());
+  date.setHours(12, 0, 0, 0);
+  return date;
+}
+
+function timecardWeekKey(card) {
+  const start = timecardWeekStartDate(card);
+  return start ? localDateKey(start) : "unscheduled";
+}
+
+function compactFullDate(date) {
+  if (!date || Number.isNaN(date.getTime())) return "Unscheduled";
+  const weekday = date.toLocaleDateString([], { weekday: "short" });
+  const month = date.toLocaleDateString([], { month: "short" });
+  return `${weekday}. ${month} ${date.getDate()}, ${date.getFullYear()}`;
+}
+
+function timecardWeekLabel(key) {
+  if (key === "unscheduled") return "Unscheduled";
+  const start = new Date(`${key}T12:00:00`);
+  const end = new Date(start);
+  end.setDate(start.getDate() + 6);
+  return `${compactFullDate(start)} - ${compactFullDate(end)}`;
+}
+
 function endOfWorkDateInput(workDate) {
   return `${workDate || localDateKey()}T23:59`;
 }
@@ -5125,19 +5154,41 @@ function renderTimecards() {
     return recordMatchesEventFilter(card, state.timecardEventFilter) && matchesSearch(card, `${worker?.name || ""} ${venue?.name || ""} ${promoter?.name || ""} ${event?.name || ""}`);
   })));
   $("#timecardTableCount").textContent = `${rows.length} shown`;
-  const rateHeaders = showRates ? `<th>Pay Basis</th><th>Est.</th>` : "";
-  const emptyColspan = showRates ? 10 : 8;
-  $("#timecardTable").closest("table").querySelector("thead").innerHTML = `<tr><th>Crew Member</th><th>Event</th><th>Venue</th><th>Call</th><th>Lunch</th><th>Wrap</th><th>Hours</th>${rateHeaders}<th></th></tr>`;
+  $("#timecardTable").closest("table").classList.add("timecard-week-table");
+  $("#timecardTable").closest("table").querySelector("thead").innerHTML = `<tr><th>Event</th><th>Call</th><th>Lunch out</th><th>Lunch In</th><th>Wrap</th><th>Hours</th></tr>`;
   $("#timecardTable").innerHTML = rows.length
-    ? rows.map((card) => {
-        const worker = getWorker(card.workerId);
-        const venue = getVenue(card.venueId);
-        const event = getEvent(card.eventId);
-        const liveAction = card.clockOut || !canAdminEdit() ? "" : `<button class="tiny-button" data-clock-out="${card.id}" type="button">Clock Out</button>`;
-        const rateCells = showRates ? `<td>${payBasis(card)}</td><td>${currency(estimatedPay(card))}</td>` : "";
-        return `<tr><td><strong>${recordLink("timecards", card.id, worker?.name || "Unknown crew member")}</strong></td><td>${escapeHtml(event?.name || card.eventName)}<p>${escapeHtml(timecardTableNotes(card))}</p></td><td>${escapeHtml(venue?.name || "")}</td><td>${formatDate(card.clockIn)}</td><td>Out: ${formatDate(card.lunchOut) || "Not set"}<p>In: ${formatDate(card.lunchIn) || "Not set"}</p></td><td>${formatDate(card.clockOut) || "Live"}</td><td>${timecardHours(card).toFixed(2)}</td>${rateCells}<td>${actionButtons("timecards", card.id, "timecardForm", liveAction, canAdminEdit())}</td></tr>`;
-      }).join("")
-    : `<tr><td colspan="${emptyColspan}" class="empty">No timecards match this search.</td></tr>`;
+    ? renderTimecardWeekRows(rows)
+    : `<tr><td colspan="6" class="empty">No timecards match this search.</td></tr>`;
+}
+
+function renderTimecardWeekRows(rows) {
+  const groups = new Map();
+  rows.forEach((card) => {
+    const key = timecardWeekKey(card);
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(card);
+  });
+  return Array.from(groups.entries()).map(([key, cards]) => `
+    <tr class="timecard-week-heading"><td colspan="6">${escapeHtml(timecardWeekLabel(key))}</td></tr>
+    ${cards.map(timecardWeekRow).join("")}
+  `).join("");
+}
+
+function timecardWeekRow(card) {
+  const worker = getWorker(card.workerId);
+  const event = getEvent(card.eventId);
+  const eventName = event?.name || card.eventName || "No event";
+  const notes = timecardTableNotes(card);
+  const workerLine = !isCrewRole() && worker?.name ? `<p>${escapeHtml(worker.name)}</p>` : "";
+  const noteLine = notes ? `<p>${escapeHtml(notes)}</p>` : "";
+  return `<tr class="timecard-list-row" data-timecard-row="${escapeHtml(card.id)}" tabindex="0">
+    <td data-label="Event"><strong>${escapeHtml(eventName)}</strong>${workerLine}${noteLine}</td>
+    <td data-label="Call">${formatDate(card.clockIn) || "Not set"}</td>
+    <td data-label="Lunch out">${formatDate(card.lunchOut) || "Not set"}</td>
+    <td data-label="Lunch In">${formatDate(card.lunchIn) || "Not set"}</td>
+    <td data-label="Wrap">${formatDate(card.clockOut) || "Live"}</td>
+    <td data-label="Hours">${timecardHours(card).toFixed(2)}</td>
+  </tr>`;
 }
 
 function filterTimecards(cards) {
@@ -9074,6 +9125,7 @@ function bindEvents() {
     const notifyProductionOfficeButton = event.target.closest("[data-notify-production-office]");
     const profileAccessButton = event.target.closest("[data-open-profile-access]");
     const viewRecordButton = event.target.closest("[data-view-record]");
+    const timecardRow = event.target.closest("[data-timecard-row]");
     const mobileGoViewButton = event.target.closest("[data-mobile-go-view]");
     const dashboardLinkButton = event.target.closest("[data-dashboard-link]");
     const openReportTypeButton = event.target.closest("[data-open-report-type]");
@@ -9209,6 +9261,10 @@ function bindEvents() {
       openEventAssignmentDetail(viewEventAssignmentButton.dataset.viewEventAssignment);
       return;
     }
+    if (timecardRow && !event.target.closest("button, a, input, select, textarea, details, summary")) {
+      openReadOnlyRecord("timecards", timecardRow.dataset.timecardRow);
+      return;
+    }
     if (viewRecordButton) {
       const [storeName, id] = viewRecordButton.dataset.viewRecord.split(":");
       openReadOnlyRecord(storeName, id);
@@ -9321,6 +9377,12 @@ function bindEvents() {
 
   $("#modalBackdrop").addEventListener("click", closeActiveForm);
   document.addEventListener("keydown", (event) => {
+    const timecardRow = event.target.closest?.("[data-timecard-row]");
+    if (timecardRow && (event.key === "Enter" || event.key === " ")) {
+      event.preventDefault();
+      openReadOnlyRecord("timecards", timecardRow.dataset.timecardRow);
+      return;
+    }
     if (event.key === "Escape") closeActiveForm();
   });
   window.addEventListener("hashchange", () => {
