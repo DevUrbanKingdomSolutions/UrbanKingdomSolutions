@@ -2108,7 +2108,7 @@ async function applyAuthenticatedSession(session, preferredView = "") {
   if (roleRecord.worker_id) state.activeWorkerId = roleRecord.worker_id;
   if (roleRecord.promoter_id) state.activePromoterId = roleRecord.promoter_id;
 
-  $("#sessionEmail").textContent = session.user.email || "Signed in";
+  $("#sessionEmail").textContent = session.user.user_metadata?.name || session.user.email || "Signed in";
   $("#sessionRole").textContent = state.accessRole;
   await ensureDatabase();
   await hydrateAccessLevelsFromSupabase();
@@ -6046,7 +6046,14 @@ function renderAccessRoleOptions() {
   select.value = assignedAccess.includes(state.accessRole) ? state.accessRole : primaryAssignedAccessRole();
   control.hidden = true;
   $("#sessionRole").textContent = accessLevelLabel(primaryAssignedAccessRole());
-  $("#sessionEmail").textContent = authState.user?.email || "Signed in";
+  $("#sessionEmail").textContent = currentSessionDisplayName();
+}
+
+function currentSessionDisplayName() {
+  if (!authState.user) return "Not signed in";
+  const subscriber = notificationSubscriberForCurrentUser();
+  const fullName = `${subscriber.firstName || ""} ${subscriber.lastName || ""}`.trim();
+  return fullName || authState.user.user_metadata?.name || authState.user.email || "Signed in";
 }
 
 function setAccessRole(role) {

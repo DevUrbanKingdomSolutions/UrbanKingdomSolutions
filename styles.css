@@ -326,6 +326,10 @@ button {
   margin-bottom: 22px;
 }
 
+.topbar-title {
+  min-width: 0;
+}
+
 .eyebrow {
   margin: 0 0 4px;
   color: var(--muted);
@@ -2152,13 +2156,17 @@ body:not(.owner-mode) .rate-field {
   .topbar {
     position: static;
     display: grid;
-    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-columns: auto minmax(0, 1fr) auto;
     align-items: center;
-    gap: 10px;
+    gap: 8px 10px;
     margin: 0 0 14px;
     padding: 0 0 10px;
     border-bottom: 1px solid rgba(195, 186, 169, 0.55);
     background: transparent;
+  }
+
+  .topbar-title {
+    min-width: 0;
   }
 
   .mobile-menu-button {
@@ -2175,7 +2183,10 @@ body:not(.owner-mode) .rate-field {
   }
 
   .topbar h2 {
+    overflow: hidden;
     font-size: 22px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .eyebrow {
@@ -2185,8 +2196,9 @@ body:not(.owner-mode) .rate-field {
   .topbar-tools {
     grid-column: 1 / -1;
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: minmax(0, 1fr) minmax(112px, 42vw);
     gap: 8px;
+    align-items: center;
   }
 
   .topbar-tools > *,
@@ -2198,21 +2210,28 @@ body:not(.owner-mode) .rate-field {
   }
 
   .topbar-tools .search-input {
-    grid-column: 1 / -1;
+    grid-column: 2;
+    min-height: 36px;
   }
 
   .topbar-tools .session-pill {
-    grid-column: 1 / -1;
+    grid-column: 1;
   }
 
-  .topbar-tools .notification-center,
+  .topbar-tools .access-control,
+  .topbar-tools .ghost-button,
   .topbar-tools .global-add-menu {
-    justify-self: stretch;
+    display: none;
   }
 
-  .topbar-tools .notification-bell {
-    min-width: 0;
-    width: 100%;
+  .notification-center {
+    justify-self: end;
+  }
+
+  .notification-bell {
+    min-width: 40px;
+    width: 40px;
+    height: 40px;
   }
 
   .notification-panel {
@@ -2229,6 +2248,18 @@ body:not(.owner-mode) .rate-field {
 
   .session-pill {
     min-height: 36px;
+  }
+
+  .session-pill span {
+    overflow: hidden;
+    color: var(--ink);
+    font-size: 13px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .session-pill strong {
+    display: none;
   }
 
   .access-control {

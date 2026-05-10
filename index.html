@@ -10,7 +10,7 @@
     <title>Production Crew Database</title>
     <link rel="manifest" href="manifest.webmanifest">
     <link rel="icon" href="assets/app-icon.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="styles.css?v=V1.03.079-mobile-header-fit">
+    <link rel="stylesheet" href="styles.css?v=V1.03.080-mobile-header-two-row">
   </head>
   <body>
     <div id="appLoadingOverlay" class="app-loading-overlay" aria-live="polite">
@@ -114,28 +114,28 @@
       <main class="content">
         <header class="topbar">
           <button id="mobileMenuButton" class="mobile-menu-button" type="button" aria-controls="primaryNavigation" aria-expanded="false">Menu</button>
-          <div>
+          <div class="topbar-title">
             <p class="eyebrow">Entertainment production operations</p>
             <h2 id="viewTitle">Dashboard</h2>
           </div>
+          <details id="notificationCenter" class="notification-center">
+            <summary class="icon-button notification-bell" aria-label="Notifications" title="Notifications">
+              <span aria-hidden="true">!</span>
+              <strong id="notificationBadge" hidden>0</strong>
+            </summary>
+            <div class="notification-panel">
+              <div class="notification-panel-heading">
+                <h3>Notifications</h3>
+                <button id="markNotificationsRead" class="tiny-button" type="button">Mark Read</button>
+              </div>
+              <div id="notificationList" class="notification-list"></div>
+              <button id="clearReadNotifications" class="ghost-button notification-clear-button" type="button">Clear Read</button>
+            </div>
+          </details>
           <div class="topbar-tools">
             <details id="globalAddMenu" class="record-options global-add-menu" hidden>
               <summary class="tiny-button">Add</summary>
               <div id="globalAddMenuOptions" class="record-options-menu"></div>
-            </details>
-            <details id="notificationCenter" class="notification-center">
-              <summary class="icon-button notification-bell" aria-label="Notifications" title="Notifications">
-                <span aria-hidden="true">!</span>
-                <strong id="notificationBadge" hidden>0</strong>
-              </summary>
-              <div class="notification-panel">
-                <div class="notification-panel-heading">
-                  <h3>Notifications</h3>
-                  <button id="markNotificationsRead" class="tiny-button" type="button">Mark Read</button>
-                </div>
-                <div id="notificationList" class="notification-list"></div>
-                <button id="clearReadNotifications" class="ghost-button notification-clear-button" type="button">Clear Read</button>
-              </div>
             </details>
             <div class="session-pill">
               <span id="sessionEmail">Not signed in</span>
@@ -1454,6 +1454,6 @@
     <div id="modalHost"></div>
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js?v=V1.03.079-mobile-header-fit"></script>
+    <script src="app.js?v=V1.03.080-mobile-header-two-row"></script>
   </body>
 </html>
