@@ -3140,6 +3140,12 @@ function toLocalInputValue(date) {
   return local.toISOString().slice(0, 16);
 }
 
+function dateTimeInputValue(value) {
+  if (!value) return "";
+  const date = value instanceof Date ? value : new Date(value);
+  return Number.isNaN(date.getTime()) ? "" : toLocalInputValue(date);
+}
+
 function localDateKey(date = new Date()) {
   return toLocalInputValue(date).slice(0, 10);
 }
@@ -3507,17 +3513,7 @@ function openReadOnlyRecord(storeName, id) {
       ["Notes", record.notes]
     ]);
   } else if (storeName === "timecards") {
-    const worker = getWorker(record.workerId);
-    const event = getEvent(record.eventId);
-    const rateDetails = canViewRates() ? [["Pay Basis", payBasis(record)], ["Estimated Pay", currency(estimatedPay(record))]] : [];
-    readOnlyProfileCard(worker?.name || "Timecard", event?.name || record.eventName || "Timecard", [
-      ["Call", formatDate(record.clockIn)],
-      ["Lunch Out", formatDate(record.lunchOut)],
-      ["Lunch In", formatDate(record.lunchIn)],
-      ["Wrap", formatDate(record.clockOut)],
-      ["Hours", timecardHours(record).toFixed(2)],
-      ...rateDetails
-    ], [["Notes", record.notes]]);
+    renderTimecardProfile(record.id);
   } else if (storeName === "vehicleLogs") {
     const event = getEvent(record.eventId);
     const worker = getWorker(record.workerId);
@@ -3553,7 +3549,137 @@ function openReadOnlyRecord(storeName, id) {
   } else {
     readOnlyProfileCard(record.name || record.title || "Record", storeName, Object.entries(record).slice(0, 8));
   }
+  if (storeName !== "timecards") openForm("recordView");
+}
+
+function timecardDetailRows(record) {
+  const worker = getWorker(record.workerId);
+  const event = getEvent(record.eventId);
+  const venue = getVenue(record.venueId || event?.venueId);
+  const promoter = getPromoter(record.promoterId || event?.promoterId);
+  const rateDetails = canViewRates() ? [["Pay Basis", payBasis(record)], ["Estimated Pay", currency(estimatedPay(record))]] : [];
+  return {
+    title: worker?.name || "Timecard",
+    subtitle: event?.name || record.eventName || "Timecard",
+    details: [
+      ["Crew Member", worker?.name],
+      ["Event", event?.name || record.eventName],
+      ["Venue", venue?.name],
+      ["Promoter", promoterLabel(promoter)],
+      ["Call", formatDate(record.clockIn)],
+      ["Lunch Out", formatDate(record.lunchOut)],
+      ["Lunch In", formatDate(record.lunchIn)],
+      ["Wrap", formatDate(record.clockOut) || "Live"],
+      ["Hours", timecardHours(record).toFixed(2)],
+      ...rateDetails
+    ],
+    sections: [["Notes", record.notes]]
+  };
+}
+
+function renderTimecardProfile(timecardId, editable = false) {
+  const record = state.timecards.find((card) => card.id === timecardId);
+  if (!record) {
+    toast("Timecard not found.");
+    return;
+  }
+  if (editable) {
+    renderEditableTimecardProfile(record);
+    openForm("recordView");
+    return;
+  }
+  const view = timecardDetailRows(record);
+  readOnlyProfileCard(view.title, view.subtitle, view.details, view.sections, profileAvatarLarge(getWorker(record.workerId) || { name: view.title }, getWorker(record.workerId)?.hideHeadshot));
+  const actions = canAdminEdit()
+    ? `<div class="profile-section profile-actions"><button class="primary-action" data-edit-timecard-detail="${escapeHtml(record.id)}" type="button">Edit Timecard Line</button></div>`
+    : "";
+  $("#recordViewBody").querySelector(".profile-page-card")?.insertAdjacentHTML("beforeend", actions);
   openForm("recordView");
+}
+
+function selectOptions(records, selectedId, emptyLabel, labeler) {
+  return `<option value="">${escapeHtml(emptyLabel)}</option>${records.map((record) => `<option value="${escapeHtml(record.id)}" ${record.id === selectedId ? "selected" : ""}>${escapeHtml(labeler(record))}</option>`).join("")}`;
+}
+
+function renderEditableTimecardProfile(record) {
+  const events = visibleEvents();
+  const workers = isAdminRole() ? [] : state.workers;
+  const venues = isAdminRole() ? [] : state.venues;
+  const promoters = isAdminRole() ? [] : state.promoters;
+  const showRates = canViewRates();
+  $("#recordViewTitle").textContent = "Edit Timecard";
+  $("#recordViewBody").innerHTML = `<form class="profile-page-card profile-edit-form" data-timecard-detail-form>
+    <input type="hidden" name="id" value="${escapeHtml(record.id)}">
+    <div class="profile-page-header">
+      ${profileAvatarLarge(getWorker(record.workerId) || { name: "Timecard" }, getWorker(record.workerId)?.hideHeadshot)}
+      <div>
+        <h3>${escapeHtml(getWorker(record.workerId)?.name || "Timecard")}</h3>
+        <p>${escapeHtml(getEvent(record.eventId)?.name || record.eventName || "Timecard")}</p>
+      </div>
+    </div>
+    <div class="profile-edit-grid">
+      <label>Crew Member<select name="workerId" required>${selectOptions(workers, record.workerId, "Select crew member", (worker) => worker.name)}</select></label>
+      <label>Event<select name="eventId">${selectOptions(events, record.eventId, "Select event", (event) => event.name)}</select></label>
+      <label>Event or shift<input name="eventName" value="${escapeHtml(record.eventName || getEvent(record.eventId)?.name || "")}" required></label>
+      <label>Venue<select name="venueId">${selectOptions(venues, record.venueId, "No venue selected", (venue) => venue.name)}</select></label>
+      <label>Promoter<select name="promoterId">${selectOptions(promoters, record.promoterId, "No promoter rep selected", promoterLabel)}</select></label>
+      <label>Clock in<input name="clockIn" type="datetime-local" value="${escapeHtml(dateTimeInputValue(record.clockIn))}" required></label>
+      <label>Clock out<input name="clockOut" type="datetime-local" value="${escapeHtml(dateTimeInputValue(record.clockOut))}"></label>
+      <label>Lunch out<input name="lunchOut" type="datetime-local" value="${escapeHtml(dateTimeInputValue(record.lunchOut))}"></label>
+      <label>Lunch in<input name="lunchIn" type="datetime-local" value="${escapeHtml(dateTimeInputValue(record.lunchIn))}"></label>
+      <label>Break minutes<input name="breakMinutes" type="number" min="0" step="5" value="${escapeHtml(record.breakMinutes || "0")}"></label>
+      ${showRates ? `<label>Day rate<input name="dayRate" type="number" min="0" step="0.01" value="${escapeHtml(record.dayRate || "")}"></label>
+      <label>Included hours<input name="includedHours" type="number" min="0" step="0.25" value="${escapeHtml(record.includedHours || "")}"></label>
+      <label>Additional hourly rate<input name="additionalRate" type="number" min="0" step="0.01" value="${escapeHtml(record.additionalRate || "")}"></label>
+      <label>Vehicle rate<input name="vehicleRate" type="number" min="0" step="0.01" value="${escapeHtml(record.vehicleRate || "")}"></label>` : ""}
+      <label>Vehicle use<select name="vehicleUse">
+        <option value="" ${!record.vehicleUse ? "selected" : ""}>None</option>
+        <option ${record.vehicleUse === "Rented Vehicle" ? "selected" : ""}>Rented Vehicle</option>
+        <option ${record.vehicleUse === "Personal Vehicle" ? "selected" : ""}>Personal Vehicle</option>
+      </select></label>
+    </div>
+    <label>Notes<textarea name="notes" rows="3">${escapeHtml(record.notes || "")}</textarea></label>
+    <div class="profile-actions">
+      <button class="primary-action" data-save-timecard-detail type="button">Save Timecard Line</button>
+      <button class="secondary-action" data-cancel-timecard-detail="${escapeHtml(record.id)}" type="button">Cancel</button>
+    </div>
+  </form>`;
+}
+
+async function saveTimecardDetailForm(button) {
+  const form = button.closest("[data-timecard-detail-form]");
+  if (!form || !canAdminEdit()) {
+    toast("Switch to CLIENT or PROMOTER to save this.");
+    return;
+  }
+  const record = await formRecord(form);
+  const existing = state.timecards.find((card) => card.id === record.id);
+  if (!existing) {
+    toast("Timecard not found.");
+    return;
+  }
+  let merged = { ...existing, ...record };
+  if (merged.eventId) {
+    const relatedEvent = getEvent(merged.eventId);
+    const worker = getWorker(merged.workerId);
+    const assignment = assignmentForEventWorker(merged.eventId, merged.workerId);
+    const client = activeClientRecord();
+    merged.eventName = merged.eventName || relatedEvent?.name || "";
+    merged.venueId = merged.venueId || relatedEvent?.venueId || "";
+    merged.promoterId = merged.promoterId || relatedEvent?.promoterId || "";
+    merged.workDate = merged.workDate || String(merged.clockIn || merged.createdAt || "").slice(0, 10) || localDateKey();
+    merged.dayRate = merged.dayRate || assignment?.dayRate || relatedEvent?.dayRate || client?.defaultDayRate || worker?.defaultDayRate || worker?.defaultRate || "";
+    merged.includedHours = merged.includedHours || assignment?.includedHours || relatedEvent?.includedHours || client?.defaultIncludedHours || worker?.defaultIncludedHours || "10";
+    merged.additionalRate = merged.additionalRate || assignment?.additionalRate || relatedEvent?.additionalRate || client?.defaultAdditionalRate || worker?.defaultAdditionalRate || "";
+    merged.vehicleUse = merged.vehicleUse || assignment?.vehicleUse || "";
+    if (merged.vehicleUse === "Rented Vehicle") merged.vehicleRate = merged.vehicleRate || relatedEvent?.rentedVehicleRate || client?.defaultRentedVehicleRate || worker?.defaultRentedVehicleRate || "";
+    if (merged.vehicleUse === "Personal Vehicle") merged.vehicleRate = merged.vehicleRate || assignment?.personalVehicleRate || relatedEvent?.personalVehicleRate || client?.defaultPersonalVehicleRate || worker?.defaultPersonalVehicleRate || "";
+  }
+  await put("timecards", merged);
+  await loadState();
+  setView(state.activeView);
+  renderTimecardProfile(merged.id);
+  toast("Timecard line saved.");
 }
 
 function activeClientRecord() {
@@ -4718,7 +4844,7 @@ function renderTimecards() {
   $("#timecardTableCount").textContent = `${rows.length} shown`;
   const rateHeaders = showRates ? `<th>Pay Basis</th><th>Est.</th>` : "";
   const emptyColspan = showRates ? 10 : 8;
-  $("#timecardTable").closest("table").querySelector("thead").innerHTML = `<tr><th>Worker</th><th>Event</th><th>Venue</th><th>Call</th><th>Lunch</th><th>Wrap</th><th>Hours</th>${rateHeaders}<th></th></tr>`;
+  $("#timecardTable").closest("table").querySelector("thead").innerHTML = `<tr><th>Crew Member</th><th>Event</th><th>Venue</th><th>Call</th><th>Lunch</th><th>Wrap</th><th>Hours</th>${rateHeaders}<th></th></tr>`;
   $("#timecardTable").innerHTML = rows.length
     ? rows.map((card) => {
         const worker = getWorker(card.workerId);
@@ -4726,7 +4852,7 @@ function renderTimecards() {
         const event = getEvent(card.eventId);
         const liveAction = card.clockOut || !canAdminEdit() ? "" : `<button class="tiny-button" data-clock-out="${card.id}" type="button">Clock Out</button>`;
         const rateCells = showRates ? `<td>${payBasis(card)}</td><td>${currency(estimatedPay(card))}</td>` : "";
-        return `<tr><td><strong>${recordLink("timecards", card.id, worker?.name || "Unknown worker")}</strong></td><td>${escapeHtml(event?.name || card.eventName)}<p>${escapeHtml(card.notes)}</p></td><td>${escapeHtml(venue?.name || "")}</td><td>${formatDate(card.clockIn)}</td><td>${formatDate(card.lunchOut)}${card.lunchIn ? `<p>In: ${formatDate(card.lunchIn)}</p>` : ""}</td><td>${formatDate(card.clockOut) || "Live"}</td><td>${timecardHours(card).toFixed(2)}</td>${rateCells}<td>${actionButtons("timecards", card.id, "timecardForm", liveAction, canAdminEdit())}</td></tr>`;
+        return `<tr><td><strong>${recordLink("timecards", card.id, worker?.name || "Unknown crew member")}</strong></td><td>${escapeHtml(event?.name || card.eventName)}<p>${escapeHtml(card.notes)}</p></td><td>${escapeHtml(venue?.name || "")}</td><td>${formatDate(card.clockIn)}</td><td>Out: ${formatDate(card.lunchOut) || "Not set"}<p>In: ${formatDate(card.lunchIn) || "Not set"}</p></td><td>${formatDate(card.clockOut) || "Live"}</td><td>${timecardHours(card).toFixed(2)}</td>${rateCells}<td>${actionButtons("timecards", card.id, "timecardForm", liveAction, canAdminEdit())}</td></tr>`;
       }).join("")
     : `<tr><td colspan="${emptyColspan}" class="empty">No timecards match this search.</td></tr>`;
 }
@@ -8607,6 +8733,9 @@ function bindEvents() {
     const requestMobilePermissionsButton = event.target.closest("[data-request-mobile-permissions]");
     const openNotificationButton = event.target.closest("[data-open-notification]");
     const viewEventAssignmentButton = event.target.closest("[data-view-event-assignment]");
+    const editTimecardDetailButton = event.target.closest("[data-edit-timecard-detail]");
+    const saveTimecardDetailButton = event.target.closest("[data-save-timecard-detail]");
+    const cancelTimecardDetailButton = event.target.closest("[data-cancel-timecard-detail]");
 
     if (openNotificationButton) {
       await openNotification(openNotificationButton.dataset.openNotification);
@@ -8717,6 +8846,18 @@ function bindEvents() {
     }
     if (notifyProductionOfficeButton) await notifyRunnerToProductionOffice(notifyProductionOfficeButton.dataset.notifyProductionOffice);
     if (profileAccessButton) await openProfileAccessForm(profileAccessButton.dataset.openProfileAccess);
+    if (editTimecardDetailButton) {
+      renderTimecardProfile(editTimecardDetailButton.dataset.editTimecardDetail, true);
+      return;
+    }
+    if (saveTimecardDetailButton) {
+      await saveTimecardDetailForm(saveTimecardDetailButton);
+      return;
+    }
+    if (cancelTimecardDetailButton) {
+      renderTimecardProfile(cancelTimecardDetailButton.dataset.cancelTimecardDetail);
+      return;
+    }
     if (viewEventAssignmentButton) {
       openEventAssignmentDetail(viewEventAssignmentButton.dataset.viewEventAssignment);
       return;

@@ -2083,6 +2083,28 @@ td p {
   margin: 0;
 }
 
+.profile-edit-form label {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.profile-edit-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.profile-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
 .note-box {
   display: grid;
   gap: 6px;
@@ -2177,6 +2199,7 @@ body:not(.owner-mode) .rate-field {
 
   .profile-page-header,
   .profile-detail-grid,
+  .profile-edit-grid,
   .public-event-grid {
     grid-template-columns: 1fr;
   }

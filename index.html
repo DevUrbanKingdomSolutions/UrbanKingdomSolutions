@@ -10,7 +10,7 @@
     <title>Production Crew Database</title>
     <link rel="manifest" href="manifest.webmanifest">
     <link rel="icon" href="assets/app-icon.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="styles.css?v=V1.03.098-bell-notifications">
+    <link rel="stylesheet" href="styles.css?v=V1.03.099-timecard-detail-edit">
   </head>
   <body>
     <div id="appLoadingOverlay" class="app-loading-overlay" aria-live="polite">
@@ -915,12 +915,12 @@
           <div class="split-layout">
             <form id="timecardForm" class="panel form-panel admin-form">
               <div class="panel-heading">
-                <h3>Clock Worker</h3>
+                <h3>Clock Crew Member</h3>
                 <button class="ghost-button clear-form" type="button" data-form="timecardForm">Clear</button>
               </div>
               <input type="hidden" name="id">
               <label>Event<select name="eventId"></select></label>
-              <label>Worker<select name="workerId" required></select></label>
+              <label>Crew Member<select name="workerId" required></select></label>
               <label>Event or shift<input name="eventName" required placeholder="Load-in, show call, strike"></label>
               <label>Venue<select name="venueId"></select></label>
               <label>Promoter<select name="promoterId"></select></label>
@@ -967,7 +967,7 @@
                 <label>Sort
                   <select id="timecardSort">
                     <option value="latest">Latest call time</option>
-                    <option value="worker">Worker name</option>
+                    <option value="worker">Crew member name</option>
                     <option value="event">Event name</option>
                     <option value="hours">Hours worked</option>
                     <option value="pay">Estimated pay</option>
@@ -976,7 +976,7 @@
               </div>
               <div class="table-wrap">
                 <table>
-                  <thead><tr><th>Worker</th><th>Event</th><th>Venue</th><th>Call</th><th>Lunch</th><th>Wrap</th><th>Hours</th><th>Pay Basis</th><th>Est.</th><th></th></tr></thead>
+                  <thead><tr><th>Crew Member</th><th>Event</th><th>Venue</th><th>Call</th><th>Lunch</th><th>Wrap</th><th>Hours</th><th>Pay Basis</th><th>Est.</th><th></th></tr></thead>
                   <tbody id="timecardTable"></tbody>
                 </table>
               </div>
@@ -1478,6 +1478,6 @@
     <div id="modalHost"></div>
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js?v=V1.03.098-bell-notifications"></script>
+    <script src="app.js?v=V1.03.099-timecard-detail-edit"></script>
   </body>
 </html>
