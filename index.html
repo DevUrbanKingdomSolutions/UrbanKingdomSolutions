@@ -10,7 +10,7 @@
     <title>Production Crew Database</title>
     <link rel="manifest" href="manifest.webmanifest">
     <link rel="icon" href="assets/app-icon.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="styles.css?v=V1.03.097-shade-event-assignments">
+    <link rel="stylesheet" href="styles.css?v=V1.03.098-bell-notifications">
   </head>
   <body>
     <div id="appLoadingOverlay" class="app-loading-overlay" aria-live="polite">
@@ -120,7 +120,10 @@
           </div>
           <details id="notificationCenter" class="notification-center">
             <summary class="icon-button notification-bell" aria-label="Notifications" title="Notifications">
-              <span aria-hidden="true">!</span>
+              <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
+                <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"></path>
+                <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+              </svg>
               <strong id="notificationBadge" hidden>0</strong>
             </summary>
             <div class="notification-panel">
@@ -1475,6 +1478,6 @@
     <div id="modalHost"></div>
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js?v=V1.03.097-shade-event-assignments"></script>
+    <script src="app.js?v=V1.03.098-bell-notifications"></script>
   </body>
 </html>
