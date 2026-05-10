@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.04.027",
-  title: "V1.04.027 update installed",
-  body: "Moved Currently Clocked In and Recent Notes above the dashboard calendar."
+  version: "V1.04.028",
+  title: "V1.04.028 update installed",
+  body: "Balanced dashboard spacing and flipped the active nav tab accent outward."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",

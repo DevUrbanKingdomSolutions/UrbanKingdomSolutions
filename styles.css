@@ -1332,6 +1332,7 @@ body[data-access-tone="crew"] .desktop-dashboard-hero {
 
 .dashboard-grid {
   grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-bottom: 18px;
 }
 
 .panel {
@@ -3023,17 +3024,18 @@ body:not(.owner-mode) .rate-field {
     position: absolute;
     top: 9px;
     bottom: 9px;
-    left: 0;
-    border-radius: 0 999px 999px 0;
+    border-radius: 999px 0 0 999px;
     content: "";
   }
 
   .nav-item.active::before {
+    left: -7px;
     width: 7px;
     background: #ffffff;
   }
 
   .nav-item.active::after {
+    left: -3px;
     width: 3px;
     background: var(--accent);
   }
@@ -3514,6 +3516,10 @@ body:not(.owner-mode) .rate-field {
     box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 16%, transparent);
   }
 
+  .nav-item {
+    position: relative;
+  }
+
   .nav-item.active {
     background: color-mix(in srgb, var(--accent) 38%, rgba(255, 255, 255, 0.1));
     box-shadow: none;
@@ -3524,17 +3530,18 @@ body:not(.owner-mode) .rate-field {
     position: absolute;
     top: 9px;
     bottom: 9px;
-    left: 0;
-    border-radius: 0 999px 999px 0;
+    border-radius: 999px 0 0 999px;
     content: "";
   }
 
   .nav-item.active::before {
+    left: -7px;
     width: 7px;
     background: #ffffff;
   }
 
   .nav-item.active::after {
+    left: -3px;
     width: 3px;
     background: var(--accent);
   }
