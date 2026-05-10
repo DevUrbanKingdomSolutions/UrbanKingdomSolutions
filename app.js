@@ -4380,10 +4380,35 @@ function openGigDirectoryForEvent(eventId) {
 
 function renderClock() {
   const events = visibleEvents().filter((event) => matchesSearch(event, `${getVenue(event.venueId)?.name || ""} ${getPromoter(event.promoterId)?.name || ""}`));
-  $("#clockEventCount").textContent = `${events.length} assigned`;
+  $("#clockEventCount").textContent = events.length ? `${events.length} assigned` : "Today";
   $("#clockCards").innerHTML = events.length
     ? events.map((event) => clockCard(event)).join("")
-    : `<div class="compact-item empty">No assigned events are available for this worker.</div>`;
+    : todayClockTimelineCard();
+}
+
+function todayClockTimelineCard() {
+  const card = currentDayCrewTimecard();
+  const today = localDateKey();
+  return `<article class="record-card clock-card clock-day-card">
+    <div class="record-card-main">
+      <strong>Today</strong>
+      <span>${escapeHtml(formatDate(`${today}T12:00`) || today)}</span>
+      <p>No assigned event is available for this worker today.</p>
+      <div class="punch-summary">
+        ${punchSummaryItem("Call", card?.clockIn, card?.punchLocations?.clockIn)}
+        ${punchSummaryItem("Lunch Out", card?.lunchOut, card?.punchLocations?.lunchOut)}
+        ${punchSummaryItem("Lunch In", card?.lunchIn, card?.punchLocations?.lunchIn)}
+        ${punchSummaryItem("Wrap", card?.clockOut, card?.punchLocations?.clockOut)}
+      </div>
+    </div>
+  </article>`;
+}
+
+function currentDayCrewTimecard() {
+  const today = localDateKey();
+  return state.timecards
+    .filter((card) => card.workerId === state.activeWorkerId && timecardWorkDate(card) === today)
+    .sort((a, b) => new Date(b.clockIn || b.createdAt || 0) - new Date(a.clockIn || a.createdAt || 0))[0] || null;
 }
 
 function clockCard(event) {

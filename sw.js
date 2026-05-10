@@ -1,9 +1,9 @@
-const APP_SHELL_CACHE = "production-crew-shell-v1.03.088";
+const APP_SHELL_CACHE = "production-crew-shell-v1.03.089";
 const APP_SHELL_ASSETS = [
   "./",
   "./index.html",
-  "./styles.css?v=V1.03.088-limit-camera-permissions",
-  "./app.js?v=V1.03.088-limit-camera-permissions",
+  "./styles.css?v=V1.03.089-show-daily-clock",
+  "./app.js?v=V1.03.089-show-daily-clock",
   "./manifest.webmanifest",
   "./assets/app-icon.svg"
 ];

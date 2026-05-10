@@ -1370,6 +1370,10 @@ td p {
   grid-template-columns: 1fr;
 }
 
+.clock-day-card {
+  border-style: dashed;
+}
+
 .punch-summary {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
