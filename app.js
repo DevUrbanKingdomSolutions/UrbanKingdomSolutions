@@ -280,6 +280,11 @@ let pullRefreshState = {
   armed: false,
   refreshing: false
 };
+let edgeSwipeNavState = {
+  tracking: false,
+  startX: 0,
+  startY: 0
+};
 
 const MESSAGE_THREAD_TYPES = {
   event: {
@@ -767,6 +772,42 @@ function initPullToRefresh() {
   window.addEventListener("touchcancel", () => {
     pullRefreshState = { tracking: false, startY: 0, armed: false, refreshing: false };
     updatePullRefreshIndicator(0);
+  }, { passive: true });
+}
+
+function initEdgeSwipeNavigation() {
+  if (!("ontouchstart" in window)) return;
+  window.addEventListener("touchstart", (event) => {
+    if (document.body.classList.contains("modal-open") || document.body.classList.contains("mobile-nav-open")) return;
+    const touch = event.touches[0];
+    if (!touch || touch.clientX > 28) return;
+    edgeSwipeNavState = {
+      tracking: true,
+      startX: touch.clientX,
+      startY: touch.clientY
+    };
+  }, { passive: true });
+  window.addEventListener("touchmove", (event) => {
+    if (!edgeSwipeNavState.tracking) return;
+    const touch = event.touches[0];
+    if (!touch) return;
+    const deltaX = touch.clientX - edgeSwipeNavState.startX;
+    const deltaY = Math.abs(touch.clientY - edgeSwipeNavState.startY);
+    if (deltaX < -12 || deltaY > 64) edgeSwipeNavState.tracking = false;
+  }, { passive: true });
+  window.addEventListener("touchend", (event) => {
+    if (!edgeSwipeNavState.tracking) return;
+    const touch = event.changedTouches[0];
+    const deltaX = (touch?.clientX || 0) - edgeSwipeNavState.startX;
+    const deltaY = Math.abs((touch?.clientY || 0) - edgeSwipeNavState.startY);
+    edgeSwipeNavState.tracking = false;
+    if (deltaX >= 72 && deltaX > deltaY * 1.4) {
+      document.body.classList.add("mobile-nav-open");
+      $("#mobileMenuButton")?.setAttribute("aria-expanded", "true");
+    }
+  }, { passive: true });
+  window.addEventListener("touchcancel", () => {
+    edgeSwipeNavState = { tracking: false, startX: 0, startY: 0 };
   }, { passive: true });
 }
 
@@ -8661,6 +8702,7 @@ async function init() {
   bindEvents();
   initMobileAppLifecycle();
   initPullToRefresh();
+  initEdgeSwipeNavigation();
   initPushRegistrationListeners();
   await registerAppShellServiceWorker();
   await clearPersistedLoginForFreshOpen();
