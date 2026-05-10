@@ -3030,13 +3030,13 @@ body:not(.owner-mode) .rate-field {
 
   .nav-item.active::before {
     left: -7px;
-    width: 7px;
+    width: 9px;
     background: #ffffff;
   }
 
   .nav-item.active::after {
-    left: -3px;
-    width: 3px;
+    left: -2px;
+    width: 5px;
     background: var(--accent);
   }
 
@@ -3536,13 +3536,13 @@ body:not(.owner-mode) .rate-field {
 
   .nav-item.active::before {
     left: -7px;
-    width: 7px;
+    width: 9px;
     background: #ffffff;
   }
 
   .nav-item.active::after {
-    left: -3px;
-    width: 3px;
+    left: -2px;
+    width: 5px;
     background: var(--accent);
   }
 

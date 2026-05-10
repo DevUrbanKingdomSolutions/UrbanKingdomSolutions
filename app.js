@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.04.029",
-  title: "V1.04.029 update installed",
-  body: "Made the active nav white tab match the full height of the selected color block."
+  version: "V1.04.030",
+  title: "V1.04.030 update installed",
+  body: "Tightened the active nav tab so the white tab and role color read as one connected piece."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
