@@ -1,5 +1,5 @@
 {
-  "version": "V1.04.032",
-  "title": "V1.04.032 update installed",
-  "body": "Reworked the active nav highlight into one smooth white-to-role-color gradient with no separate tab seam."
+  "version": "V1.04.033",
+  "title": "V1.04.033 update installed",
+  "body": "Updated timecard lists to separate work dates from punch times and show client admin notes in their own column."
 }

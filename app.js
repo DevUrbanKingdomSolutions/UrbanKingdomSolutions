@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.04.032",
-  title: "V1.04.032 update installed",
-  body: "Reworked the active nav highlight into one smooth white-to-role-color gradient with no separate tab seam."
+  version: "V1.04.033",
+  title: "V1.04.033 update installed",
+  body: "Updated timecard lists to separate work dates from punch times and show client admin notes in their own column."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -3277,6 +3277,29 @@ function formatDate(value) {
   });
 }
 
+function formatDateWithYear(value) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleString([], {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit"
+  });
+}
+
+function formatTime(value) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleTimeString([], {
+    hour: "numeric",
+    minute: "2-digit"
+  });
+}
+
 function toLocalInputValue(date) {
   const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
   return local.toISOString().slice(0, 16);
@@ -3323,6 +3346,11 @@ function timecardWeekLabel(key) {
   const end = new Date(start);
   end.setDate(start.getDate() + 6);
   return `${compactFullDate(start)} - ${compactFullDate(end)}`;
+}
+
+function timecardDateLabel(card) {
+  const date = new Date(`${timecardWorkDate(card)}T12:00:00`);
+  return compactFullDate(date);
 }
 
 function endOfWorkDateInput(workDate) {
@@ -3743,10 +3771,11 @@ function timecardDetailRows(record) {
       ["Event", event?.name || record.eventName],
       ["Venue", venue?.name],
       ["Promoter", promoterLabel(promoter)],
-      ["Call", formatDate(record.clockIn)],
-      ["Lunch Out", formatDate(record.lunchOut)],
-      ["Lunch In", formatDate(record.lunchIn)],
-      ["Wrap", formatDate(record.clockOut) || "Live"],
+      ["Date", timecardDateLabel(record)],
+      ["Call", formatTime(record.clockIn)],
+      ["Lunch Out", formatTime(record.lunchOut)],
+      ["Lunch In", formatTime(record.lunchIn)],
+      ["Wrap", formatTime(record.clockOut) || "Live"],
       ["Hours", timecardHours(record).toFixed(2)],
       ...rateDetails
     ],
@@ -5276,39 +5305,43 @@ function renderTimecards() {
   })));
   $("#timecardTableCount").textContent = `${rows.length} shown`;
   $("#timecardTable").closest("table").classList.add("timecard-week-table");
-  $("#timecardTable").closest("table").querySelector("thead").innerHTML = `<tr><th>Event</th><th>Call</th><th>Lunch out</th><th>Lunch In</th><th>Wrap</th><th>Hours</th></tr>`;
+  const showAdminNotes = canViewTimecardAdminNotes();
+  $("#timecardTable").closest("table").classList.toggle("timecard-admin-notes-table", showAdminNotes);
+  $("#timecardTable").closest("table").querySelector("thead").innerHTML = `<tr><th>Date</th><th>Event</th><th>Call</th><th>Lunch out</th><th>Lunch In</th><th>Wrap</th><th>Hours</th>${showAdminNotes ? "<th>Notes</th>" : ""}</tr>`;
   $("#timecardTable").innerHTML = rows.length
-    ? renderTimecardWeekRows(rows)
-    : `<tr><td colspan="6" class="empty">No timecards match this search.</td></tr>`;
+    ? renderTimecardWeekRows(rows, showAdminNotes)
+    : `<tr><td colspan="${showAdminNotes ? 8 : 7}" class="empty">No timecards match this search.</td></tr>`;
 }
 
-function renderTimecardWeekRows(rows) {
+function renderTimecardWeekRows(rows, showAdminNotes = false) {
   const groups = new Map();
   rows.forEach((card) => {
     const key = timecardWeekKey(card);
     if (!groups.has(key)) groups.set(key, []);
     groups.get(key).push(card);
   });
+  const columnCount = showAdminNotes ? 8 : 7;
   return Array.from(groups.entries()).map(([key, cards]) => `
-    <tr class="timecard-week-heading"><td colspan="6">${escapeHtml(timecardWeekLabel(key))}</td></tr>
-    ${cards.map(timecardWeekRow).join("")}
+    <tr class="timecard-week-heading"><td colspan="${columnCount}">${escapeHtml(timecardWeekLabel(key))}</td></tr>
+    ${cards.map((card) => timecardWeekRow(card, showAdminNotes)).join("")}
   `).join("");
 }
 
-function timecardWeekRow(card) {
+function timecardWeekRow(card, showAdminNotes = false) {
   const worker = getWorker(card.workerId);
   const event = getEvent(card.eventId);
   const eventName = event?.name || card.eventName || "No event";
-  const notes = timecardTableNotes(card);
   const workerLine = !isCrewRole() && worker?.name ? `<p>${escapeHtml(worker.name)}</p>` : "";
-  const noteLine = notes ? `<p>${escapeHtml(notes)}</p>` : "";
+  const adminNotes = showAdminNotes ? timecardAdminNoteList(card) : "";
   return `<tr class="timecard-list-row" data-timecard-row="${escapeHtml(card.id)}" tabindex="0">
-    <td data-label="Event"><strong>${escapeHtml(eventName)}</strong>${workerLine}${noteLine}</td>
-    <td data-label="Call">${formatDate(card.clockIn) || "Not set"}</td>
-    <td data-label="Lunch out">${formatDate(card.lunchOut) || "Not set"}</td>
-    <td data-label="Lunch In">${formatDate(card.lunchIn) || "Not set"}</td>
-    <td data-label="Wrap">${formatDate(card.clockOut) || "Live"}</td>
+    <td data-label="Date">${escapeHtml(timecardDateLabel(card))}</td>
+    <td data-label="Event"><strong>${escapeHtml(eventName)}</strong>${workerLine}</td>
+    <td data-label="Call">${formatTime(card.clockIn) || "Not set"}</td>
+    <td data-label="Lunch out">${formatTime(card.lunchOut) || "Not set"}</td>
+    <td data-label="Lunch In">${formatTime(card.lunchIn) || "Not set"}</td>
+    <td data-label="Wrap">${formatTime(card.clockOut) || "Live"}</td>
     <td data-label="Hours">${timecardHours(card).toFixed(2)}</td>
+    ${showAdminNotes ? `<td data-label="Notes">${adminNotes || `<span class="muted">No notes</span>`}</td>` : ""}
   </tr>`;
 }
 
@@ -5711,7 +5744,7 @@ function appendTimecardNote(card, message) {
 function appendTimecardAdminNote(card, message) {
   const existing = String(card.adminNotes || "").trim();
   if (existing.includes(message)) return existing;
-  return [existing, message].filter(Boolean).join("\n");
+  return [existing, `${formatDateWithYear(new Date())} - ${message}`].filter(Boolean).join("\n");
 }
 
 function canViewTimecardAdminNotes() {
@@ -5723,6 +5756,15 @@ function timecardTableNotes(card) {
   const notes = [crewVisibleTimecardNotes(card)];
   if (canViewTimecardAdminNotes()) notes.push(card.adminNotes);
   return notes.filter(Boolean).join("\n");
+}
+
+function timecardAdminNoteList(card) {
+  const lines = String(card.adminNotes || "")
+    .split(/\n+/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  if (!lines.length) return "";
+  return `<ul class="timecard-note-list">${lines.map((line) => `<li>${escapeHtml(line)}</li>`).join("")}</ul>`;
 }
 
 function crewVisibleTimecardNotes(card) {

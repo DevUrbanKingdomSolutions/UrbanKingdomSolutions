@@ -1534,7 +1534,11 @@ table {
 }
 
 .timecard-week-table {
-  min-width: 760px;
+  min-width: 820px;
+}
+
+.timecard-admin-notes-table {
+  min-width: 1040px;
 }
 
 .timecard-week-heading td {
@@ -1559,6 +1563,16 @@ table {
 
 .timecard-list-row:nth-of-type(even) {
   background: #fbfcfc;
+}
+
+.timecard-note-list {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding-left: 18px;
+  color: #43515a;
+  font-size: 12px;
+  line-height: 1.35;
 }
 
 th,
@@ -4475,6 +4489,11 @@ body:not(.owner-mode) .rate-field {
   }
 
   #timecards .table-wrap > table td:first-child {
+    min-width: 150px;
+    white-space: nowrap;
+  }
+
+  #timecards .table-wrap > table td:nth-child(2) {
     min-width: 190px;
     white-space: normal;
   }
