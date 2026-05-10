@@ -133,7 +133,7 @@ const ACCESS_PROFILES = {
   CLIENT_ADMIN: {
     label: "CLIENT ADMIN",
     baseRole: "CLIENT",
-    views: ["dashboard", "clientCompanyProfile", "clientProfile", "workers", "promoters", "venues", "events", "productionBoard", "timecards", "vehicles", "reports", "payroll", "directory", "runner", "messages", "dataTools"],
+    views: ["dashboard", "clientCompanyProfile", "clientProfile", "workers", "promoters", "venues", "events", "productionBoard", "timecards", "vehicles", "reports", "payroll", "directory", "runner", "messages", "dataTools", "mobileApp"],
     canAdminEdit: true,
     canOwnerEdit: true,
     canVenueEdit: true,
@@ -145,7 +145,7 @@ const ACCESS_PROFILES = {
   CLIENT_REP: {
     label: "CLIENT REP",
     baseRole: "CLIENT",
-    views: ["dashboard", "clientProfile", "promoters", "events", "productionBoard", "vehicles", "reports", "directory", "runner", "messages", "dataTools"],
+    views: ["dashboard", "clientProfile", "promoters", "events", "productionBoard", "vehicles", "reports", "directory", "runner", "messages", "dataTools", "mobileApp"],
     canAdminEdit: true,
     canOwnerEdit: true,
     canVenueEdit: false,
@@ -157,7 +157,7 @@ const ACCESS_PROFILES = {
   CLIENT_REP_LEAD: {
     label: "CLIENT REP LEAD",
     baseRole: "CLIENT",
-    views: ["dashboard", "clientProfile", "workers", "promoters", "venues", "events", "productionBoard", "vehicles", "reports", "directory", "runner", "messages", "dataTools"],
+    views: ["dashboard", "clientProfile", "workers", "promoters", "venues", "events", "productionBoard", "vehicles", "reports", "directory", "runner", "messages", "dataTools", "mobileApp"],
     canAdminEdit: true,
     canOwnerEdit: true,
     canVenueEdit: true,
@@ -169,7 +169,7 @@ const ACCESS_PROFILES = {
   CLIENT_ACCOUNTING: {
     label: "CLIENT ACCOUNTING",
     baseRole: "CLIENT",
-    views: ["timecards", "payroll"],
+    views: ["timecards", "payroll", "mobileApp"],
     canAdminEdit: true,
     canOwnerEdit: false,
     canVenueEdit: false,
@@ -181,7 +181,7 @@ const ACCESS_PROFILES = {
   PROMOTER_ADMIN: {
     label: "PROMOTER ADMIN",
     baseRole: "PROMOTER",
-    views: ["productionBoard", "events", "workers", "promoters", "venues", "vehicles", "reports", "directory", "messages", "dataTools"],
+    views: ["productionBoard", "events", "workers", "promoters", "venues", "vehicles", "reports", "directory", "messages", "dataTools", "mobileApp"],
     canAdminEdit: true,
     canOwnerEdit: false,
     canVenueEdit: true,
@@ -193,7 +193,7 @@ const ACCESS_PROFILES = {
   PROMOTER_REP: {
     label: "PROMOTER REP",
     baseRole: "PROMOTER",
-    views: ["productionBoard", "events", "workers", "promoters", "venues", "vehicles", "reports", "directory", "messages"],
+    views: ["productionBoard", "events", "workers", "promoters", "venues", "vehicles", "reports", "directory", "messages", "mobileApp"],
     canAdminEdit: true,
     canOwnerEdit: false,
     canVenueEdit: true,
@@ -205,7 +205,7 @@ const ACCESS_PROFILES = {
   PRODUCTION: {
     label: "PRODUCTION",
     baseRole: "PRODUCTION",
-    views: ["productionBoard", "events", "vehicles", "reports", "directory", "messages"],
+    views: ["productionBoard", "events", "vehicles", "reports", "directory", "messages", "mobileApp"],
     canAdminEdit: false,
     canOwnerEdit: false,
     canVenueEdit: false,
@@ -217,7 +217,7 @@ const ACCESS_PROFILES = {
   PRODUCTION_TEAM_ACCESS: {
     label: "PRODUCTION TEAM ACCESS",
     baseRole: "PRODUCTION",
-    views: ["productionBoard", "events", "vehicles", "reports", "directory", "messages"],
+    views: ["productionBoard", "events", "vehicles", "reports", "directory", "messages", "mobileApp"],
     canAdminEdit: false,
     canOwnerEdit: false,
     canVenueEdit: false,
@@ -229,7 +229,7 @@ const ACCESS_PROFILES = {
   CREW: {
     label: "CREW / RUNNER",
     baseRole: "CREW",
-    views: ["workers", "clock", "productionResponse", "events", "timecards", "vehicles", "reports", "directory", "runner", "messages"],
+    views: ["workers", "clock", "productionResponse", "events", "timecards", "vehicles", "reports", "directory", "runner", "messages", "mobileApp"],
     canAdminEdit: false,
     canOwnerEdit: false,
     canVenueEdit: false,
@@ -375,7 +375,7 @@ const NAV_GROUPS = {
     { items: [["adminProfile", "My Profile"]] },
     { items: [["admin", "Admin Console"]] },
     { items: [["messages", "Messages"]] },
-    { label: "MOBILE APP", items: [["mobileApp", "App Dashboard"]] }
+    { label: "SETTINGS", items: [["mobileApp", "Mobile Settings"]] }
   ],
   CLIENT_ADMIN: [
     { items: [["dashboard", "Dashboard"]] },
@@ -384,7 +384,8 @@ const NAV_GROUPS = {
     { label: "EVENTS", items: [["events", "Events"], ["productionBoard", "Production Board"], ["timecards", "Timecards"], ["vehicles", "Vehicles"], ["reports", "Reports"]] },
     { label: "PAYROLL", items: [["payroll", "Payroll"]] },
     { label: "DIRECTORIES", items: [["directory", "Crew Directory"], ["runner", "Gig Directory"], ["messages", "Messages"]] },
-    { label: "TOOLS", items: [["dataTools", "Import / Export"]] }
+    { label: "TOOLS", items: [["dataTools", "Import / Export"]] },
+    { label: "SETTINGS", items: [["mobileApp", "Mobile Settings"]] }
   ],
   CLIENT_REP: [
     { items: [["dashboard", "Dashboard"]] },
@@ -392,7 +393,8 @@ const NAV_GROUPS = {
     { label: "PROFILES", items: [["promoters", "Promoter Profiles"]] },
     { label: "EVENTS", items: [["events", "Events"], ["productionBoard", "Production Board"], ["vehicles", "Vehicles"], ["reports", "Reports"]] },
     { label: "DIRECTORIES", items: [["directory", "Crew Directory"], ["runner", "Gig Directory"], ["messages", "Messages"]] },
-    { label: "TOOLS", items: [["dataTools", "Import / Export"]] }
+    { label: "TOOLS", items: [["dataTools", "Import / Export"]] },
+    { label: "SETTINGS", items: [["mobileApp", "Mobile Settings"]] }
   ],
   CLIENT_REP_LEAD: [
     { items: [["dashboard", "Dashboard"]] },
@@ -400,33 +402,39 @@ const NAV_GROUPS = {
     { label: "PROFILES", items: [["workers", "Crew Profiles"], ["promoters", "Promoter Profiles"], ["venues", "Venues"]] },
     { label: "EVENTS", items: [["events", "Events"], ["productionBoard", "Production Board"], ["vehicles", "Vehicles"], ["reports", "Reports"]] },
     { label: "DIRECTORIES", items: [["directory", "Crew Directory"], ["runner", "Gig Directory"], ["messages", "Messages"]] },
-    { label: "TOOLS", items: [["dataTools", "Import / Export"]] }
+    { label: "TOOLS", items: [["dataTools", "Import / Export"]] },
+    { label: "SETTINGS", items: [["mobileApp", "Mobile Settings"]] }
   ],
   CLIENT_ACCOUNTING: [
-    { label: "PAYROLL", items: [["timecards", "Timecards"], ["payroll", "Payroll"]] }
+    { label: "PAYROLL", items: [["timecards", "Timecards"], ["payroll", "Payroll"]] },
+    { label: "SETTINGS", items: [["mobileApp", "Mobile Settings"]] }
   ],
   PROMOTER_ADMIN: [
     { items: [["productionBoard", "Production Board"]] },
     { label: "PROFILES", items: [["workers", "Crew Profiles"], ["promoters", "Promoter Profiles"], ["venues", "Venues"]] },
     { label: "EVENTS", items: [["events", "Events"], ["vehicles", "Vehicles"], ["reports", "Reports"]] },
     { label: "DIRECTORIES", items: [["directory", "Crew Directory"], ["messages", "Messages"]] },
-    { label: "TOOLS", items: [["dataTools", "Import / Export"]] }
+    { label: "TOOLS", items: [["dataTools", "Import / Export"]] },
+    { label: "SETTINGS", items: [["mobileApp", "Mobile Settings"]] }
   ],
   PROMOTER_REP: [
     { items: [["productionBoard", "Production Board"]] },
     { label: "PROFILES", items: [["workers", "Crew Profiles"], ["promoters", "Promoter Profiles"], ["venues", "Venues"]] },
     { label: "EVENTS", items: [["events", "Events"], ["vehicles", "Vehicles"], ["reports", "Reports"]] },
-    { label: "DIRECTORIES", items: [["directory", "Crew Directory"], ["messages", "Messages"]] }
+    { label: "DIRECTORIES", items: [["directory", "Crew Directory"], ["messages", "Messages"]] },
+    { label: "SETTINGS", items: [["mobileApp", "Mobile Settings"]] }
   ],
   PRODUCTION_TEAM_ACCESS: [
     { items: [["productionBoard", "Production Board"]] },
     { label: "EVENTS", items: [["events", "Events"], ["vehicles", "Vehicles"], ["reports", "Reports"]] },
-    { label: "DIRECTORIES", items: [["directory", "Crew Directory"], ["messages", "Messages"]] }
+    { label: "DIRECTORIES", items: [["directory", "Crew Directory"], ["messages", "Messages"]] },
+    { label: "SETTINGS", items: [["mobileApp", "Mobile Settings"]] }
   ],
   CREW: [
     { items: [["workers", "My Profile"], ["clock", "Time Clock"]] },
     { label: "EVENTS", items: [["productionResponse", "Crew Response"], ["events", "Events"], ["timecards", "Timecards"], ["vehicles", "Vehicles"], ["reports", "Reports"]] },
-    { label: "DIRECTORIES", items: [["directory", "Crew Directory"], ["runner", "Gig Directory"], ["messages", "Messages"]] }
+    { label: "DIRECTORIES", items: [["directory", "Crew Directory"], ["runner", "Gig Directory"], ["messages", "Messages"]] },
+    { label: "SETTINGS", items: [["mobileApp", "Mobile Settings"]] }
   ]
 };
 NAV_GROUPS.CLIENT = NAV_GROUPS.CLIENT_ADMIN;
@@ -4208,12 +4216,7 @@ function renderMobileDeviceStatus() {
   const mode = $("#mobileDeviceMode");
   const status = $("#mobileDeviceStatus");
   if (!panel || !mode || !status) return;
-  panel.hidden = !isAdminRole();
-  if (!isAdminRole()) {
-    status.innerHTML = "";
-    mode.textContent = "";
-    return;
-  }
+  panel.hidden = false;
   const info = mobileRuntimeInfo();
   mode.textContent = info.native ? `${info.platform} app` : "web browser";
   const pwaReady = "serviceWorker" in navigator && ["http:", "https:"].includes(window.location.protocol);
@@ -4350,11 +4353,6 @@ function renderMobileInstallPanel() {
   const status = $("#mobileInstallStatus");
   const button = $("#mobileInstallButton");
   if (!status || !button) return;
-  if (!isAdminRole()) {
-    status.textContent = "";
-    button.hidden = true;
-    return;
-  }
   const canPrompt = !!installPromptEvent;
   const secureWeb = ["http:", "https:"].includes(window.location.protocol);
   const installed = appInstallState === "installed" || window.matchMedia?.("(display-mode: standalone)").matches || navigator.standalone;
