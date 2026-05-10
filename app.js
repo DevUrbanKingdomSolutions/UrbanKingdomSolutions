@@ -4317,14 +4317,58 @@ function assignmentPayLine(assignment, event) {
 function assignmentTable(event) {
   const assignments = eventAssignments(event.id);
   if (!assignments.length) return `<p>No detailed runner assignments yet.</p>`;
-  return `<table class="mini-table"><thead><tr><th>Runner</th><th>Dates</th><th>Vehicle</th><th>License Plate</th><th>Rate</th><th></th></tr></thead><tbody>${assignments.map((assignment) => {
+  return `<div class="event-assignment-list">${assignments.map((assignment) => {
     const worker = getWorker(assignment.workerId);
-    const plate = assignmentLicensePlate(assignment);
+    const dateLine = [formatDate(assignment.startDate), formatDate(assignment.endDate)].filter(Boolean).join(" - ") || "Dates not set";
+    const status = assignment.status || "Assigned";
     const actions = canAdminEdit()
       ? `<div class="row-actions"><button class="tiny-button" data-edit="eventAssignments" data-id="${assignment.id}" data-form="eventAssignmentForm" type="button">Edit</button><button class="tiny-button danger" data-delete="eventAssignments" data-id="${assignment.id}" type="button">Delete</button></div>`
       : "";
-    return `<tr><td>${escapeHtml(worker?.name || "Unassigned")}</td><td>${formatDate(assignment.startDate)}<p>${formatDate(assignment.endDate)}</p></td><td>${escapeHtml(assignment.vehicleUse || "No Vehicle")}<p>${escapeHtml(assignment.vehicleType || "")}</p><p>Plate: ${escapeHtml(plate || "Not set")}</p></td><td>${escapeHtml(plate || "Not set")}</td><td>${canViewRates() ? assignmentPayLine(assignment, event) : ""}</td><td>${actions}</td></tr>`;
-  }).join("")}</tbody></table>`;
+    return `<div class="event-assignment-row">
+      <div class="event-assignment-main">
+        <button class="link-button" data-view-event-assignment="${escapeHtml(assignment.id)}" type="button"><strong>${escapeHtml(worker?.name || "Unassigned")}</strong></button>
+        <span>${escapeHtml(status)} - ${escapeHtml(dateLine)}</span>
+      </div>
+      ${actions}
+    </div>`;
+  }).join("")}</div>`;
+}
+
+function openEventAssignmentDetail(assignmentId) {
+  const assignment = getEventAssignment(assignmentId);
+  if (!assignment) {
+    toast("Assignment not found.");
+    return;
+  }
+  const event = getEvent(assignment.eventId);
+  const worker = getWorker(assignment.workerId);
+  const venue = getVenue(event?.venueId);
+  const promoter = getPromoter(event?.promoterId);
+  const plate = assignmentLicensePlate(assignment);
+  const rateDetails = canViewRates()
+    ? [
+        ["Pay Basis", assignmentPayLine(assignment, event || {})],
+        ["Day Rate", currency(assignment.dayRate || event?.dayRate || activeClientRecord()?.defaultDayRate || 0)],
+        ["Included Hours", assignment.includedHours || event?.includedHours || activeClientRecord()?.defaultIncludedHours || 10],
+        ["Additional Rate", currency(assignment.additionalRate || event?.additionalRate || activeClientRecord()?.defaultAdditionalRate || 0)]
+      ]
+    : [];
+  readOnlyProfileCard(worker?.name || "Assignment", event?.name || "Event Assignment", [
+    ["Event", event?.name],
+    ["Status", assignment.status || "Assigned"],
+    ["Start", formatDate(assignment.startDate || event?.startDate)],
+    ["End", formatDate(assignment.endDate || event?.endDate)],
+    ["Venue", venue?.name],
+    ["Promoter", promoterLabel(promoter)],
+    ["Vehicle Use", assignment.vehicleUse || "No Vehicle"],
+    ["Vehicle Type", assignment.vehicleType],
+    ["License Plate", plate || "Not set"],
+    ...rateDetails
+  ], [
+    ["Rental / Vehicle Info", [assignment.vehicleUse, assignment.vehicleType, plate ? `Plate: ${plate}` : ""].filter(Boolean).join("\n")],
+    ["Notes", assignment.notes]
+  ], profileAvatarLarge(worker || { name: "Assignment" }, worker?.hideHeadshot));
+  openForm("recordView");
 }
 
 function assignmentLicensePlate(assignment) {
@@ -8565,6 +8609,7 @@ function bindEvents() {
     const openReportTypeButton = event.target.closest("[data-open-report-type]");
     const requestMobilePermissionsButton = event.target.closest("[data-request-mobile-permissions]");
     const openNotificationButton = event.target.closest("[data-open-notification]");
+    const viewEventAssignmentButton = event.target.closest("[data-view-event-assignment]");
 
     if (openNotificationButton) {
       await openNotification(openNotificationButton.dataset.openNotification);
@@ -8675,9 +8720,14 @@ function bindEvents() {
     }
     if (notifyProductionOfficeButton) await notifyRunnerToProductionOffice(notifyProductionOfficeButton.dataset.notifyProductionOffice);
     if (profileAccessButton) await openProfileAccessForm(profileAccessButton.dataset.openProfileAccess);
+    if (viewEventAssignmentButton) {
+      openEventAssignmentDetail(viewEventAssignmentButton.dataset.viewEventAssignment);
+      return;
+    }
     if (viewRecordButton) {
       const [storeName, id] = viewRecordButton.dataset.viewRecord.split(":");
       openReadOnlyRecord(storeName, id);
+      return;
     }
 
   if (openButton) {
