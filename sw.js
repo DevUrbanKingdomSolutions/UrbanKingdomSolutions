@@ -1,9 +1,9 @@
-const APP_SHELL_CACHE = "production-crew-shell-v1.04.033";
+const APP_SHELL_CACHE = "production-crew-shell-v1.04.034";
 const APP_SHELL_ASSETS = [
   "./",
   "./index.html",
-  "./styles.css?v=V1.04.033-timecard-note-columns",
-  "./app.js?v=V1.04.033-timecard-note-columns",
+  "./styles.css?v=V1.04.034-nav-solid-break",
+  "./app.js?v=V1.04.034-nav-solid-break",
   "./release-notice.json",
   "./manifest.webmanifest",
   "./assets/app-icon.svg"

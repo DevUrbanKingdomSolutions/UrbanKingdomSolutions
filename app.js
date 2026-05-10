@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.04.033",
-  title: "V1.04.033 update installed",
-  body: "Updated timecard lists to separate work dates from punch times and show client admin notes in their own column."
+  version: "V1.04.034",
+  title: "V1.04.034 update installed",
+  body: "Changed the active nav highlight from a fade to a clean white tip with a solid role-color break line."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",

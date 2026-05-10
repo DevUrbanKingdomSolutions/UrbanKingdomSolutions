@@ -3028,7 +3028,7 @@ body:not(.owner-mode) .rate-field {
 
   .nav-item.active {
     background:
-      linear-gradient(90deg, #ffffff 0, color-mix(in srgb, var(--accent) 68%, #ffffff) 8px, color-mix(in srgb, var(--accent) 72%, rgba(255, 255, 255, 0.14)) 16px, rgba(255, 255, 255, 0.11));
+      linear-gradient(90deg, #ffffff 0 8px, var(--accent) 8px 11px, color-mix(in srgb, var(--accent) 72%, rgba(255, 255, 255, 0.14)) 11px, rgba(255, 255, 255, 0.11));
     color: #ffffff;
     box-shadow: 0 10px 22px rgba(0, 0, 0, 0.13);
   }
@@ -3515,7 +3515,7 @@ body:not(.owner-mode) .rate-field {
 
   .nav-item.active {
     background:
-      linear-gradient(90deg, #ffffff 0, color-mix(in srgb, var(--accent) 68%, #ffffff) 8px, color-mix(in srgb, var(--accent) 38%, rgba(255, 255, 255, 0.1)) 16px);
+      linear-gradient(90deg, #ffffff 0 8px, var(--accent) 8px 11px, color-mix(in srgb, var(--accent) 38%, rgba(255, 255, 255, 0.1)) 11px);
     box-shadow: none;
   }
 
