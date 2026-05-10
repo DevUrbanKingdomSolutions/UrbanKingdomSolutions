@@ -2490,22 +2490,25 @@ body:not(.owner-mode) .rate-field {
 
   #messages .stack-layout {
     gap: 10px;
+    margin: 0 -2px;
   }
 
   #messages .panel {
-    border-radius: 8px;
+    border-radius: 0;
   }
 
   #messages .stack-layout > .panel:first-child {
     border: 0;
     background: transparent;
     box-shadow: none;
+    padding: 0;
   }
 
   #messages .stack-layout > .panel:nth-child(2) {
     border: 0;
     background: transparent;
     box-shadow: none;
+    padding: 0;
   }
 
   #messages .stack-layout > .panel:first-child .record-grid {
@@ -2538,7 +2541,7 @@ body:not(.owner-mode) .rate-field {
   }
 
   #messages .messages-heading {
-    padding: 0 2px 8px;
+    display: none;
   }
 
   #messages .messages-heading h3 {
@@ -2561,7 +2564,7 @@ body:not(.owner-mode) .rate-field {
 
   .mobile-message-sections {
     display: grid;
-    gap: 18px;
+    gap: 20px;
   }
 
   .mobile-message-section {
@@ -2579,7 +2582,7 @@ body:not(.owner-mode) .rate-field {
   .mobile-message-section-heading h4 {
     margin: 0;
     color: var(--ink);
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 900;
     letter-spacing: 0.04em;
     text-transform: uppercase;
@@ -2619,12 +2622,12 @@ body:not(.owner-mode) .rate-field {
 
   .message-thread-card {
     grid-template-columns: 1fr;
-    min-height: 68px;
+    min-height: 62px;
     border-width: 0 0 1px;
     border-color: rgba(195, 186, 169, 0.62);
     border-radius: 0;
     background: transparent;
-    padding: 12px 2px;
+    padding: 13px 2px;
     box-shadow: none;
   }
 
@@ -2642,14 +2645,16 @@ body:not(.owner-mode) .rate-field {
     gap: 8px;
   }
 
+  .message-thread-card-top > span:first-child {
+    display: none;
+  }
+
   .message-thread-card-main strong {
     font-size: 15px;
   }
 
   .message-thread-card-main p {
-    margin: 0;
-    font-size: 13px;
-    line-height: 1.35;
+    display: none;
   }
 
   .message-thread-footer .message-avatar-stack {
@@ -2664,6 +2669,7 @@ body:not(.owner-mode) .rate-field {
 
   .message-thread-footer {
     align-items: flex-end;
+    margin-top: 2px;
   }
 
   #activeMessagePanel {
@@ -2696,6 +2702,7 @@ body:not(.owner-mode) .rate-field {
   }
 
   .active-message-heading .muted {
+    display: none;
     grid-column: 2;
     font-size: 12px;
     line-height: 1.25;
