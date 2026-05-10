@@ -2166,9 +2166,12 @@ body:not(.owner-mode) .rate-field {
   }
 
   .topbar-title {
-    grid-column: 2;
+    grid-column: 1 / -1;
     grid-row: 1;
+    justify-self: center;
     min-width: 0;
+    max-width: calc(100% - 112px);
+    text-align: center;
   }
 
   .mobile-menu-button {
@@ -2184,6 +2187,7 @@ body:not(.owner-mode) .rate-field {
     color: var(--ink);
     padding: 8px 10px;
     font-weight: 800;
+    z-index: 1;
   }
 
   .topbar h2 {
@@ -2232,6 +2236,7 @@ body:not(.owner-mode) .rate-field {
     grid-column: 3;
     grid-row: 1;
     justify-self: end;
+    z-index: 1;
   }
 
   .notification-bell {
