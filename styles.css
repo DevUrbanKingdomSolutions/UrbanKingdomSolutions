@@ -2468,7 +2468,7 @@ body:not(.owner-mode) .rate-field {
     min-height: 38px;
   }
 
-  .mobile-message-direct-toggle {
+  .mobile-message-direct-menu {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 6px;
@@ -2476,7 +2476,7 @@ body:not(.owner-mode) .rate-field {
     border-bottom: 1px solid rgba(195, 186, 169, 0.46);
   }
 
-  .mobile-message-direct-toggle .tab-button {
+  .mobile-message-direct-menu .tab-button {
     width: 100%;
     border-radius: 999px;
   }

@@ -354,6 +354,7 @@ let state = {
   messageEventFilter: localStorage.getItem("productionCrewMessageEventFilter") || "current",
   selectedMessageEventId: localStorage.getItem("productionCrewSelectedMessageEventId") || "",
   messageDirectScope: localStorage.getItem("productionCrewMessageDirectScope") || "event",
+  messageDirectPickerOpen: false,
   collapsedNavGroups: JSON.parse(localStorage.getItem("productionCrewCollapsedNavGroups") || "{}")
 };
 
@@ -5349,13 +5350,17 @@ function mobileMessagingChatCards() {
         <h4>Direct Messages</h4>
         <button class="tiny-button" data-new-message-thread type="button">New</button>
       </div>
-      <div class="mobile-message-list"><div class="mobile-message-direct-toggle">
-          <button class="tab-button ${state.messageDirectScope === "event" ? "active" : ""}" data-message-direct-scope="event" type="button">Event Contacts</button>
-          <button class="tab-button ${state.messageDirectScope === "all" ? "active" : ""}" data-message-direct-scope="all" type="button">All Contacts</button>
-        </div>${directProfiles.length
+      <div class="mobile-message-list">${state.messageDirectPickerOpen ? mobileDirectPickerMenu() : ""}${directProfiles.length
         ? directProfiles.map((profile) => directMessageCard(profile)).join("")
         : `<div class="compact-item empty">No direct message contacts are available yet.</div>`}</div>
     </section>
+  </div>`;
+}
+
+function mobileDirectPickerMenu() {
+  return `<div class="mobile-message-direct-menu">
+    <button class="tab-button ${state.messageDirectScope === "event" ? "active" : ""}" data-message-direct-scope="event" type="button">Event Contacts</button>
+    <button class="tab-button ${state.messageDirectScope === "all" ? "active" : ""}" data-message-direct-scope="all" type="button">All Contacts</button>
   </div>`;
 }
 
@@ -8355,6 +8360,7 @@ function bindEvents() {
     }
     if (messageDirectScopeButton) {
       state.messageDirectScope = messageDirectScopeButton.dataset.messageDirectScope === "all" ? "all" : "event";
+      state.messageDirectPickerOpen = false;
       localStorage.setItem("productionCrewMessageDirectScope", state.messageDirectScope);
       renderMessaging();
       return;
@@ -8379,7 +8385,12 @@ function bindEvents() {
     }
     if (manageMessageThreadButton) openMessageThreadManageForm();
     if (newMessageThreadButton) {
-      toast(isMobileMessageLayout() ? "Choose a contact to start a direct message." : "Custom event thread setup is next. Use Direct Message for new private threads right now.");
+      if (isMobileMessageLayout()) {
+        state.messageDirectPickerOpen = !state.messageDirectPickerOpen;
+        renderMessaging();
+        return;
+      }
+      toast("Custom event thread setup is next. Use Direct Message for new private threads right now.");
       state.messagingThreadType = "direct";
       state.messageDirectScope = "all";
       localStorage.setItem("productionCrewMessagingThreadType", state.messagingThreadType);
