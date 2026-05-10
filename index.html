@@ -10,9 +10,17 @@
     <title>Production Crew Database</title>
     <link rel="manifest" href="manifest.webmanifest">
     <link rel="icon" href="assets/app-icon.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="styles.css?v=V1.03.071-mobile-event-thread-options">
+    <link rel="stylesheet" href="styles.css?v=V1.03.073-loading-wave">
   </head>
   <body>
+    <div id="appLoadingOverlay" class="app-loading-overlay" aria-live="polite">
+      <div class="loading-wave" aria-hidden="true">
+        <span></span>
+        <span></span>
+        <span></span>
+      </div>
+      <p id="appLoadingText">Loading</p>
+    </div>
     <div id="pullRefreshIndicator" class="pull-refresh-indicator" aria-hidden="true">Pull to refresh</div>
     <section id="authScreen" class="auth-screen">
       <form id="loginForm" class="auth-card">
@@ -1446,6 +1454,6 @@
     <div id="modalHost"></div>
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js?v=V1.03.071-mobile-event-thread-options"></script>
+    <script src="app.js?v=V1.03.073-loading-wave"></script>
   </body>
 </html>

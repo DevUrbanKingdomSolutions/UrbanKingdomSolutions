@@ -1241,6 +1241,7 @@ function isSupabaseConfigured() {
 }
 
 function showAuthScreen(message = "") {
+  setLoadingOverlay(message || "Loading", isLoadingMessage(message));
   $("#authScreen").hidden = false;
   $("#activateScreen").hidden = true;
   $("#setupScreen").hidden = true;
@@ -1252,6 +1253,7 @@ function showAuthScreen(message = "") {
 }
 
 function showActivateScreen(message = "") {
+  setLoadingOverlay("", false);
   $("#authScreen").hidden = true;
   $("#activateScreen").hidden = false;
   $("#setupScreen").hidden = true;
@@ -1263,6 +1265,7 @@ function showActivateScreen(message = "") {
 }
 
 function showSetupScreen(session, message = "Set your password to finish setup.") {
+  setLoadingOverlay("", false);
   $("#authScreen").hidden = true;
   $("#activateScreen").hidden = true;
   $("#setupScreen").hidden = false;
@@ -1277,6 +1280,7 @@ function showSetupScreen(session, message = "Set your password to finish setup."
 }
 
 function showPublicEventScreen(message = "Loading event access...") {
+  setLoadingOverlay(message, isLoadingMessage(message));
   $("#authScreen").hidden = true;
   $("#activateScreen").hidden = true;
   $("#setupScreen").hidden = true;
@@ -1286,6 +1290,7 @@ function showPublicEventScreen(message = "Loading event access...") {
 }
 
 function showAppShell() {
+  setLoadingOverlay("", false);
   $("#authScreen").hidden = true;
   $("#activateScreen").hidden = true;
   $("#setupScreen").hidden = true;
@@ -1294,7 +1299,20 @@ function showAppShell() {
 }
 
 function setAuthMessage(message) {
+  setLoadingOverlay(message, isLoadingMessage(message));
   $("#authMessage").textContent = message;
+}
+
+function isLoadingMessage(message = "") {
+  return /checking|loading|logging|signing|syncing|restoring|starting/i.test(String(message || ""));
+}
+
+function setLoadingOverlay(message = "Loading", visible = true) {
+  const overlay = $("#appLoadingOverlay");
+  if (!overlay) return;
+  overlay.hidden = !visible;
+  const label = $("#appLoadingText");
+  if (label) label.textContent = message || "Loading";
 }
 
 function initializeSupabaseClient() {
@@ -7627,7 +7645,6 @@ async function openMessageChannel(type, eventId, options = {}) {
     refreshSendbirdTypingUsers();
     renderMessaging();
     if (isMobileMessageLayout()) $("#messages")?.scrollIntoView({ block: "start" });
-    if (!options.silent) toast(`${MESSAGE_THREAD_TYPES[threadType].label} opened.`);
   } catch (error) {
     console.error(error);
     if (!options.silent) toast(error.message || "Could not open message thread.");
@@ -7665,7 +7682,6 @@ async function openDirectMessageChannel(profileId) {
     refreshSendbirdTypingUsers();
     renderMessaging();
     if (isMobileMessageLayout()) $("#messages")?.scrollIntoView({ block: "start" });
-    toast("Direct message opened.");
   } catch (error) {
     console.error(error);
     toast(error.message || "Could not open direct message.");
@@ -7704,7 +7720,6 @@ async function openPermanentMessageChannel(type, key) {
     refreshSendbirdTypingUsers();
     renderMessaging();
     if (isMobileMessageLayout()) $("#messages")?.scrollIntoView({ block: "start" });
-    toast(`${MESSAGE_THREAD_TYPES[type].label} opened.`);
   } catch (error) {
     console.error(error);
     toast(error.message || "Could not open message thread.");
