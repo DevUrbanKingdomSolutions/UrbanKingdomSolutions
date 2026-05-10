@@ -32,6 +32,11 @@ const ACTIVE_BROWSER_SESSION_KEY = "productionCrewActiveBrowserSession";
 const LAST_ACTIVE_VIEW_KEY = "productionCrewLastActiveView";
 const POST_SETUP_PERMISSION_PROMPT_KEY = "productionCrewPostSetupPermissionPrompt";
 const PULL_REFRESH_THRESHOLD = 92;
+const CURRENT_RELEASE_NOTICE = {
+  version: "V1.04.020",
+  title: "V1.04.020 update installed",
+  body: "Admin system notices now include each app update with the version number and a simple description."
+};
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
   rentalPhotoUrgent: "rental-photo-urgent",
@@ -2177,6 +2182,7 @@ async function applyAuthenticatedSession(session, preferredView = "") {
   await hydrateAppRecordsFromSupabase();
   await loadState();
   await ensureWelcomeNotification();
+  await ensureReleaseNotification();
   await syncLocalRecordsToSupabase();
   await refreshUserAccessList(false);
   appHasLoaded = true;
@@ -5914,6 +5920,25 @@ async function ensureWelcomeNotification() {
     id,
     title: "Notifications are ready",
     body: "System notices now appear in the System / Admin thread.",
+    type: "system",
+    viewId: "messages",
+    threadType: "system",
+    threadKey: "system-admin",
+    recipientId: ""
+  });
+  await loadState();
+}
+
+async function ensureReleaseNotification() {
+  if (!authState.session || !isAdminRole()) return;
+  const id = `release-${CURRENT_RELEASE_NOTICE.version.toLowerCase().replaceAll(".", "-")}`;
+  const existing = state.appNotifications.find((notification) => notification.id === id);
+  if (existing?.title === CURRENT_RELEASE_NOTICE.title && existing?.body === CURRENT_RELEASE_NOTICE.body) return;
+  await put("appNotifications", {
+    ...(existing || {}),
+    id,
+    title: CURRENT_RELEASE_NOTICE.title,
+    body: CURRENT_RELEASE_NOTICE.body,
     type: "system",
     viewId: "messages",
     threadType: "system",
