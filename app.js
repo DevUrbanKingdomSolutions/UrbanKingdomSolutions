@@ -343,6 +343,9 @@ let state = {
   accessRole: "CLIENT",
   activeWorkerId: localStorage.getItem("productionCrewActiveWorker") || "",
   activePromoterId: localStorage.getItem("productionCrewActivePromoter") || "",
+  eventScheduleFilter: localStorage.getItem("productionCrewEventScheduleFilter") || "all",
+  eventTypeFilter: localStorage.getItem("productionCrewEventTypeFilter") || "all",
+  eventSort: localStorage.getItem("productionCrewEventSort") || "upcoming",
   runnerCategory: "All",
   directoryTab: "crew",
   payrollView: localStorage.getItem("productionCrewPayrollView") || "worker",
@@ -4268,16 +4271,43 @@ async function updatePublicRunnerStatus(workerId, status) {
 }
 
 function renderEvents() {
-  const rows = visibleEvents().filter((event) => {
+  const visible = visibleEvents();
+  renderEventCardControls(visible);
+  const rows = sortEventCards(visible.filter((event) => {
     const venue = getVenue(event.venueId);
     const promoter = getPromoter(event.promoterId);
     const crewNames = eventWorkerIds(event).map((id) => getWorker(id)?.name).join(" ");
-    return matchesSearch(event, `${venue?.name || ""} ${promoter?.name || ""} ${crewNames}`);
-  });
+    const scheduleMatch = state.eventScheduleFilter === "all" || eventScheduleBucket(event) === state.eventScheduleFilter;
+    const typeMatch = state.eventTypeFilter === "all" || normalizedMatchValue(event.type) === state.eventTypeFilter;
+    return scheduleMatch && typeMatch && matchesSearch(event, `${venue?.name || ""} ${promoter?.name || ""} ${crewNames}`);
+  }));
   $("#eventTableCount").textContent = `${rows.length} shown`;
   $("#eventCards").innerHTML = rows.length
     ? rows.map((event) => eventCard(event)).join("")
     : `<div class="compact-item empty">No events match this search.</div>`;
+}
+
+function renderEventCardControls(events = visibleEvents()) {
+  const schedule = $("#eventScheduleFilter");
+  const type = $("#eventTypeFilter");
+  const sort = $("#eventSort");
+  if (schedule) schedule.value = state.eventScheduleFilter;
+  if (sort) sort.value = state.eventSort;
+  if (!type) return;
+  const types = Array.from(new Set(events.map((event) => event.type).filter(Boolean))).sort((a, b) => a.localeCompare(b));
+  type.innerHTML = `<option value="all">All types</option>${types.map((eventType) => `<option value="${escapeHtml(normalizedMatchValue(eventType))}">${escapeHtml(eventType)}</option>`).join("")}`;
+  type.value = [...types.map((eventType) => normalizedMatchValue(eventType)), "all"].includes(state.eventTypeFilter) ? state.eventTypeFilter : "all";
+  if (type.value !== state.eventTypeFilter) state.eventTypeFilter = type.value;
+}
+
+function sortEventCards(events) {
+  return [...events].sort((a, b) => {
+    if (state.eventSort === "name") return listText(a.name).localeCompare(listText(b.name));
+    if (state.eventSort === "crew") return eventWorkerIds(b).length - eventWorkerIds(a).length;
+    const aDate = new Date(a.startDate || a.endDate || a.createdAt || 0).getTime() || 0;
+    const bDate = new Date(b.startDate || b.endDate || b.createdAt || 0).getTime() || 0;
+    return state.eventSort === "latest" ? bDate - aDate : aDate - bDate;
+  });
 }
 
 function assignmentPayLine(assignment, event) {
@@ -4312,6 +4342,7 @@ function eventCard(event) {
   const promoter = getPromoter(event.promoterId);
   const crew = eventWorkerIds(event).map((id) => getWorker(id)?.name).filter(Boolean);
   const crewLine = isCrewRole() ? "Assigned to you" : (crew.join(", ") || "No crew assigned");
+  const bucket = eventScheduleBucket(event);
   const gigSearch = eventGigSearchText(event);
   const gigDirectoryButton = canOpenView("runner") && gigSearch
     ? `<button class="tiny-button" data-event-gig-search="${event.id}" type="button">City Resources</button>`
@@ -4323,11 +4354,16 @@ function eventCard(event) {
     ? `<button class="tiny-button" data-add-assignment="${event.id}" type="button">Add Runner</button><button class="tiny-button" data-swap-crew="${event.id}" type="button">Swap Crew</button><button class="tiny-button" data-substitute-crew="${event.id}" type="button">Substitution</button>`
     : "";
   const eventActions = `${gigDirectoryButton}${publicAccessButton}${adminEventActions}${actionButtons("events", event.id, "eventForm", "", canAdminEdit())}`;
-  return `<article class="record-card">
+  return `<article class="record-card event-card-view">
     <div class="record-card-main">
+      <div class="event-card-kicker">
+        <span class="status-pill">${escapeHtml(bucket === "current" ? "Current" : bucket === "past" ? "Past" : "Future")}</span>
+        <span>${escapeHtml(event.type || "Event")}</span>
+      </div>
       <strong>${recordLink("events", event.id, event.name)}</strong>
-      <span>${escapeHtml(event.type)} ${event.startDate ? "- " + formatDate(event.startDate) : ""}</span>
-      <p>${escapeHtml(venue?.name || "No venue")} | ${escapeHtml(promoterLabel(promoter) || "No promoter rep")}</p>
+      <span>${event.startDate ? escapeHtml(formatDate(event.startDate)) : "Date not set"}</span>
+      <p>${escapeHtml(venue?.name || "No venue")}</p>
+      <p>${escapeHtml(promoterLabel(promoter) || "No promoter rep")}</p>
       <p>${escapeHtml(event.productionContact)}</p>
       <p>${escapeHtml(crewLine)}</p>
       ${assignmentTable(event)}
@@ -8288,6 +8324,21 @@ function bindEvents() {
   $("#globalSearch").addEventListener("input", (event) => {
     state.search = event.target.value.trim().toLowerCase();
     render();
+  });
+  $("#eventScheduleFilter").addEventListener("change", (event) => {
+    state.eventScheduleFilter = event.target.value;
+    localStorage.setItem("productionCrewEventScheduleFilter", state.eventScheduleFilter);
+    renderEvents();
+  });
+  $("#eventTypeFilter").addEventListener("change", (event) => {
+    state.eventTypeFilter = event.target.value;
+    localStorage.setItem("productionCrewEventTypeFilter", state.eventTypeFilter);
+    renderEvents();
+  });
+  $("#eventSort").addEventListener("change", (event) => {
+    state.eventSort = event.target.value;
+    localStorage.setItem("productionCrewEventSort", state.eventSort);
+    renderEvents();
   });
   window.addEventListener("online", () => {
     renderConnectionBanner();

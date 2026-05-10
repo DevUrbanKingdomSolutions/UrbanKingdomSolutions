@@ -10,7 +10,7 @@
     <title>Production Crew Database</title>
     <link rel="manifest" href="manifest.webmanifest">
     <link rel="icon" href="assets/app-icon.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="styles.css?v=V1.03.091-hide-login-during-restore">
+    <link rel="stylesheet" href="styles.css?v=V1.03.092-event-card-view">
   </head>
   <body>
     <div id="appLoadingOverlay" class="app-loading-overlay" aria-live="polite">
@@ -729,7 +729,28 @@
                   <button class="tiny-button admin-action" data-open-form="eventForm" type="button">Add Event</button>
                 </div>
               </div>
-              <div id="eventCards" class="record-grid"></div>
+              <div class="list-controls event-card-controls">
+                <label>Schedule
+                  <select id="eventScheduleFilter">
+                    <option value="all">All events</option>
+                    <option value="current">Current</option>
+                    <option value="future">Future</option>
+                    <option value="past">Past</option>
+                  </select>
+                </label>
+                <label>Type
+                  <select id="eventTypeFilter"></select>
+                </label>
+                <label>Sort
+                  <select id="eventSort">
+                    <option value="upcoming">Upcoming first</option>
+                    <option value="latest">Latest first</option>
+                    <option value="name">Event name</option>
+                    <option value="crew">Crew count</option>
+                  </select>
+                </label>
+              </div>
+              <div id="eventCards" class="record-grid event-card-grid"></div>
             </section>
           </div>
         </section>
@@ -1454,6 +1475,6 @@
     <div id="modalHost"></div>
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js?v=V1.03.091-hide-login-during-restore"></script>
+    <script src="app.js?v=V1.03.092-event-card-view"></script>
   </body>
 </html>
