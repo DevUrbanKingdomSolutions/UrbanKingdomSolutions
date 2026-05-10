@@ -8738,7 +8738,7 @@ function bindEvents() {
 }
 
 async function init() {
-  showAuthScreen("Checking session...");
+  setLoadingOverlay("Checking session...", true);
   bindEvents();
   initMobileAppLifecycle();
   initPullToRefresh();
