@@ -3022,9 +3022,9 @@ body:not(.owner-mode) .rate-field {
   .nav-item.active::before,
   .nav-item.active::after {
     position: absolute;
-    top: 9px;
-    bottom: 9px;
-    border-radius: 999px 0 0 999px;
+    top: 0;
+    bottom: 0;
+    border-radius: 8px 0 0 8px;
     content: "";
   }
 
@@ -3528,9 +3528,9 @@ body:not(.owner-mode) .rate-field {
   .nav-item.active::before,
   .nav-item.active::after {
     position: absolute;
-    top: 9px;
-    bottom: 9px;
-    border-radius: 999px 0 0 999px;
+    top: 0;
+    bottom: 0;
+    border-radius: 8px 0 0 8px;
     content: "";
   }
 
