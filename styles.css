@@ -1270,6 +1270,9 @@ td p {
 .event-assignment-list {
   display: grid;
   gap: 0;
+  overflow: hidden;
+  border: 1px solid rgba(195, 186, 169, 0.52);
+  border-radius: 8px;
 }
 
 .event-assignment-row {
@@ -1277,8 +1280,13 @@ td p {
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 10px;
   align-items: center;
-  padding: 10px 0;
-  border-top: 1px solid rgba(195, 186, 169, 0.42);
+  padding: 10px 12px;
+  background: #ffffff;
+  border-top: 1px solid rgba(195, 186, 169, 0.28);
+}
+
+.event-assignment-row:nth-child(odd) {
+  background: #f8f8f7;
 }
 
 .event-assignment-row:first-child {
@@ -1295,12 +1303,6 @@ td p {
   color: var(--ink);
   font-size: 14px;
   line-height: 1.25;
-}
-
-.event-assignment-main span {
-  color: var(--muted);
-  font-size: 12px;
-  line-height: 1.35;
 }
 
 .icon-button {

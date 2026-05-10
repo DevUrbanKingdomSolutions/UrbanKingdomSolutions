@@ -4319,15 +4319,12 @@ function assignmentTable(event) {
   if (!assignments.length) return `<p>No detailed runner assignments yet.</p>`;
   return `<div class="event-assignment-list">${assignments.map((assignment) => {
     const worker = getWorker(assignment.workerId);
-    const dateLine = [formatDate(assignment.startDate), formatDate(assignment.endDate)].filter(Boolean).join(" - ") || "Dates not set";
-    const status = assignment.status || "Assigned";
     const actions = canAdminEdit()
       ? `<div class="row-actions"><button class="tiny-button" data-edit="eventAssignments" data-id="${assignment.id}" data-form="eventAssignmentForm" type="button">Edit</button><button class="tiny-button danger" data-delete="eventAssignments" data-id="${assignment.id}" type="button">Delete</button></div>`
       : "";
     return `<div class="event-assignment-row">
       <div class="event-assignment-main">
         <button class="link-button" data-view-event-assignment="${escapeHtml(assignment.id)}" type="button"><strong>${escapeHtml(worker?.name || "Unassigned")}</strong></button>
-        <span>${escapeHtml(status)} - ${escapeHtml(dateLine)}</span>
       </div>
       ${actions}
     </div>`;
