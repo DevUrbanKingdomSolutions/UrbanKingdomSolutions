@@ -7943,6 +7943,16 @@ async function closePriorOpenCrewTimecards(eventId, workerId, todayKey) {
   if (priorOpenCards.length) await loadState();
 }
 
+function priorOpenCrewTimecards(eventId, workerId, todayKey) {
+  return state.timecards
+    .filter((card) => card.eventId === eventId
+      && card.workerId === workerId
+      && card.clockIn
+      && !card.clockOut
+      && timecardWorkDate(card) !== todayKey)
+    .sort((a, b) => new Date(b.clockIn || b.createdAt || 0) - new Date(a.clockIn || a.createdAt || 0));
+}
+
 function newCrewTimecard(eventId, event, workDate) {
   const worker = getWorker(state.activeWorkerId);
   const assignment = assignmentForEventWorker(eventId, state.activeWorkerId);
@@ -7968,14 +7978,22 @@ async function crewPunch(eventId, field) {
   const nowDate = new Date();
   const now = toLocalInputValue(nowDate);
   const todayKey = localDateKey(nowDate);
-  await closePriorOpenCrewTimecards(eventId, state.activeWorkerId, todayKey);
-  let card = state.timecards.find((item) => item.eventId === eventId && item.workerId === state.activeWorkerId && timecardWorkDate(item) === todayKey && !item.clockOut)
-    || state.timecards.find((item) => item.eventId === eventId && item.workerId === state.activeWorkerId && timecardWorkDate(item) === todayKey);
-  if (card?.clockOut && field === "clockIn") {
-    card = null;
+  let card = null;
+  const priorOpen = priorOpenCrewTimecards(eventId, state.activeWorkerId, todayKey);
+  if (field === "clockOut" && priorOpen.length) {
+    card = priorOpen[0];
+  } else {
+    if (field === "clockIn") await closePriorOpenCrewTimecards(eventId, state.activeWorkerId, todayKey);
+    card = state.timecards.find((item) => item.eventId === eventId && item.workerId === state.activeWorkerId && timecardWorkDate(item) === todayKey && !item.clockOut)
+      || state.timecards.find((item) => item.eventId === eventId && item.workerId === state.activeWorkerId && timecardWorkDate(item) === todayKey);
+  }
+  if (card?.clockOut && field === "clockIn") card = null;
+  if (card?.clockIn && !card.clockOut && field === "clockIn") {
+    toast("Wrap the open timecard before starting another line.");
+    return;
   }
   if (card?.clockOut && field !== "clockIn") {
-    toast("Start a new Call Time for today before adding more punches.");
+    toast("Start a new Call Time before adding more punches.");
     return;
   }
   if (!card && field !== "clockIn") {
@@ -7986,7 +8004,7 @@ async function crewPunch(eventId, field) {
     card = newCrewTimecard(eventId, event, todayKey);
   }
   card.id = card.id || crypto.randomUUID();
-  card.workDate = todayKey;
+  card.workDate = field === "clockOut" && timecardWorkDate(card) !== todayKey ? timecardWorkDate(card) : todayKey;
   if (field === "clockOut" && rentalVehicleRequired(event, card)) {
     const endLog = vehicleLogForEventWorker(eventId, state.activeWorkerId, "End");
     if (!vehicleEndPhotosComplete(endLog)) {
