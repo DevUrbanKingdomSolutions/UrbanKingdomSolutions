@@ -6268,6 +6268,7 @@ function setView(viewId) {
   state.activeView = viewId;
   sessionStorage.setItem(LAST_ACTIVE_VIEW_KEY, viewId);
   applyAccessProfile();
+  document.body.classList.toggle("messages-desktop-view", viewId === "messages");
   $$(".view").forEach((view) => view.classList.toggle("active-view", view.id === viewId));
   $$(".nav-item").forEach((button) => button.classList.toggle("active", button.dataset.view === viewId));
   const label = combinedNavGroups().flatMap((group) => group.items).find(([view]) => view === viewId)?.[1];
