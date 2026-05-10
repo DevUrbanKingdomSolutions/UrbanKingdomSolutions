@@ -1349,6 +1349,13 @@ td p {
   box-shadow: var(--shadow);
 }
 
+.table-wrap .record-options-menu {
+  position: fixed;
+  top: auto;
+  right: auto;
+  z-index: 80;
+}
+
 .event-options-menu .tiny-button,
 .record-options-menu .tiny-button {
   width: 100%;

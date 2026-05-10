@@ -3247,6 +3247,24 @@ function enhanceResponsiveTables() {
       });
     });
   });
+  positionOpenRecordMenus();
+}
+
+function positionOpenRecordMenus() {
+  $$(".table-wrap .record-options").forEach((details) => {
+    const menu = details.querySelector(".record-options-menu");
+    if (!menu) return;
+    if (!details.open) {
+      menu.style.top = "";
+      menu.style.left = "";
+      return;
+    }
+    const rect = details.getBoundingClientRect();
+    const width = Math.max(170, menu.offsetWidth || 170);
+    const left = Math.min(window.innerWidth - width - 12, Math.max(12, rect.right - width));
+    menu.style.left = `${left}px`;
+    menu.style.top = `${Math.min(window.innerHeight - 12, rect.bottom + 6)}px`;
+  });
 }
 
 function renderAdmin() {
@@ -8153,7 +8171,12 @@ function bindEvents() {
   });
   window.addEventListener("resize", () => {
     if (window.innerWidth > 860) closeMobileNavigation();
+    positionOpenRecordMenus();
   });
+  window.addEventListener("scroll", positionOpenRecordMenus, true);
+  document.addEventListener("toggle", (event) => {
+    if (event.target.matches?.(".table-wrap .record-options")) positionOpenRecordMenus();
+  }, true);
   $(".nav-list").addEventListener("click", (event) => {
     const groupToggle = event.target.closest("[data-nav-group]");
     if (groupToggle) {
