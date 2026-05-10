@@ -1,5 +1,5 @@
 {
-  "version": "V1.04.021",
-  "title": "V1.04.021 update installed",
-  "body": "Notifications now refresh in the open app, and admin release notices can appear without a manual refresh."
+  "version": "V1.04.022",
+  "title": "V1.04.022 update installed",
+  "body": "Phone workflow notifications now also create live in-app bell notifications for the recipient."
 }

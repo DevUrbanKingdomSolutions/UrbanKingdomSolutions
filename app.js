@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.04.021",
-  title: "V1.04.021 update installed",
-  body: "Notifications now refresh in the open app, and admin release notices can appear without a manual refresh."
+  version: "V1.04.022",
+  title: "V1.04.022 update installed",
+  body: "Phone workflow notifications now also create live in-app bell notifications for the recipient."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -92,7 +92,8 @@ const CLOUD_SYNC_STORES = new Set([
   "productionContacts",
   "vehicleLogs",
   "accidentReports",
-  "messageThreadSettings"
+  "messageThreadSettings",
+  "appNotifications"
 ]);
 
 const ROLE_ALIASES = {
@@ -989,6 +990,27 @@ async function hydrateAppRecordsFromSupabase() {
     for (const row of data || []) {
       if (!CLOUD_SYNC_STORES.has(row.store_name) || !row.data?.id) continue;
       await put(row.store_name, row.data);
+    }
+  } finally {
+    cloudSyncPaused = false;
+  }
+}
+
+async function hydrateNotificationsFromSupabase() {
+  if (!supabaseClient || !authState.session || !authState.roleRecord || isAdminRole() || !cloudClientId()) return;
+  const { data, error } = await supabaseClient
+    .from("app_records")
+    .select("data")
+    .eq("client_id", cloudClientId())
+    .eq("store_name", "appNotifications");
+  if (error) {
+    console.warn("Could not load shared notifications.", error);
+    return;
+  }
+  cloudSyncPaused = true;
+  try {
+    for (const row of data || []) {
+      if (row.data?.id) await put("appNotifications", row.data);
     }
   } finally {
     cloudSyncPaused = false;
@@ -5932,6 +5954,7 @@ function notificationSnapshot(notifications = state.appNotifications) {
 async function refreshNotificationsFromStorage() {
   if (!authState.session) return;
   const existing = notificationSnapshot();
+  await hydrateNotificationsFromSupabase();
   const notifications = (await getAll("appNotifications")).sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
   const next = notificationSnapshot(notifications);
   if (existing === next) return;
@@ -7721,6 +7744,60 @@ function notificationSubscriberForWorker(worker) {
   return notificationSubscriberForProfile(worker, worker?.authUserId || worker?.id || worker?.email || "");
 }
 
+function inAppNotificationCopy(workflowId, payload = {}) {
+  const copies = {
+    [NOVU_WORKFLOWS.rentalPhotoReminder]: {
+      title: "Rental photos reminder",
+      body: `${payload.eventName || "Event"} needs start vehicle photos.`
+    },
+    [NOVU_WORKFLOWS.rentalPhotoUrgent]: {
+      title: "Urgent rental photos reminder",
+      body: `${payload.eventName || "Event"} still needs start vehicle photos.`
+    },
+    [NOVU_WORKFLOWS.runnerStatusChanged]: {
+      title: "Runner status updated",
+      body: `${payload.runnerName || "Runner"} marked ${payload.status || "updated"}.`
+    },
+    [NOVU_WORKFLOWS.eventAssignmentCreated]: {
+      title: "Event assignment",
+      body: `${payload.eventName || "Assigned event"} has been added to your schedule.`
+    },
+    [NOVU_WORKFLOWS.productionOfficeCall]: {
+      title: "Production office request",
+      body: payload.message || "Please report to the production office."
+    },
+    [NOVU_WORKFLOWS.timecardIssue]: {
+      title: "Timecard issue",
+      body: payload.message || "A timecard needs attention."
+    },
+    [NOVU_WORKFLOWS.reportSubmitted]: {
+      title: "Report submitted",
+      body: `${payload.reportTitle || payload.reportType || "Report"} was submitted.`
+    },
+    [NOVU_WORKFLOWS.vehicleDamageReported]: {
+      title: "Vehicle report submitted",
+      body: `${payload.reportTitle || "Vehicle damage report"} was submitted.`
+    }
+  };
+  return copies[workflowId] || {
+    title: "Notification",
+    body: payload.message || payload.eventName || "A new notification is available."
+  };
+}
+
+async function createWorkflowAppNotification(workflowId, payload = {}, to = {}, options = {}) {
+  if (!to?.subscriberId) return;
+  const copy = inAppNotificationCopy(workflowId, payload);
+  await createAppNotification({
+    title: copy.title,
+    body: copy.body,
+    type: options.type || "info",
+    viewId: options.viewId || "",
+    recordId: options.recordId || options.transactionId || "",
+    recipientId: sendbirdUserIdForProfile({ authUserId: to.subscriberId })
+  });
+}
+
 async function triggerNovuNotification(workflowId, payload = {}, to = notificationSubscriberForCurrentUser(), options = {}) {
   if (!initializeSupabaseClient()) return { ok: false, message: "Supabase login is not configured." };
   if (!workflowId || !to?.subscriberId) return { ok: false, message: "Novu workflow or subscriber is missing." };
@@ -7738,6 +7815,7 @@ async function triggerNovuNotification(workflowId, payload = {}, to = notificati
     if (!options.silent) toast(message);
     return { ok: false, message };
   }
+  createWorkflowAppNotification(workflowId, payload, to, options).catch((noticeError) => console.warn("In-app notification save failed", noticeError));
   if (!options.silent) toast("Notification queued.");
   return { ok: true, data };
 }
