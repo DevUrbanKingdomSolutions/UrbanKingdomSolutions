@@ -353,6 +353,7 @@ let state = {
   messagingThreadType: localStorage.getItem("productionCrewMessagingThreadType") || "event",
   messageEventFilter: localStorage.getItem("productionCrewMessageEventFilter") || "current",
   selectedMessageEventId: localStorage.getItem("productionCrewSelectedMessageEventId") || "",
+  messageEventPickerOpen: false,
   messageDirectScope: localStorage.getItem("productionCrewMessageDirectScope") || "event",
   messageDirectPickerOpen: false,
   collapsedNavGroups: JSON.parse(localStorage.getItem("productionCrewCollapsedNavGroups") || "{}")
@@ -5342,8 +5343,9 @@ function mobileMessagingChatCards() {
     <section class="mobile-message-section">
       <div class="mobile-message-section-heading">
         <h4>Event Threads</h4>
+        <button class="tiny-button" data-message-event-options type="button">Options</button>
       </div>
-      <div class="mobile-message-list">${mobileMessageEventControls()}${eventThreads || `<div class="compact-item empty">No event threads are available for this schedule view.</div>`}</div>
+      <div class="mobile-message-list">${state.messageEventPickerOpen ? mobileMessageEventControls() : ""}${eventThreads || `<div class="compact-item empty">No event threads are available for this schedule view.</div>`}</div>
     </section>
     <section class="mobile-message-section">
       <div class="mobile-message-section-heading">
@@ -8280,6 +8282,7 @@ function bindEvents() {
     const connectSendbirdButton = event.target.closest("[data-connect-sendbird]");
     const openEventChannelButton = event.target.closest("[data-open-event-channel]");
     const messageThreadTypeButton = event.target.closest("[data-message-thread-type]");
+    const messageEventOptionsButton = event.target.closest("[data-message-event-options]");
     const messageEventFilter = event.target.closest("[data-message-event-filter]");
     const messageEventSelect = event.target.closest("[data-message-event-select]");
     const messageDirectScopeButton = event.target.closest("[data-message-direct-scope]");
@@ -8342,6 +8345,11 @@ function bindEvents() {
     if (openEventChannelButton) await openEventMessagingChannel(openEventChannelButton.dataset.openEventChannel);
     if (messageThreadTypeButton) {
       await selectMessageThreadType(messageThreadTypeButton.dataset.messageThreadType);
+      return;
+    }
+    if (messageEventOptionsButton) {
+      state.messageEventPickerOpen = !state.messageEventPickerOpen;
+      renderMessaging();
       return;
     }
     if (messageEventFilter) {
