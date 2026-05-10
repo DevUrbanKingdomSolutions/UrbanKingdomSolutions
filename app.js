@@ -1289,8 +1289,8 @@ function showPublicEventScreen(message = "Loading event access...") {
   $("#publicEventContent").innerHTML = `<p class="auth-message">${escapeHtml(message)}</p>`;
 }
 
-function showAppShell() {
-  setLoadingOverlay("", false);
+function showAppShell(options = {}) {
+  if (!options.keepLoading) setLoadingOverlay("", false);
   $("#authScreen").hidden = true;
   $("#activateScreen").hidden = true;
   $("#setupScreen").hidden = true;
@@ -2091,6 +2091,7 @@ async function applyAuthenticatedSession(session, preferredView = "") {
     return;
   }
 
+  setLoadingOverlay("Restoring session...", true);
   authState.session = session;
   authState.user = session.user;
   if (authState.pendingSetup) {
@@ -2109,7 +2110,7 @@ async function applyAuthenticatedSession(session, preferredView = "") {
 
   $("#sessionEmail").textContent = session.user.email || "Signed in";
   $("#sessionRole").textContent = state.accessRole;
-  showAppShell();
+  showAppShell({ keepLoading: true });
   await ensureDatabase();
   await hydrateAccessLevelsFromSupabase();
   await hydrateClientSetupData(roleRecord, session.user);
@@ -2125,6 +2126,7 @@ async function applyAuthenticatedSession(session, preferredView = "") {
   const homeView = requestedView && assignedViews().includes(requestedView) ? requestedView : roleHomeView();
   if (location.hash !== `#${homeView}`) history.replaceState(null, "", `#${homeView}`);
   setView(homeView);
+  setLoadingOverlay("", false);
   openCurrentClientSetupStep();
   if (sessionStorage.getItem(POST_SETUP_PERMISSION_PROMPT_KEY)) {
     sessionStorage.removeItem(POST_SETUP_PERMISSION_PROMPT_KEY);
