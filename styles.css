@@ -1319,6 +1319,10 @@ body[data-access-tone="crew"] .desktop-dashboard-hero {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.dashboard-identity {
+  display: none;
+}
+
 .panel {
   overflow: hidden;
 }
@@ -2990,13 +2994,12 @@ body:not(.owner-mode) .rate-field {
   }
 
   .topbar-tools {
-    gap: 8px;
+    display: contents;
   }
 
   .session-pill,
   .access-control,
   .search-input,
-  .topbar-tools .ghost-button,
   .topbar-tools .tiny-button,
   .global-add-menu > summary {
     min-height: 38px;
@@ -3006,9 +3009,53 @@ body:not(.owner-mode) .rate-field {
     box-shadow: none;
   }
 
+  .topbar > .global-add-menu {
+    order: 2;
+    flex: 0 0 auto;
+  }
+
+  .global-add-menu > summary {
+    display: inline-flex;
+    width: 40px;
+    height: 40px;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    font-size: 22px;
+    line-height: 1;
+  }
+
+  .notification-center {
+    order: 3;
+    flex: 0 0 auto;
+  }
+
+  .topbar-tools .session-pill,
+  .topbar-tools .access-control {
+    display: none;
+  }
+
   .search-input {
+    order: 4;
     min-width: 240px;
     background: #ffffff;
+  }
+
+  #logoutButton {
+    order: 1;
+    min-height: 40px;
+    border: 0;
+    background: transparent;
+    color: var(--muted);
+    padding: 8px 6px;
+    box-shadow: none;
+    font-weight: 900;
+  }
+
+  #logoutButton:hover,
+  #logoutButton:focus-visible {
+    color: var(--accent-dark);
+    outline: none;
   }
 
   .notification-bell {
@@ -3076,6 +3123,19 @@ body:not(.owner-mode) .rate-field {
   .split-layout,
   .stack-layout {
     gap: 16px;
+  }
+
+  .dashboard-identity {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin: 16px 2px 0;
+    color: var(--muted);
+    font-size: 13px;
+  }
+
+  .dashboard-identity strong {
+    color: var(--ink);
   }
 
   .panel {
@@ -3526,7 +3586,8 @@ body:not(.owner-mode) .rate-field {
 
   .topbar-tools .access-control,
   .topbar-tools .ghost-button,
-  .topbar-tools .global-add-menu {
+  .topbar-tools .global-add-menu,
+  .topbar > .global-add-menu {
     display: none;
   }
 

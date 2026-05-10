@@ -10,7 +10,7 @@
     <title>Production Crew Database</title>
     <link rel="manifest" href="manifest.webmanifest">
     <link rel="icon" href="assets/app-icon.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="styles.css?v=V1.04.008-desktop-app-skin">
+    <link rel="stylesheet" href="styles.css?v=V1.04.009-refine-desktop-header">
   </head>
   <body>
     <div id="appLoadingOverlay" class="app-loading-overlay" aria-live="polite">
@@ -121,6 +121,10 @@
             <p class="eyebrow">Entertainment production operations</p>
             <h2 id="viewTitle">Dashboard</h2>
           </div>
+          <details id="globalAddMenu" class="record-options global-add-menu" hidden>
+            <summary class="tiny-button" aria-label="Add" title="Add">+</summary>
+            <div id="globalAddMenuOptions" class="record-options-menu"></div>
+          </details>
           <details id="notificationCenter" class="notification-center">
             <summary class="icon-button notification-bell" aria-label="Notifications" title="Notifications">
               <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
@@ -139,10 +143,6 @@
             </div>
           </details>
           <div class="topbar-tools">
-            <details id="globalAddMenu" class="record-options global-add-menu" hidden>
-              <summary class="tiny-button">Add</summary>
-              <div id="globalAddMenuOptions" class="record-options-menu"></div>
-            </details>
             <div class="session-pill">
               <span id="sessionEmail">Not signed in</span>
               <strong id="sessionRole">ROLE</strong>
@@ -239,6 +239,10 @@
               </div>
               <div id="clientProfileSummary" class="compact-list"></div>
             </section>
+          </div>
+          <div id="dashboardIdentity" class="dashboard-identity" hidden>
+            <span>Signed in as</span>
+            <strong id="dashboardIdentityName">Not signed in</strong>
           </div>
           <form id="clientProfileForm" class="panel form-panel owner-form">
             <div class="panel-heading">
@@ -1507,6 +1511,6 @@
     <div id="modalHost"></div>
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js?v=V1.04.008-desktop-app-skin"></script>
+    <script src="app.js?v=V1.04.009-refine-desktop-header"></script>
   </body>
 </html>

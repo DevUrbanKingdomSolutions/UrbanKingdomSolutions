@@ -3910,6 +3910,7 @@ function renderDashboard() {
   renderMobileQaPanel();
   renderMobileLaunchPanel();
   renderDesktopDashboardHero();
+  renderDashboardIdentity();
   if (isAdminRole()) {
     $("#eventCount").textContent = "0";
     $("#activeTimecards").textContent = "0";
@@ -3947,6 +3948,14 @@ function renderDashboard() {
   $("#recentNotes").innerHTML = noteItems.length
     ? noteItems.slice(0, 8).map((item) => `<div class="compact-item"><strong>${escapeHtml(item.type)}: ${escapeHtml(item.name)}</strong><span>${escapeHtml(item.text)}</span></div>`).join("")
     : `<div class="compact-item empty">Notes will appear here as you add them.</div>`;
+}
+
+function renderDashboardIdentity() {
+  const wrapper = $("#dashboardIdentity");
+  const name = $("#dashboardIdentityName");
+  if (!wrapper || !name) return;
+  name.textContent = currentSessionDisplayName();
+  wrapper.hidden = !authState.session;
 }
 
 function dashboardPayrollCards(cards = visibleRecords(state.timecards)) {
