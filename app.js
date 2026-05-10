@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.04.026",
-  title: "V1.04.026 update installed",
-  body: "Restored the subtle active sidebar tab and kept decorative role color away from data borders."
+  version: "V1.04.027",
+  title: "V1.04.027 update installed",
+  body: "Moved Currently Clocked In and Recent Notes above the dashboard calendar."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",

@@ -10,7 +10,7 @@
     <title>Production Crew Database</title>
     <link rel="manifest" href="manifest.webmanifest">
     <link rel="icon" href="assets/app-icon.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="styles.css?v=V1.04.026-subtle-role-accents">
+    <link rel="stylesheet" href="styles.css?v=V1.04.027-dashboard-order">
   </head>
   <body>
     <div id="appLoadingOverlay" class="app-loading-overlay" aria-live="polite">
@@ -176,17 +176,6 @@
             <div id="crewMobileActions" class="crew-mobile-actions"></div>
             <div id="crewMobileTasks" class="crew-mobile-tasks"></div>
           </section>
-          <section class="panel dashboard-calendar-panel">
-            <div class="panel-heading">
-              <h3>Calendar</h3>
-              <div class="panel-tools calendar-tools">
-                <button id="dashboardCalendarPrev" class="tiny-button" type="button">Prev</button>
-                <span id="dashboardCalendarTitle" class="calendar-title"></span>
-                <button id="dashboardCalendarNext" class="tiny-button" type="button">Next</button>
-              </div>
-            </div>
-            <div id="dashboardCalendar" class="dashboard-calendar"></div>
-          </section>
           <div class="dashboard-grid">
             <section class="panel">
               <div class="panel-heading">
@@ -201,6 +190,17 @@
               <div id="recentNotes" class="compact-list"></div>
             </section>
           </div>
+          <section class="panel dashboard-calendar-panel">
+            <div class="panel-heading">
+              <h3>Calendar</h3>
+              <div class="panel-tools calendar-tools">
+                <button id="dashboardCalendarPrev" class="tiny-button" type="button">Prev</button>
+                <span id="dashboardCalendarTitle" class="calendar-title"></span>
+                <button id="dashboardCalendarNext" class="tiny-button" type="button">Next</button>
+              </div>
+            </div>
+            <div id="dashboardCalendar" class="dashboard-calendar"></div>
+          </section>
           <form id="clientProfileForm" class="panel form-panel owner-form">
             <div class="panel-heading">
               <h3>My Client Rep Profile & Email Routing</h3>
@@ -1473,6 +1473,6 @@
     <div id="modalHost"></div>
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js?v=V1.04.026-subtle-role-accents"></script>
+    <script src="app.js?v=V1.04.027-dashboard-order"></script>
   </body>
 </html>
