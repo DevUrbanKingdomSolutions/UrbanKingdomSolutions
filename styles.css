@@ -706,6 +706,106 @@ label textarea:focus {
   display: block;
 }
 
+.desktop-dashboard-hero {
+  --hero-accent: #2d6cdf;
+  --hero-soft: #eef4ff;
+  display: grid;
+  grid-template-columns: minmax(0, 1.55fr) minmax(280px, 0.9fr);
+  gap: 18px;
+  align-items: stretch;
+  margin-bottom: 18px;
+  border: 1px solid color-mix(in srgb, var(--hero-accent) 28%, var(--line));
+  border-left: 8px solid var(--hero-accent);
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+body[data-access-tone="admin"] .desktop-dashboard-hero {
+  --hero-accent: #b8352d;
+  --hero-soft: #fff0ef;
+}
+
+body[data-access-tone="client"] .desktop-dashboard-hero {
+  --hero-accent: #2d6cdf;
+  --hero-soft: #eef4ff;
+}
+
+body[data-access-tone="promoter"] .desktop-dashboard-hero {
+  --hero-accent: #2c7a4b;
+  --hero-soft: #eef8f2;
+}
+
+body[data-access-tone="production"] .desktop-dashboard-hero {
+  --hero-accent: #b8871f;
+  --hero-soft: #fff7e4;
+}
+
+body[data-access-tone="crew"] .desktop-dashboard-hero {
+  --hero-accent: #8a70d6;
+  --hero-soft: #f4f0ff;
+}
+
+.desktop-hero-copy {
+  display: grid;
+  gap: 12px;
+  align-content: center;
+  padding: 24px;
+}
+
+.desktop-hero-copy span,
+.desktop-hero-stats span {
+  color: var(--hero-accent);
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.desktop-hero-copy h3 {
+  margin: 0;
+  max-width: 780px;
+  font-size: clamp(28px, 3vw, 46px);
+  line-height: 1.05;
+  letter-spacing: 0;
+}
+
+.desktop-hero-copy p {
+  margin: 0;
+  max-width: 720px;
+  color: var(--muted);
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.desktop-hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.desktop-hero-stats {
+  display: grid;
+  gap: 1px;
+  min-height: 100%;
+  background: color-mix(in srgb, var(--hero-accent) 14%, var(--line));
+}
+
+.desktop-hero-stats div {
+  display: grid;
+  gap: 8px;
+  align-content: center;
+  background: var(--hero-soft);
+  padding: 18px;
+}
+
+.desktop-hero-stats strong {
+  color: var(--ink);
+  font-size: 26px;
+  line-height: 1.05;
+}
+
 .metric-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -2181,6 +2281,10 @@ body:not(.owner-mode) .rate-field {
     grid-template-columns: 1fr;
   }
 
+  .desktop-dashboard-hero {
+    grid-template-columns: 1fr;
+  }
+
   .record-card {
     grid-template-columns: 1fr;
   }
@@ -2285,6 +2389,10 @@ body:not(.owner-mode) .rate-field {
   .active-view {
     flex: 1 1 auto;
     padding-bottom: calc(92px + env(safe-area-inset-bottom));
+  }
+
+  .desktop-dashboard-hero {
+    display: none;
   }
 
   .view:not(#messages) .stack-layout,

@@ -3906,6 +3906,7 @@ function renderDashboard() {
   renderMobileDeviceStatus();
   renderMobileQaPanel();
   renderMobileLaunchPanel();
+  renderDesktopDashboardHero();
   if (isAdminRole()) {
     $("#eventCount").textContent = "0";
     $("#activeTimecards").textContent = "0";
@@ -3940,6 +3941,115 @@ function renderDashboard() {
   $("#recentNotes").innerHTML = noteItems.length
     ? noteItems.slice(0, 8).map((item) => `<div class="compact-item"><strong>${escapeHtml(item.type)}: ${escapeHtml(item.name)}</strong><span>${escapeHtml(item.text)}</span></div>`).join("")
     : `<div class="compact-item empty">Notes will appear here as you add them.</div>`;
+}
+
+function dashboardHeroConfig() {
+  if (isAdminRole()) {
+    return {
+      eyebrow: "System workspace",
+      title: "Admin setup and health",
+      body: "Manage accounts, access, messaging readiness, and system notices without opening production records.",
+      primaryView: "admin",
+      primaryLabel: "Open Admin Console",
+      secondaryView: "dataTools",
+      secondaryLabel: "Data Tools",
+      stats: [
+        ["System Notices", systemAdminThreadMessages().length],
+        ["Client Accounts", state.clients.length],
+        ["Access Levels", accessLevelDefinitions().filter((level) => level.id !== "ADMIN").length]
+      ]
+    };
+  }
+  if (isCrewRole()) {
+    const currentEvents = visibleEvents().filter((event) => eventScheduleBucket(event) === "current");
+    const nextEvent = sortEventCards(visibleEvents().filter((event) => eventScheduleBucket(event) !== "past"))[0];
+    const liveCard = state.timecards.find((card) => card.workerId === state.activeWorkerId && card.clockIn && !card.clockOut);
+    return {
+      eyebrow: "Crew workspace",
+      title: nextEvent?.name || "Today's crew view",
+      body: liveCard ? "You have an active timecard running. Keep time, vehicle photos, reports, and messages moving from one place." : "Review your assigned events, messages, and timecard actions before the next call.",
+      primaryView: "clock",
+      primaryLabel: liveCard ? "Open Time Clock" : "Start Time Clock",
+      secondaryView: "messages",
+      secondaryLabel: "Messages",
+      stats: [
+        ["Current Events", currentEvents.length],
+        ["Assigned Events", visibleEvents().length],
+        ["Open Timecard", liveCard ? "Yes" : "No"]
+      ]
+    };
+  }
+  if (isProductionTeamRole()) {
+    const visible = visibleEvents();
+    const liveCards = visibleRecords(state.timecards).filter((card) => !card.clockOut);
+    return {
+      eyebrow: "Production team",
+      title: "Production board at a glance",
+      body: "Track the live event surface: assigned crew, reports, vehicles, and office messaging.",
+      primaryView: "productionBoard",
+      primaryLabel: "Open Production Board",
+      secondaryView: "messages",
+      secondaryLabel: "Messages",
+      stats: [
+        ["Visible Events", visible.length],
+        ["Live Timecards", liveCards.length],
+        ["Reports", visibleRecords(state.accidentReports).length]
+      ]
+    };
+  }
+  if (isProductionRole()) {
+    const visible = visibleEvents();
+    return {
+      eyebrow: "Promoter workspace",
+      title: "Event operations",
+      body: "Keep event details, production contacts, crew visibility, and reports close without digging through every module.",
+      primaryView: "events",
+      primaryLabel: "Open Events",
+      secondaryView: "productionBoard",
+      secondaryLabel: "Production Board",
+      stats: [
+        ["Events", visible.length],
+        ["Crew Assigned", new Set(visible.flatMap((event) => eventWorkerIds(event))).size],
+        ["Reports", visibleRecords(state.accidentReports).length]
+      ]
+    };
+  }
+  const cards = visibleRecords(state.timecards);
+  return {
+    eyebrow: "Client workspace",
+    title: activeClientRecord()?.name || "Production command center",
+    body: "Manage events, crew, venues, timecards, payroll, and client-side operations from a clean desktop view.",
+    primaryView: "events",
+    primaryLabel: "Open Events",
+    secondaryView: "timecards",
+    secondaryLabel: "Timecards",
+    stats: [
+      ["Events", visibleEvents().length],
+      ["Crew", visibleWorkers().length],
+      ["Est. Payroll", currency(cards.reduce((sum, card) => sum + estimatedPay(card), 0))]
+    ]
+  };
+}
+
+function renderDesktopDashboardHero() {
+  const hero = $("#desktopDashboardHero");
+  if (!hero) return;
+  const config = dashboardHeroConfig();
+  const secondary = config.secondaryView && assignedViews().includes(config.secondaryView)
+    ? `<button class="secondary-action" data-dashboard-link="${escapeHtml(config.secondaryView)}" type="button">${escapeHtml(config.secondaryLabel)}</button>`
+    : "";
+  const primary = config.primaryView && assignedViews().includes(config.primaryView)
+    ? `<button class="primary-action" data-dashboard-link="${escapeHtml(config.primaryView)}" type="button">${escapeHtml(config.primaryLabel)}</button>`
+    : "";
+  hero.innerHTML = `<div class="desktop-hero-copy">
+    <span>${escapeHtml(config.eyebrow)}</span>
+    <h3>${escapeHtml(config.title)}</h3>
+    <p>${escapeHtml(config.body)}</p>
+    <div class="desktop-hero-actions">${primary}${secondary}</div>
+  </div>
+  <div class="desktop-hero-stats">
+    ${config.stats.map(([label, value]) => `<div><span>${escapeHtml(label)}</span><strong>${escapeHtml(String(value))}</strong></div>`).join("")}
+  </div>`;
 }
 
 function renderMobileDeviceStatus() {
@@ -6277,7 +6387,9 @@ function applyAccessProfile() {
   document.body.classList.toggle("admin-mode", isAdminRole());
   document.body.classList.toggle("owner-mode", isClientRole());
   document.body.classList.toggle("production-mode", isProductionRole());
+  document.body.classList.toggle("production-team-mode", isProductionTeamRole());
   document.body.classList.toggle("crew-mode", isCrewRole());
+  document.body.dataset.accessTone = effectiveAccessRole().toLowerCase();
   renderAccessRoleOptions();
   renderAccessLevelControls();
   renderNavigation();
