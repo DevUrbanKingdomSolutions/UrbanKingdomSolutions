@@ -5735,17 +5735,7 @@ function visibleMessageThreadTypes() {
 }
 
 function messagingChannelCards() {
-  if (isMobileMessageLayout()) return mobileMessagingChatCards();
-  if (state.messagingThreadType === "direct") return directMessageCards();
-  if (state.messagingThreadType === "adminClient" || state.messagingThreadType === "system") return permanentMessageCards(state.messagingThreadType);
-  const threadType = state.messagingThreadType;
-  const events = visibleEvents()
-    .filter((event) => eventWorkerIds(event).length || isClientRole() || isProductionRole() || isProductionTeamRole())
-    .filter((event) => canViewMessageThread(threadType, event));
-  const empty = MESSAGE_THREAD_TYPES[threadType]?.empty || MESSAGE_THREAD_TYPES.event.empty;
-  return events.length
-    ? events.map((event) => eventMessageCard(event, threadType)).join("")
-    : `<div class="compact-item empty">${empty}</div>`;
+  return mobileMessagingChatCards();
 }
 
 function isMobileMessageLayout() {
@@ -6027,12 +6017,14 @@ function renderMessageThread() {
   if (!title || !meta || !thread || !form) return;
   $("#messages")?.classList.toggle("message-chat-open", !!sendbirdActiveChannel);
   document.body.classList.toggle("mobile-message-chat-open", state.activeView === "messages" && !!sendbirdActiveChannel && isMobileMessageLayout());
-  if (panel) panel.hidden = !sendbirdActiveChannel;
+  if (panel) panel.hidden = !sendbirdActiveChannel && isMobileMessageLayout();
   if (!sendbirdActiveChannel) {
+    if (title) title.textContent = "Select a chat";
+    if (meta) meta.textContent = "Choose a thread or direct message from the list.";
     if (members) members.innerHTML = "";
     if (typing) typing.innerHTML = "";
     form.hidden = true;
-    thread.innerHTML = "";
+    thread.innerHTML = `<div class="chat-thread-empty">Choose a message thread from the list.</div>`;
     return;
   }
   title.textContent = activeMessageThreadTitle();
@@ -8941,7 +8933,7 @@ function bindEvents() {
     }
     if (manageMessageThreadButton) openMessageThreadManageForm();
     if (newMessageThreadButton) {
-      if (isMobileMessageLayout()) {
+      if (state.activeView === "messages") {
         state.messageDirectPickerOpen = !state.messageDirectPickerOpen;
         renderMessaging();
         return;
