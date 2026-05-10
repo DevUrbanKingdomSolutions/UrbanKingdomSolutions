@@ -6109,9 +6109,31 @@ function renderAccessRoleOptions() {
 
 function currentSessionDisplayName() {
   if (!authState.user) return "Not signed in";
-  const subscriber = notificationSubscriberForCurrentUser();
-  const fullName = `${subscriber.firstName || ""} ${subscriber.lastName || ""}`.trim();
-  return fullName || authState.user.user_metadata?.name || authState.user.email || "Signed in";
+  const profile = loggedInProfileRecord();
+  const profileName = profile?.name || profile?.contactName || "";
+  return profileName || authState.user.user_metadata?.name || authState.user.email || "Signed in";
+}
+
+function loggedInProfileRecord() {
+  const baseRole = normalizeRole(authState.roleRecord?.role || "");
+  const userId = authState.user?.id || "";
+  const email = normalizedMatchValue(authState.user?.email || "");
+  if (baseRole === "CLIENT") {
+    return activeClientRepRecord() || clientRepDefaults();
+  }
+  if (baseRole === "CREW") {
+    return getWorker(authState.roleRecord?.worker_id)
+      || state.workers.find((worker) => worker.authUserId === userId)
+      || state.workers.find((worker) => normalizedMatchValue(worker.email) === email)
+      || null;
+  }
+  if (baseRole === "PROMOTER" || baseRole === "PRODUCTION") {
+    return getPromoter(authState.roleRecord?.promoter_id)
+      || state.promoters.find((promoter) => promoter.authUserId === userId)
+      || state.promoters.find((promoter) => normalizedMatchValue(promoter.email) === email)
+      || null;
+  }
+  return activeAdminProfile();
 }
 
 function setAccessRole(role) {
