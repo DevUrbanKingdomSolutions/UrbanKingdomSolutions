@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.04.024",
-  title: "V1.04.024 update installed",
-  body: "Removed the heavy role-color border lines while keeping the cleaner signature accents."
+  version: "V1.04.025",
+  title: "V1.04.025 update installed",
+  body: "Softened the remaining role-color borders and split promoter quick-add into company and rep paths."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -1991,28 +1991,31 @@ async function saveProfileAccess(event) {
 }
 
 async function openQuickProfileForm(targetStore) {
-  if (!["clients", "workers", "promoters"].includes(targetStore)) return;
-  if (targetStore === "clients" && !canSystemEdit()) {
+  const profileMode = targetStore === "promoterCompany" || targetStore === "promoterRep" ? targetStore : targetStore;
+  const normalizedStore = targetStore === "promoterCompany" || targetStore === "promoterRep" ? "promoters" : targetStore;
+  if (!["clients", "workers", "promoters"].includes(normalizedStore)) return;
+  if (normalizedStore === "clients" && !canSystemEdit()) {
     toast("Only ADMIN can add client accounts.");
     return;
   }
-  if (targetStore === "workers" && !canOwnerEdit()) {
+  if (normalizedStore === "workers" && !canOwnerEdit()) {
     toast("This access view cannot add crew profiles.");
     return;
   }
-  if (targetStore === "promoters" && !(canOwnerEdit() || isProductionRole())) {
+  if (normalizedStore === "promoters" && !(canOwnerEdit() || isProductionRole())) {
     toast("This access view cannot add promoter profiles.");
     return;
   }
   await refreshSiteAccessLevelsForForm("quickProfileForm");
-  const clientId = targetStore === "clients" ? "" : authState.roleRecord?.client_id || activeClientRecord()?.id || "";
+  const clientId = normalizedStore === "clients" ? "" : authState.roleRecord?.client_id || activeClientRecord()?.id || "";
   fillForm("quickProfileForm", {
-    targetStore,
+    targetStore: normalizedStore,
+    profileMode,
     clientId,
-    accessLevels: quickProfileDefaultAccess(targetStore)
+    accessLevels: quickProfileDefaultAccess(profileMode)
   });
-  $("#quickProfileTitle").textContent = quickProfileTitle(targetStore);
-  $("#quickProfileNote").textContent = quickProfileNote(targetStore);
+  $("#quickProfileTitle").textContent = quickProfileTitle(profileMode);
+  $("#quickProfileNote").textContent = quickProfileNote(profileMode);
   updateQuickProfileCompanyFields();
   renderAccessLevelControls($("#quickProfileForm"));
 }
@@ -2021,13 +2024,27 @@ function updateQuickProfileCompanyFields() {
   const form = $("#quickProfileForm");
   if (!form) return;
   const targetStore = form.elements.targetStore?.value || "";
+  const profileMode = form.elements.profileMode?.value || targetStore;
   const contractorField = form.querySelector(".quick-contractor-field");
   const companyField = form.querySelector(".quick-company-field");
+  const existingPromoterField = form.querySelector(".quick-existing-promoter-field");
   const isCrew = targetStore === "workers";
+  const isPromoterRep = profileMode === "promoterRep";
   const showCompany = !isCrew || form.elements.paidThroughCompany?.checked;
   if (contractorField) contractorField.hidden = !isCrew;
-  if (companyField) companyField.hidden = !showCompany;
+  if (companyField) companyField.hidden = !showCompany || isPromoterRep;
+  if (existingPromoterField) existingPromoterField.hidden = !isPromoterRep;
+  if (isPromoterRep && form.elements.existingPromoterCompany) {
+    const companies = promoterCompanyOptions();
+    form.elements.existingPromoterCompany.innerHTML = companies.length
+      ? companies.map((company) => `<option value="${escapeHtml(company)}">${escapeHtml(company)}</option>`).join("")
+      : `<option value="">No promoter companies yet</option>`;
+  }
   if (isCrew && !showCompany && form.elements.companyName) form.elements.companyName.value = "";
+}
+
+function promoterCompanyOptions() {
+  return Array.from(new Set(state.promoters.map((promoter) => String(promoter.companyName || "").trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b));
 }
 
 async function saveQuickProfile(event) {
@@ -2035,6 +2052,7 @@ async function saveQuickProfile(event) {
   const form = event.currentTarget;
   const record = await formRecord(form);
   const targetStore = record.targetStore;
+  const profileMode = record.profileMode || targetStore;
   const firstName = String(record.firstName || "").trim();
   const lastName = String(record.lastName || "").trim();
   const fullName = `${firstName} ${lastName}`.trim();
@@ -2073,13 +2091,19 @@ async function saveQuickProfile(event) {
       syncMessage = "Saved locally. Supabase sync needs attention.";
     }
   } else if (targetStore === "promoters") {
-    const companyName = String(record.companyName || "").trim() || "Independent";
+    const companyName = profileMode === "promoterRep"
+      ? String(record.existingPromoterCompany || "").trim()
+      : String(record.companyName || "").trim();
+    if (!companyName) {
+      toast(profileMode === "promoterRep" ? "Select a promoter company first." : "Add the promoter company name first.");
+      return;
+    }
     const promoter = {
       id,
       clientId: record.clientId || authState.roleRecord?.client_id || "",
       companyName,
       name: fullName,
-      contactName: "Promoter Rep",
+      contactName: profileMode === "promoterCompany" ? "Promoter Admin" : "Promoter Rep",
       email,
       loginEmail: email,
       accessLevels,
@@ -2640,10 +2664,11 @@ function quickProfileTargetsForCurrentUser() {
   }
   if (canOwnerEdit()) {
     targets.push({ store: "workers", label: "Crew / Runner" });
-    targets.push({ store: "promoters", label: "Promoter Rep" });
+    targets.push({ store: "promoterCompany", label: "Promoter Company" });
+    targets.push({ store: "promoterRep", label: "Promoter Rep" });
   } else if (isProductionRole()) {
     targets.push({ store: "workers", label: "Crew / Runner" });
-    targets.push({ store: "promoters", label: "Promoter Rep" });
+    targets.push({ store: "promoterRep", label: "Promoter Rep" });
   }
   return targets;
 }
@@ -2661,19 +2686,22 @@ function renderGlobalAddMenu() {
 
 function quickProfileDefaultAccess(targetStore) {
   if (targetStore === "clients") return ["CLIENT_ADMIN"];
-  if (targetStore === "promoters") return ["PROMOTER_ADMIN"];
+  if (targetStore === "promoterRep") return ["PROMOTER_REP"];
+  if (targetStore === "promoters" || targetStore === "promoterCompany") return ["PROMOTER_ADMIN"];
   return ["CREW"];
 }
 
 function quickProfileTitle(targetStore) {
   if (targetStore === "clients") return "Add Client Admin";
-  if (targetStore === "promoters") return "Add Promoter Rep";
+  if (targetStore === "promoterCompany") return "Add Promoter Company";
+  if (targetStore === "promoters" || targetStore === "promoterRep") return "Add Promoter Rep";
   return "Add Crew / Runner";
 }
 
 function quickProfileNote(targetStore) {
   if (targetStore === "clients") return "Creates the client company shell and first login-ready client rep. They finish the company and profile setup after activation.";
-  if (targetStore === "promoters") return "Creates a lightweight promoter rep profile. Company and rep details can be expanded after activation.";
+  if (targetStore === "promoterCompany") return "Creates the promoter company and first promoter admin. They finish company profile setup and then their user profile after activation.";
+  if (targetStore === "promoters" || targetStore === "promoterRep") return "Creates a promoter rep under an existing promoter company. Activation is only for their user account.";
   return "Creates a lightweight crew/runner profile connected to this client. They finish phone, address, headshot, and directory privacy during setup.";
 }
 

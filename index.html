@@ -10,7 +10,7 @@
     <title>Production Crew Database</title>
     <link rel="manifest" href="manifest.webmanifest">
     <link rel="icon" href="assets/app-icon.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="styles.css?v=V1.04.024-remove-role-lines">
+    <link rel="stylesheet" href="styles.css?v=V1.04.025-promoter-quick-add">
   </head>
   <body>
     <div id="appLoadingOverlay" class="app-loading-overlay" aria-live="polite">
@@ -855,9 +855,13 @@
                 <button class="ghost-button clear-form" type="button" data-form="quickProfileForm">Close</button>
               </div>
               <input type="hidden" name="targetStore">
+              <input type="hidden" name="profileMode">
               <input type="hidden" name="clientId">
               <label class="quick-contractor-field check-label"><input name="paidThroughCompany" type="checkbox" value="yes"> Paid through contractor company</label>
               <label class="quick-company-field">Company / organization<input name="companyName" placeholder="Company name"></label>
+              <label class="quick-existing-promoter-field">Promoter company
+                <select name="existingPromoterCompany"></select>
+              </label>
               <div class="form-grid">
                 <label>First name<input name="firstName" required placeholder="First"></label>
                 <label>Last name<input name="lastName" required placeholder="Last"></label>
@@ -1387,7 +1391,8 @@
                 <h3>Promoter Companies & Reps</h3>
                 <div class="panel-tools">
                   <span id="promoterTableCount" class="muted"></span>
-                  <button class="tiny-button admin-action" data-open-quick-profile="promoters" type="button">Add Promoter Rep</button>
+                  <button class="tiny-button admin-action" data-open-quick-profile="promoterCompany" type="button">Add Promoter Company</button>
+                  <button class="tiny-button admin-action" data-open-quick-profile="promoterRep" type="button">Add Promoter Rep</button>
                 </div>
               </div>
               <div class="bulk-actions owner-form">
@@ -1468,6 +1473,6 @@
     <div id="modalHost"></div>
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js?v=V1.04.024-remove-role-lines"></script>
+    <script src="app.js?v=V1.04.025-promoter-quick-add"></script>
   </body>
 </html>

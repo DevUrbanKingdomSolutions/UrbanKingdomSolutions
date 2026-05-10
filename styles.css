@@ -61,7 +61,6 @@ body[data-access-tone="crew"] {
 }
 
 body[data-access-tone] {
-  --signature-line: linear-gradient(90deg, var(--accent), color-mix(in srgb, var(--accent) 18%, #ffffff));
   --signature-glow: 0 12px 28px color-mix(in srgb, var(--accent) 18%, transparent);
 }
 
@@ -336,7 +335,7 @@ button {
 }
 
 .nav-item.active {
-  box-shadow: inset 4px 0 0 var(--accent);
+  box-shadow: none;
 }
 
 .side-actions {
@@ -416,7 +415,7 @@ button {
     top: 0;
     align-self: stretch;
     min-height: 100vh;
-    border-right: 1px solid color-mix(in srgb, var(--accent) 26%, rgba(255, 255, 255, 0.1));
+    border-right: 1px solid rgba(255, 255, 255, 0.1);
     background:
       linear-gradient(180deg, color-mix(in srgb, var(--accent) 22%, transparent), rgba(255, 255, 255, 0) 38%),
       color-mix(in srgb, var(--accent-dark) 56%, #20282c);
@@ -445,7 +444,7 @@ button {
   .nav-item.active {
     background: color-mix(in srgb, var(--accent) 28%, #ffffff 6%);
     color: #ffffff;
-    box-shadow: inset 4px 0 0 var(--accent);
+    box-shadow: none;
   }
 
   .content {
@@ -456,7 +455,7 @@ button {
     align-items: center;
     min-height: 78px;
     border: 1px solid rgba(216, 213, 205, 0.8);
-    border-left: 6px solid var(--accent);
+    border-left: 1px solid rgba(216, 213, 205, 0.8);
     border-radius: 8px;
     background:
       linear-gradient(90deg, color-mix(in srgb, var(--accent-soft) 64%, #ffffff), rgba(255, 253, 248, 0.9) 44%),
@@ -491,14 +490,6 @@ button {
     background: #ffffff;
   }
 
-  .metric::before {
-    position: absolute;
-    inset: 0 0 auto;
-    height: 4px;
-    content: "";
-    background: var(--accent);
-  }
-
   .metric span {
     color: var(--accent-dark);
   }
@@ -514,7 +505,7 @@ button {
   }
 
   .panel-heading {
-    border-bottom-color: color-mix(in srgb, var(--accent) 20%, var(--line));
+    border-bottom-color: var(--line);
     background: linear-gradient(90deg, color-mix(in srgb, var(--accent-soft) 72%, #ffffff), #ffffff 58%);
   }
 
@@ -523,8 +514,8 @@ button {
   }
 
   .list-controls {
-    border-top-color: color-mix(in srgb, var(--accent) 18%, var(--line));
-    border-bottom-color: color-mix(in srgb, var(--accent) 18%, var(--line));
+    border-top-color: var(--line);
+    border-bottom-color: var(--line);
     background: color-mix(in srgb, var(--accent-soft) 50%, #fbfaf6);
   }
 
@@ -543,7 +534,7 @@ button {
 
   .secondary-action {
     background: color-mix(in srgb, var(--accent) 10%, #ffffff);
-    border-color: color-mix(in srgb, var(--accent) 28%, var(--line));
+    border-color: var(--line);
     color: var(--accent-dark);
   }
 }
@@ -912,8 +903,7 @@ label textarea:focus {
   gap: 18px;
   align-items: stretch;
   margin-bottom: 18px;
-  border: 1px solid color-mix(in srgb, var(--hero-accent) 28%, var(--line));
-  border-left: 8px solid var(--hero-accent);
+  border: 1px solid var(--line);
   border-radius: 8px;
   background: #ffffff;
   box-shadow: var(--shadow);
@@ -1102,7 +1092,7 @@ body[data-access-tone="crew"] .desktop-dashboard-hero {
 }
 
 .calendar-day.today {
-  box-shadow: inset 0 0 0 2px var(--accent);
+  background: var(--accent-soft);
 }
 
 .calendar-day > span {
@@ -1118,7 +1108,7 @@ body[data-access-tone="crew"] .desktop-dashboard-hero {
 
 .calendar-event {
   width: 100%;
-  border: 1px solid color-mix(in srgb, var(--accent) 20%, var(--line));
+  border: 1px solid var(--line);
   border-radius: 7px;
   background: color-mix(in srgb, var(--accent-soft) 74%, #ffffff);
   padding: 6px 7px;
@@ -1133,7 +1123,7 @@ body[data-access-tone="crew"] .desktop-dashboard-hero {
 
 .calendar-event:hover,
 .calendar-event:focus-visible {
-  border-color: var(--accent);
+  background: var(--accent-soft);
   outline: none;
 }
 
@@ -3024,7 +3014,7 @@ body:not(.owner-mode) .rate-field {
     background:
       linear-gradient(90deg, color-mix(in srgb, var(--accent) 72%, rgba(255, 255, 255, 0.14)), rgba(255, 255, 255, 0.11));
     color: #ffffff;
-    box-shadow: inset 5px 0 0 #ffffff, inset 9px 0 0 var(--accent), 0 10px 22px rgba(0, 0, 0, 0.13);
+    box-shadow: 0 10px 22px rgba(0, 0, 0, 0.13);
   }
 
   .content {
@@ -3049,29 +3039,8 @@ body:not(.owner-mode) .rate-field {
     backdrop-filter: blur(16px);
   }
 
-  .topbar::before {
-    width: 5px;
-    align-self: stretch;
-    border-radius: 999px;
-    background: var(--accent);
-    content: "";
-  }
-
   .topbar-title {
     flex: 1 1 auto;
-    position: relative;
-    padding-bottom: 5px;
-  }
-
-  .topbar-title::after {
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    width: min(168px, 42%);
-    height: 4px;
-    border-radius: 999px;
-    background: var(--signature-line);
-    content: "";
   }
 
   .eyebrow {
@@ -3235,17 +3204,6 @@ body:not(.owner-mode) .rate-field {
     font-weight: 900;
   }
 
-  .panel-heading h3::before {
-    display: inline-block;
-    width: 8px;
-    height: 8px;
-    margin-right: 8px;
-    border-radius: 999px;
-    background: var(--accent);
-    content: "";
-    vertical-align: 1px;
-  }
-
   .panel-tools,
   .list-controls,
   .bulk-actions,
@@ -3283,7 +3241,7 @@ body:not(.owner-mode) .rate-field {
     border-color: color-mix(in srgb, var(--accent) 38%, var(--desktop-line));
     background: var(--accent-soft);
     color: var(--accent-dark);
-    box-shadow: inset 0 -3px 0 var(--accent);
+    box-shadow: none;
   }
 
   .table-panel {
@@ -3374,23 +3332,11 @@ body:not(.owner-mode) .rate-field {
 
   .desktop-dashboard-hero {
     position: relative;
-    border: 1px solid color-mix(in srgb, var(--accent) 26%, var(--desktop-line));
-    border-left: 0;
+    border: 1px solid var(--desktop-line);
     border-radius: 14px;
     background:
       linear-gradient(135deg, color-mix(in srgb, var(--accent-soft) 72%, #ffffff), #ffffff 50%);
-    padding-left: 7px;
     box-shadow: var(--desktop-shadow);
-  }
-
-  .desktop-dashboard-hero::before {
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    left: 0;
-    width: 7px;
-    background: var(--accent);
-    content: "";
   }
 
   .desktop-dashboard-hero {
@@ -3398,7 +3344,7 @@ body:not(.owner-mode) .rate-field {
   }
 
   .desktop-hero-stat {
-    border-left: 1px solid color-mix(in srgb, var(--accent) 12%, var(--desktop-line));
+    border-left: 1px solid var(--desktop-line);
     background: rgba(255, 255, 255, 0.58);
   }
 }
@@ -3543,7 +3489,7 @@ body:not(.owner-mode) .rate-field {
 
   .sidebar .brand {
     padding-bottom: 14px;
-    border-bottom: 1px solid color-mix(in srgb, var(--accent) 28%, rgba(255, 255, 255, 0.14));
+    border-bottom: 1px solid rgba(255, 255, 255, 0.12);
   }
 
   .brand-mark {
@@ -3554,7 +3500,7 @@ body:not(.owner-mode) .rate-field {
 
   .nav-item.active {
     background: color-mix(in srgb, var(--accent) 38%, rgba(255, 255, 255, 0.1));
-    box-shadow: inset 5px 0 0 var(--accent);
+    box-shadow: none;
   }
 
   .content {
@@ -3590,17 +3536,6 @@ body:not(.owner-mode) .rate-field {
     align-items: center;
     padding: 4px 0 10px;
     border-bottom: 1px solid rgba(195, 186, 169, 0.55);
-  }
-
-  .view:not(#messages) .panel-heading h3::before {
-    display: inline-block;
-    width: 7px;
-    height: 7px;
-    margin-right: 8px;
-    border-radius: 999px;
-    background: var(--accent);
-    content: "";
-    vertical-align: 1px;
   }
 
   .view:not(#messages) .list-controls {
@@ -3655,16 +3590,6 @@ body:not(.owner-mode) .rate-field {
     text-align: center;
   }
 
-  .topbar-title::after {
-    display: block;
-    width: min(138px, 56%);
-    height: 3px;
-    margin: 5px auto 0;
-    border-radius: 999px;
-    background: var(--signature-line);
-    content: "";
-  }
-
   .mobile-menu-button {
     grid-column: 1;
     grid-row: 1;
@@ -3679,11 +3604,6 @@ body:not(.owner-mode) .rate-field {
     padding: 8px 10px;
     font-weight: 800;
     z-index: 1;
-  }
-
-  .mobile-menu-button,
-  .notification-bell {
-    border-color: color-mix(in srgb, var(--accent) 24%, var(--line));
   }
 
   .topbar h2 {
@@ -4397,7 +4317,7 @@ body:not(.owner-mode) .rate-field {
   .mobile-bottom-nav button.active {
     background: var(--accent-soft);
     color: var(--accent-dark);
-    box-shadow: inset 0 3px 0 var(--accent);
+    box-shadow: none;
   }
 
   .toast {
