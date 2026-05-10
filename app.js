@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.04.023",
-  title: "V1.04.023 update installed",
-  body: "Role colors now have stronger signature accents across navigation, headers, panels, and selected controls."
+  version: "V1.04.024",
+  title: "V1.04.024 update installed",
+  body: "Removed the heavy role-color border lines while keeping the cleaner signature accents."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",

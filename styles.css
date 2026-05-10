@@ -3176,23 +3176,6 @@ body:not(.owner-mode) .rate-field {
     box-shadow: var(--desktop-shadow);
   }
 
-  .panel,
-  .record-card {
-    position: relative;
-  }
-
-  .panel::before,
-  .record-card::before {
-    position: absolute;
-    top: -1px;
-    right: -1px;
-    left: -1px;
-    height: 4px;
-    border-radius: 12px 12px 0 0;
-    background: var(--signature-line);
-    content: "";
-  }
-
   .metric {
     min-height: 132px;
     padding: 18px;
