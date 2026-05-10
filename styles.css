@@ -1225,6 +1225,18 @@ td p {
   min-height: 100%;
 }
 
+.event-card-section {
+  display: grid;
+  gap: 6px;
+  padding: 10px 0;
+  border-top: 1px solid rgba(195, 186, 169, 0.52);
+}
+
+.event-card-title-section {
+  padding-top: 0;
+  border-top: 0;
+}
+
 .event-card-kicker {
   display: flex;
   flex-wrap: wrap;
@@ -1234,6 +1246,25 @@ td p {
   color: var(--muted);
   font-size: 12px;
   font-weight: 800;
+}
+
+.event-card-facts {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.event-card-facts span,
+.event-card-label {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.event-card-facts strong {
+  margin-top: 3px;
+  font-size: 14px;
+  line-height: 1.3;
 }
 
 .icon-button {
@@ -2474,6 +2505,10 @@ body:not(.owner-mode) .rate-field {
 
   #events .event-options {
     justify-self: start;
+  }
+
+  #events .event-card-facts {
+    grid-template-columns: 1fr;
   }
 
   #events .mini-table {

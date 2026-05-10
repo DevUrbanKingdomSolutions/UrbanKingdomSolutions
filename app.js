@@ -4356,17 +4356,26 @@ function eventCard(event) {
   const eventActions = `${gigDirectoryButton}${publicAccessButton}${adminEventActions}${actionButtons("events", event.id, "eventForm", "", canAdminEdit())}`;
   return `<article class="record-card event-card-view">
     <div class="record-card-main">
-      <div class="event-card-kicker">
-        <span class="status-pill">${escapeHtml(bucket === "current" ? "Current" : bucket === "past" ? "Past" : "Future")}</span>
-        <span>${escapeHtml(event.type || "Event")}</span>
+      <div class="event-card-section event-card-title-section">
+        <div class="event-card-kicker">
+          <span class="status-pill">${escapeHtml(bucket === "current" ? "Current" : bucket === "past" ? "Past" : "Future")}</span>
+          <span>${escapeHtml(event.type || "Event")}</span>
+        </div>
+        <strong>${recordLink("events", event.id, event.name)}</strong>
       </div>
-      <strong>${recordLink("events", event.id, event.name)}</strong>
-      <span>${event.startDate ? escapeHtml(formatDate(event.startDate)) : "Date not set"}</span>
-      <p>${escapeHtml(venue?.name || "No venue")}</p>
-      <p>${escapeHtml(promoterLabel(promoter) || "No promoter rep")}</p>
-      <p>${escapeHtml(event.productionContact)}</p>
-      <p>${escapeHtml(crewLine)}</p>
-      ${assignmentTable(event)}
+      <div class="event-card-section event-card-facts">
+        <div><span>Schedule</span><strong>${event.startDate ? escapeHtml(formatDate(event.startDate)) : "Date not set"}</strong></div>
+        <div><span>Venue</span><strong>${escapeHtml(venue?.name || "No venue")}</strong></div>
+      </div>
+      <div class="event-card-section event-card-facts">
+        <div><span>Promoter</span><strong>${escapeHtml(promoterLabel(promoter) || "No promoter rep")}</strong></div>
+        <div><span>Production Contact</span><strong>${escapeHtml(event.productionContact || "Not set")}</strong></div>
+      </div>
+      <div class="event-card-section">
+        <span class="event-card-label">Crew / Runners</span>
+        <p>${escapeHtml(crewLine)}</p>
+        ${assignmentTable(event)}
+      </div>
     </div>
     <details class="event-options">
       <summary class="tiny-button">Options</summary>
