@@ -10,7 +10,7 @@
     <title>Production Crew Database</title>
     <link rel="manifest" href="manifest.webmanifest">
     <link rel="icon" href="assets/app-icon.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="styles.css?v=V1.04.006-grow-sidebar-background">
+    <link rel="stylesheet" href="styles.css?v=V1.04.007-dashboard-calendar-payroll">
   </head>
   <body>
     <div id="appLoadingOverlay" class="app-loading-overlay" aria-live="polite">
@@ -185,15 +185,40 @@
               <span>Clocked in</span>
               <strong id="activeTimecards">0</strong>
             </button>
-            <button class="metric metric-link" data-dashboard-link="venues" type="button">
-              <span>Venues</span>
-              <strong id="venueCount">0</strong>
-            </button>
-            <button class="metric metric-link" data-dashboard-link="payroll" type="button">
-              <span>Est. payroll</span>
+            <article class="metric payroll-metric">
+              <div class="metric-topline">
+                <span>Est. payroll</span>
+                <button class="tiny-button" data-dashboard-link="payroll" type="button">Open</button>
+              </div>
               <strong id="payrollCount">$0</strong>
-            </button>
+              <label class="metric-control">
+                <span>Range</span>
+                <select id="dashboardPayrollRange">
+                  <option value="lifetime">Lifetime</option>
+                  <option value="year">Yearly</option>
+                  <option value="month">Monthly</option>
+                  <option value="week">Weekly</option>
+                  <option value="day">Daily</option>
+                  <option value="event">By Event</option>
+                </select>
+              </label>
+              <label id="dashboardPayrollEventControl" class="metric-control" hidden>
+                <span>Event</span>
+                <select id="dashboardPayrollEvent"></select>
+              </label>
+            </article>
           </div>
+          <section class="panel dashboard-calendar-panel">
+            <div class="panel-heading">
+              <h3>Calendar</h3>
+              <div class="panel-tools calendar-tools">
+                <button id="dashboardCalendarPrev" class="tiny-button" type="button">Prev</button>
+                <span id="dashboardCalendarTitle" class="calendar-title"></span>
+                <button id="dashboardCalendarNext" class="tiny-button" type="button">Next</button>
+              </div>
+            </div>
+            <div id="dashboardCalendar" class="dashboard-calendar"></div>
+          </section>
           <div class="dashboard-grid">
             <section class="panel">
               <div class="panel-heading">
@@ -1482,6 +1507,6 @@
     <div id="modalHost"></div>
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js?v=V1.04.006-grow-sidebar-background"></script>
+    <script src="app.js?v=V1.04.007-dashboard-calendar-payroll"></script>
   </body>
 </html>

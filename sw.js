@@ -1,9 +1,9 @@
-const APP_SHELL_CACHE = "production-crew-shell-v1.04.006";
+const APP_SHELL_CACHE = "production-crew-shell-v1.04.007";
 const APP_SHELL_ASSETS = [
   "./",
   "./index.html",
-  "./styles.css?v=V1.04.006-grow-sidebar-background",
-  "./app.js?v=V1.04.006-grow-sidebar-background",
+  "./styles.css?v=V1.04.007-dashboard-calendar-payroll",
+  "./app.js?v=V1.04.007-dashboard-calendar-payroll",
   "./manifest.webmanifest",
   "./assets/app-icon.svg"
 ];

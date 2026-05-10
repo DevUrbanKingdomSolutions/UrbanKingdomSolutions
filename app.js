@@ -346,6 +346,9 @@ let state = {
   eventScheduleFilter: localStorage.getItem("productionCrewEventScheduleFilter") || "all",
   eventTypeFilter: localStorage.getItem("productionCrewEventTypeFilter") || "all",
   eventSort: localStorage.getItem("productionCrewEventSort") || "upcoming",
+  dashboardPayrollRange: localStorage.getItem("productionCrewDashboardPayrollRange") || "month",
+  dashboardPayrollEventId: localStorage.getItem("productionCrewDashboardPayrollEventId") || "",
+  dashboardCalendarMonth: localStorage.getItem("productionCrewDashboardCalendarMonth") || "",
   runnerCategory: "All",
   directoryTab: "crew",
   payrollView: localStorage.getItem("productionCrewPayrollView") || "worker",
@@ -3910,18 +3913,21 @@ function renderDashboard() {
   if (isAdminRole()) {
     $("#eventCount").textContent = "0";
     $("#activeTimecards").textContent = "0";
-    $("#venueCount").textContent = "0";
     $("#payrollCount").textContent = "$0";
+    renderDashboardPayrollControls([]);
+    renderDashboardCalendar([]);
     $("#liveCrewList").innerHTML = `<div class="compact-item empty">ADMIN does not load production timecard data.</div>`;
     $("#recentNotes").innerHTML = `<div class="compact-item empty">ADMIN does not load production notes.</div>`;
     return;
   }
   const cards = visibleRecords(state.timecards);
   const liveCards = cards.filter((card) => !card.clockOut);
+  const payrollCards = dashboardPayrollCards(cards);
   $("#eventCount").textContent = visibleEvents().length;
   $("#activeTimecards").textContent = liveCards.length;
-  $("#venueCount").textContent = visibleVenues().length;
-  $("#payrollCount").textContent = currency(cards.reduce((sum, card) => sum + estimatedPay(card), 0));
+  $("#payrollCount").textContent = currency(payrollCards.reduce((sum, card) => sum + estimatedPay(card), 0));
+  renderDashboardPayrollControls(cards);
+  renderDashboardCalendar(visibleEvents());
 
   $("#liveCrewList").innerHTML = liveCards.length
     ? liveCards.slice(0, 8).map((card) => {
@@ -3941,6 +3947,122 @@ function renderDashboard() {
   $("#recentNotes").innerHTML = noteItems.length
     ? noteItems.slice(0, 8).map((item) => `<div class="compact-item"><strong>${escapeHtml(item.type)}: ${escapeHtml(item.name)}</strong><span>${escapeHtml(item.text)}</span></div>`).join("")
     : `<div class="compact-item empty">Notes will appear here as you add them.</div>`;
+}
+
+function dashboardPayrollCards(cards = visibleRecords(state.timecards)) {
+  const range = state.dashboardPayrollRange || "month";
+  if (range === "lifetime") return cards;
+  if (range === "event") {
+    const eventId = state.dashboardPayrollEventId || dashboardDefaultPayrollEventId();
+    return eventId ? cards.filter((card) => card.eventId === eventId) : [];
+  }
+  const now = new Date();
+  const start = new Date(now);
+  const end = new Date(now);
+  if (range === "year") {
+    start.setMonth(0, 1);
+    start.setHours(0, 0, 0, 0);
+    end.setMonth(11, 31);
+    end.setHours(23, 59, 59, 999);
+  } else if (range === "month") {
+    start.setDate(1);
+    start.setHours(0, 0, 0, 0);
+    end.setMonth(end.getMonth() + 1, 0);
+    end.setHours(23, 59, 59, 999);
+  } else if (range === "week") {
+    const day = start.getDay();
+    start.setDate(start.getDate() - day);
+    start.setHours(0, 0, 0, 0);
+    end.setTime(start.getTime());
+    end.setDate(start.getDate() + 6);
+    end.setHours(23, 59, 59, 999);
+  } else {
+    start.setHours(0, 0, 0, 0);
+    end.setHours(23, 59, 59, 999);
+  }
+  return cards.filter((card) => {
+    const value = card.clockIn || card.workDate || card.createdAt;
+    const date = new Date(value);
+    return !Number.isNaN(date.getTime()) && date >= start && date <= end;
+  });
+}
+
+function dashboardDefaultPayrollEventId() {
+  const events = sortEventCards(visibleEvents());
+  const currentOrNext = events.find((event) => eventScheduleBucket(event) !== "past");
+  return currentOrNext?.id || events[0]?.id || "";
+}
+
+function renderDashboardPayrollControls(cards = visibleRecords(state.timecards)) {
+  const range = $("#dashboardPayrollRange");
+  const eventControl = $("#dashboardPayrollEventControl");
+  const eventSelect = $("#dashboardPayrollEvent");
+  if (!range || !eventControl || !eventSelect) return;
+  range.value = state.dashboardPayrollRange || "month";
+  const eventsWithCards = visibleEvents().filter((event) => cards.some((card) => card.eventId === event.id));
+  const eventOptions = eventsWithCards.length ? eventsWithCards : visibleEvents();
+  if (!state.dashboardPayrollEventId || !eventOptions.some((event) => event.id === state.dashboardPayrollEventId)) {
+    state.dashboardPayrollEventId = dashboardDefaultPayrollEventId();
+  }
+  eventSelect.innerHTML = eventOptions.length
+    ? eventOptions.map((event) => `<option value="${escapeHtml(event.id)}">${escapeHtml(event.name)}</option>`).join("")
+    : `<option value="">No events yet</option>`;
+  eventSelect.value = state.dashboardPayrollEventId;
+  eventControl.hidden = state.dashboardPayrollRange !== "event";
+}
+
+function dashboardCalendarMonthDate() {
+  const saved = state.dashboardCalendarMonth;
+  if (/^\d{4}-\d{2}$/.test(saved)) return new Date(`${saved}-01T12:00:00`);
+  const nextEvent = sortEventCards(visibleEvents().filter((event) => eventScheduleBucket(event) !== "past"))[0];
+  const date = nextEvent?.startDate ? new Date(nextEvent.startDate) : new Date();
+  return Number.isNaN(date.getTime()) ? new Date() : date;
+}
+
+function setDashboardCalendarMonth(date) {
+  const month = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+  state.dashboardCalendarMonth = month;
+  localStorage.setItem("productionCrewDashboardCalendarMonth", month);
+}
+
+function renderDashboardCalendar(events = visibleEvents()) {
+  const calendar = $("#dashboardCalendar");
+  const title = $("#dashboardCalendarTitle");
+  if (!calendar || !title) return;
+  const monthDate = dashboardCalendarMonthDate();
+  setDashboardCalendarMonth(monthDate);
+  const year = monthDate.getFullYear();
+  const month = monthDate.getMonth();
+  title.textContent = monthDate.toLocaleDateString([], { month: "long", year: "numeric" });
+  const first = new Date(year, month, 1);
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const leadingDays = first.getDay();
+  const cells = [];
+  for (let i = 0; i < leadingDays; i += 1) cells.push("");
+  for (let day = 1; day <= daysInMonth; day += 1) cells.push(String(day));
+  while (cells.length % 7 !== 0) cells.push("");
+  const todayKey = localDateKey();
+  const weekdayHeader = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => `<div class="calendar-weekday">${day}</div>`).join("");
+  const body = cells.map((day) => {
+    if (!day) return `<div class="calendar-day empty"></div>`;
+    const dateKey = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    const dayEvents = events.filter((event) => eventTouchesDate(event, dateKey));
+    return `<div class="calendar-day ${dateKey === todayKey ? "today" : ""}">
+      <span>${day}</span>
+      <div class="calendar-events">
+        ${dayEvents.slice(0, 3).map((event) => `<button class="calendar-event" data-view-record="events:${escapeHtml(event.id)}" type="button">${escapeHtml(event.name)}</button>`).join("")}
+        ${dayEvents.length > 3 ? `<small>+${dayEvents.length - 3} more</small>` : ""}
+      </div>
+    </div>`;
+  }).join("");
+  calendar.innerHTML = `${weekdayHeader}${body}`;
+}
+
+function eventTouchesDate(event, dateKey) {
+  const startKey = String(event.startDate || "").slice(0, 10);
+  const endKey = String(event.endDate || event.startDate || "").slice(0, 10);
+  if (!startKey) return false;
+  return dateKey >= startKey && dateKey <= (endKey || startKey);
 }
 
 function dashboardHeroConfig() {
@@ -8625,6 +8747,28 @@ function bindEvents() {
     state.eventSort = event.target.value;
     localStorage.setItem("productionCrewEventSort", state.eventSort);
     renderEvents();
+  });
+  $("#dashboardPayrollRange")?.addEventListener("change", (event) => {
+    state.dashboardPayrollRange = event.target.value;
+    localStorage.setItem("productionCrewDashboardPayrollRange", state.dashboardPayrollRange);
+    renderDashboard();
+  });
+  $("#dashboardPayrollEvent")?.addEventListener("change", (event) => {
+    state.dashboardPayrollEventId = event.target.value;
+    localStorage.setItem("productionCrewDashboardPayrollEventId", state.dashboardPayrollEventId);
+    renderDashboard();
+  });
+  $("#dashboardCalendarPrev")?.addEventListener("click", () => {
+    const month = dashboardCalendarMonthDate();
+    month.setMonth(month.getMonth() - 1);
+    setDashboardCalendarMonth(month);
+    renderDashboardCalendar();
+  });
+  $("#dashboardCalendarNext")?.addEventListener("click", () => {
+    const month = dashboardCalendarMonthDate();
+    month.setMonth(month.getMonth() + 1);
+    setDashboardCalendarMonth(month);
+    renderDashboardCalendar();
   });
   window.addEventListener("online", () => {
     renderConnectionBanner();
