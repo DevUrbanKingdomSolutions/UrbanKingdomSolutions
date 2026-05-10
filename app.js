@@ -3110,6 +3110,18 @@ function toLocalInputValue(date) {
   return local.toISOString().slice(0, 16);
 }
 
+function localDateKey(date = new Date()) {
+  return toLocalInputValue(date).slice(0, 10);
+}
+
+function timecardWorkDate(card) {
+  return card?.workDate || String(card?.clockIn || card?.createdAt || "").slice(0, 10) || localDateKey();
+}
+
+function endOfWorkDateInput(workDate) {
+  return `${workDate || localDateKey()}T23:59`;
+}
+
 function currency(value) {
   return Number(value || 0).toLocaleString(undefined, { style: "currency", currency: "USD" });
 }
@@ -4007,8 +4019,12 @@ function renderCrewMobileHome() {
 }
 
 function timecardForCrewEvent(eventId) {
-  return state.timecards.find((card) => card.eventId === eventId && card.workerId === state.activeWorkerId && !card.clockOut)
-    || state.timecards.find((card) => card.eventId === eventId && card.workerId === state.activeWorkerId)
+  const today = localDateKey();
+  const cards = state.timecards.filter((card) => card.eventId === eventId && card.workerId === state.activeWorkerId);
+  return cards.find((card) => timecardWorkDate(card) === today && !card.clockOut)
+    || cards.find((card) => timecardWorkDate(card) === today)
+    || cards.find((card) => !card.clockOut)
+    || cards[0]
     || null;
 }
 
@@ -4337,8 +4353,7 @@ function renderClock() {
 
 function clockCard(event) {
   const venue = getVenue(event.venueId);
-  const card = state.timecards.find((item) => item.eventId === event.id && item.workerId === state.activeWorkerId && !item.clockOut)
-    || state.timecards.find((item) => item.eventId === event.id && item.workerId === state.activeWorkerId);
+  const card = timecardForCrewEvent(event.id);
   const rentalWarning = rentalVehicleRequired(event, card || {}) ? rentalClockWarning(event, card) : "";
   return `<article class="record-card clock-card">
     <div class="record-card-main">
@@ -6217,6 +6232,7 @@ async function saveForm(event, storeName) {
     merged.eventName = merged.eventName || relatedEvent?.name || "";
     merged.venueId = merged.venueId || relatedEvent?.venueId || "";
     merged.promoterId = merged.promoterId || relatedEvent?.promoterId || "";
+    merged.workDate = merged.workDate || String(merged.clockIn || merged.createdAt || "").slice(0, 10) || localDateKey();
     merged.dayRate = merged.dayRate || assignment?.dayRate || relatedEvent?.dayRate || client?.defaultDayRate || worker?.defaultDayRate || worker?.defaultRate || "";
     merged.includedHours = merged.includedHours || assignment?.includedHours || relatedEvent?.includedHours || client?.defaultIncludedHours || worker?.defaultIncludedHours || "10";
     merged.additionalRate = merged.additionalRate || assignment?.additionalRate || relatedEvent?.additionalRate || client?.defaultAdditionalRate || worker?.defaultAdditionalRate || "";
@@ -7900,38 +7916,77 @@ function normalizeCategoryName(value) {
 async function clockOutNow(id) {
   const card = state.timecards.find((item) => item.id === id);
   if (!card || !canAdminEdit()) return;
-  await put("timecards", { ...card, clockOut: toLocalInputValue(new Date()) });
+  await put("timecards", { ...card, workDate: timecardWorkDate(card), clockOut: toLocalInputValue(new Date()) });
   await loadState();
   setView(state.activeView);
   toast("Clocked out.");
 }
 
+async function closePriorOpenCrewTimecards(eventId, workerId, todayKey) {
+  const priorOpenCards = state.timecards.filter((card) => {
+    return card.eventId === eventId
+      && card.workerId === workerId
+      && card.clockIn
+      && !card.clockOut
+      && timecardWorkDate(card) !== todayKey;
+  });
+  for (const card of priorOpenCards) {
+    const workDate = timecardWorkDate(card);
+    await put("timecards", {
+      ...card,
+      workDate,
+      clockOut: endOfWorkDateInput(workDate),
+      autoClosedAt: new Date().toISOString(),
+      notes: appendTimecardNote(card, "Auto-closed at the end of the work date so the next day could start a new timecard.")
+    });
+  }
+  if (priorOpenCards.length) await loadState();
+}
+
+function newCrewTimecard(eventId, event, workDate) {
+  const worker = getWorker(state.activeWorkerId);
+  const assignment = assignmentForEventWorker(eventId, state.activeWorkerId);
+  return {
+    id: crypto.randomUUID(),
+    workerId: state.activeWorkerId,
+    eventId,
+    eventName: event?.name || "",
+    venueId: event?.venueId || "",
+    promoterId: event?.promoterId || "",
+    workDate,
+    breakMinutes: "0",
+    dayRate: assignment?.dayRate || worker?.defaultDayRate || worker?.defaultRate || "",
+    includedHours: assignment?.includedHours || worker?.defaultIncludedHours || "10",
+    additionalRate: assignment?.additionalRate || worker?.defaultAdditionalRate || "",
+    vehicleUse: assignment?.vehicleUse || ""
+  };
+}
+
 async function crewPunch(eventId, field) {
   if (!state.activeWorkerId || !isEventVisible(eventId)) return;
   const event = getEvent(eventId);
-  const now = toLocalInputValue(new Date());
-  let card = state.timecards.find((item) => item.eventId === eventId && item.workerId === state.activeWorkerId && !item.clockOut);
-  if (!card && field === "clockIn") {
-    card = state.timecards.find((item) => item.eventId === eventId && item.workerId === state.activeWorkerId);
+  const nowDate = new Date();
+  const now = toLocalInputValue(nowDate);
+  const todayKey = localDateKey(nowDate);
+  await closePriorOpenCrewTimecards(eventId, state.activeWorkerId, todayKey);
+  let card = state.timecards.find((item) => item.eventId === eventId && item.workerId === state.activeWorkerId && timecardWorkDate(item) === todayKey && !item.clockOut)
+    || state.timecards.find((item) => item.eventId === eventId && item.workerId === state.activeWorkerId && timecardWorkDate(item) === todayKey);
+  if (card?.clockOut && field === "clockIn") {
+    card = null;
+  }
+  if (card?.clockOut && field !== "clockIn") {
+    toast("Start a new Call Time for today before adding more punches.");
+    return;
+  }
+  if (!card && field !== "clockIn") {
+    toast("Start Call Time first.");
+    return;
   }
   if (!card) {
-    const worker = getWorker(state.activeWorkerId);
-    const assignment = assignmentForEventWorker(eventId, state.activeWorkerId);
-    card = {
-      id: crypto.randomUUID(),
-      workerId: state.activeWorkerId,
-      eventId,
-      eventName: event?.name || "",
-      venueId: event?.venueId || "",
-      promoterId: event?.promoterId || "",
-      breakMinutes: "0",
-      dayRate: assignment?.dayRate || worker?.defaultDayRate || worker?.defaultRate || "",
-      includedHours: assignment?.includedHours || worker?.defaultIncludedHours || "10",
-      additionalRate: assignment?.additionalRate || worker?.defaultAdditionalRate || "",
-      vehicleUse: assignment?.vehicleUse || ""
-    };
+    card = newCrewTimecard(eventId, event, todayKey);
   }
   card.id = card.id || crypto.randomUUID();
+  card.workDate = todayKey;
   if (field === "clockOut" && rentalVehicleRequired(event, card)) {
     const endLog = vehicleLogForEventWorker(eventId, state.activeWorkerId, "End");
     if (!vehicleEndPhotosComplete(endLog)) {
