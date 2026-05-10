@@ -2995,6 +2995,7 @@ body:not(.owner-mode) .rate-field {
   }
 
   .nav-item {
+    position: relative;
     min-height: 40px;
     border-radius: 9px;
     padding: 9px 12px;
@@ -3015,6 +3016,26 @@ body:not(.owner-mode) .rate-field {
       linear-gradient(90deg, color-mix(in srgb, var(--accent) 72%, rgba(255, 255, 255, 0.14)), rgba(255, 255, 255, 0.11));
     color: #ffffff;
     box-shadow: 0 10px 22px rgba(0, 0, 0, 0.13);
+  }
+
+  .nav-item.active::before,
+  .nav-item.active::after {
+    position: absolute;
+    top: 9px;
+    bottom: 9px;
+    left: 0;
+    border-radius: 0 999px 999px 0;
+    content: "";
+  }
+
+  .nav-item.active::before {
+    width: 7px;
+    background: #ffffff;
+  }
+
+  .nav-item.active::after {
+    width: 3px;
+    background: var(--accent);
   }
 
   .content {
@@ -3148,11 +3169,6 @@ body:not(.owner-mode) .rate-field {
   .metric {
     min-height: 132px;
     padding: 18px;
-  }
-
-  .metric::before {
-    height: 3px;
-    background: linear-gradient(90deg, var(--accent), color-mix(in srgb, var(--accent) 28%, #ffffff));
   }
 
   .metric span {
@@ -3501,6 +3517,26 @@ body:not(.owner-mode) .rate-field {
   .nav-item.active {
     background: color-mix(in srgb, var(--accent) 38%, rgba(255, 255, 255, 0.1));
     box-shadow: none;
+  }
+
+  .nav-item.active::before,
+  .nav-item.active::after {
+    position: absolute;
+    top: 9px;
+    bottom: 9px;
+    left: 0;
+    border-radius: 0 999px 999px 0;
+    content: "";
+  }
+
+  .nav-item.active::before {
+    width: 7px;
+    background: #ffffff;
+  }
+
+  .nav-item.active::after {
+    width: 3px;
+    background: var(--accent);
   }
 
   .content {

@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.04.025",
-  title: "V1.04.025 update installed",
-  body: "Softened the remaining role-color borders and split promoter quick-add into company and rep paths."
+  version: "V1.04.026",
+  title: "V1.04.026 update installed",
+  body: "Restored the subtle active sidebar tab and kept decorative role color away from data borders."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
