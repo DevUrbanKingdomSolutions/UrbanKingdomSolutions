@@ -4,8 +4,10 @@
   --muted: #687177;
   --line: #d8d5cd;
   --panel: #fffdf8;
-  --accent: #0f766e;
-  --accent-dark: #0b5f59;
+  --accent: #56636d;
+  --accent-dark: #3f4a52;
+  --accent-soft: #f0f3f5;
+  --accent-surface: #dfe5e8;
   --warn: #b45309;
   --danger: #b91c1c;
   --shadow: 0 16px 38px rgba(29, 36, 40, 0.12);

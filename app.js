@@ -1350,12 +1350,17 @@ function isLoadingMessage(message = "") {
   return /checking|loading|logging|signing|syncing|restoring|starting/i.test(String(message || ""));
 }
 
+function loadingOverlayText(message = "") {
+  if (!isLoadingMessage(message)) return message || "Loading";
+  return document.body.dataset.accessTone ? "Copy" : "Stand By";
+}
+
 function setLoadingOverlay(message = "Loading", visible = true) {
   const overlay = $("#appLoadingOverlay");
   if (!overlay) return;
   overlay.hidden = !visible;
   const label = $("#appLoadingText");
-  if (label) label.textContent = message || "Loading";
+  if (label) label.textContent = loadingOverlayText(message);
 }
 
 function initializeSupabaseClient() {
@@ -6542,6 +6547,7 @@ function applyAccessProfile() {
   document.body.classList.toggle("production-team-mode", isProductionTeamRole());
   document.body.classList.toggle("crew-mode", isCrewRole());
   document.body.dataset.accessTone = effectiveAccessRole().toLowerCase();
+  if (!$("#appLoadingOverlay")?.hidden) setLoadingOverlay("Loading", true);
   renderAccessRoleOptions();
   renderAccessLevelControls();
   renderNavigation();
