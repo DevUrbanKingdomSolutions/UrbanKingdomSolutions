@@ -403,7 +403,8 @@ button {
   .sidebar {
     position: sticky;
     top: 0;
-    height: 100vh;
+    align-self: stretch;
+    min-height: 100vh;
     border-right: 1px solid color-mix(in srgb, var(--accent) 26%, rgba(255, 255, 255, 0.1));
     background:
       linear-gradient(180deg, color-mix(in srgb, var(--accent) 22%, transparent), rgba(255, 255, 255, 0) 38%),
