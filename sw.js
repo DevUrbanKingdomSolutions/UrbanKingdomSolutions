@@ -1,9 +1,9 @@
-const APP_SHELL_CACHE = "production-crew-shell-v1.03.101";
+const APP_SHELL_CACHE = "production-crew-shell-v1.04.001";
 const APP_SHELL_ASSETS = [
   "./",
   "./index.html",
-  "./styles.css?v=V1.03.101-desktop-messages-shell",
-  "./app.js?v=V1.03.101-desktop-messages-shell",
+  "./styles.css?v=V1.04.001-desktop-visual-foundation",
+  "./app.js?v=V1.04.001-desktop-visual-foundation",
   "./manifest.webmanifest",
   "./assets/app-icon.svg"
 ];
