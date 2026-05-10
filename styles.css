@@ -2456,10 +2456,11 @@ body:not(.owner-mode) .rate-field {
   }
 
   .mobile-message-event-controls {
-    grid-column: 1 / -1;
     display: grid;
     grid-template-columns: 0.8fr 1.2fr;
     gap: 8px;
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(195, 186, 169, 0.46);
   }
 
   .mobile-message-event-controls select {
@@ -2471,6 +2472,8 @@ body:not(.owner-mode) .rate-field {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 6px;
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(195, 186, 169, 0.46);
   }
 
   .mobile-message-direct-toggle .tab-button {
@@ -2601,7 +2604,7 @@ body:not(.owner-mode) .rate-field {
 
   .chat-thread {
     gap: 10px;
-    padding: 14px 2px 122px;
+    padding: 14px 2px 148px;
   }
 
   .message-bubble-row {
@@ -2616,6 +2619,20 @@ body:not(.owner-mode) .rate-field {
   .message-avatar {
     width: 32px;
     height: 32px;
+  }
+
+  .typing-status {
+    position: fixed;
+    right: 14px;
+    bottom: calc(118px + env(safe-area-inset-bottom));
+    left: 14px;
+    z-index: 4;
+    min-height: 24px;
+    padding: 2px 6px 6px;
+    background: rgba(245, 243, 238, 0.94);
+    color: var(--muted);
+    font-size: 12px;
+    backdrop-filter: blur(12px);
   }
 
   #sendbirdMessageForm {

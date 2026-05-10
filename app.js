@@ -5334,27 +5334,25 @@ function mobileMessagingChatCards() {
   const directProfiles = mobileDirectMessageProfiles();
   const permanentThreads = ["adminClient", "system"].flatMap((type) => visibleMessageThreadTypes().some(([visibleType]) => visibleType === type) ? permanentMessageThreadTargets(type) : []);
   return `<div class="mobile-message-sections">
-    <section class="mobile-message-section">
-      <div class="mobile-message-section-heading">
-        <h4>Event Threads</h4>
-        ${mobileMessageEventControls()}
-      </div>
-      <div class="mobile-message-list">${eventThreads || `<div class="compact-item empty">No event threads are available for this schedule view.</div>`}</div>
-    </section>
     ${permanentThreads.length ? `<section class="mobile-message-section">
       <div class="mobile-message-section-heading"><h4>Permanent Threads</h4></div>
       <div class="mobile-message-list">${permanentThreads.map((thread) => permanentMessageCard(thread)).join("")}</div>
     </section>` : ""}
     <section class="mobile-message-section">
       <div class="mobile-message-section-heading">
+        <h4>Event Threads</h4>
+      </div>
+      <div class="mobile-message-list">${mobileMessageEventControls()}${eventThreads || `<div class="compact-item empty">No event threads are available for this schedule view.</div>`}</div>
+    </section>
+    <section class="mobile-message-section">
+      <div class="mobile-message-section-heading">
         <h4>Direct Messages</h4>
         <button class="tiny-button" data-new-message-thread type="button">New</button>
       </div>
-      <div class="mobile-message-direct-toggle">
-        <button class="tab-button ${state.messageDirectScope === "event" ? "active" : ""}" data-message-direct-scope="event" type="button">Event Contacts</button>
-        <button class="tab-button ${state.messageDirectScope === "all" ? "active" : ""}" data-message-direct-scope="all" type="button">All Contacts</button>
-      </div>
-      <div class="mobile-message-list">${directProfiles.length
+      <div class="mobile-message-list"><div class="mobile-message-direct-toggle">
+          <button class="tab-button ${state.messageDirectScope === "event" ? "active" : ""}" data-message-direct-scope="event" type="button">Event Contacts</button>
+          <button class="tab-button ${state.messageDirectScope === "all" ? "active" : ""}" data-message-direct-scope="all" type="button">All Contacts</button>
+        </div>${directProfiles.length
         ? directProfiles.map((profile) => directMessageCard(profile)).join("")
         : `<div class="compact-item empty">No direct message contacts are available yet.</div>`}</div>
     </section>
@@ -5699,8 +5697,15 @@ function renderTypingStatus() {
   if (!sendbirdActiveChannel) return "";
   const users = sendbirdTypingUsers.filter((user) => user?.userId !== sendbirdClient?.currentUser?.userId);
   if (!users.length) return `<span>No one is typing</span>`;
-  const names = users.map((user) => user.nickname || user.userId).filter(Boolean).slice(0, 3);
+  const names = users.map((user) => typingUserDisplayName(user)).filter(Boolean).slice(0, 3);
   return `<span>${escapeHtml(names.join(", "))} ${names.length === 1 ? "is" : "are"} typing...</span>`;
+}
+
+function typingUserDisplayName(user) {
+  const profile = profileForSendbirdUserId(user?.userId || "");
+  const label = profile?.name || profile?.contactName || user?.nickname || user?.userId || "";
+  const first = String(label).trim().split(/\s+/)[0] || "";
+  return first || label;
 }
 
 function activeThreadManagementLabel() {
