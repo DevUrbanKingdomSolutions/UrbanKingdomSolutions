@@ -740,11 +740,24 @@ function updatePullRefreshIndicator(distance = 0) {
   indicator.textContent = pullRefreshState.refreshing ? "Refreshing" : ready ? "Release to refresh" : "Pull to refresh";
 }
 
+function startedInsideScrollableSection(target) {
+  let element = target?.nodeType === Node.ELEMENT_NODE ? target : target?.parentElement;
+  while (element && element !== document.body && element !== document.documentElement) {
+    const style = window.getComputedStyle(element);
+    const canScrollY = /(auto|scroll)/.test(style.overflowY) && element.scrollHeight > element.clientHeight + 1;
+    const canScrollX = /(auto|scroll)/.test(style.overflowX) && element.scrollWidth > element.clientWidth + 1;
+    if (canScrollY || canScrollX) return true;
+    element = element.parentElement;
+  }
+  return false;
+}
+
 function initPullToRefresh() {
   if (!("ontouchstart" in window)) return;
   window.addEventListener("touchstart", (event) => {
     if (pullRefreshState.refreshing || document.body.classList.contains("modal-open")) return;
     if (window.scrollY > 0) return;
+    if (startedInsideScrollableSection(event.target)) return;
     pullRefreshState = {
       tracking: true,
       startY: event.touches[0]?.clientY || 0,
@@ -3303,19 +3316,23 @@ function enhanceResponsiveTables() {
 }
 
 function positionOpenRecordMenus() {
-  $$(".table-wrap .record-options").forEach((details) => {
-    const menu = details.querySelector(".record-options-menu");
+  $$(".table-wrap .record-options, #events .event-options").forEach((details) => {
+    const menu = details.querySelector(".record-options-menu, .event-options-menu");
     if (!menu) return;
     if (!details.open) {
       menu.style.top = "";
       menu.style.left = "";
+      menu.style.right = "";
       return;
     }
     const rect = details.getBoundingClientRect();
     const width = Math.max(170, menu.offsetWidth || 170);
+    const height = menu.offsetHeight || 220;
     const left = Math.min(window.innerWidth - width - 12, Math.max(12, rect.right - width));
+    let top = rect.bottom + 6;
+    if (top + height > window.innerHeight - 12) top = rect.top - height - 6;
     menu.style.left = `${left}px`;
-    menu.style.top = `${Math.min(window.innerHeight - 12, rect.bottom + 6)}px`;
+    menu.style.top = `${Math.max(12, top)}px`;
   });
 }
 
@@ -8749,7 +8766,7 @@ function bindEvents() {
   });
   window.addEventListener("scroll", positionOpenRecordMenus, true);
   document.addEventListener("toggle", (event) => {
-    if (event.target.matches?.(".table-wrap .record-options")) positionOpenRecordMenus();
+    if (event.target.matches?.(".table-wrap .record-options, #events .event-options")) positionOpenRecordMenus();
   }, true);
   $(".nav-list").addEventListener("click", (event) => {
     const groupToggle = event.target.closest("[data-nav-group]");

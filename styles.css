@@ -2134,6 +2134,14 @@ td p {
   z-index: 80;
 }
 
+#events .event-options-menu {
+  position: fixed;
+  top: auto;
+  right: auto;
+  z-index: 80;
+  max-width: min(260px, calc(100vw - 24px));
+}
+
 .event-options-menu .tiny-button,
 .record-options-menu .tiny-button {
   width: 100%;
