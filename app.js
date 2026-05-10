@@ -8228,6 +8228,7 @@ function bindEvents() {
   $(".nav-list").addEventListener("click", (event) => {
     const groupToggle = event.target.closest("[data-nav-group]");
     if (groupToggle) {
+      event.stopPropagation();
       toggleNavGroup(groupToggle.dataset.navGroup);
       return;
     }
