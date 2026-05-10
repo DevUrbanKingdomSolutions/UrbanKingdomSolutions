@@ -2174,7 +2174,15 @@ body:not(.owner-mode) .rate-field {
   }
 
   .content {
+    display: flex;
+    min-height: 100dvh;
+    flex-direction: column;
     padding: calc(14px + env(safe-area-inset-top)) 14px 18px;
+  }
+
+  .active-view {
+    flex: 1 1 auto;
+    padding-bottom: calc(92px + env(safe-area-inset-bottom));
   }
 
   .view:not(#messages) .stack-layout,
@@ -2225,7 +2233,9 @@ body:not(.owner-mode) .rate-field {
   }
 
   .topbar {
-    position: static;
+    position: sticky;
+    top: 0;
+    z-index: 32;
     display: grid;
     grid-template-columns: auto minmax(0, 1fr) auto;
     align-items: center;
@@ -2233,7 +2243,8 @@ body:not(.owner-mode) .rate-field {
     margin: 0 0 14px;
     padding: 0 0 10px;
     border-bottom: 1px solid rgba(195, 186, 169, 0.55);
-    background: transparent;
+    background: rgba(245, 243, 238, 0.97);
+    backdrop-filter: blur(12px);
   }
 
   .topbar-title {
@@ -2953,6 +2964,26 @@ body:not(.owner-mode) .rate-field {
 }
 
 @media (max-width: 640px) {
+  #timecards .table-wrap > table td:last-child {
+    display: flex;
+    grid-template-columns: none;
+    justify-content: flex-start;
+    overflow: visible;
+  }
+
+  #timecards .table-wrap > table td:last-child::before {
+    display: none;
+  }
+
+  #timecards .record-options {
+    justify-self: start;
+  }
+
+  #timecards .record-options summary {
+    min-width: 92px;
+    justify-content: center;
+  }
+
   #events .record-card {
     margin-right: 0;
     margin-left: 0;

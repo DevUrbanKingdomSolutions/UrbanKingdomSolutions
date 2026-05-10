@@ -4416,20 +4416,24 @@ function openGigDirectoryForEvent(eventId) {
 
 function renderClock() {
   const events = visibleEvents().filter((event) => matchesSearch(event, `${getVenue(event.venueId)?.name || ""} ${getPromoter(event.promoterId)?.name || ""}`));
-  $("#clockEventCount").textContent = events.length ? `${events.length} assigned` : "Today";
-  $("#clockCards").innerHTML = events.length
-    ? events.map((event) => clockCard(event)).join("")
-    : todayClockTimelineCard();
+  $("#clockEventCount").textContent = events.length ? `Today / ${events.length} assigned` : "Today";
+  $("#clockCards").innerHTML = `${todayClockTimelineCard(events.length)}${events.map((event) => clockCard(event)).join("")}`;
 }
 
-function todayClockTimelineCard() {
+function todayClockTimelineCard(assignedEventCount = 0) {
   const card = currentDayCrewTimecard();
   const today = localDateKey();
+  const event = card?.eventId ? getEvent(card.eventId) : null;
+  const line = event
+    ? `${event.name}${assignedEventCount ? "" : " - no assigned events available in this view"}`
+    : assignedEventCount
+      ? "Use an assigned event below to update today's time."
+      : "No assigned event is available for this worker today.";
   return `<article class="record-card clock-card clock-day-card">
     <div class="record-card-main">
       <strong>Today</strong>
       <span>${escapeHtml(formatDate(`${today}T12:00`) || today)}</span>
-      <p>No assigned event is available for this worker today.</p>
+      <p>${escapeHtml(line)}</p>
       <div class="punch-summary">
         ${punchSummaryItem("Call", card?.clockIn, card?.punchLocations?.clockIn)}
         ${punchSummaryItem("Lunch Out", card?.lunchOut, card?.punchLocations?.lunchOut)}
