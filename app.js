@@ -6411,6 +6411,7 @@ function setView(viewId) {
     showAuthScreen("Log in to continue.");
     return;
   }
+  const previousView = state.activeView;
   const nextRole = accessRoleForView(viewId);
   if (nextRole) state.accessRole = nextRole;
   viewId = protectedViewFor(viewId);
@@ -6425,6 +6426,15 @@ function setView(viewId) {
   if (location.hash !== `#${viewId}`) history.replaceState(null, "", `#${viewId}`);
   if (requestedView !== viewId) toast("That view is restricted for your role.");
   closeMobileNavigation();
+  if (previousView !== viewId) resetViewScrollPosition();
+}
+
+function resetViewScrollPosition() {
+  requestAnimationFrame(() => {
+    $(".content")?.scrollTo?.({ top: 0, left: 0, behavior: "auto" });
+    document.documentElement.scrollTo?.({ top: 0, left: 0, behavior: "auto" });
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+  });
 }
 
 function combinedNavGroups() {
