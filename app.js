@@ -8564,6 +8564,7 @@ function bindEvents() {
   $("#clearSessionButton").addEventListener("click", clearSavedLogin);
   $("#setupLogoutButton").addEventListener("click", clearSavedLogin);
   $("#logoutButton").addEventListener("click", logout);
+  $("#mobileSidebarLogoutButton")?.addEventListener("click", logout);
   $("#markNotificationsRead").addEventListener("click", markNotificationsRead);
   $("#clearReadNotifications").addEventListener("click", clearReadNotifications);
   $("#mobileInstallButton")?.addEventListener("click", promptMobileAppInstall);
