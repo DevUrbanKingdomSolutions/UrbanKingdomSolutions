@@ -2110,7 +2110,6 @@ async function applyAuthenticatedSession(session, preferredView = "") {
 
   $("#sessionEmail").textContent = session.user.email || "Signed in";
   $("#sessionRole").textContent = state.accessRole;
-  showAppShell({ keepLoading: true });
   await ensureDatabase();
   await hydrateAccessLevelsFromSupabase();
   await hydrateClientSetupData(roleRecord, session.user);
@@ -2126,6 +2125,7 @@ async function applyAuthenticatedSession(session, preferredView = "") {
   const homeView = requestedView && assignedViews().includes(requestedView) ? requestedView : roleHomeView();
   if (location.hash !== `#${homeView}`) history.replaceState(null, "", `#${homeView}`);
   setView(homeView);
+  showAppShell({ keepLoading: true });
   setLoadingOverlay("", false);
   openCurrentClientSetupStep();
   if (sessionStorage.getItem(POST_SETUP_PERMISSION_PROMPT_KEY)) {
