@@ -2184,19 +2184,35 @@ body:not(.owner-mode) .rate-field {
 
   .topbar-tools {
     grid-column: 1 / -1;
-    display: flex;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 8px;
-    overflow-x: auto;
-    padding-bottom: 2px;
-    -webkit-overflow-scrolling: touch;
   }
 
-  .topbar-tools > * {
-    flex: 0 0 auto;
+  .topbar-tools > *,
+  .topbar-tools .tiny-button,
+  .topbar-tools .ghost-button,
+  .topbar-tools .search-input {
+    width: 100%;
+    min-width: 0;
   }
 
   .topbar-tools .search-input {
-    min-width: 210px;
+    grid-column: 1 / -1;
+  }
+
+  .topbar-tools .session-pill {
+    grid-column: 1 / -1;
+  }
+
+  .topbar-tools .notification-center,
+  .topbar-tools .global-add-menu {
+    justify-self: stretch;
+  }
+
+  .topbar-tools .notification-bell {
+    min-width: 0;
+    width: 100%;
   }
 
   .notification-panel {
