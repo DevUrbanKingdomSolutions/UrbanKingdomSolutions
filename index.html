@@ -10,7 +10,7 @@
     <title>Production Crew Database</title>
     <link rel="manifest" href="manifest.webmanifest">
     <link rel="icon" href="assets/app-icon.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="styles.css?v=V1.04.009-refine-desktop-header">
+    <link rel="stylesheet" href="styles.css?v=V1.04.010-consolidate-dashboard-stats">
   </head>
   <body>
     <div id="appLoadingOverlay" class="app-loading-overlay" aria-live="polite">
@@ -160,7 +160,6 @@
               <select id="activePromoter"></select>
             </label>
             <input id="globalSearch" class="search-input" type="search" placeholder="Search the database">
-            <button id="logoutButton" class="ghost-button" type="button">Log Out</button>
           </div>
         </header>
         <div id="connectionBanner" class="connection-banner" hidden></div>
@@ -176,38 +175,6 @@
             <div id="crewMobileActions" class="crew-mobile-actions"></div>
             <div id="crewMobileTasks" class="crew-mobile-tasks"></div>
           </section>
-          <div class="metric-grid">
-            <button class="metric metric-link" data-dashboard-link="events" type="button">
-              <span>Events</span>
-              <strong id="eventCount">0</strong>
-            </button>
-            <button class="metric metric-link" data-dashboard-link="timecards" type="button">
-              <span>Clocked in</span>
-              <strong id="activeTimecards">0</strong>
-            </button>
-            <article class="metric payroll-metric">
-              <div class="metric-topline">
-                <span>Est. payroll</span>
-                <button class="tiny-button" data-dashboard-link="payroll" type="button">Open</button>
-              </div>
-              <strong id="payrollCount">$0</strong>
-              <label class="metric-control">
-                <span>Range</span>
-                <select id="dashboardPayrollRange">
-                  <option value="lifetime">Lifetime</option>
-                  <option value="year">Yearly</option>
-                  <option value="month">Monthly</option>
-                  <option value="week">Weekly</option>
-                  <option value="day">Daily</option>
-                  <option value="event">By Event</option>
-                </select>
-              </label>
-              <label id="dashboardPayrollEventControl" class="metric-control" hidden>
-                <span>Event</span>
-                <select id="dashboardPayrollEvent"></select>
-              </label>
-            </article>
-          </div>
           <section class="panel dashboard-calendar-panel">
             <div class="panel-heading">
               <h3>Calendar</h3>
@@ -1511,6 +1478,6 @@
     <div id="modalHost"></div>
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js?v=V1.04.009-refine-desktop-header"></script>
+    <script src="app.js?v=V1.04.010-consolidate-dashboard-stats"></script>
   </body>
 </html>

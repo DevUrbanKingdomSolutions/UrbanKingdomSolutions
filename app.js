@@ -3912,9 +3912,6 @@ function renderDashboard() {
   renderDesktopDashboardHero();
   renderDashboardIdentity();
   if (isAdminRole()) {
-    $("#eventCount").textContent = "0";
-    $("#activeTimecards").textContent = "0";
-    $("#payrollCount").textContent = "$0";
     renderDashboardPayrollControls([]);
     renderDashboardCalendar([]);
     $("#liveCrewList").innerHTML = `<div class="compact-item empty">ADMIN does not load production timecard data.</div>`;
@@ -3923,10 +3920,6 @@ function renderDashboard() {
   }
   const cards = visibleRecords(state.timecards);
   const liveCards = cards.filter((card) => !card.clockOut);
-  const payrollCards = dashboardPayrollCards(cards);
-  $("#eventCount").textContent = visibleEvents().length;
-  $("#activeTimecards").textContent = liveCards.length;
-  $("#payrollCount").textContent = currency(payrollCards.reduce((sum, card) => sum + estimatedPay(card), 0));
   renderDashboardPayrollControls(cards);
   renderDashboardCalendar(visibleEvents());
 
@@ -4085,9 +4078,9 @@ function dashboardHeroConfig() {
       secondaryView: "dataTools",
       secondaryLabel: "Data Tools",
       stats: [
-        ["System Notices", systemAdminThreadMessages().length],
-        ["Client Accounts", state.clients.length],
-        ["Access Levels", accessLevelDefinitions().filter((level) => level.id !== "ADMIN").length]
+        { label: "System Notices", value: systemAdminThreadMessages().length, view: "messages" },
+        { label: "Client Accounts", value: state.clients.length, view: "admin" },
+        { label: "Access Levels", value: accessLevelDefinitions().filter((level) => level.id !== "ADMIN").length, view: "admin" }
       ]
     };
   }
@@ -4104,9 +4097,9 @@ function dashboardHeroConfig() {
       secondaryView: "messages",
       secondaryLabel: "Messages",
       stats: [
-        ["Current Events", currentEvents.length],
-        ["Assigned Events", visibleEvents().length],
-        ["Open Timecard", liveCard ? "Yes" : "No"]
+        { label: "Current Events", value: currentEvents.length, view: "events" },
+        { label: "Assigned Events", value: visibleEvents().length, view: "events" },
+        { label: "Open Timecard", value: liveCard ? "Yes" : "No", view: "timecards" }
       ]
     };
   }
@@ -4122,9 +4115,9 @@ function dashboardHeroConfig() {
       secondaryView: "messages",
       secondaryLabel: "Messages",
       stats: [
-        ["Visible Events", visible.length],
-        ["Live Timecards", liveCards.length],
-        ["Reports", visibleRecords(state.accidentReports).length]
+        { label: "Visible Events", value: visible.length, view: "events" },
+        { label: "Clocked In", value: liveCards.length, view: "timecards" },
+        { label: "Reports", value: visibleRecords(state.accidentReports).length, view: "reports" }
       ]
     };
   }
@@ -4139,13 +4132,14 @@ function dashboardHeroConfig() {
       secondaryView: "productionBoard",
       secondaryLabel: "Production Board",
       stats: [
-        ["Events", visible.length],
-        ["Crew Assigned", new Set(visible.flatMap((event) => eventWorkerIds(event))).size],
-        ["Reports", visibleRecords(state.accidentReports).length]
+        { label: "Events", value: visible.length, view: "events" },
+        { label: "Clocked In", value: visibleRecords(state.timecards).filter((card) => !card.clockOut).length, view: "timecards" },
+        { label: "Reports", value: visibleRecords(state.accidentReports).length, view: "reports" }
       ]
     };
   }
   const cards = visibleRecords(state.timecards);
+  const liveCards = cards.filter((card) => !card.clockOut);
   return {
     eyebrow: "Client workspace",
     title: activeClientRecord()?.name || "Production command center",
@@ -4155,11 +4149,38 @@ function dashboardHeroConfig() {
     secondaryView: "timecards",
     secondaryLabel: "Timecards",
     stats: [
-      ["Events", visibleEvents().length],
-      ["Crew", visibleWorkers().length],
-      ["Est. Payroll", currency(cards.reduce((sum, card) => sum + estimatedPay(card), 0))]
+      { label: "Events", value: visibleEvents().length, view: "events" },
+      { label: "Clocked In", value: liveCards.length, view: "timecards" },
+      { label: "Est. Payroll", value: currency(dashboardPayrollCards(cards).reduce((sum, card) => sum + estimatedPay(card), 0)), view: "payroll", payroll: true }
     ]
   };
+}
+
+function dashboardHeroStat(stat) {
+  const view = assignedViews().includes(stat.view) ? stat.view : "";
+  const control = stat.payroll ? `<label class="metric-control desktop-hero-payroll-range" aria-label="Payroll range">
+    <span>Range</span>
+    <select id="dashboardPayrollRange">
+      <option value="lifetime">Lifetime</option>
+      <option value="year">Yearly</option>
+      <option value="month">Monthly</option>
+      <option value="week">Weekly</option>
+      <option value="day">Daily</option>
+      <option value="event">By Event</option>
+    </select>
+  </label>
+  <label id="dashboardPayrollEventControl" class="metric-control desktop-hero-payroll-event" hidden>
+    <span>Event</span>
+    <select id="dashboardPayrollEvent"></select>
+  </label>` : "";
+  const attrs = view ? ` data-dashboard-link="${escapeHtml(view)}"` : "";
+  const tag = view && !stat.payroll ? "button" : "div";
+  const type = tag === "button" ? ` type="button"` : "";
+  return `<${tag} class="desktop-hero-stat${view ? " is-clickable" : ""}"${attrs}${type}>
+    <span>${escapeHtml(stat.label)}</span>
+    <strong>${escapeHtml(String(stat.value))}</strong>
+    ${control}
+  </${tag}>`;
 }
 
 function renderDesktopDashboardHero() {
@@ -4179,7 +4200,7 @@ function renderDesktopDashboardHero() {
     <div class="desktop-hero-actions">${primary}${secondary}</div>
   </div>
   <div class="desktop-hero-stats">
-    ${config.stats.map(([label, value]) => `<div><span>${escapeHtml(label)}</span><strong>${escapeHtml(String(value))}</strong></div>`).join("")}
+    ${config.stats.map((stat) => dashboardHeroStat(stat)).join("")}
   </div>`;
 }
 
@@ -8694,7 +8715,7 @@ function bindEvents() {
   $("#setupForm").addEventListener("submit", completeAccountSetup);
   $("#clearSessionButton").addEventListener("click", clearSavedLogin);
   $("#setupLogoutButton").addEventListener("click", clearSavedLogin);
-  $("#logoutButton").addEventListener("click", logout);
+  $("#logoutButton")?.addEventListener("click", logout);
   $("#mobileSidebarLogoutButton")?.addEventListener("click", logout);
   $("#markNotificationsRead").addEventListener("click", markNotificationsRead);
   $("#clearReadNotifications").addEventListener("click", clearReadNotifications);
@@ -8757,15 +8778,17 @@ function bindEvents() {
     localStorage.setItem("productionCrewEventSort", state.eventSort);
     renderEvents();
   });
-  $("#dashboardPayrollRange")?.addEventListener("change", (event) => {
-    state.dashboardPayrollRange = event.target.value;
-    localStorage.setItem("productionCrewDashboardPayrollRange", state.dashboardPayrollRange);
-    renderDashboard();
-  });
-  $("#dashboardPayrollEvent")?.addEventListener("change", (event) => {
-    state.dashboardPayrollEventId = event.target.value;
-    localStorage.setItem("productionCrewDashboardPayrollEventId", state.dashboardPayrollEventId);
-    renderDashboard();
+  document.body.addEventListener("change", (event) => {
+    if (event.target?.id === "dashboardPayrollRange") {
+      state.dashboardPayrollRange = event.target.value;
+      localStorage.setItem("productionCrewDashboardPayrollRange", state.dashboardPayrollRange);
+      renderDashboard();
+    }
+    if (event.target?.id === "dashboardPayrollEvent") {
+      state.dashboardPayrollEventId = event.target.value;
+      localStorage.setItem("productionCrewDashboardPayrollEventId", state.dashboardPayrollEventId);
+      renderDashboard();
+    }
   });
   $("#dashboardCalendarPrev")?.addEventListener("click", () => {
     const month = dashboardCalendarMonthDate();
@@ -9017,7 +9040,7 @@ function bindEvents() {
       setView(mobileGoViewButton.dataset.mobileGoView);
       return;
     }
-    if (dashboardLinkButton) {
+    if (dashboardLinkButton && !event.target.closest("select, input, textarea, label")) {
       setView(dashboardLinkButton.dataset.dashboardLink);
       return;
     }
