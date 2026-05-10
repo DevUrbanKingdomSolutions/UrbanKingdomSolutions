@@ -60,6 +60,11 @@ body[data-access-tone="crew"] {
   --accent-surface: #e3dafb;
 }
 
+body[data-access-tone] {
+  --signature-line: linear-gradient(90deg, var(--accent), color-mix(in srgb, var(--accent) 18%, #ffffff));
+  --signature-glow: 0 12px 28px color-mix(in srgb, var(--accent) 18%, transparent);
+}
+
 button,
 input,
 select,
@@ -328,6 +333,10 @@ button {
 .nav-item.active {
   background: rgba(255, 255, 255, 0.11);
   color: #ffffff;
+}
+
+.nav-item.active {
+  box-shadow: inset 4px 0 0 var(--accent);
 }
 
 .side-actions {
@@ -2945,7 +2954,7 @@ body:not(.owner-mode) .rate-field {
     border-radius: 10px;
     background:
       linear-gradient(145deg, color-mix(in srgb, var(--accent) 82%, #ffffff 8%), var(--accent-dark));
-    box-shadow: 0 14px 30px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 14px 30px rgba(0, 0, 0, 0.2), 0 0 0 4px color-mix(in srgb, var(--accent) 16%, transparent);
   }
 
   .sidebar .brand h1 {
@@ -3013,9 +3022,9 @@ body:not(.owner-mode) .rate-field {
 
   .nav-item.active {
     background:
-      linear-gradient(90deg, color-mix(in srgb, var(--accent) 58%, rgba(255, 255, 255, 0.2)), rgba(255, 255, 255, 0.11));
+      linear-gradient(90deg, color-mix(in srgb, var(--accent) 72%, rgba(255, 255, 255, 0.14)), rgba(255, 255, 255, 0.11));
     color: #ffffff;
-    box-shadow: inset 4px 0 0 #ffffff, 0 10px 22px rgba(0, 0, 0, 0.13);
+    box-shadow: inset 5px 0 0 #ffffff, inset 9px 0 0 var(--accent), 0 10px 22px rgba(0, 0, 0, 0.13);
   }
 
   .content {
@@ -3050,6 +3059,19 @@ body:not(.owner-mode) .rate-field {
 
   .topbar-title {
     flex: 1 1 auto;
+    position: relative;
+    padding-bottom: 5px;
+  }
+
+  .topbar-title::after {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: min(168px, 42%);
+    height: 4px;
+    border-radius: 999px;
+    background: var(--signature-line);
+    content: "";
   }
 
   .eyebrow {
@@ -3127,6 +3149,15 @@ body:not(.owner-mode) .rate-field {
     box-shadow: 0 10px 24px rgba(23, 31, 35, 0.08);
   }
 
+  .notification-bell:hover,
+  .notification-bell:focus-visible,
+  .global-add-menu > summary:hover,
+  .global-add-menu > summary:focus-visible {
+    border-color: color-mix(in srgb, var(--accent) 42%, var(--desktop-line));
+    box-shadow: var(--signature-glow);
+    outline: none;
+  }
+
   .active-view {
     min-width: 0;
   }
@@ -3143,6 +3174,23 @@ body:not(.owner-mode) .rate-field {
     border-radius: 12px;
     background: var(--desktop-surface);
     box-shadow: var(--desktop-shadow);
+  }
+
+  .panel,
+  .record-card {
+    position: relative;
+  }
+
+  .panel::before,
+  .record-card::before {
+    position: absolute;
+    top: -1px;
+    right: -1px;
+    left: -1px;
+    height: 4px;
+    border-radius: 12px 12px 0 0;
+    background: var(--signature-line);
+    content: "";
   }
 
   .metric {
@@ -3204,6 +3252,17 @@ body:not(.owner-mode) .rate-field {
     font-weight: 900;
   }
 
+  .panel-heading h3::before {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    margin-right: 8px;
+    border-radius: 999px;
+    background: var(--accent);
+    content: "";
+    vertical-align: 1px;
+  }
+
   .panel-tools,
   .list-controls,
   .bulk-actions,
@@ -3233,7 +3292,15 @@ body:not(.owner-mode) .rate-field {
   .primary-action,
   #sendbirdMessageForm button {
     border-radius: 10px;
-    box-shadow: 0 10px 22px color-mix(in srgb, var(--accent) 18%, transparent);
+    background: var(--accent);
+    box-shadow: var(--signature-glow);
+  }
+
+  .tab-button.active {
+    border-color: color-mix(in srgb, var(--accent) 38%, var(--desktop-line));
+    background: var(--accent-soft);
+    color: var(--accent-dark);
+    box-shadow: inset 0 -3px 0 var(--accent);
   }
 
   .table-panel {
@@ -3491,6 +3558,22 @@ body:not(.owner-mode) .rate-field {
     font-weight: 800;
   }
 
+  .sidebar .brand {
+    padding-bottom: 14px;
+    border-bottom: 1px solid color-mix(in srgb, var(--accent) 28%, rgba(255, 255, 255, 0.14));
+  }
+
+  .brand-mark {
+    background:
+      linear-gradient(145deg, color-mix(in srgb, var(--accent) 82%, #ffffff 8%), var(--accent-dark));
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 16%, transparent);
+  }
+
+  .nav-item.active {
+    background: color-mix(in srgb, var(--accent) 38%, rgba(255, 255, 255, 0.1));
+    box-shadow: inset 5px 0 0 var(--accent);
+  }
+
   .content {
     display: flex;
     min-height: 100dvh;
@@ -3524,6 +3607,17 @@ body:not(.owner-mode) .rate-field {
     align-items: center;
     padding: 4px 0 10px;
     border-bottom: 1px solid rgba(195, 186, 169, 0.55);
+  }
+
+  .view:not(#messages) .panel-heading h3::before {
+    display: inline-block;
+    width: 7px;
+    height: 7px;
+    margin-right: 8px;
+    border-radius: 999px;
+    background: var(--accent);
+    content: "";
+    vertical-align: 1px;
   }
 
   .view:not(#messages) .list-controls {
@@ -3578,6 +3672,16 @@ body:not(.owner-mode) .rate-field {
     text-align: center;
   }
 
+  .topbar-title::after {
+    display: block;
+    width: min(138px, 56%);
+    height: 3px;
+    margin: 5px auto 0;
+    border-radius: 999px;
+    background: var(--signature-line);
+    content: "";
+  }
+
   .mobile-menu-button {
     grid-column: 1;
     grid-row: 1;
@@ -3592,6 +3696,11 @@ body:not(.owner-mode) .rate-field {
     padding: 8px 10px;
     font-weight: 800;
     z-index: 1;
+  }
+
+  .mobile-menu-button,
+  .notification-bell {
+    border-color: color-mix(in srgb, var(--accent) 24%, var(--line));
   }
 
   .topbar h2 {
@@ -4303,8 +4412,9 @@ body:not(.owner-mode) .rate-field {
   }
 
   .mobile-bottom-nav button.active {
-    background: #e7f4ef;
-    color: #176346;
+    background: var(--accent-soft);
+    color: var(--accent-dark);
+    box-shadow: inset 0 3px 0 var(--accent);
   }
 
   .toast {
