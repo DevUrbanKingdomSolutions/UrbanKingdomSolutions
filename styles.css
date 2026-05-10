@@ -2364,8 +2364,40 @@ body:not(.owner-mode) .rate-field {
   .table-wrap {
     max-height: none;
     flex: 1 1 auto;
+    max-width: 100%;
     min-height: 220px;
     overflow: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  #events,
+  #events .split-layout,
+  #events .panel,
+  #events .record-grid,
+  #events .record-card,
+  #events .record-card-main {
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  #events .record-grid {
+    padding-right: 0;
+    padding-left: 0;
+  }
+
+  #events .record-card {
+    grid-template-columns: minmax(0, 1fr);
+    overflow: hidden;
+  }
+
+  #events .event-options {
+    justify-self: start;
+  }
+
+  #events .mini-table {
+    display: block;
+    max-width: 100%;
+    overflow-x: auto;
     -webkit-overflow-scrolling: touch;
   }
 
@@ -2839,6 +2871,22 @@ body:not(.owner-mode) .rate-field {
 }
 
 @media (max-width: 640px) {
+  #events .record-card {
+    margin-right: 0;
+    margin-left: 0;
+  }
+
+  #events .mini-table {
+    border: 1px solid var(--line);
+    border-radius: 8px;
+  }
+
+  #events .mini-table th,
+  #events .mini-table td {
+    min-width: 116px;
+    white-space: normal;
+  }
+
   .table-wrap {
     overflow: auto;
   }
