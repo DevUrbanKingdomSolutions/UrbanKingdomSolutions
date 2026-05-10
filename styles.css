@@ -26,26 +26,36 @@ body {
 body[data-access-tone="admin"] {
   --accent: #b8352d;
   --accent-dark: #87251f;
+  --accent-soft: #fff0ef;
+  --accent-surface: #f7d8d5;
 }
 
 body[data-access-tone="client"] {
   --accent: #2d6cdf;
   --accent-dark: #1d4f9f;
+  --accent-soft: #eef4ff;
+  --accent-surface: #d8e6ff;
 }
 
 body[data-access-tone="promoter"] {
   --accent: #2c7a4b;
   --accent-dark: #1f5b38;
+  --accent-soft: #eef8f2;
+  --accent-surface: #d8ecdf;
 }
 
 body[data-access-tone="production"] {
   --accent: #b8871f;
   --accent-dark: #866113;
+  --accent-soft: #fff7e4;
+  --accent-surface: #f3e2b8;
 }
 
 body[data-access-tone="crew"] {
   --accent: #8a70d6;
   --accent-dark: #6750a9;
+  --accent-soft: #f4f0ff;
+  --accent-surface: #e3dafb;
 }
 
 button,
@@ -382,7 +392,7 @@ button {
 
   .app-shell {
     background:
-      linear-gradient(90deg, #20282c 0, #20282c 280px, transparent 280px),
+      linear-gradient(90deg, color-mix(in srgb, var(--accent-dark) 56%, #20282c) 0, color-mix(in srgb, var(--accent-dark) 56%, #20282c) 280px, transparent 280px),
       #f4f2ec;
   }
 
@@ -390,10 +400,10 @@ button {
     position: sticky;
     top: 0;
     height: 100vh;
-    border-right: 1px solid rgba(255, 255, 255, 0.08);
+    border-right: 1px solid color-mix(in srgb, var(--accent) 26%, rgba(255, 255, 255, 0.1));
     background:
-      linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0)),
-      #20282c;
+      linear-gradient(180deg, color-mix(in srgb, var(--accent) 22%, transparent), rgba(255, 255, 255, 0) 38%),
+      color-mix(in srgb, var(--accent-dark) 56%, #20282c);
   }
 
   .brand-mark {
@@ -402,7 +412,7 @@ button {
   }
 
   .nav-group-toggle {
-    color: #9eadb1;
+    color: color-mix(in srgb, var(--accent-surface) 52%, #9eadb1);
   }
 
   .nav-item {
@@ -413,11 +423,11 @@ button {
   }
 
   .nav-item:hover {
-    background: rgba(255, 255, 255, 0.08);
+    background: color-mix(in srgb, var(--accent) 14%, rgba(255, 255, 255, 0.08));
   }
 
   .nav-item.active {
-    background: color-mix(in srgb, var(--accent) 22%, #ffffff 4%);
+    background: color-mix(in srgb, var(--accent) 28%, #ffffff 6%);
     color: #ffffff;
     box-shadow: inset 4px 0 0 var(--accent);
   }
@@ -432,7 +442,9 @@ button {
     border: 1px solid rgba(216, 213, 205, 0.8);
     border-left: 6px solid var(--accent);
     border-radius: 8px;
-    background: rgba(255, 253, 248, 0.86);
+    background:
+      linear-gradient(90deg, color-mix(in srgb, var(--accent-soft) 64%, #ffffff), rgba(255, 253, 248, 0.9) 44%),
+      #ffffff;
     padding: 14px 16px;
     box-shadow: 0 12px 30px rgba(29, 36, 40, 0.07);
   }
@@ -471,6 +483,10 @@ button {
     background: var(--accent);
   }
 
+  .metric span {
+    color: var(--accent-dark);
+  }
+
   .metric-link:hover,
   .metric-link:focus-visible {
     transform: translateY(-1px);
@@ -482,7 +498,25 @@ button {
   }
 
   .panel-heading {
-    background: linear-gradient(180deg, #ffffff, #fbfaf6);
+    border-bottom-color: color-mix(in srgb, var(--accent) 20%, var(--line));
+    background: linear-gradient(90deg, color-mix(in srgb, var(--accent-soft) 72%, #ffffff), #ffffff 58%);
+  }
+
+  .panel-heading h3 {
+    color: color-mix(in srgb, var(--accent-dark) 70%, var(--ink));
+  }
+
+  .list-controls {
+    border-top-color: color-mix(in srgb, var(--accent) 18%, var(--line));
+    border-bottom-color: color-mix(in srgb, var(--accent) 18%, var(--line));
+    background: color-mix(in srgb, var(--accent-soft) 50%, #fbfaf6);
+  }
+
+  .tab-button.active,
+  .status-pill {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #ffffff;
   }
 
   .primary-action,
@@ -2659,6 +2693,34 @@ td p {
 
 body:not(.owner-mode) .rate-field {
   display: none;
+}
+
+@media (min-width: 861px) {
+  .panel-heading {
+    border-bottom-color: color-mix(in srgb, var(--accent) 20%, var(--line));
+    background: linear-gradient(90deg, color-mix(in srgb, var(--accent-soft) 72%, #ffffff), #ffffff 58%);
+  }
+
+  .panel-heading h3 {
+    color: color-mix(in srgb, var(--accent-dark) 70%, var(--ink));
+  }
+
+  .list-controls,
+  .tab-row {
+    border-color: color-mix(in srgb, var(--accent) 18%, var(--line));
+    background: color-mix(in srgb, var(--accent-soft) 50%, #fbfaf6);
+  }
+
+  .status-pill:not(.warn) {
+    background: var(--accent-soft);
+    color: var(--accent-dark);
+  }
+
+  .tab-button.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #ffffff;
+  }
 }
 
 @media (max-width: 1050px) {
