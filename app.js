@@ -577,7 +577,6 @@ async function checkMobilePermissions() {
   const plugins = capacitorBridge()?.Plugins || {};
   const result = {
     location: "unavailable",
-    camera: "unavailable",
     push: "unavailable"
   };
   try {
@@ -589,16 +588,6 @@ async function checkMobilePermissions() {
     }
   } catch (error) {
     result.location = "prompt";
-  }
-  try {
-    if (plugins.Camera?.checkPermissions) {
-      const permissions = await plugins.Camera.checkPermissions();
-      result.camera = permissions.camera || permissions.photos || "prompt";
-    } else {
-      result.camera = "prompt";
-    }
-  } catch (error) {
-    result.camera = "prompt";
   }
   try {
     if (plugins.PushNotifications?.checkPermissions) {
@@ -615,7 +604,6 @@ async function checkMobilePermissions() {
 
 function mobilePermissionsNeedSetup(permissions) {
   return !["granted", "prompt-with-rationale"].includes(permissions.location)
-    || !["granted", "limited"].includes(permissions.camera)
     || !["granted"].includes(permissions.push);
 }
 
@@ -2172,8 +2160,6 @@ async function applyAuthenticatedSession(session, preferredView = "") {
   if (sessionStorage.getItem(POST_SETUP_PERMISSION_PROMPT_KEY)) {
     sessionStorage.removeItem(POST_SETUP_PERMISSION_PROMPT_KEY);
     await maybePromptForMobilePermissions({ force: true });
-  } else {
-    await maybePromptForMobilePermissions();
   }
   resetIdleSignOutTimer();
   autoConnectMessagingAfterLogin();
@@ -3869,16 +3855,6 @@ async function requestMobilePermissions(options = {}) {
     results.push("Location: not granted");
   }
   try {
-    if (plugins.Camera?.requestPermissions) {
-      const result = await plugins.Camera.requestPermissions();
-      results.push(`Camera: ${result.camera || result.photos || "requested"}`);
-    } else {
-      results.push("Camera: browser prompt when used");
-    }
-  } catch (error) {
-    results.push("Camera: not granted");
-  }
-  try {
     if (plugins.PushNotifications?.requestPermissions) {
       const result = await plugins.PushNotifications.requestPermissions();
       results.push(`Push: ${result.receive || "requested"}`);
@@ -3911,13 +3887,13 @@ async function maybePromptForMobilePermissions({ force = false } = {}) {
     localStorage.setItem(mobilePermissionStorageKey(), new Date().toISOString());
     return;
   }
-  const shouldRequest = window.confirm("Production Crew needs phone permissions for location, camera/photo flows, and notifications. Set those now?");
+  const shouldRequest = window.confirm("Production Crew needs phone permissions for location and notifications. Camera access is only requested when taking or uploading a photo. Set location and notifications now?");
   if (!shouldRequest) {
     localStorage.setItem(mobilePermissionStorageKey(), new Date().toISOString());
     toast("You can set phone permissions later from Mobile Beta.");
     return;
   }
-  await requestMobilePermissions({ message: "Phone permissions checked." });
+  await requestMobilePermissions({ message: "Location and notification permissions checked." });
 }
 
 function renderMobileQaPanel() {
@@ -3967,7 +3943,7 @@ function renderMobileLaunchPanel() {
     ["App identity", true, "Manifest and placeholder icon added"],
     ["PWA app shell", pwaReady, pwaReady ? "Install/offline shell ready" : "Available after deploy"],
     ["Crew workflow", isCrewRole() ? visibleEvents().length > 0 : state.events.length > 0, "Assigned event flow available"],
-    ["Camera capture", true, "Vehicle/report inputs request camera"],
+    ["Photo upload", true, "Camera opens only from photo fields"],
     ["Location capture", info.geolocationReady || !!navigator.geolocation, info.geolocationReady ? "Native bridge ready" : "Browser location ready"],
     ["Push path", info.pushTokenReady || info.pushReady, info.pushTokenReady ? "Device token saved" : info.pushReady ? "Native bridge ready" : "Needs native-device test"],
     ["Messaging", !!SENDBIRD_APP_ID, "Sendbird app ID configured"],
