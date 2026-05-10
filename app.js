@@ -32,10 +32,13 @@ const ACTIVE_BROWSER_SESSION_KEY = "productionCrewActiveBrowserSession";
 const LAST_ACTIVE_VIEW_KEY = "productionCrewLastActiveView";
 const POST_SETUP_PERMISSION_PROMPT_KEY = "productionCrewPostSetupPermissionPrompt";
 const PULL_REFRESH_THRESHOLD = 92;
+const RELEASE_NOTICE_URL = "./release-notice.json";
+const RELEASE_NOTICE_POLL_MS = 30000;
+const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.04.020",
-  title: "V1.04.020 update installed",
-  body: "Admin system notices now include each app update with the version number and a simple description."
+  version: "V1.04.021",
+  title: "V1.04.021 update installed",
+  body: "Notifications now refresh in the open app, and admin release notices can appear without a manual refresh."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -271,6 +274,8 @@ let idleSignOutTimer = null;
 let signOutReloading = false;
 let installPromptEvent = null;
 let appInstallState = window.matchMedia?.("(display-mode: standalone)").matches || navigator.standalone ? "installed" : "checking";
+let notificationRefreshPoller = null;
+let releaseNoticePoller = null;
 let pendingActivationSession = null;
 let pendingActivationType = "";
 let sendbirdConnectionState = {
@@ -2183,6 +2188,8 @@ async function applyAuthenticatedSession(session, preferredView = "") {
   await loadState();
   await ensureWelcomeNotification();
   await ensureReleaseNotification();
+  startNotificationAutoRefresh();
+  startReleaseNoticePoller();
   await syncLocalRecordsToSupabase();
   await refreshUserAccessList(false);
   appHasLoaded = true;
@@ -2393,6 +2400,10 @@ async function clearSavedLogin() {
 }
 
 function clearLocalSessionCache() {
+  window.clearInterval(notificationRefreshPoller);
+  window.clearInterval(releaseNoticePoller);
+  notificationRefreshPoller = null;
+  releaseNoticePoller = null;
   sendbirdActiveChannel = null;
   sendbirdActiveThread = null;
   sendbirdMessages = [];
@@ -5898,6 +5909,48 @@ function notificationListItem(notification) {
   </article>`;
 }
 
+function renderNotificationSurfaces() {
+  renderNotifications();
+  if (state.activeView === "messages" && sendbirdActiveThread?.type === "system") {
+    renderMessageThread();
+  }
+}
+
+function notificationSnapshot(notifications = state.appNotifications) {
+  return notifications
+    .map((notification) => [
+      notification.id,
+      notification.updatedAt,
+      notification.readAt,
+      notification.title,
+      notification.body
+    ].join("|"))
+    .sort()
+    .join("::");
+}
+
+async function refreshNotificationsFromStorage() {
+  if (!authState.session) return;
+  const existing = notificationSnapshot();
+  const notifications = (await getAll("appNotifications")).sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+  const next = notificationSnapshot(notifications);
+  if (existing === next) return;
+  state.appNotifications = notifications;
+  renderNotificationSurfaces();
+}
+
+function startNotificationAutoRefresh() {
+  if (notificationRefreshPoller) return;
+  refreshNotificationsFromStorage().catch((error) => console.warn("Notification refresh failed", error));
+  notificationRefreshPoller = window.setInterval(() => {
+    refreshNotificationsFromStorage().catch((error) => console.warn("Notification refresh failed", error));
+  }, NOTIFICATION_REFRESH_MS);
+}
+
+function releaseNotificationId(version) {
+  return `release-${String(version || "").toLowerCase().replaceAll(".", "-")}`;
+}
+
 async function createAppNotification({ title, body = "", type = "info", viewId = "", recordId = "", recipientId = "" }) {
   if (!title) return;
   await put("appNotifications", {
@@ -5908,7 +5961,7 @@ async function createAppNotification({ title, body = "", type = "info", viewId =
     recordId,
     recipientId
   });
-  await loadState();
+  await refreshNotificationsFromStorage();
 }
 
 async function ensureWelcomeNotification() {
@@ -5926,26 +5979,49 @@ async function ensureWelcomeNotification() {
     threadKey: "system-admin",
     recipientId: ""
   });
-  await loadState();
+  await refreshNotificationsFromStorage();
 }
 
-async function ensureReleaseNotification() {
+async function ensureReleaseNotification(notice = CURRENT_RELEASE_NOTICE) {
   if (!authState.session || !isAdminRole()) return;
-  const id = `release-${CURRENT_RELEASE_NOTICE.version.toLowerCase().replaceAll(".", "-")}`;
+  const id = releaseNotificationId(notice.version);
   const existing = state.appNotifications.find((notification) => notification.id === id);
-  if (existing?.title === CURRENT_RELEASE_NOTICE.title && existing?.body === CURRENT_RELEASE_NOTICE.body) return;
+  if (existing?.title === notice.title && existing?.body === notice.body) return;
   await put("appNotifications", {
     ...(existing || {}),
     id,
-    title: CURRENT_RELEASE_NOTICE.title,
-    body: CURRENT_RELEASE_NOTICE.body,
+    title: notice.title || `${notice.version} update installed`,
+    body: notice.body || "A new app update is ready.",
     type: "system",
     viewId: "messages",
     threadType: "system",
     threadKey: "system-admin",
     recipientId: ""
   });
-  await loadState();
+  await refreshNotificationsFromStorage();
+}
+
+async function checkReleaseNotice() {
+  if (!authState.session || !isAdminRole()) return;
+  try {
+    const response = await fetch(`${RELEASE_NOTICE_URL}?t=${Date.now()}`, { cache: "no-store" });
+    if (!response.ok) return;
+    const notice = await response.json();
+    if (!notice?.version) return;
+    await ensureReleaseNotification(notice);
+    const registration = await navigator.serviceWorker?.getRegistration?.();
+    await registration?.update?.();
+  } catch (error) {
+    console.warn("Release notice check failed", error);
+  }
+}
+
+function startReleaseNoticePoller() {
+  if (releaseNoticePoller || !isAdminRole()) return;
+  checkReleaseNotice();
+  releaseNoticePoller = window.setInterval(() => {
+    checkReleaseNotice();
+  }, RELEASE_NOTICE_POLL_MS);
 }
 
 async function removeLegacyWelcomeNotifications() {
