@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.04.030",
-  title: "V1.04.030 update installed",
-  body: "Tightened the active nav tab so the white tab and role color read as one connected piece."
+  version: "V1.04.031",
+  title: "V1.04.031 update installed",
+  body: "Kept admin/client identity colors from switching on Time Clock and linked crew punches to the logged-in person."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -1074,6 +1074,50 @@ async function loadState() {
   if (!state.activeWorkerId && state.workers[0]) state.activeWorkerId = state.workers[0].id;
   if (!state.activePromoterId && state.promoters[0]) state.activePromoterId = state.promoters[0].id;
   render();
+}
+
+function loggedInWorkerRecord() {
+  const userId = authState.user?.id || "";
+  const email = normalizedMatchValue(authState.user?.email || "");
+  return getWorker(authState.roleRecord?.worker_id)
+    || state.workers.find((worker) => worker.authUserId === userId)
+    || state.workers.find((worker) => email && normalizedMatchValue(worker.email) === email)
+    || null;
+}
+
+function hasCrewRunnerAccess() {
+  return assignedAccessForCurrentUser().some((role) => baseRoleForAccess(role) === "CREW");
+}
+
+function activeCrewWorkerId() {
+  return loggedInWorkerRecord()?.id || state.activeWorkerId || "";
+}
+
+async function ensureLoggedInWorkerProfile() {
+  if (!authState.user || !hasCrewRunnerAccess()) return null;
+  const existing = loggedInWorkerRecord();
+  if (existing) {
+    state.activeWorkerId = existing.id;
+    localStorage.setItem("productionCrewActiveWorker", state.activeWorkerId);
+    return existing;
+  }
+  const profile = loggedInProfileRecord();
+  const worker = {
+    id: crypto.randomUUID(),
+    clientId: authState.roleRecord?.client_id || activeClientRecord()?.id || "",
+    authUserId: authState.user.id,
+    name: profile?.name || profile?.contactName || authState.user.user_metadata?.name || authState.user.email || "Crew Member",
+    phone: profile?.phone || authState.user.user_metadata?.phone || "",
+    email: authState.user.email || profile?.email || "",
+    mailingAddress: profile?.mailingAddress || profile?.mailing_address || "",
+    accessLevels: ["CREW"],
+    runnerStatus: "Available",
+    notes: "Auto-created worker profile linked to this login for Time Clock access."
+  };
+  await put("workers", worker);
+  state.activeWorkerId = worker.id;
+  localStorage.setItem("productionCrewActiveWorker", state.activeWorkerId);
+  return worker;
 }
 
 function sortByName(records) {
@@ -2232,6 +2276,8 @@ async function applyAuthenticatedSession(session, preferredView = "") {
   await hydrateClientSetupData(roleRecord, session.user);
   await hydrateAppRecordsFromSupabase();
   await loadState();
+  await ensureLoggedInWorkerProfile();
+  if (hasCrewRunnerAccess()) await loadState();
   await ensureWelcomeNotification();
   await ensureReleaseNotification();
   startNotificationAutoRefresh();
@@ -4563,7 +4609,8 @@ function renderCrewMobileHome() {
 
 function timecardForCrewEvent(eventId) {
   const today = localDateKey();
-  const cards = state.timecards.filter((card) => card.eventId === eventId && card.workerId === state.activeWorkerId);
+  const workerId = activeCrewWorkerId();
+  const cards = state.timecards.filter((card) => card.eventId === eventId && card.workerId === workerId);
   return cards.find((card) => timecardWorkDate(card) === today && !card.clockOut)
     || cards.find((card) => timecardWorkDate(card) === today)
     || cards.find((card) => !card.clockOut)
@@ -4606,11 +4653,12 @@ function crewMobileTaskCards(events, activeCard) {
 }
 
 function crewRentalTask(event, card) {
-  const assignment = assignmentForEventWorker(event.id, state.activeWorkerId);
+  const workerId = activeCrewWorkerId();
+  const assignment = assignmentForEventWorker(event.id, workerId);
   const needsRental = rentalVehicleRequired(event, card || assignment || {});
   if (!needsRental) return null;
-  const startLog = vehicleLogForEventWorker(event.id, state.activeWorkerId, "Start");
-  const endLog = vehicleLogForEventWorker(event.id, state.activeWorkerId, "End");
+  const startLog = vehicleLogForEventWorker(event.id, workerId, "Start");
+  const endLog = vehicleLogForEventWorker(event.id, workerId, "End");
   if (card?.clockOut && !vehicleEndPhotosComplete(endLog)) return ["End Vehicle Photos", `${event.name} still needs end photos and plate number.`, "vehicles"];
   if (card?.clockIn && !vehicleStartCheckStarted(startLog)) return ["Start Vehicle Photos", `${event.name} needs start photos and plate number.`, "vehicles"];
   return null;
@@ -4970,7 +5018,12 @@ function openGigDirectoryForEvent(eventId) {
 }
 
 function renderClock() {
-  const events = visibleEvents().filter((event) => matchesSearch(event, `${getVenue(event.venueId)?.name || ""} ${getPromoter(event.promoterId)?.name || ""}`));
+  const workerId = activeCrewWorkerId();
+  const events = visibleEvents().filter((event) => {
+    return workerId
+      && eventWorkerIds(event).includes(workerId)
+      && matchesSearch(event, `${getVenue(event.venueId)?.name || ""} ${getPromoter(event.promoterId)?.name || ""}`);
+  });
   $("#clockEventCount").textContent = events.length ? `Today / ${events.length} assigned` : "Today";
   $("#clockCards").innerHTML = `${todayClockTimelineCard(events.length)}${events.map((event) => clockCard(event)).join("")}`;
 }
@@ -5001,8 +5054,9 @@ function todayClockTimelineCard(assignedEventCount = 0) {
 
 function currentDayCrewTimecard() {
   const today = localDateKey();
+  const workerId = activeCrewWorkerId();
   return state.timecards
-    .filter((card) => card.workerId === state.activeWorkerId && timecardWorkDate(card) === today)
+    .filter((card) => card.workerId === workerId && timecardWorkDate(card) === today)
     .sort((a, b) => new Date(b.clockIn || b.createdAt || 0) - new Date(a.clockIn || a.createdAt || 0))[0] || null;
 }
 
@@ -5039,7 +5093,7 @@ function punchSummaryItem(label, value, location) {
 
 function rentalClockWarning(event, card) {
   if (!card?.clockIn || card.clockOut) return `<p><span class="status-pill warn">Rental photos required</span></p>`;
-  const startLog = vehicleLogForEventWorker(event.id, state.activeWorkerId, "Start");
+  const startLog = vehicleLogForEventWorker(event.id, activeCrewWorkerId(), "Start");
   if (vehicleStartCheckStarted(startLog)) return `<p><span class="status-pill">Rental start check received</span></p>`;
   const minutes = Math.floor((new Date() - new Date(card.clockIn)) / 60000);
   if (minutes >= 15) return `<p><span class="status-pill warn">Urgent: start vehicle photos and plate are overdue</span></p>`;
@@ -6672,8 +6726,6 @@ function setView(viewId) {
     return;
   }
   const previousView = state.activeView;
-  const nextRole = accessRoleForView(viewId);
-  if (nextRole) state.accessRole = nextRole;
   viewId = protectedViewFor(viewId);
   state.activeView = viewId;
   sessionStorage.setItem(LAST_ACTIVE_VIEW_KEY, viewId);
@@ -8855,11 +8907,12 @@ function priorOpenCrewTimecards(eventId, workerId, todayKey) {
 }
 
 function newCrewTimecard(eventId, event, workDate) {
-  const worker = getWorker(state.activeWorkerId);
-  const assignment = assignmentForEventWorker(eventId, state.activeWorkerId);
+  const workerId = activeCrewWorkerId();
+  const worker = getWorker(workerId);
+  const assignment = assignmentForEventWorker(eventId, workerId);
   return {
     id: crypto.randomUUID(),
-    workerId: state.activeWorkerId,
+    workerId,
     eventId,
     eventName: event?.name || "",
     venueId: event?.venueId || "",
@@ -8874,19 +8927,20 @@ function newCrewTimecard(eventId, event, workDate) {
 }
 
 async function crewPunch(eventId, field) {
-  if (!state.activeWorkerId || !isEventVisible(eventId)) return;
+  const workerId = activeCrewWorkerId();
+  if (!workerId || !isEventVisible(eventId) || !eventWorkerIds(getEvent(eventId)).includes(workerId)) return;
   const event = getEvent(eventId);
   const nowDate = new Date();
   const now = toLocalInputValue(nowDate);
   const todayKey = localDateKey(nowDate);
   let card = null;
-  const priorOpen = priorOpenCrewTimecards(eventId, state.activeWorkerId, todayKey);
+  const priorOpen = priorOpenCrewTimecards(eventId, workerId, todayKey);
   if (field === "clockOut" && priorOpen.length) {
     card = priorOpen[0];
   } else {
-    if (field === "clockIn") await closePriorOpenCrewTimecards(eventId, state.activeWorkerId, todayKey);
-    card = state.timecards.find((item) => item.eventId === eventId && item.workerId === state.activeWorkerId && timecardWorkDate(item) === todayKey && !item.clockOut)
-      || state.timecards.find((item) => item.eventId === eventId && item.workerId === state.activeWorkerId && timecardWorkDate(item) === todayKey);
+    if (field === "clockIn") await closePriorOpenCrewTimecards(eventId, workerId, todayKey);
+    card = state.timecards.find((item) => item.eventId === eventId && item.workerId === workerId && timecardWorkDate(item) === todayKey && !item.clockOut)
+      || state.timecards.find((item) => item.eventId === eventId && item.workerId === workerId && timecardWorkDate(item) === todayKey);
   }
   if (card?.clockOut && field === "clockIn") card = null;
   if (card?.clockIn && !card.clockOut && field === "clockIn") {
@@ -8907,7 +8961,7 @@ async function crewPunch(eventId, field) {
   card.id = card.id || crypto.randomUUID();
   card.workDate = field === "clockOut" && timecardWorkDate(card) !== todayKey ? timecardWorkDate(card) : todayKey;
   if (field === "clockOut" && rentalVehicleRequired(event, card)) {
-    const endLog = vehicleLogForEventWorker(eventId, state.activeWorkerId, "End");
+    const endLog = vehicleLogForEventWorker(eventId, workerId, "End");
     if (!vehicleEndPhotosComplete(endLog)) {
       const nowDate = new Date();
       const bypassAt = card.rentalPhotoBypassAfter ? new Date(card.rentalPhotoBypassAfter) : null;
@@ -8937,13 +8991,13 @@ async function crewPunch(eventId, field) {
   }
   if (field === "clockIn" && !card.eventName) card.eventName = event?.name || "";
   if (field === "clockIn" && rentalVehicleRequired(event, card)) {
-    const assignment = assignmentForEventWorker(eventId, state.activeWorkerId);
+    const assignment = assignmentForEventWorker(eventId, workerId);
     if (assignment?.vehicleUse === "Rented Vehicle") await ensureVehicleChecksForAssignment(assignment);
-    const startLog = vehicleLogForEventWorker(eventId, state.activeWorkerId, "Start");
+    const startLog = vehicleLogForEventWorker(eventId, workerId, "Start");
     if (!vehicleStartCheckStarted(startLog)) {
       card.rentalStartReminderAt = new Date().toISOString();
       if (!card.rentalStartNotificationSentAt) {
-        const worker = getWorker(state.activeWorkerId);
+        const worker = getWorker(workerId);
         const result = await sendRentalPhotoNotification(event, worker, card, "start_reminder");
         if (result.ok) {
           card.rentalStartNotificationSentAt = new Date().toISOString();

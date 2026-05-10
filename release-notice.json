@@ -1,5 +1,5 @@
 {
-  "version": "V1.04.030",
-  "title": "V1.04.030 update installed",
-  "body": "Tightened the active nav tab so the white tab and role color read as one connected piece."
+  "version": "V1.04.031",
+  "title": "V1.04.031 update installed",
+  "body": "Kept admin/client identity colors from switching on Time Clock and linked crew punches to the logged-in person."
 }
