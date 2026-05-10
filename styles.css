@@ -1333,10 +1333,6 @@ body[data-access-tone="crew"] .desktop-dashboard-hero {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
-.dashboard-identity {
-  display: none;
-}
-
 .panel {
   overflow: hidden;
 }
@@ -3030,6 +3026,13 @@ body:not(.owner-mode) .rate-field {
     letter-spacing: 0;
   }
 
+  .topbar-identity {
+    margin: 5px 0 0;
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 800;
+  }
+
   .topbar-tools {
     display: contents;
   }
@@ -3143,19 +3146,6 @@ body:not(.owner-mode) .rate-field {
   .split-layout,
   .stack-layout {
     gap: 16px;
-  }
-
-  .dashboard-identity {
-    display: flex;
-    justify-content: flex-end;
-    gap: 8px;
-    margin: 16px 2px 0;
-    color: var(--muted);
-    font-size: 13px;
-  }
-
-  .dashboard-identity strong {
-    color: var(--ink);
   }
 
   .panel {

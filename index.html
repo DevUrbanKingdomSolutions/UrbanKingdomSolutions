@@ -10,7 +10,7 @@
     <title>Production Crew Database</title>
     <link rel="manifest" href="manifest.webmanifest">
     <link rel="icon" href="assets/app-icon.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="styles.css?v=V1.04.010-consolidate-dashboard-stats">
+    <link rel="stylesheet" href="styles.css?v=V1.04.011-clean-dashboard-profile">
   </head>
   <body>
     <div id="appLoadingOverlay" class="app-loading-overlay" aria-live="polite">
@@ -120,6 +120,7 @@
           <div class="topbar-title">
             <p class="eyebrow">Entertainment production operations</p>
             <h2 id="viewTitle">Dashboard</h2>
+            <p id="topbarIdentity" class="topbar-identity" hidden>Not signed in</p>
           </div>
           <details id="globalAddMenu" class="record-options global-add-menu" hidden>
             <summary class="tiny-button" aria-label="Add" title="Add">+</summary>
@@ -199,17 +200,6 @@
               </div>
               <div id="recentNotes" class="compact-list"></div>
             </section>
-            <section class="panel owner-form">
-              <div class="panel-heading">
-                <h3>My Profile</h3>
-                <button class="tiny-button owner-action" data-open-form="clientProfileForm" type="button">Edit Profile</button>
-              </div>
-              <div id="clientProfileSummary" class="compact-list"></div>
-            </section>
-          </div>
-          <div id="dashboardIdentity" class="dashboard-identity" hidden>
-            <span>Signed in as</span>
-            <strong id="dashboardIdentityName">Not signed in</strong>
           </div>
           <form id="clientProfileForm" class="panel form-panel owner-form">
             <div class="panel-heading">
@@ -1478,6 +1468,6 @@
     <div id="modalHost"></div>
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js?v=V1.04.010-consolidate-dashboard-stats"></script>
+    <script src="app.js?v=V1.04.011-clean-dashboard-profile"></script>
   </body>
 </html>

@@ -3944,11 +3944,10 @@ function renderDashboard() {
 }
 
 function renderDashboardIdentity() {
-  const wrapper = $("#dashboardIdentity");
-  const name = $("#dashboardIdentityName");
-  if (!wrapper || !name) return;
-  name.textContent = currentSessionDisplayName();
-  wrapper.hidden = !authState.session;
+  const identity = $("#topbarIdentity");
+  if (!identity) return;
+  identity.textContent = authState.session ? currentSessionDisplayName() : "Not signed in";
+  identity.hidden = !authState.session;
 }
 
 function dashboardPayrollCards(cards = visibleRecords(state.timecards)) {
