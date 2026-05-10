@@ -1,9 +1,9 @@
-const APP_SHELL_CACHE = "production-crew-shell-v1.03.086";
+const APP_SHELL_CACHE = "production-crew-shell-v1.03.087";
 const APP_SHELL_ASSETS = [
   "./",
   "./index.html",
-  "./styles.css?v=V1.03.086-fit-mobile-events",
-  "./app.js?v=V1.03.086-fit-mobile-events",
+  "./styles.css?v=V1.03.087-center-chat-title",
+  "./app.js?v=V1.03.087-center-chat-title",
   "./manifest.webmanifest",
   "./assets/app-icon.svg"
 ];

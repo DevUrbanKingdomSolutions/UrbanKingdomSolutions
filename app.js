@@ -5708,8 +5708,7 @@ function renderMessageThread() {
     thread.innerHTML = "";
     return;
   }
-  const channelName = sendbirdActiveChannel?.name || "";
-  title.textContent = channelName || MESSAGE_THREAD_TYPES[state.messagingThreadType]?.label || "Messages";
+  title.textContent = activeMessageThreadTitle();
   meta.textContent = activeThreadManagementLabel();
   if (members) members.innerHTML = renderActiveThreadMembers();
   form.hidden = !sendbirdActiveChannel;
@@ -5720,6 +5719,23 @@ function renderMessageThread() {
         : `<div class="chat-thread-empty">No messages loaded yet.</div>`)
     : `<div class="chat-thread-empty">Choose a message thread from the list.</div>`;
   if (typing) typing.innerHTML = renderTypingStatus();
+}
+
+function activeMessageThreadTitle() {
+  const type = sendbirdActiveThread?.type || state.messagingThreadType;
+  if (type === "direct") {
+    return directMessageProfiles().find((profile) => profile.id === sendbirdActiveThread?.profileId)?.label
+      || sendbirdActiveChannel?.name
+      || "Direct Message";
+  }
+  if (["event", "office", "crew"].includes(type)) {
+    const event = getEvent(sendbirdActiveThread?.eventId);
+    return sendbirdThreadName(type, event);
+  }
+  if (["adminClient", "system"].includes(type)) {
+    return sendbirdThreadName(type, null, { id: sendbirdActiveThread?.profileId || "" });
+  }
+  return sendbirdActiveChannel?.name || MESSAGE_THREAD_TYPES[type]?.label || "Messages";
 }
 
 function activeThreadVisibleMessages() {

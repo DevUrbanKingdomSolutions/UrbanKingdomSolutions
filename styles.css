@@ -2728,9 +2728,17 @@ body:not(.owner-mode) .rate-field {
   }
 
   .active-message-heading h3 {
+    grid-column: 1 / -1;
+    grid-row: 1;
+    justify-self: center;
     margin: 0;
+    max-width: calc(100% - 112px);
     font-size: 18px;
     line-height: 1.2;
+    overflow: hidden;
+    text-align: center;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .active-message-heading .muted {
@@ -2743,12 +2751,15 @@ body:not(.owner-mode) .rate-field {
   .message-back-button {
     display: inline-flex;
     align-items: center;
+    grid-column: 1;
+    grid-row: 1;
     min-height: 34px;
     border: 0;
     background: transparent;
     color: var(--accent-dark);
     padding: 0;
     font-size: 15px;
+    z-index: 1;
   }
 
   #messageThreadMembers {
