@@ -1,5 +1,5 @@
 {
-  "version": "V1.04.072",
-  "title": "V1.04.072 update installed",
-  "body": "Opened mobile Messages on the chat selector before loading a selected thread."
+  "version": "V1.04.073",
+  "title": "V1.04.073 update installed",
+  "body": "Forced the mobile Messages tab to reset to the chat selector every time it opens."
 }

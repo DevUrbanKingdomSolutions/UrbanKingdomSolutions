@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.04.072",
-  title: "V1.04.072 update installed",
-  body: "Opened mobile Messages on the chat selector before loading a selected thread."
+  version: "V1.04.073",
+  title: "V1.04.073 update installed",
+  body: "Forced the mobile Messages tab to reset to the chat selector every time it opens."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -7349,7 +7349,7 @@ function setView(viewId) {
   }
   const previousView = state.activeView;
   viewId = protectedViewFor(viewId);
-  if (viewId === "messages" && previousView !== "messages") clearActiveMessageThread();
+  if (viewId === "messages") clearActiveMessageThread();
   state.activeView = viewId;
   sessionStorage.setItem(LAST_ACTIVE_VIEW_KEY, viewId);
   applyAccessProfile();
