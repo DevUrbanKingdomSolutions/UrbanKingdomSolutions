@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.04.100",
-  title: "V1.04.100 update installed",
-  body: "Added a smoother drag-down refresh motion on mobile pages."
+  version: "V1.04.101",
+  title: "V1.04.101 update installed",
+  body: "Added swipe-right back from mobile message chats to the chat selector."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -809,7 +809,7 @@ function startedInsideScrollableSection(target) {
 }
 
 function startedInsideGestureControl(target) {
-  return !!target?.closest?.("input, textarea, select, button, summary, details, label, [data-open-message-image], #messageThread, #sendbirdMessageForm, .record-options, .modal-form");
+  return !!target?.closest?.("input, textarea, select, button, summary, details, label, [data-open-message-image], #sendbirdMessageForm, .record-options, .modal-form");
 }
 
 function activePageScrollTop() {
