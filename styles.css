@@ -3124,7 +3124,7 @@ body:not(.owner-mode) .rate-field {
   .nav-item.active {
     background:
       linear-gradient(180deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0) 54%),
-      linear-gradient(90deg, #ffffff 0 8px, var(--accent) 8px 12px, color-mix(in srgb, var(--accent) 78%, var(--accent-dark)) 12px 100%);
+      linear-gradient(90deg, #ffffff 0 8px, var(--accent) 8px 12px, var(--accent) 12px, var(--accent-dark) 100%);
     color: #ffffff;
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.24), inset 0 -1px 0 rgba(0, 0, 0, 0.14), 0 10px 22px rgba(0, 0, 0, 0.13);
   }
@@ -3613,7 +3613,7 @@ body:not(.owner-mode) .rate-field {
   .nav-item.active {
     background:
       linear-gradient(180deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0) 56%),
-      linear-gradient(90deg, #ffffff 0 8px, var(--accent) 8px 12px, color-mix(in srgb, var(--accent) 78%, var(--accent-dark)) 12px 100%);
+      linear-gradient(90deg, #ffffff 0 8px, var(--accent) 8px 12px, var(--accent) 12px, var(--accent-dark) 100%);
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), inset 0 -1px 0 rgba(0, 0, 0, 0.12);
   }
 

@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.04.036",
-  title: "V1.04.036 update installed",
-  body: "Refreshed Client Profile and My Profile with branded profile cards and logo image fields."
+  version: "V1.04.037",
+  title: "V1.04.037 update installed",
+  body: "Restored the active nav color fade from role color into its darker shade while keeping the crisp white tab."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
