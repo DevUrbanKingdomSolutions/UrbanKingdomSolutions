@@ -265,10 +265,9 @@ button {
 }
 
 .brand-logo-mark {
-  background-image: var(--brand-logo-image, url("assets/logo/app-logo-admin.png"));
-  background-position: center;
-  background-repeat: no-repeat;
-  background-size: 100%;
+  border: 0;
+  background: var(--brand-logo-image, url("assets/logo/app-logo-admin.png")) center / contain no-repeat;
+  box-shadow: none;
 }
 
 .brand h1 {
@@ -450,6 +449,11 @@ button {
   .brand-mark {
     background: var(--accent);
     box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 18%, transparent);
+  }
+
+  .brand-logo-mark {
+    background: var(--brand-logo-image, url("assets/logo/app-logo-admin.png")) center / contain no-repeat;
+    box-shadow: none;
   }
 
   .nav-group-toggle {
@@ -3137,8 +3141,8 @@ body:not(.owner-mode) .rate-field {
   }
 
   .sidebar .brand {
-    min-height: 70px;
-    padding: 8px 8px 18px;
+    min-height: 104px;
+    padding: 10px 8px 20px;
     border-bottom: 1px solid rgba(255, 255, 255, 0.12);
   }
 
@@ -3151,6 +3155,16 @@ body:not(.owner-mode) .rate-field {
       linear-gradient(145deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0)),
       #111719;
     box-shadow: 0 14px 30px rgba(0, 0, 0, 0.2), 0 0 0 4px color-mix(in srgb, var(--accent) 12%, transparent);
+  }
+
+  .sidebar .brand-logo-mark {
+    width: 86px;
+    height: 86px;
+    flex: 0 0 86px;
+    border: 0;
+    border-radius: 0;
+    background: var(--brand-logo-image, url("assets/logo/app-logo-admin.png")) center / contain no-repeat;
+    box-shadow: none;
   }
 
   .sidebar .brand h1 {
@@ -4584,13 +4598,19 @@ body:not(.owner-mode) .rate-field {
 }
 
 .brand-logo-mark {
-  width: 64px;
-  height: 64px;
-  border-radius: 14px;
-  background-image: var(--brand-logo-image, url("assets/logo/app-logo-admin.png"));
-  background-position: center;
-  background-repeat: no-repeat;
-  background-size: 100%;
+  width: 72px;
+  height: 72px;
+  border: 0;
+  border-radius: 0;
+  background: var(--brand-logo-image, url("assets/logo/app-logo-admin.png")) center / contain no-repeat;
+  box-shadow: none;
+}
+
+@media (max-width: 860px) {
+  .brand-logo-mark {
+    width: 64px;
+    height: 64px;
+  }
 }
 
 @media (max-width: 640px) {
