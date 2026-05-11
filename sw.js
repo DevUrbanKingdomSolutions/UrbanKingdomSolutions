@@ -1,9 +1,9 @@
-const APP_SHELL_CACHE = "production-crew-shell-v1.04.041";
+const APP_SHELL_CACHE = "production-crew-shell-v1.04.042";
 const APP_SHELL_ASSETS = [
   "./",
   "./index.html",
-  "./styles.css?v=V1.04.041-native-emoji-composer",
-  "./app.js?v=V1.04.041-native-emoji-composer",
+  "./styles.css?v=V1.04.042-active-nav-edge-fix",
+  "./app.js?v=V1.04.042-active-nav-edge-fix",
   "./release-notice.json",
   "./manifest.webmanifest",
   "./assets/app-icon.svg"

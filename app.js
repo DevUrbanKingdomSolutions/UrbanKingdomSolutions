@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.04.041",
-  title: "V1.04.041 update installed",
-  body: "Removed the in-app preset emoji picker so messages use the phone or desktop native emoji keyboard."
+  version: "V1.04.042",
+  title: "V1.04.042 update installed",
+  body: "Cleaned up the active sidebar highlight so the role color fills the edge without a white strip."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
