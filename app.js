@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.04.087",
-  title: "V1.04.087 update installed",
-  body: "Split mobile gestures so left-edge swipe opens the menu while middle-page swipe goes back."
+  version: "V1.04.088",
+  title: "V1.04.088 update installed",
+  body: "Added a Crew/Runner home dashboard with quick clock, weekly schedule, booked events, and action items."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -238,7 +238,7 @@ const ACCESS_PROFILES = {
   CREW: {
     label: "CREW / RUNNER",
     baseRole: "CREW",
-    views: ["workers", "clock", "productionResponse", "events", "timecards", "vehicles", "reports", "directory", "runner", "messages", "mobileApp"],
+    views: ["dashboard", "workers", "clock", "productionResponse", "events", "timecards", "vehicles", "reports", "directory", "runner", "messages", "mobileApp"],
     canAdminEdit: false,
     canOwnerEdit: false,
     canVenueEdit: false,
@@ -461,7 +461,7 @@ const NAV_GROUPS = {
     { label: "SETTINGS", items: [["mobileApp", "Mobile Settings"]] }
   ],
   CREW: [
-    { items: [["workers", "My Profile"], ["clock", "Time Clock"]] },
+    { items: [["dashboard", "Home"], ["workers", "My Profile"], ["clock", "Time Clock"]] },
     { label: "EVENTS", items: [["productionResponse", "Crew Response"], ["events", "Events"], ["timecards", "Timecards"], ["vehicles", "Vehicles"], ["reports", "Reports"]] },
     { label: "DIRECTORIES", items: [["directory", "Crew Directory"], ["runner", "Gig Directory"], ["messages", "Messages"]] },
     { label: "SETTINGS", items: [["mobileApp", "Mobile Settings"]] }
@@ -486,7 +486,7 @@ const ROLE_HOME_VIEWS = {
   PROMOTER_REP: "productionBoard",
   PRODUCTION: "productionBoard",
   PRODUCTION_TEAM_ACCESS: "productionBoard",
-  CREW: "workers"
+  CREW: "dashboard"
 };
 
 const ACCESS_LEVEL_LABELS = {
@@ -4522,10 +4522,12 @@ function dashboardHeroConfig() {
   if (isCrewRole()) {
     const currentEvents = visibleEvents().filter((event) => eventScheduleBucket(event) === "current");
     const nextEvent = sortEventCards(visibleEvents().filter((event) => eventScheduleBucket(event) !== "past"))[0];
-    const liveCard = state.timecards.find((card) => card.workerId === state.activeWorkerId && card.clockIn && !card.clockOut);
+    const workerId = activeCrewWorkerId();
+    const liveCard = state.timecards.find((card) => card.workerId === workerId && card.clockIn && !card.clockOut);
+    const weekEvents = visibleEvents().filter((event) => crewWeekDays().some((day) => workerScheduledForEventDate(event, workerId, day.key)));
     return {
       eyebrow: "Crew workspace",
-      title: nextEvent?.name || "Today's crew view",
+      title: currentSessionDisplayName(),
       body: liveCard ? "You have an active timecard running. Keep time, vehicle photos, reports, and messages moving from one place." : "Review your assigned events, messages, and timecard actions before the next call.",
       primaryView: "clock",
       primaryLabel: liveCard ? "Open Time Clock" : "Start Time Clock",
@@ -4533,7 +4535,7 @@ function dashboardHeroConfig() {
       secondaryLabel: "Messages",
       stats: [
         { label: "Current Events", value: currentEvents.length, view: "events" },
-        { label: "Assigned Events", value: visibleEvents().length, view: "events" },
+        { label: "This Week", value: weekEvents.length, view: "events" },
         { label: "Open Timecard", value: liveCard ? "Yes" : "No", view: "timecards" }
       ]
     };
@@ -4846,27 +4848,109 @@ function renderCrewMobileHome() {
   if (!panel) return;
   panel.hidden = !isCrewRole();
   if (!isCrewRole()) return;
+  const workerId = activeCrewWorkerId();
+  const worker = getWorker(workerId) || loggedInWorkerRecord();
   const events = [...visibleEvents()].sort((a, b) => new Date(a.startDate || 0) - new Date(b.startDate || 0));
-  const activeCard = state.timecards.find((card) => card.workerId === state.activeWorkerId && card.clockIn && !card.clockOut);
+  const activeCard = state.timecards.find((card) => card.workerId === workerId && card.clockIn && !card.clockOut);
   const activeEvent = activeCard ? getEvent(activeCard.eventId) : null;
-  const focusEvent = activeEvent || events[0];
+  const futureEvents = events.filter((event) => eventScheduleBucket(event) !== "past");
+  const currentEvents = events.filter((event) => eventScheduleBucket(event) === "current");
+  const todayEvents = events.filter((event) => workerScheduledForEventDate(event, workerId, localDateKey()));
+  const weekDays = crewWeekDays();
+  const weekEvents = events.filter((event) => weekDays.some((day) => workerScheduledForEventDate(event, workerId, day.key)));
+  const focusEvent = activeEvent || todayEvents[0] || currentEvents[0] || futureEvents[0] || events[0];
   const focusCard = focusEvent ? timecardForCrewEvent(focusEvent.id) : null;
   const venue = focusEvent ? getVenue(focusEvent.venueId) : null;
   const punch = focusEvent ? nextCrewPunch(focusCard) : null;
-  $("#crewMobileStatus").textContent = events.length ? `${events.length} assigned` : "No assigned events";
-  $("#crewMobileHero").innerHTML = focusEvent
-    ? `<strong>${escapeHtml(focusEvent.name)}</strong>
-      <span>${escapeHtml(venue?.name || "No venue")} ${focusEvent.startDate ? "- " + formatDate(focusEvent.startDate) : ""}</span>
-      <p>${escapeHtml(activeCard ? "You are currently clocked in." : crewEventStatus(focusCard))}</p>`
-    : `<strong>No assigned event</strong><span>When an event is assigned, it will appear here.</span><p>Use the directory and messages if you need to check in with the office.</p>`;
-  $("#crewMobileActions").innerHTML = focusEvent
-    ? `<button class="primary-action" data-time-punch="${escapeHtml(punch.field)}" data-event-id="${escapeHtml(focusEvent.id)}" type="button">${escapeHtml(punch.label)}</button>
+  const nextLabel = futureEvents[0]?.startDate ? formatDate(futureEvents[0].startDate) : "None booked";
+  $("#crewMobileStatus").textContent = activeCard ? "Clocked in now" : events.length ? `${events.length} booked` : "No booked events";
+  $("#crewMobileHero").innerHTML = `<div class="crew-home-title">
+      <span>Crew / Runner Home</span>
+      <strong>${escapeHtml(worker?.name || currentSessionDisplayName())}</strong>
+      <p>${escapeHtml(activeCard ? `Live on ${activeEvent?.name || activeCard.eventName || "current event"}` : focusEvent ? `Next: ${focusEvent.name}` : "Your booked events and call actions will appear here.")}</p>
+    </div>
+    <div class="crew-home-stats">
+      <button class="crew-home-stat" data-dashboard-link="events" type="button"><span>Booked</span><strong>${events.length}</strong></button>
+      <button class="crew-home-stat" data-dashboard-link="timecards" type="button"><span>This Week</span><strong>${weekEvents.length}</strong></button>
+      <button class="crew-home-stat" data-dashboard-link="clock" type="button"><span>Timecard</span><strong>${activeCard ? "Live" : "Ready"}</strong></button>
+    </div>`;
+  const canPunchFocusEvent = !!focusEvent && workerScheduledForEventDate(focusEvent, workerId, localDateKey());
+  $("#crewMobileActions").innerHTML = `<section class="crew-quick-clock">
+      <div>
+        <span>Quick Time Clock</span>
+        <strong>${escapeHtml(focusEvent?.name || "No event selected")}</strong>
+        <p>${escapeHtml(focusEvent ? `${venue?.name || "No venue"}${focusEvent.startDate ? " - " + formatDate(focusEvent.startDate) : ""}` : "You need a scheduled event before clocking in.")}</p>
+      </div>
+      ${focusEvent && canPunchFocusEvent
+        ? `<button class="primary-action" data-time-punch="${escapeHtml(punch.field)}" data-event-id="${escapeHtml(focusEvent.id)}" type="button">${escapeHtml(punch.label)}</button>`
+        : `<button class="primary-action" type="button" disabled>${escapeHtml(focusEvent ? "Not Scheduled Today" : "No Event Today")}</button>`}
+    </section>
+    <div class="crew-home-actions">
+      <button class="ghost-button" data-mobile-go-view="events" type="button">Events</button>
+      <button class="ghost-button" data-mobile-go-view="messages" type="button">Messages</button>
       <button class="ghost-button" data-mobile-go-view="vehicles" type="button">Vehicle Photos</button>
       <button class="ghost-button" data-mobile-go-view="reports" type="button">Report</button>
-      <button class="ghost-button" data-mobile-go-view="messages" type="button">Messages</button>`
-    : `<button class="primary-action" data-mobile-go-view="messages" type="button">Messages</button>
-      <button class="ghost-button" data-mobile-go-view="runner" type="button">Gig Directory</button>`;
-  $("#crewMobileTasks").innerHTML = crewMobileTaskCards(events, activeCard).join("");
+    </div>`;
+  $("#crewMobileTasks").innerHTML = `<section class="crew-week-card">
+      <div class="crew-week-heading"><span>Week Of</span><strong>${escapeHtml(crewWeekRangeLabel(weekDays))}</strong></div>
+      <div class="crew-week-strip">${weekDays.map((day) => crewWeekDayCard(day, events, workerId)).join("")}</div>
+    </section>
+    <section class="crew-booked-list">
+      <div class="crew-week-heading"><span>Booked Events</span><strong>${escapeHtml(nextLabel)}</strong></div>
+      <div class="crew-booked-items">${crewBookedEventCards(events).join("")}</div>
+    </section>
+    <section class="crew-task-list">
+      <div class="crew-week-heading"><span>Needs Attention</span><strong>${escapeHtml(activeCard ? "Live" : "Ready")}</strong></div>
+      ${crewMobileTaskCards(events, activeCard).join("")}
+    </section>`;
+}
+
+function crewWeekDays(referenceDate = new Date()) {
+  const start = new Date(referenceDate);
+  start.setHours(12, 0, 0, 0);
+  start.setDate(start.getDate() - start.getDay());
+  return Array.from({ length: 7 }, (_, index) => {
+    const date = new Date(start);
+    date.setDate(start.getDate() + index);
+    return {
+      date,
+      key: localDateKey(date),
+      label: date.toLocaleDateString([], { weekday: "short" }),
+      day: date.toLocaleDateString([], { day: "numeric" })
+    };
+  });
+}
+
+function crewWeekRangeLabel(days) {
+  if (!days?.length) return "";
+  const first = days[0].date;
+  const last = days[days.length - 1].date;
+  return `${first.toLocaleDateString([], { month: "short", day: "numeric" })} - ${last.toLocaleDateString([], { month: "short", day: "numeric" })}`;
+}
+
+function crewWeekDayCard(day, events, workerId) {
+  const dayEvents = events.filter((event) => workerScheduledForEventDate(event, workerId, day.key));
+  const today = day.key === localDateKey();
+  return `<button class="crew-week-day ${today ? "today" : ""}" data-dashboard-link="events" type="button">
+    <span>${escapeHtml(day.label)}</span>
+    <strong>${escapeHtml(day.day)}</strong>
+    <small>${escapeHtml(dayEvents[0]?.name || (dayEvents.length ? `${dayEvents.length} events` : "Open"))}</small>
+  </button>`;
+}
+
+function crewBookedEventCards(events) {
+  const upcoming = events.filter((event) => eventScheduleBucket(event) !== "past");
+  const list = (upcoming.length ? upcoming : events).slice(0, 5);
+  if (!list.length) return [`<div class="compact-item empty">No booked events yet.</div>`];
+  return list.map((event) => {
+    const venue = getVenue(event.venueId);
+    const card = timecardForCrewEvent(event.id);
+    return `<button class="crew-booked-item" data-view-record="events:${escapeHtml(event.id)}" type="button">
+      <strong>${escapeHtml(event.name || "Event")}</strong>
+      <span>${escapeHtml(`${formatDate(event.startDate) || "Date TBD"}${venue?.name ? " - " + venue.name : ""}`)}</span>
+      <small>${escapeHtml(crewEventStatus(card))}</small>
+    </button>`;
+  });
 }
 
 function timecardForCrewEvent(eventId) {
