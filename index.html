@@ -10,7 +10,7 @@
     <title>Production Crew Database</title>
     <link rel="manifest" href="manifest.webmanifest">
     <link rel="icon" href="assets/logo/app-logo-admin.png" type="image/png">
-    <link rel="stylesheet" href="styles.css?v=V1.04.053-chat-scroll-typing">
+    <link rel="stylesheet" href="styles.css?v=V1.04.054-message-compose-actions">
   </head>
   <body>
     <div id="appLoadingOverlay" class="app-loading-overlay" aria-live="polite">
@@ -1168,6 +1168,7 @@
               <div id="messageThread" class="compact-list"></div>
               <div id="messageTypingStatus" class="typing-status"></div>
               <form id="sendbirdMessageForm" class="inline-form">
+                <div id="messageReplyPreview" class="message-reply-preview" hidden></div>
                 <div id="messageAttachmentPreview" class="message-attachment-preview"></div>
                 <input id="messagePhotoInput" name="messagePhotos" type="file" accept="image/*" multiple hidden>
                 <button class="composer-tool-button" data-message-tool="photo" type="button" aria-label="Add photos" title="Add photos">+</button>
@@ -1485,6 +1486,6 @@
     <div id="modalHost"></div>
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js?v=V1.04.053-chat-scroll-typing"></script>
+    <script src="app.js?v=V1.04.054-message-compose-actions"></script>
   </body>
 </html>

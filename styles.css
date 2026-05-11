@@ -557,7 +557,7 @@ button {
   }
 
   .primary-action,
-  #sendbirdMessageForm button {
+  #sendbirdMessageForm button[type="submit"] {
     background: var(--accent);
     border-color: var(--accent);
   }
@@ -2540,15 +2540,52 @@ td p {
 
 #sendbirdMessageForm {
   display: grid;
-  grid-template-columns: auto auto auto minmax(0, 1fr) auto;
+  grid-template-columns: auto auto minmax(0, 1fr) auto;
   gap: 10px;
   padding: 12px 14px;
   border-top: 1px solid var(--line);
   background: #ffffff;
 }
 
+.message-reply-preview,
 .message-attachment-preview {
   grid-column: 1 / -1;
+}
+
+.message-reply-preview {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  border-left: 4px solid var(--accent);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--accent-soft) 58%, #ffffff);
+  color: var(--accent-dark);
+  padding: 8px 10px;
+}
+
+.message-reply-preview span,
+.message-reply-quote span {
+  display: block;
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.message-reply-preview strong,
+.message-reply-quote strong {
+  display: block;
+  overflow: hidden;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.message-reply-preview button {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-size: 18px;
 }
 
 .message-attachment-preview {
@@ -2567,6 +2604,34 @@ td p {
   padding: 6px 9px;
   font-size: 12px;
   font-weight: 800;
+}
+
+.message-attachment-chip.image-preview {
+  position: relative;
+  overflow: hidden;
+  width: 84px;
+  height: 84px;
+  border-radius: 16px;
+  padding: 0;
+}
+
+.message-attachment-chip.image-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.message-attachment-chip.image-preview button {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  display: grid;
+  width: 24px;
+  height: 24px;
+  place-items: center;
+  border-radius: 50%;
+  background: rgba(29, 36, 40, 0.72);
+  color: #ffffff;
 }
 
 .message-attachment-chip button,
@@ -2607,18 +2672,50 @@ td p {
 }
 
 #sendbirdMessageForm input {
-  min-height: 42px;
+  min-height: 48px;
   border: 1px solid var(--line);
   border-radius: 999px;
   padding: 0 16px;
   background: #fbfaf6;
 }
 
-#sendbirdMessageForm button {
-  min-width: 72px;
+#sendbirdMessageForm button[type="submit"] {
+  min-width: 56px;
   border-radius: 999px;
   background: var(--accent);
   color: #ffffff;
+}
+
+.message-reply-quote {
+  margin-bottom: 8px;
+  border-left: 3px solid color-mix(in srgb, var(--accent) 72%, #ffffff);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--accent-soft) 54%, #ffffff);
+  color: var(--accent-dark);
+  padding: 7px 9px;
+}
+
+.message-action-menu {
+  position: absolute;
+  z-index: 80;
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  border: 1px solid color-mix(in srgb, var(--accent) 20%, var(--line));
+  border-radius: 999px;
+  background: #ffffff;
+  padding: 6px;
+  box-shadow: 0 14px 34px rgba(29, 36, 40, 0.16);
+}
+
+.message-action-menu button {
+  min-width: 36px;
+  min-height: 36px;
+  border: 0;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent-soft) 58%, #ffffff);
+  color: var(--accent-dark);
+  font-weight: 900;
 }
 
 .field-label {
@@ -3457,7 +3554,7 @@ body:not(.owner-mode) .rate-field {
   }
 
   .primary-action,
-  #sendbirdMessageForm button {
+  #sendbirdMessageForm button[type="submit"] {
     border-radius: 10px;
     background: var(--accent);
     box-shadow: var(--signature-glow);
@@ -4567,7 +4664,7 @@ body:not(.owner-mode) .rate-field {
     left: 14px;
     bottom: calc(64px + env(safe-area-inset-bottom));
     z-index: 3;
-    grid-template-columns: auto auto auto minmax(0, 1fr) auto;
+    grid-template-columns: auto auto minmax(0, 1fr) auto;
     gap: 6px;
     margin: 0;
     padding: 9px 2px;
@@ -4583,7 +4680,7 @@ body:not(.owner-mode) .rate-field {
     background: #ffffff;
   }
 
-  #sendbirdMessageForm button {
+  #sendbirdMessageForm button[type="submit"] {
     min-width: 58px;
   }
 

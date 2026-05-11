@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.04.053",
-  title: "V1.04.053 update installed",
-  body: "Hid idle typing text and made active chats stay pinned to new messages when already at the bottom."
+  version: "V1.04.054",
+  title: "V1.04.054 update installed",
+  body: "Added image previews, message hold actions, reply context, and a wider desktop chat composer."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -269,6 +269,9 @@ let sendbirdMessages = [];
 let sendbirdActiveThread = null;
 let sendbirdTypingUsers = [];
 let pendingMessageAttachments = [];
+let pendingMessageReply = null;
+let messageActionTimer = null;
+let messageActionTargetKey = "";
 let sendbirdTypingPoller = null;
 let sendbirdMessageRefreshPoller = null;
 let sendbirdMessageRefreshInFlight = false;
@@ -6776,15 +6779,47 @@ function messageBubble(message) {
   const isOwn = !!message.isLocalOwn || !!message.deliveryStatus || (senderId && baseSendbirdUserId(senderId) === baseSendbirdUserId(sendbirdClient?.currentUser?.userId));
   const sentAt = message.createdAt ? formatDate(message.createdAt) : "";
   const deliveryStatus = isOwn ? (message.deliveryStatus === "sending" ? "Sending..." : "Delivered") : "";
-  return `<article class="message-bubble-row ${isOwn ? "own" : ""}">
+  const actionKey = messageActionKey(message);
+  const reply = messageReplyData(message);
+  return `<article class="message-bubble-row ${isOwn ? "own" : ""}" data-message-action-key="${escapeHtml(actionKey)}">
     ${isOwn ? "" : messageAvatar(senderProfile, displayName)}
     <div class="message-bubble">
       <div class="message-meta"><strong>${escapeHtml(isOwn ? "You" : displayName)}</strong><span>${escapeHtml(sentAt)}</span></div>
+      ${reply ? `<div class="message-reply-quote"><span>${escapeHtml(reply.senderName || "Message")}</span><strong>${escapeHtml(reply.text || "Message")}</strong></div>` : ""}
       ${messageMediaHtml(message)}
       ${message.message ? `<p>${escapeHtml(message.message || "")}</p>` : ""}
       ${deliveryStatus ? `<span class="message-delivery-status">${escapeHtml(deliveryStatus)}</span>` : ""}
     </div>
   </article>`;
+}
+
+function messageActionKey(message) {
+  return String(message?.messageId || message?.reqId || message?.requestId || `local-${message?.createdAt || Date.now()}`);
+}
+
+function messageByActionKey(key) {
+  return activeThreadVisibleMessages().find((message) => messageActionKey(message) === key) || null;
+}
+
+function messageReplyData(message) {
+  if (message?.replyTo) return message.replyTo;
+  try {
+    return JSON.parse(message?.data || "{}")?.replyTo || null;
+  } catch {
+    return null;
+  }
+}
+
+function messageReplySummary(message) {
+  const senderName = message.sender?.nickname || message.sender?.userId || "Message";
+  const senderProfile = profileForSendbirdUserId(message.sender?.userId || "");
+  const displayName = senderProfile?.name || senderProfile?.contactName || senderName;
+  const text = String(message.message || message.name || message.fileName || "Photo").replace(/\s+/g, " ").trim();
+  return {
+    messageId: sendbirdMessageKey(message) || messageActionKey(message),
+    senderName: displayName,
+    text: text.slice(0, 120)
+  };
 }
 
 function messageMediaHtml(message) {
@@ -6835,15 +6870,34 @@ function renderTypingStatus() {
 
 function renderMessageComposerTools() {
   renderMessageAttachmentPreview();
+  renderMessageReplyPreview();
 }
 
 function renderMessageAttachmentPreview() {
   const preview = $("#messageAttachmentPreview");
   if (!preview) return;
   preview.innerHTML = pendingMessageAttachments.length
-    ? pendingMessageAttachments.map((item, index) => `<span class="message-attachment-chip">${escapeHtml(item.name)}<button type="button" data-remove-message-attachment="${index}" aria-label="Remove attachment">×</button></span>`).join("")
+    ? pendingMessageAttachments.map((item, index) => {
+        const isImage = String(item.type || "").startsWith("image/") || item.previewUrl;
+        return `<span class="message-attachment-chip ${isImage ? "image-preview" : ""}">
+          ${isImage ? `<img src="${escapeHtml(item.previewUrl)}" alt="Selected image preview">` : `<span>${escapeHtml(item.name)}</span>`}
+          <button type="button" data-remove-message-attachment="${index}" aria-label="Remove attachment">×</button>
+        </span>`;
+      }).join("")
     : "";
   preview.hidden = !pendingMessageAttachments.length;
+}
+
+function renderMessageReplyPreview() {
+  const preview = $("#messageReplyPreview");
+  if (!preview) return;
+  if (!pendingMessageReply) {
+    preview.hidden = true;
+    preview.innerHTML = "";
+    return;
+  }
+  preview.hidden = false;
+  preview.innerHTML = `<div><span>Replying to ${escapeHtml(pendingMessageReply.senderName || "Message")}</span><strong>${escapeHtml(pendingMessageReply.text || "Message")}</strong></div><button type="button" data-clear-message-reply aria-label="Clear reply">×</button>`;
 }
 
 function clearPendingMessageAttachments() {
@@ -6851,6 +6905,11 @@ function clearPendingMessageAttachments() {
   const input = $("#messagePhotoInput");
   if (input) input.value = "";
   renderMessageAttachmentPreview();
+}
+
+function clearPendingMessageReply() {
+  pendingMessageReply = null;
+  renderMessageReplyPreview();
 }
 
 async function addMessagePhotoAttachments(files = []) {
@@ -6872,6 +6931,46 @@ function insertIntoMessageInput(text) {
   input.value = `${input.value.slice(0, start)}${text}${input.value.slice(end)}`;
   input.focus();
   input.selectionStart = input.selectionEnd = start + text.length;
+}
+
+function openMessageActionMenu(key, anchor) {
+  const message = messageByActionKey(key);
+  if (!message || !anchor) return;
+  closeMessageActionMenu();
+  const menu = document.createElement("div");
+  menu.id = "messageActionMenu";
+  menu.className = "message-action-menu";
+  menu.dataset.messageActionKey = key;
+  menu.innerHTML = `<button type="button" data-message-reply>Reply</button>
+    <button type="button" data-message-emoji="👍" aria-label="Send thumbs up">👍</button>
+    <button type="button" data-message-emoji="❤️" aria-label="Send heart">❤️</button>
+    <button type="button" data-message-emoji="😂" aria-label="Send laughing emoji">😂</button>`;
+  document.body.append(menu);
+  const rect = anchor.getBoundingClientRect();
+  const top = Math.max(12, rect.top + window.scrollY - menu.offsetHeight - 8);
+  const left = Math.min(window.innerWidth - menu.offsetWidth - 12, Math.max(12, rect.left + window.scrollX));
+  menu.style.top = `${top}px`;
+  menu.style.left = `${left}px`;
+}
+
+function closeMessageActionMenu() {
+  $("#messageActionMenu")?.remove();
+}
+
+function replyToMessageKey(key) {
+  const message = messageByActionKey(key);
+  if (!message) return;
+  pendingMessageReply = messageReplySummary(message);
+  renderMessageReplyPreview();
+  closeMessageActionMenu();
+  $("#sendbirdMessageForm")?.elements?.message?.focus();
+}
+
+async function sendQuickMessageEmoji(key, emoji) {
+  const message = messageByActionKey(key);
+  if (!message || !sendbirdActiveChannel) return;
+  await sendSendbirdPayload({ message: emoji, attachments: [], reply: messageReplySummary(message) });
+  closeMessageActionMenu();
 }
 
 function messagePushPolicy() {
@@ -9026,7 +9125,16 @@ async function sendSendbirdMessage(event) {
   const input = event.currentTarget.elements.message;
   const message = String(input.value || "").trim();
   const attachments = [...pendingMessageAttachments];
+  const reply = pendingMessageReply;
   if (!message && !attachments.length) return;
+  input.value = "";
+  clearPendingMessageAttachments();
+  clearPendingMessageReply();
+  await sendSendbirdPayload({ message, attachments, reply });
+}
+
+async function sendSendbirdPayload({ message = "", attachments = [], reply = null } = {}) {
+  if (!sendbirdActiveChannel || (!message && !attachments.length)) return;
   const optimisticId = `local-${Date.now()}`;
   const optimisticMessage = {
     messageId: optimisticId,
@@ -9034,6 +9142,7 @@ async function sendSendbirdMessage(event) {
     previewUrl: attachments[0]?.previewUrl || "",
     type: attachments[0]?.type || "",
     name: attachments[0]?.name || "",
+    replyTo: reply,
     isLocalOwn: true,
     deliveryStatus: "sending",
     createdAt: Date.now(),
@@ -9042,21 +9151,19 @@ async function sendSendbirdMessage(event) {
       nickname: sendbirdClient?.currentUser?.nickname || "You"
     }
   };
-  input.value = "";
-  clearPendingMessageAttachments();
   sendbirdMessages = [...sendbirdMessages, optimisticMessage];
   renderMessageThread();
   scrollActiveMessageThreadToBottom();
   try {
     const sentMessage = message
-      ? await sendbirdActiveChannel.sendUserMessage({ message, data: messageDataPayload({ hasAttachments: attachments.length > 0 }) })
+      ? await sendbirdActiveChannel.sendUserMessage({ message, data: messageDataPayload({ hasAttachments: attachments.length > 0, replyTo: reply }) })
       : null;
     const sentFiles = [];
     for (const attachment of attachments) {
-      sentFiles.push(await sendSendbirdFileAttachment(attachment));
+      sentFiles.push(await sendSendbirdFileAttachment(attachment, reply));
     }
     if (typeof sendbirdActiveChannel.endTyping === "function") sendbirdActiveChannel.endTyping();
-    const deliveredMessage = { ...(sentMessage || sentFiles[0] || optimisticMessage), isLocalOwn: true, deliveryStatus: "delivered" };
+    const deliveredMessage = { ...(sentMessage || sentFiles[0] || optimisticMessage), isLocalOwn: true, replyTo: reply, deliveryStatus: "delivered" };
     sendbirdMessages = sendbirdMessages.map((item) => item.messageId === optimisticId ? deliveredMessage : item);
     refreshSendbirdTypingUsers();
     renderMessageThread();
@@ -9070,7 +9177,7 @@ async function sendSendbirdMessage(event) {
   }
 }
 
-async function sendSendbirdFileAttachment(attachment) {
+async function sendSendbirdFileAttachment(attachment, reply = null) {
   if (typeof sendbirdActiveChannel.sendFileMessage !== "function") {
     throw new Error("Photo messages need Sendbird file-message support.");
   }
@@ -9079,7 +9186,7 @@ async function sendSendbirdFileAttachment(attachment) {
     fileName: attachment.name,
     fileSize: attachment.file?.size || 0,
     mimeType: attachment.type,
-    data: messageDataPayload({ attachmentType: "photo" })
+    data: messageDataPayload({ attachmentType: "photo", replyTo: reply })
   });
 }
 
@@ -9578,6 +9685,7 @@ function bindEvents() {
   $("#sendbirdMessageForm").addEventListener("click", (event) => {
     const tool = event.target.closest("[data-message-tool]");
     const removeAttachment = event.target.closest("[data-remove-message-attachment]");
+    const clearReply = event.target.closest("[data-clear-message-reply]");
     if (tool?.dataset.messageTool === "photo") {
       $("#messagePhotoInput")?.click();
       return;
@@ -9591,6 +9699,7 @@ function bindEvents() {
       pendingMessageAttachments.splice(Number(removeAttachment.dataset.removeMessageAttachment), 1);
       renderMessageAttachmentPreview();
     }
+    if (clearReply) clearPendingMessageReply();
   });
   $("#sendbirdMessageForm").elements.message.addEventListener("input", () => {
     if (!sendbirdActiveChannel) return;
@@ -9772,6 +9881,18 @@ function bindEvents() {
     const editTimecardDetailButton = event.target.closest("[data-edit-timecard-detail]");
     const saveTimecardDetailButton = event.target.closest("[data-save-timecard-detail]");
     const cancelTimecardDetailButton = event.target.closest("[data-cancel-timecard-detail]");
+    const messageReplyButton = event.target.closest("[data-message-reply]");
+    const messageEmojiButton = event.target.closest("[data-message-emoji]");
+
+    if (messageReplyButton) {
+      replyToMessageKey($("#messageActionMenu")?.dataset.messageActionKey || "");
+      return;
+    }
+    if (messageEmojiButton) {
+      await sendQuickMessageEmoji($("#messageActionMenu")?.dataset.messageActionKey || "", messageEmojiButton.dataset.messageEmoji || "");
+      return;
+    }
+    if (!event.target.closest("#messageActionMenu") && !event.target.closest("[data-message-action-key]")) closeMessageActionMenu();
 
     if (openNotificationButton) {
       await openNotification(openNotificationButton.dataset.openNotification);
@@ -9992,6 +10113,27 @@ function bindEvents() {
       state.directoryTab = directoryTab.dataset.directoryTab;
       renderDirectory();
     }
+  });
+
+  document.body.addEventListener("contextmenu", (event) => {
+    const bubble = event.target.closest("[data-message-action-key]");
+    if (!bubble) return;
+    event.preventDefault();
+    openMessageActionMenu(bubble.dataset.messageActionKey, bubble);
+  });
+  document.body.addEventListener("pointerdown", (event) => {
+    const bubble = event.target.closest("[data-message-action-key]");
+    if (!bubble) return;
+    messageActionTargetKey = bubble.dataset.messageActionKey || "";
+    window.clearTimeout(messageActionTimer);
+    messageActionTimer = window.setTimeout(() => {
+      openMessageActionMenu(messageActionTargetKey, bubble);
+    }, 520);
+  });
+  ["pointerup", "pointercancel", "pointerleave", "scroll"].forEach((eventName) => {
+    document.body.addEventListener(eventName, () => {
+      window.clearTimeout(messageActionTimer);
+    }, true);
   });
 
   document.body.addEventListener("change", (event) => {
