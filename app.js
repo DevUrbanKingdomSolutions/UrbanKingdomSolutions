@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.04.088",
-  title: "V1.04.088 update installed",
-  body: "Added a Crew/Runner home dashboard with quick clock, weekly schedule, booked events, and action items."
+  version: "V1.04.089",
+  title: "V1.04.089 update installed",
+  body: "Kept chat bottom-opening isolated to the chat thread while normal mobile pages reset to the top."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -7087,11 +7087,9 @@ function systemAdminThreadMessages() {
 
 function scrollActiveMessageThreadToBottom(options = {}) {
   window.requestAnimationFrame(() => {
-    const target = activeMessageScrollTarget();
-    if (!target) return;
-    setActiveMessageScrollTop(target, target.scrollHeight);
     const thread = $("#messageThread");
-    if (thread) thread.scrollTop = thread.scrollHeight;
+    if (!thread) return;
+    thread.scrollTop = thread.scrollHeight;
   });
   if (options.repeat) {
     [45, 140, 320, 650].forEach((delay) => {
@@ -7147,7 +7145,6 @@ function renderOpenMessageThreadAtBottom() {
   window.clearTimeout(messageThreadScrollTimer);
   renderMessaging();
   markMessageThreadNotificationsRead(sendbirdActiveThread?.type || "", activeMessageThreadKey()).catch((error) => console.warn("Message notification cleanup failed", error));
-  if (isMobileMessageLayout()) $("#messages")?.scrollIntoView({ block: "start" });
   scrollActiveMessageThreadToBottomWhenReady();
 }
 
@@ -7604,6 +7601,7 @@ function setView(viewId, options = {}) {
 
 function resetViewScrollPosition() {
   requestAnimationFrame(() => {
+    $(".active-view")?.scrollTo?.({ top: 0, left: 0, behavior: "auto" });
     $(".content")?.scrollTo?.({ top: 0, left: 0, behavior: "auto" });
     document.documentElement.scrollTo?.({ top: 0, left: 0, behavior: "auto" });
     window.scrollTo({ top: 0, left: 0, behavior: "auto" });
@@ -10659,7 +10657,7 @@ function bindEvents() {
     if (closeMobileMessageButton) {
       clearActiveMessageThread();
       renderMessaging();
-      $("#messages")?.scrollIntoView({ block: "start" });
+      resetViewScrollPosition();
       return;
     }
     if (manageMessageThreadButton) openMessageThreadManageForm();

@@ -1,5 +1,5 @@
 {
-  "version": "V1.04.088",
-  "title": "V1.04.088 update installed",
-  "body": "Added a Crew/Runner home dashboard with quick clock, weekly schedule, booked events, and action items."
+  "version": "V1.04.089",
+  "title": "V1.04.089 update installed",
+  "body": "Kept chat bottom-opening isolated to the chat thread while normal mobile pages reset to the top."
 }
