@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.04.060",
-  title: "V1.04.060 update installed",
-  body: "Matched message notifications across profile, login, role, and device identities."
+  version: "V1.04.061",
+  title: "V1.04.061 update installed",
+  body: "Pulled message notifications through crew worker client links."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -1037,8 +1037,12 @@ async function hydrateNotificationsFromSupabase() {
   const clientIds = Array.from(new Set([
     cloudClientId(),
     authState.roleRecord?.client_id || "",
+    getWorker(authState.roleRecord?.worker_id)?.clientId || "",
+    loggedInWorkerRecord()?.clientId || "",
+    getWorker(state.activeWorkerId)?.clientId || "",
     activeClientRecord()?.id || "",
     ...state.events.map((event) => event.clientId).filter(Boolean),
+    ...visibleEvents().map((event) => event.clientId).filter(Boolean),
     ...state.clients.map((client) => client.id).filter(Boolean)
   ].filter(Boolean)));
   if (!clientIds.length) return;
@@ -6324,6 +6328,8 @@ function notificationCloudClientId(notification = {}) {
   if (notification.clientId) return notification.clientId;
   if (notification.threadType === "adminClient" && notification.threadProfileId) return notification.threadProfileId;
   if (notification.threadEventId) return getEvent(notification.threadEventId)?.clientId || eventClientId(getEvent(notification.threadEventId));
+  if (authState.roleRecord?.worker_id) return getWorker(authState.roleRecord.worker_id)?.clientId || "";
+  if (state.activeWorkerId) return getWorker(state.activeWorkerId)?.clientId || "";
   return cloudClientId();
 }
 
