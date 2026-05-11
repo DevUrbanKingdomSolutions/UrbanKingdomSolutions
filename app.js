@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.04.070",
-  title: "V1.04.070 update installed",
-  body: "Locked the mobile chat header and footer while the message pane scrolls to the newest message."
+  version: "V1.04.071",
+  title: "V1.04.071 update installed",
+  body: "Let mobile chat open at the newest message without forcing the scroll position afterward."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -6964,11 +6964,10 @@ function isActiveMessageScrolledToBottom() {
 
 function captureActiveMessageScrollState() {
   const target = activeMessageScrollTarget();
-  if (!target) return { target: null, top: 0, stickToBottom: true };
+  if (!target) return { target: null, top: 0 };
   return {
     target,
-    top: activeMessageScrollTop(target),
-    stickToBottom: isActiveMessageScrolledToBottom()
+    top: activeMessageScrollTop(target)
   };
 }
 
@@ -6977,10 +6976,6 @@ function restoreActiveMessageScrollState(scrollState) {
   window.requestAnimationFrame(() => {
     const target = activeMessageScrollTarget();
     if (!target) return;
-    if (scrollState.stickToBottom) {
-      setActiveMessageScrollTop(target, target.scrollHeight);
-      return;
-    }
     setActiveMessageScrollTop(target, Math.min(scrollState.top, target.scrollHeight));
   });
 }
@@ -9574,7 +9569,7 @@ async function sendSendbirdPayload({ message = "", attachments = [], reply = nul
     refreshSendbirdTypingUsers();
     renderMessageThread();
     scrollActiveMessageThreadToBottom();
-    refreshActiveSendbirdMessages({ keepLocal: true, scrollToBottom: true });
+    refreshActiveSendbirdMessages({ keepLocal: true });
   } catch (error) {
     console.error(error);
     sendbirdMessages = sendbirdMessages.filter((item) => item.messageId !== optimisticId);
