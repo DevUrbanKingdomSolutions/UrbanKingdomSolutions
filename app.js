@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.04.092",
-  title: "V1.04.092 update installed",
-  body: "Kept chat sends from failing when the shared notification bridge is blocked by Supabase row security."
+  version: "V1.04.093",
+  title: "V1.04.093 update installed",
+  body: "Pinned the chat thread to the newest message immediately after sending to remove the blank-space flash."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -281,6 +281,7 @@ let messageThreadScrollTimer = null;
 let messageThreadUserScrollingUntil = 0;
 let messageThreadRenderQueued = false;
 let messageThreadOpeningUntil = 0;
+let messageThreadPinBottomUntil = 0;
 let idleSignOutTimer = null;
 let signOutReloading = false;
 let installPromptEvent = null;
@@ -6999,7 +7000,7 @@ function clearActiveMessageThread() {
   $("#sendbirdMessageForm")?.setAttribute("hidden", "");
 }
 
-function renderMessageThread() {
+function renderMessageThread(options = {}) {
   const panel = $("#activeMessagePanel");
   const title = $("#activeMessagingTitle");
   const meta = $("#activeMessagingMeta");
@@ -7024,7 +7025,8 @@ function renderMessageThread() {
     thread.innerHTML = `<div class="chat-thread-empty">Choose a message thread from the list.</div>`;
     return;
   }
-  const scrollState = captureActiveMessageScrollState();
+  const shouldPinBottom = options.pinToBottom || Date.now() < messageThreadPinBottomUntil;
+  const scrollState = shouldPinBottom ? null : captureActiveMessageScrollState();
   title.textContent = activeMessageThreadTitle();
   meta.textContent = activeThreadManagementLabel();
   if (members) members.innerHTML = renderActiveThreadMembers();
@@ -7041,7 +7043,8 @@ function renderMessageThread() {
     typing.hidden = !typingHtml;
   }
   renderMessageComposerTools();
-  if (Date.now() < messageThreadOpeningUntil) scrollActiveMessageThreadToBottomWhenReady();
+  if (shouldPinBottom) pinActiveMessageThreadToBottom();
+  else if (Date.now() < messageThreadOpeningUntil) scrollActiveMessageThreadToBottomWhenReady();
   else restoreActiveMessageScrollState(scrollState);
 }
 
@@ -7096,6 +7099,22 @@ function scrollActiveMessageThreadToBottom(options = {}) {
       window.setTimeout(() => scrollActiveMessageThreadToBottom(), delay);
     });
   }
+}
+
+function pinActiveMessageThreadToBottom(options = {}) {
+  const thread = $("#messageThread");
+  if (!thread) return;
+  messageThreadUserScrollingUntil = 0;
+  thread.scrollTop = thread.scrollHeight;
+  scrollActiveMessageThreadToBottom({ repeat: options.repeat !== false });
+}
+
+function pinMessageThreadAfterSend() {
+  messageThreadPinBottomUntil = Date.now() + 900;
+  messageThreadUserScrollingUntil = 0;
+  messageThreadRenderQueued = false;
+  window.clearTimeout(messageThreadScrollTimer);
+  pinActiveMessageThreadToBottom();
 }
 
 function scrollActiveMessageThreadToBottomWhenReady(attempt = 0) {
@@ -9848,8 +9867,9 @@ async function sendSendbirdPayload({ message = "", attachments = [], reply = nul
     }
   };
   sendbirdMessages = [...sendbirdMessages, optimisticMessage];
-  renderMessageThread();
-  scrollActiveMessageThreadToBottom();
+  pinMessageThreadAfterSend();
+  renderMessageThread({ pinToBottom: true });
+  pinActiveMessageThreadToBottom();
   try {
     const sentMessage = message
       ? await sendbirdActiveChannel.sendUserMessage({ message, data: messageDataPayload({ hasAttachments: attachments.length > 0, replyTo: reply }) })
@@ -9872,9 +9892,9 @@ async function sendSendbirdPayload({ message = "", attachments = [], reply = nul
     sendbirdMessages = sendbirdMessages.map((item) => item.messageId === optimisticId ? deliveredMessage : item);
     await createMessageNotifications(message, deliveredMessage);
     refreshSendbirdTypingUsers();
-    renderMessageThread();
-    scrollActiveMessageThreadToBottom();
-    refreshActiveSendbirdMessages({ keepLocal: true });
+    renderMessageThread({ pinToBottom: true });
+    pinActiveMessageThreadToBottom();
+    refreshActiveSendbirdMessages({ keepLocal: true, scrollToBottom: true });
   } catch (error) {
     console.error(error);
     sendbirdMessages = sendbirdMessages.filter((item) => item.messageId !== optimisticId);

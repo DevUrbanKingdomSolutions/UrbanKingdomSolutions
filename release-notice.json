@@ -1,5 +1,5 @@
 {
-  "version": "V1.04.092",
-  "title": "V1.04.092 update installed",
-  "body": "Kept chat sends from failing when the shared notification bridge is blocked by Supabase row security."
+  "version": "V1.04.093",
+  "title": "V1.04.093 update installed",
+  "body": "Pinned the chat thread to the newest message immediately after sending to remove the blank-space flash."
 }
