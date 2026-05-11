@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.04.096",
-  title: "V1.04.096 update installed",
-  body: "Kept Crew Home from inheriting the mobile chat screen state and hardened its refresh render."
+  version: "V1.04.097",
+  title: "V1.04.097 update installed",
+  body: "Expanded Crew Home event profiles and clarified Needs Attention tasks."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -3872,18 +3872,7 @@ function openReadOnlyRecord(storeName, id) {
       ["Notes", record.notes]
     ]);
   } else if (storeName === "events") {
-    const venue = getVenue(record.venueId);
-    const promoter = getPromoter(record.promoterId);
-    readOnlyProfileCard(record.name, record.type || "Event", [
-      ["Start", formatDate(record.startDate)],
-      ["End", formatDate(record.endDate)],
-      ["Venue", venue?.name],
-      ["Promoter", promoterLabel(promoter)],
-      ["Production Contact", record.productionContact]
-    ], [
-      ["Assigned Crew", eventWorkerIds(record).map((workerId) => getWorker(workerId)?.name).filter(Boolean).join(", ")],
-      ["Notes", record.notes]
-    ]);
+    renderEventProfile(record);
   } else if (storeName === "timecards") {
     renderTimecardProfile(record.id);
   } else if (storeName === "vehicleLogs") {
@@ -3922,6 +3911,47 @@ function openReadOnlyRecord(storeName, id) {
     readOnlyProfileCard(record.name || record.title || "Record", storeName, Object.entries(record).slice(0, 8));
   }
   if (storeName !== "timecards") openForm("recordView");
+}
+
+function renderEventProfile(event) {
+  const venue = getVenue(event.venueId);
+  const promoter = getPromoter(event.promoterId);
+  const workerId = activeCrewWorkerId();
+  const assignment = workerId ? assignmentForEventWorker(event.id, workerId) : null;
+  const crew = eventWorkerIds(event).map((id) => getWorker(id)?.name).filter(Boolean);
+  const vehicleLine = assignment
+    ? [assignment.vehicleUse || "No Vehicle", assignment.vehicleType, assignmentLicensePlate(assignment) ? `Plate: ${assignmentLicensePlate(assignment)}` : ""].filter(Boolean).join("\n")
+    : (event.requiresRentalPhotos === "yes" || event.requiresRentalPhotos === true ? "Rental vehicle photos are required for assigned runners." : "");
+  const rateDetails = assignment && canViewRates()
+    ? [
+        ["Pay Basis", assignmentPayLine(assignment, event)],
+        ["Day Rate", currency(assignment.dayRate || event.dayRate || activeClientRecord()?.defaultDayRate || 0)],
+        ["Included Hours", assignment.includedHours || event.includedHours || activeClientRecord()?.defaultIncludedHours || ""],
+        ["Additional Rate", currency(assignment.additionalRate || event.additionalRate || activeClientRecord()?.defaultAdditionalRate || 0)]
+      ]
+    : [];
+  readOnlyProfileCard(event.name, event.type || "Event Profile", [
+    ["Start", formatDate(event.startDate)],
+    ["End", formatDate(event.endDate)],
+    ["Venue", venue?.name],
+    ["Venue Address", venue?.address],
+    ["Promoter", promoterLabel(promoter)],
+    ["Production Contact", event.productionContact],
+    ["Your Status", assignment?.status || (isCrewRole() ? "Assigned" : "")],
+    ...rateDetails
+  ], [
+    ["Your Assignment", assignment ? [
+      `Start: ${formatDate(assignment.startDate || event.startDate) || "Event start"}`,
+      `End: ${formatDate(assignment.endDate || event.endDate) || "Event end"}`,
+      assignment.vehicleUse ? `Vehicle: ${assignment.vehicleUse}` : "",
+      assignment.vehicleType ? `Vehicle type: ${assignment.vehicleType}` : "",
+      assignment.notes ? `Notes: ${assignment.notes}` : ""
+    ].filter(Boolean).join("\n") : ""],
+    ["Vehicle / Rental Info", vehicleLine || (event.requiresRentalPhotos === "yes" || event.requiresRentalPhotos === true ? "Rental vehicle photos are required for assigned runners." : "")],
+    ["Venue Details", [venue?.parking ? `Parking: ${venue.parking}` : "", venue?.contactName ? `Contact: ${venue.contactName}` : "", venue?.phone, venue?.email, venue?.notes].filter(Boolean).join("\n")],
+    ["Assigned Crew", crew.join(", ")],
+    ["Event Notes", event.notes]
+  ]);
 }
 
 function timecardDetailRows(record) {
@@ -4907,7 +4937,7 @@ function renderCrewMobileHome() {
     </section>
     <section class="crew-task-list">
       <div class="crew-week-heading"><span>Needs Attention</span><strong>${escapeHtml(activeCard ? "Live" : "Ready")}</strong></div>
-      ${crewMobileTaskCards(events, activeCard).join("")}
+      ${crewMobileTaskCards(events, activeCard)}
     </section>`;
 }
 
@@ -4950,11 +4980,10 @@ function crewBookedEventCards(events) {
   if (!list.length) return [`<div class="compact-item empty">No booked events yet.</div>`];
   return list.map((event) => {
     const venue = getVenue(event.venueId);
-    const card = timecardForCrewEvent(event.id);
     return `<button class="crew-booked-item" data-view-record="events:${escapeHtml(event.id)}" type="button">
       <strong>${escapeHtml(event.name || "Event")}</strong>
       <span>${escapeHtml(`${formatDate(event.startDate) || "Date TBD"}${venue?.name ? " - " + venue.name : ""}`)}</span>
-      <small>${escapeHtml(crewEventStatus(card))}</small>
+      <small>Open full event profile</small>
     </button>`;
   });
 }
@@ -4988,18 +5017,19 @@ function crewMobileTaskCards(events, activeCard) {
   const tasks = [];
   if (activeCard) {
     const activeEvent = getEvent(activeCard.eventId);
-    tasks.push(["Live Timecard", `${activeEvent?.name || activeCard.eventName || "Current event"} is running.`, "clock"]);
+    if (!activeEvent) {
+      tasks.push(["Timecard Needs Event", "This live timecard is not connected to a scheduled event. Open Timecards so it can be reviewed.", "timecards"]);
+    } else {
+      const punch = nextCrewPunch(activeCard);
+      tasks.push([`Missing ${punch.label}`, `Finish the next timecard step for ${activeEvent.name || activeCard.eventName || "your current event"}.`, "clock"]);
+    }
   }
   const rentalTasks = events
     .map((event) => crewRentalTask(event, timecardForCrewEvent(event.id)))
     .filter(Boolean);
   tasks.push(...rentalTasks.slice(0, 2));
-  events.slice(0, 3).forEach((event) => {
-    const venue = getVenue(event.venueId);
-    tasks.push(["Assigned Event", `${event.name}${venue?.name ? " at " + venue.name : ""}`, "events"]);
-  });
-  if (!tasks.length) tasks.push(["No urgent tasks", "Assigned event tasks will appear here.", "events"]);
-  return tasks.slice(0, 5).map(([label, text, view]) => `<button class="crew-mobile-task" data-mobile-go-view="${escapeHtml(view)}" type="button"><b>${escapeHtml(label)}</b><span>${escapeHtml(text)}</span></button>`);
+  if (!tasks.length) return `<div class="crew-mobile-task"><b>No items need attention</b><span>When something needs a punch, photo, report, or follow-up, it will appear here.</span></div>`;
+  return tasks.slice(0, 5).map(([label, text, view]) => `<button class="crew-mobile-task" data-mobile-go-view="${escapeHtml(view)}" type="button"><b>${escapeHtml(label)}</b><span>${escapeHtml(text)}</span></button>`).join("");
 }
 
 function crewRentalTask(event, card) {
@@ -5009,8 +5039,8 @@ function crewRentalTask(event, card) {
   if (!needsRental) return null;
   const startLog = vehicleLogForEventWorker(event.id, workerId, "Start");
   const endLog = vehicleLogForEventWorker(event.id, workerId, "End");
-  if (card?.clockOut && !vehicleEndPhotosComplete(endLog)) return ["End Vehicle Photos", `${event.name} still needs end photos and plate number.`, "vehicles"];
-  if (card?.clockIn && !vehicleStartCheckStarted(startLog)) return ["Start Vehicle Photos", `${event.name} needs start photos and plate number.`, "vehicles"];
+  if (card?.clockOut && !vehicleEndPhotosComplete(endLog)) return ["Missing End Vehicle Photos", `Upload the end vehicle photos and plate number for ${event.name}.`, "vehicles"];
+  if (card?.clockIn && !vehicleStartCheckStarted(startLog)) return ["Missing Start Vehicle Photos", `Upload the start vehicle photos and plate number for ${event.name}.`, "vehicles"];
   return null;
 }
 
