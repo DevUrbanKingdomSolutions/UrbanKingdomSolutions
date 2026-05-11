@@ -10,7 +10,7 @@
     <title>Production Crew Database</title>
     <link rel="manifest" href="manifest.webmanifest">
     <link rel="icon" href="assets/app-icon.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="styles.css?v=V1.04.046-role-punch-colors">
+    <link rel="stylesheet" href="styles.css?v=V1.04.047-role-color-app-icon">
   </head>
   <body>
     <div id="appLoadingOverlay" class="app-loading-overlay" aria-live="polite">
@@ -25,7 +25,16 @@
     <section id="authScreen" class="auth-screen" hidden>
       <form id="loginForm" class="auth-card">
         <div class="brand">
-          <div class="brand-mark">PC</div>
+          <div class="brand-mark" aria-hidden="true">
+            <svg class="stage-one-mark" viewBox="0 0 64 64" focusable="false">
+              <path class="stage-one-mark-panel" d="M10 16 34 10 30 22 8 27z"/>
+              <path class="stage-one-mark-panel" d="M39 9h16l-3 16H34z"/>
+              <path class="stage-one-mark-panel" d="M8 31h21l-3 13H7z"/>
+              <path class="stage-one-mark-panel" d="M35 29h17l-4 26H31z"/>
+              <path class="stage-one-mark-panel" d="M7 48h18l-6 8H5z"/>
+              <path class="stage-one-mark-one" d="M34 23 45 18l-3 36h-8l2-23-8 4 1-8z"/>
+            </svg>
+          </div>
           <div>
             <h1>Production Crew</h1>
             <p>Secure sign in</p>
@@ -43,7 +52,16 @@
     <section id="activateScreen" class="auth-screen" hidden>
       <form id="activateForm" class="auth-card">
         <div class="brand">
-          <div class="brand-mark">PC</div>
+          <div class="brand-mark" aria-hidden="true">
+            <svg class="stage-one-mark" viewBox="0 0 64 64" focusable="false">
+              <path class="stage-one-mark-panel" d="M10 16 34 10 30 22 8 27z"/>
+              <path class="stage-one-mark-panel" d="M39 9h16l-3 16H34z"/>
+              <path class="stage-one-mark-panel" d="M8 31h21l-3 13H7z"/>
+              <path class="stage-one-mark-panel" d="M35 29h17l-4 26H31z"/>
+              <path class="stage-one-mark-panel" d="M7 48h18l-6 8H5z"/>
+              <path class="stage-one-mark-one" d="M34 23 45 18l-3 36h-8l2-23-8 4 1-8z"/>
+            </svg>
+          </div>
           <div>
             <h1>Activate Account</h1>
             <p>Confirm your invite email</p>
@@ -59,7 +77,16 @@
     <section id="setupScreen" class="auth-screen" hidden>
       <form id="setupForm" class="auth-card">
         <div class="brand">
-          <div class="brand-mark">PC</div>
+          <div class="brand-mark" aria-hidden="true">
+            <svg class="stage-one-mark" viewBox="0 0 64 64" focusable="false">
+              <path class="stage-one-mark-panel" d="M10 16 34 10 30 22 8 27z"/>
+              <path class="stage-one-mark-panel" d="M39 9h16l-3 16H34z"/>
+              <path class="stage-one-mark-panel" d="M8 31h21l-3 13H7z"/>
+              <path class="stage-one-mark-panel" d="M35 29h17l-4 26H31z"/>
+              <path class="stage-one-mark-panel" d="M7 48h18l-6 8H5z"/>
+              <path class="stage-one-mark-one" d="M34 23 45 18l-3 36h-8l2-23-8 4 1-8z"/>
+            </svg>
+          </div>
           <div>
             <h1>Complete Setup</h1>
             <p>Create your password</p>
@@ -90,7 +117,16 @@
     <div id="appShell" class="app-shell" hidden>
       <aside class="sidebar">
         <div class="brand">
-          <div class="brand-mark">PC</div>
+          <div class="brand-mark" aria-hidden="true">
+            <svg class="stage-one-mark" viewBox="0 0 64 64" focusable="false">
+              <path class="stage-one-mark-panel" d="M10 16 34 10 30 22 8 27z"/>
+              <path class="stage-one-mark-panel" d="M39 9h16l-3 16H34z"/>
+              <path class="stage-one-mark-panel" d="M8 31h21l-3 13H7z"/>
+              <path class="stage-one-mark-panel" d="M35 29h17l-4 26H31z"/>
+              <path class="stage-one-mark-panel" d="M7 48h18l-6 8H5z"/>
+              <path class="stage-one-mark-one" d="M34 23 45 18l-3 36h-8l2-23-8 4 1-8z"/>
+            </svg>
+          </div>
           <div>
             <h1>Production Crew</h1>
             <p>Company database</p>
@@ -1485,6 +1521,6 @@
     <div id="modalHost"></div>
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js?v=V1.04.046-role-punch-colors"></script>
+    <script src="app.js?v=V1.04.047-role-color-app-icon"></script>
   </body>
 </html>
