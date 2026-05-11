@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.04.104",
-  title: "V1.04.104 update installed",
-  body: "Improved message chat scrolling so desktop and mobile follow new messages without flashing."
+  version: "V1.04.105",
+  title: "V1.04.105 update installed",
+  body: "Reduced message chat flashing by updating bubbles in place instead of rebuilding the whole chat."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -7083,11 +7083,7 @@ function renderMessageThread(options = {}) {
   if (members) members.innerHTML = renderActiveThreadMembers();
   form.hidden = !sendbirdActiveChannel;
   const visibleMessages = activeThreadVisibleMessages();
-  thread.innerHTML = sendbirdActiveChannel
-    ? (visibleMessages.length
-        ? `<div class="chat-thread">${visibleMessages.map((message) => messageBubble(message)).join("")}</div>`
-        : `<div class="chat-thread-empty">No messages loaded yet.</div>`)
-    : `<div class="chat-thread-empty">Choose a message thread from the list.</div>`;
+  renderMessageThreadBubbles(thread, visibleMessages);
   if (typing) {
     const typingHtml = renderTypingStatus();
     typing.innerHTML = typingHtml;
@@ -7103,6 +7099,40 @@ function renderMessageThread(options = {}) {
     if (Date.now() < messageThreadOpeningUntil) scrollActiveMessageThreadToBottomWhenReady();
     else restoreActiveMessageScrollState(scrollState);
   }
+}
+
+function renderMessageThreadBubbles(thread, visibleMessages = []) {
+  if (!visibleMessages.length) {
+    if (!thread.querySelector(".chat-thread-empty")) {
+      thread.innerHTML = `<div class="chat-thread-empty">No messages loaded yet.</div>`;
+    }
+    return;
+  }
+  thread.querySelector(".chat-thread-empty")?.remove();
+  let list = thread.querySelector(".chat-thread");
+  if (!list) {
+    thread.innerHTML = `<div class="chat-thread"></div>`;
+    list = thread.querySelector(".chat-thread");
+  }
+  const existing = new Map(Array.from(list.querySelectorAll("[data-message-action-key]")).map((node) => [node.dataset.messageActionKey, node]));
+  const fragment = document.createDocumentFragment();
+  visibleMessages.forEach((message) => {
+    const key = messageActionKey(message);
+    const html = messageBubble(message);
+    const current = existing.get(key);
+    if (current && current.dataset.messageHtml === html) {
+      fragment.appendChild(current);
+    } else {
+      const template = document.createElement("template");
+      template.innerHTML = html.trim();
+      const node = template.content.firstElementChild;
+      if (node) {
+        node.dataset.messageHtml = html;
+        fragment.appendChild(node);
+      }
+    }
+  });
+  list.replaceChildren(fragment);
 }
 
 function activeMessageThreadTitle() {

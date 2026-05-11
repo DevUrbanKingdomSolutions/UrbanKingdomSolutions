@@ -1,5 +1,5 @@
 {
-  "version": "V1.04.104",
-  "title": "V1.04.104 update installed",
-  "body": "Improved message chat scrolling so desktop and mobile follow new messages without flashing."
+  "version": "V1.04.105",
+  "title": "V1.04.105 update installed",
+  "body": "Reduced message chat flashing by updating bubbles in place instead of rebuilding the whole chat."
 }
