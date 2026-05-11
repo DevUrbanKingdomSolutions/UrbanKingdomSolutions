@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.04.065",
-  title: "V1.04.065 update installed",
-  body: "Removed the hidden mobile chat gap behind the message composer."
+  version: "V1.04.066",
+  title: "V1.04.066 update installed",
+  body: "Improved the mobile left-edge swipe so it opens the menu instead of navigating back."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -301,7 +301,8 @@ let pullRefreshState = {
 let edgeSwipeNavState = {
   tracking: false,
   startX: 0,
-  startY: 0
+  startY: 0,
+  opening: false
 };
 
 const MESSAGE_THREAD_TYPES = {
@@ -845,11 +846,12 @@ function initEdgeSwipeNavigation() {
   window.addEventListener("touchstart", (event) => {
     if (document.body.classList.contains("modal-open") || document.body.classList.contains("mobile-nav-open")) return;
     const touch = event.touches[0];
-    if (!touch || touch.clientX > 28) return;
+    if (!touch || touch.clientX > 36) return;
     edgeSwipeNavState = {
       tracking: true,
       startX: touch.clientX,
-      startY: touch.clientY
+      startY: touch.clientY,
+      opening: false
     };
   }, { passive: true });
   window.addEventListener("touchmove", (event) => {
@@ -859,20 +861,25 @@ function initEdgeSwipeNavigation() {
     const deltaX = touch.clientX - edgeSwipeNavState.startX;
     const deltaY = Math.abs(touch.clientY - edgeSwipeNavState.startY);
     if (deltaX < -12 || deltaY > 64) edgeSwipeNavState.tracking = false;
-  }, { passive: true });
+    if (deltaX > 10 && deltaX > deltaY * 1.2) {
+      edgeSwipeNavState.opening = true;
+      event.preventDefault();
+    }
+  }, { passive: false });
   window.addEventListener("touchend", (event) => {
     if (!edgeSwipeNavState.tracking) return;
     const touch = event.changedTouches[0];
     const deltaX = (touch?.clientX || 0) - edgeSwipeNavState.startX;
     const deltaY = Math.abs((touch?.clientY || 0) - edgeSwipeNavState.startY);
-    edgeSwipeNavState.tracking = false;
-    if (deltaX >= 72 && deltaX > deltaY * 1.4) {
+    const shouldOpen = edgeSwipeNavState.opening && deltaX >= 48 && deltaX > deltaY * 1.2;
+    edgeSwipeNavState = { tracking: false, startX: 0, startY: 0, opening: false };
+    if (shouldOpen) {
       document.body.classList.add("mobile-nav-open");
       $("#mobileMenuButton")?.setAttribute("aria-expanded", "true");
     }
   }, { passive: true });
   window.addEventListener("touchcancel", () => {
-    edgeSwipeNavState = { tracking: false, startX: 0, startY: 0 };
+    edgeSwipeNavState = { tracking: false, startX: 0, startY: 0, opening: false };
   }, { passive: true });
 }
 

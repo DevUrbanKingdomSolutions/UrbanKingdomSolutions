@@ -3791,6 +3791,12 @@ body:not(.owner-mode) .rate-field {
 }
 
 @media (max-width: 860px) {
+  html,
+  body,
+  .app-shell {
+    overscroll-behavior-x: none;
+  }
+
   body[data-access-tone] {
     --mobile-bg: color-mix(in srgb, var(--accent-soft) 34%, #f7f5ef);
     --mobile-chrome: color-mix(in srgb, var(--accent-soft) 72%, rgba(255, 253, 248, 0.96));
