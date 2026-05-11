@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.04.057",
-  title: "V1.04.057 update installed",
-  body: "Added message-thread notifications, thread-level cleanup, and native push bridge handling."
+  version: "V1.04.058",
+  title: "V1.04.058 update installed",
+  body: "Expanded message notifications to all chat members across every access level."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -8909,9 +8909,24 @@ async function markMessageThreadNotificationsRead(threadType, threadKey) {
 
 function messageNotificationRecipients() {
   const currentId = currentThreadUserId();
-  return activeThreadMemberProfiles()
-    .map((member) => messageMemberIdentityKey(member))
-    .filter((id) => id && id !== currentId);
+  const ids = new Set();
+  activeThreadMemberProfiles().forEach((member) => {
+    const id = messageMemberIdentityKey(member);
+    if (id) ids.add(id);
+  });
+  currentThreadSetting()?.memberIds?.forEach((id) => {
+    const baseId = baseSendbirdUserId(id).trim();
+    if (baseId) ids.add(baseId);
+  });
+  sendbirdActiveChannel?.members?.forEach((member) => {
+    const baseId = baseSendbirdUserId(member?.userId).trim();
+    if (baseId) ids.add(baseId);
+  });
+  sendbirdThreadUsers(sendbirdActiveThread?.type || "", getEvent(sendbirdActiveThread?.eventId), { id: sendbirdActiveThread?.profileId || "" }).forEach((id) => {
+    const baseId = baseSendbirdUserId(id).trim();
+    if (baseId) ids.add(baseId);
+  });
+  return Array.from(ids).filter((id) => id && id !== currentId && id !== "system_ops");
 }
 
 async function createMessageNotifications(message, deliveredMessage = {}) {

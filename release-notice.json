@@ -1,5 +1,5 @@
 {
-  "version": "V1.04.057",
-  "title": "V1.04.057 update installed",
-  "body": "Added message-thread notifications, thread-level cleanup, and native push bridge handling."
+  "version": "V1.04.058",
+  "title": "V1.04.058 update installed",
+  "body": "Expanded message notifications to all chat members across every access level."
 }
