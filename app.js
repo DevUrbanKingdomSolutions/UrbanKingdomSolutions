@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.04.079",
-  title: "V1.04.079 update installed",
-  body: "Open mobile chats at the newest message after the thread finishes rendering."
+  version: "V1.04.080",
+  title: "V1.04.080 update installed",
+  body: "Matched the chat composer, send button, sent bubbles, and message avatars to the active role color."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",

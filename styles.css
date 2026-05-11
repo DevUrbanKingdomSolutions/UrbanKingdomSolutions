@@ -2450,9 +2450,9 @@ td p {
 .message-bubble-row.own .message-bubble {
   grid-column: 1;
   grid-row: 1;
-  background: #1f6f78;
+  background: linear-gradient(135deg, var(--accent), var(--accent-dark));
   color: #ffffff;
-  border-color: #1f6f78;
+  border-color: color-mix(in srgb, var(--accent-dark) 88%, #ffffff);
 }
 
 .message-bubble-row.own .message-meta span,
@@ -2466,10 +2466,11 @@ td p {
   height: 36px;
   place-items: center;
   border-radius: 50%;
-  background: #e7b84d;
-  color: #1f241f;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 82%, #ffffff), var(--accent-dark));
+  color: #ffffff;
   font-size: 12px;
   font-weight: 800;
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--accent) 18%, transparent);
 }
 
 .message-avatar.image {
@@ -2544,8 +2545,10 @@ td p {
   grid-template-columns: auto auto minmax(0, 1fr) auto;
   gap: 10px;
   padding: 12px 14px;
-  border-top: 1px solid var(--line);
-  background: #ffffff;
+  border-top: 1px solid color-mix(in srgb, var(--accent) 16%, var(--line));
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--accent-soft) 56%, #ffffff), #ffffff 72%),
+    #ffffff;
 }
 
 .message-reply-preview,
@@ -2711,17 +2714,20 @@ td p {
 
 #sendbirdMessageForm input {
   min-height: 48px;
-  border: 1px solid var(--line);
+  border: 1px solid color-mix(in srgb, var(--accent) 20%, var(--line));
   border-radius: 999px;
   padding: 0 16px;
-  background: #fbfaf6;
+  background: color-mix(in srgb, var(--accent-soft) 42%, #ffffff);
+  color: var(--ink);
 }
 
 #sendbirdMessageForm button[type="submit"] {
   min-width: 56px;
   border-radius: 999px;
-  background: var(--accent);
+  border-color: var(--accent);
+  background: linear-gradient(135deg, var(--accent), var(--accent-dark));
   color: #ffffff;
+  box-shadow: 0 10px 20px color-mix(in srgb, var(--accent) 22%, transparent);
 }
 
 .message-reply-quote {
@@ -4815,17 +4821,22 @@ body:not(.owner-mode) .rate-field {
     grid-template-columns: auto auto minmax(0, 1fr) auto;
     gap: 6px;
     margin: 0;
-    padding: 9px 2px;
+    padding: 9px 8px;
     border-top: 0;
-    background: rgba(255, 255, 255, 0.94);
-    box-shadow: 0 -8px 18px rgba(29, 36, 40, 0.08), 0 -1px 0 var(--mobile-line, rgba(195, 186, 169, 0.45));
+    border-radius: 24px 24px 0 0;
+    background:
+      linear-gradient(90deg, color-mix(in srgb, var(--accent-soft) 58%, rgba(255, 255, 255, 0.94)), rgba(255, 255, 255, 0.96) 74%);
+    box-shadow:
+      0 -12px 26px color-mix(in srgb, var(--accent) 10%, rgba(29, 36, 40, 0.08)),
+      0 -1px 0 color-mix(in srgb, var(--accent) 18%, var(--mobile-line, rgba(195, 186, 169, 0.45)));
     backdrop-filter: blur(12px);
   }
 
   #sendbirdMessageForm input {
     min-height: 44px;
     padding-inline: 12px;
-    background: #ffffff;
+    border-color: color-mix(in srgb, var(--accent) 18%, var(--mobile-line, rgba(195, 186, 169, 0.45)));
+    background: color-mix(in srgb, var(--accent-soft) 32%, #ffffff);
   }
 
   #sendbirdMessageForm button[type="submit"] {
