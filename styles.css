@@ -268,7 +268,7 @@ button {
   background-image: var(--brand-logo-image, url("assets/logo/app-logo-admin.png"));
   background-position: center;
   background-repeat: no-repeat;
-  background-size: 112%;
+  background-size: 100%;
 }
 
 .brand h1 {
@@ -4584,10 +4584,13 @@ body:not(.owner-mode) .rate-field {
 }
 
 .brand-logo-mark {
+  width: 64px;
+  height: 64px;
+  border-radius: 14px;
   background-image: var(--brand-logo-image, url("assets/logo/app-logo-admin.png"));
   background-position: center;
   background-repeat: no-repeat;
-  background-size: 112%;
+  background-size: 100%;
 }
 
 @media (max-width: 640px) {

@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.04.049",
-  title: "V1.04.049 update installed",
-  body: "Swapped the brand mark to the actual no-text logo PNG assets by server role."
+  version: "V1.04.050",
+  title: "V1.04.050 update installed",
+  body: "Enlarged the actual logo assets and brand mark display for better nav and home-screen presence."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
