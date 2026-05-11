@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.04.081",
-  title: "V1.04.081 update installed",
-  body: "Matched message sender initials and avatar rings to each sender role color."
+  version: "V1.04.082",
+  title: "V1.04.082 update installed",
+  body: "Locked the mobile header and footer to the device screen while page content scrolls underneath."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
