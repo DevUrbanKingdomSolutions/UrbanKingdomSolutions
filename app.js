@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.04.038",
-  title: "V1.04.038 update installed",
-  body: "Removed the redundant Open pill from selected message threads since selecting a thread opens the chat automatically."
+  version: "V1.04.039",
+  title: "V1.04.039 update installed",
+  body: "Added message composer tools for photos, emoji, GIF links, thread push policy metadata, and clocked-in idle protection."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -268,6 +268,7 @@ let sendbirdActiveChannel = null;
 let sendbirdMessages = [];
 let sendbirdActiveThread = null;
 let sendbirdTypingUsers = [];
+let pendingMessageAttachments = [];
 let sendbirdTypingPoller = null;
 let sendbirdMessageRefreshPoller = null;
 let sendbirdMessageRefreshInFlight = false;
@@ -2542,6 +2543,7 @@ function stopIdleSignOutTimer() {
 function resetIdleSignOutTimer() {
   stopIdleSignOutTimer();
   if (!authState.session || authState.pendingSetup || isPublicEventRoute()) return;
+  if (hasActiveSessionTimecard()) return;
   idleSignOutTimer = window.setTimeout(() => {
     toast(`Signed out after ${IDLE_SIGN_OUT_MINUTES} minutes of inactivity.`);
     logout().catch((error) => {
@@ -2549,6 +2551,12 @@ function resetIdleSignOutTimer() {
       showAuthScreen("Signed out after inactivity.");
     });
   }, IDLE_SIGN_OUT_MS);
+}
+
+function hasActiveSessionTimecard() {
+  const workerId = activeCrewWorkerId?.() || state.activeWorkerId || "";
+  if (!workerId) return false;
+  return state.timecards.some((card) => card.workerId === workerId && card.clockIn && !card.clockOut);
 }
 
 function registerIdleSignOutListeners() {
@@ -6551,6 +6559,7 @@ function renderMessageThread() {
     if (members) members.innerHTML = "";
     if (typing) typing.innerHTML = "";
     form.hidden = true;
+    clearPendingMessageAttachments();
     thread.innerHTML = `<div class="chat-thread-empty">Choose a message thread from the list.</div>`;
     return;
   }
@@ -6565,6 +6574,7 @@ function renderMessageThread() {
         : `<div class="chat-thread-empty">No messages loaded yet.</div>`)
     : `<div class="chat-thread-empty">Choose a message thread from the list.</div>`;
   if (typing) typing.innerHTML = renderTypingStatus();
+  renderMessageComposerTools();
 }
 
 function activeMessageThreadTitle() {
@@ -6627,10 +6637,26 @@ function messageBubble(message) {
     ${isOwn ? "" : messageAvatar(senderProfile, displayName)}
     <div class="message-bubble">
       <div class="message-meta"><strong>${escapeHtml(isOwn ? "You" : displayName)}</strong><span>${escapeHtml(sentAt)}</span></div>
-      <p>${escapeHtml(message.message || "")}</p>
+      ${messageMediaHtml(message)}
+      ${message.message ? `<p>${escapeHtml(message.message || "")}</p>` : ""}
       ${deliveryStatus ? `<span class="message-delivery-status">${escapeHtml(deliveryStatus)}</span>` : ""}
     </div>
   </article>`;
+}
+
+function messageMediaHtml(message) {
+  const url = message.url || message.plainUrl || message.fileUrl || message.previewUrl || "";
+  const type = message.type || message.mimeType || message.fileType || "";
+  const text = String(message.message || "");
+  const gifUrl = imageUrlFromText(text);
+  const imageUrl = url || gifUrl;
+  if (!imageUrl || !(type.startsWith("image/") || /\.(gif|png|jpe?g|webp)(\?.*)?$/i.test(imageUrl))) return "";
+  const label = message.name || message.fileName || "Message image";
+  return `<a class="message-media-link" href="${escapeHtml(imageUrl)}" target="_blank" rel="noopener"><img class="message-media-image" src="${escapeHtml(imageUrl)}" alt="${escapeHtml(label)}"></a>`;
+}
+
+function imageUrlFromText(text = "") {
+  return String(text).split(/\s+/).find((part) => /^https?:\/\/\S+\.(gif|png|jpe?g|webp)(\?\S*)?$/i.test(part)) || "";
 }
 
 function profileForSendbirdUserId(userId) {
@@ -6662,6 +6688,70 @@ function renderTypingStatus() {
   if (!users.length) return `<span>No one is typing</span>`;
   const names = users.map((user) => typingUserDisplayName(user)).filter(Boolean).slice(0, 3);
   return `<span>${escapeHtml(names.join(", "))} ${names.length === 1 ? "is" : "are"} typing...</span>`;
+}
+
+const MESSAGE_EMOJIS = ["👍", "❤️", "🔥", "😂", "👏", "🙌", "✅", "👀", "🙏", "💪", "🎯", "🚗"];
+
+function renderMessageComposerTools() {
+  const picker = $("#messageEmojiPicker");
+  if (picker && !picker.innerHTML) {
+    picker.innerHTML = MESSAGE_EMOJIS.map((emoji) => `<button type="button" data-message-emoji="${emoji}" aria-label="Emoji ${emoji}">${emoji}</button>`).join("");
+  }
+  renderMessageAttachmentPreview();
+}
+
+function renderMessageAttachmentPreview() {
+  const preview = $("#messageAttachmentPreview");
+  if (!preview) return;
+  preview.innerHTML = pendingMessageAttachments.length
+    ? pendingMessageAttachments.map((item, index) => `<span class="message-attachment-chip">${escapeHtml(item.name)}<button type="button" data-remove-message-attachment="${index}" aria-label="Remove attachment">×</button></span>`).join("")
+    : "";
+  preview.hidden = !pendingMessageAttachments.length;
+}
+
+function clearPendingMessageAttachments() {
+  pendingMessageAttachments = [];
+  const input = $("#messagePhotoInput");
+  if (input) input.value = "";
+  renderMessageAttachmentPreview();
+}
+
+async function addMessagePhotoAttachments(files = []) {
+  const next = await Promise.all(Array.from(files).map(async (file) => ({
+    file,
+    name: file.name || "Photo",
+    type: file.type || "image/jpeg",
+    previewUrl: await readFileAsDataUrl(file)
+  })));
+  pendingMessageAttachments = [...pendingMessageAttachments, ...next].slice(0, 6);
+  renderMessageAttachmentPreview();
+}
+
+function insertIntoMessageInput(text) {
+  const input = $("#sendbirdMessageForm")?.elements?.message;
+  if (!input) return;
+  const start = input.selectionStart ?? input.value.length;
+  const end = input.selectionEnd ?? input.value.length;
+  input.value = `${input.value.slice(0, start)}${text}${input.value.slice(end)}`;
+  input.focus();
+  input.selectionStart = input.selectionEnd = start + text.length;
+}
+
+function messagePushPolicy() {
+  return sendbirdActiveThread?.type === "direct"
+    ? "direct_always"
+    : "group_clocked_in_only";
+}
+
+function messageDataPayload(extra = {}) {
+  return JSON.stringify({
+    threadType: sendbirdActiveThread?.type || state.messagingThreadType || "",
+    threadKey: sendbirdActiveThread
+      ? messageThreadKey(sendbirdActiveThread.type, sendbirdActiveThread.eventId || "", sendbirdActiveThread.profileId || "")
+      : "",
+    phonePushPolicy: messagePushPolicy(),
+    ...extra
+  });
 }
 
 function typingUserDisplayName(user) {
@@ -8769,11 +8859,15 @@ async function sendSendbirdMessage(event) {
   }
   const input = event.currentTarget.elements.message;
   const message = String(input.value || "").trim();
-  if (!message) return;
+  const attachments = [...pendingMessageAttachments];
+  if (!message && !attachments.length) return;
   const optimisticId = `local-${Date.now()}`;
   const optimisticMessage = {
     messageId: optimisticId,
     message,
+    previewUrl: attachments[0]?.previewUrl || "",
+    type: attachments[0]?.type || "",
+    name: attachments[0]?.name || "",
     isLocalOwn: true,
     deliveryStatus: "sending",
     createdAt: Date.now(),
@@ -8783,13 +8877,20 @@ async function sendSendbirdMessage(event) {
     }
   };
   input.value = "";
+  clearPendingMessageAttachments();
   sendbirdMessages = [...sendbirdMessages, optimisticMessage];
   renderMessageThread();
   scrollActiveMessageThreadToBottom();
   try {
-    const sentMessage = await sendbirdActiveChannel.sendUserMessage({ message });
+    const sentMessage = message
+      ? await sendbirdActiveChannel.sendUserMessage({ message, data: messageDataPayload({ hasAttachments: attachments.length > 0 }) })
+      : null;
+    const sentFiles = [];
+    for (const attachment of attachments) {
+      sentFiles.push(await sendSendbirdFileAttachment(attachment));
+    }
     if (typeof sendbirdActiveChannel.endTyping === "function") sendbirdActiveChannel.endTyping();
-    const deliveredMessage = { ...(sentMessage || optimisticMessage), isLocalOwn: true, deliveryStatus: "delivered" };
+    const deliveredMessage = { ...(sentMessage || sentFiles[0] || optimisticMessage), isLocalOwn: true, deliveryStatus: "delivered" };
     sendbirdMessages = sendbirdMessages.map((item) => item.messageId === optimisticId ? deliveredMessage : item);
     refreshSendbirdTypingUsers();
     renderMessageThread();
@@ -8801,6 +8902,19 @@ async function sendSendbirdMessage(event) {
     renderMessageThread();
     toast(error.message || "Could not send message.");
   }
+}
+
+async function sendSendbirdFileAttachment(attachment) {
+  if (typeof sendbirdActiveChannel.sendFileMessage !== "function") {
+    throw new Error("Photo messages need Sendbird file-message support.");
+  }
+  return await sendbirdActiveChannel.sendFileMessage({
+    file: attachment.file,
+    fileName: attachment.name,
+    fileSize: attachment.file?.size || 0,
+    mimeType: attachment.type,
+    data: messageDataPayload({ attachmentType: "photo" })
+  });
 }
 
 function rentalPhotoNotificationPayload(event, worker, card, type) {
@@ -9077,6 +9191,7 @@ async function crewPunch(eventId, field) {
   await put("timecards", card);
   await loadState();
   setView(state.activeView);
+  resetIdleSignOutTimer();
   toast(location ? "Time updated with location." : "Time updated. Location was not captured.");
 }
 
@@ -9280,6 +9395,38 @@ function bindEvents() {
   $("#eventAssignmentForm").addEventListener("submit", (event) => saveForm(event, "eventAssignments"));
   $("#messageThreadManageForm").addEventListener("submit", saveMessageThreadAccess);
   $("#sendbirdMessageForm").addEventListener("submit", sendSendbirdMessage);
+  $("#messagePhotoInput").addEventListener("change", (event) => addMessagePhotoAttachments(event.target.files).catch((error) => {
+    console.error(error);
+    toast("Could not add that photo.");
+  }));
+  $("#sendbirdMessageForm").addEventListener("click", (event) => {
+    const tool = event.target.closest("[data-message-tool]");
+    const emoji = event.target.closest("[data-message-emoji]");
+    const removeAttachment = event.target.closest("[data-remove-message-attachment]");
+    if (tool?.dataset.messageTool === "photo") {
+      $("#messagePhotoInput")?.click();
+      return;
+    }
+    if (tool?.dataset.messageTool === "emoji") {
+      const picker = $("#messageEmojiPicker");
+      if (picker) picker.hidden = !picker.hidden;
+      return;
+    }
+    if (tool?.dataset.messageTool === "gif") {
+      const url = window.prompt("Paste a GIF image link");
+      if (url) insertIntoMessageInput(`${url.trim()} `);
+      return;
+    }
+    if (emoji) {
+      insertIntoMessageInput(emoji.dataset.messageEmoji || "");
+      $("#messageEmojiPicker").hidden = true;
+      return;
+    }
+    if (removeAttachment) {
+      pendingMessageAttachments.splice(Number(removeAttachment.dataset.removeMessageAttachment), 1);
+      renderMessageAttachmentPreview();
+    }
+  });
   $("#sendbirdMessageForm").elements.message.addEventListener("input", () => {
     if (!sendbirdActiveChannel) return;
     if (typeof sendbirdActiveChannel.startTyping === "function") sendbirdActiveChannel.startTyping();

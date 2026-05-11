@@ -1,5 +1,5 @@
 {
-  "version": "V1.04.038",
-  "title": "V1.04.038 update installed",
-  "body": "Removed the redundant Open pill from selected message threads since selecting a thread opens the chat automatically."
+  "version": "V1.04.039",
+  "title": "V1.04.039 update installed",
+  "body": "Added message composer tools for photos, emoji, GIF links, thread push policy metadata, and clocked-in idle protection."
 }

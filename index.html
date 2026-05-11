@@ -10,7 +10,7 @@
     <title>Production Crew Database</title>
     <link rel="manifest" href="manifest.webmanifest">
     <link rel="icon" href="assets/app-icon.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="styles.css?v=V1.04.038-messages-auto-open">
+    <link rel="stylesheet" href="styles.css?v=V1.04.039-message-composer-tools">
   </head>
   <body>
     <div id="appLoadingOverlay" class="app-loading-overlay" aria-live="polite">
@@ -1168,6 +1168,12 @@
               <div id="messageThread" class="compact-list"></div>
               <div id="messageTypingStatus" class="typing-status"></div>
               <form id="sendbirdMessageForm" class="inline-form">
+                <div id="messageAttachmentPreview" class="message-attachment-preview"></div>
+                <div id="messageEmojiPicker" class="message-emoji-picker" hidden></div>
+                <input id="messagePhotoInput" name="messagePhotos" type="file" accept="image/*" multiple hidden>
+                <button class="composer-tool-button" data-message-tool="photo" type="button" aria-label="Add photos" title="Add photos">+</button>
+                <button class="composer-tool-button" data-message-tool="emoji" type="button" aria-label="Emoji" title="Emoji">☺</button>
+                <button class="composer-tool-button" data-message-tool="gif" type="button" aria-label="Add GIF" title="Add GIF">GIF</button>
                 <input name="message" placeholder="Message this event team">
                 <button class="tiny-button" type="submit">Send</button>
               </form>
@@ -1481,6 +1487,6 @@
     <div id="modalHost"></div>
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js?v=V1.04.038-messages-auto-open"></script>
+    <script src="app.js?v=V1.04.039-message-composer-tools"></script>
   </body>
 </html>
