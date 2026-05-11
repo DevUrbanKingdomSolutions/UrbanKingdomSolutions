@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.04.051",
-  title: "V1.04.051 update installed",
-  body: "Applied the transparent logo treatment to desktop brand marks and enlarged the desktop logo presentation."
+  version: "V1.04.052",
+  title: "V1.04.052 update installed",
+  body: "Applied the role color accents to the mobile header, drawer, bottom nav, and message surfaces."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
