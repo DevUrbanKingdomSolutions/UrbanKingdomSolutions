@@ -1,5 +1,5 @@
 {
-  "version": "V1.04.091",
-  "title": "V1.04.091 update installed",
-  "body": "Matched incoming message avatars to the sender's role color while keeping outgoing bubbles on the user's role color."
+  "version": "V1.04.092",
+  "title": "V1.04.092 update installed",
+  "body": "Kept chat sends from failing when the shared notification bridge is blocked by Supabase row security."
 }

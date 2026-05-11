@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.04.091",
-  title: "V1.04.091 update installed",
-  body: "Matched incoming message avatars to the sender's role color while keeping outgoing bubbles on the user's role color."
+  version: "V1.04.092",
+  title: "V1.04.092 update installed",
+  body: "Kept chat sends from failing when the shared notification bridge is blocked by Supabase row security."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -6534,7 +6534,7 @@ async function createAppNotification({ title, body = "", type = "info", viewId =
   state.appNotifications = [saved, ...state.appNotifications.filter((item) => item.id !== saved.id)]
     .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
   renderNotificationSurfaces();
-  if (type === "message") await syncAppNotificationToSupabase(saved);
+  if (type === "message") syncAppNotificationToSupabase(saved).catch((error) => console.warn("Message notification sync failed", error));
   refreshNotificationsFromStorage().catch((error) => console.warn("Notification refresh failed", error));
   return saved;
 }

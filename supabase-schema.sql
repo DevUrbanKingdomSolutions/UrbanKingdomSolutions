@@ -543,6 +543,21 @@ using (
   and store_name in ('workers', 'venues', 'promoters', 'events', 'eventAssignments', 'vehicleLogs', 'accidentReports', 'runnerStops', 'runnerCategories', 'runnerNotes', 'venueContacts', 'productionCompanies', 'productionContacts', 'messageThreadSettings')
 );
 
+create policy "Client users can manage shared notification records"
+on public.app_records
+for all
+to authenticated
+using (
+  public.current_app_role() in ('CLIENT', 'PROMOTER', 'PROMOTER_PRODUCTION_OFFICE', 'PRODUCTION', 'CREW')
+  and client_id = public.current_client_id()
+  and store_name = 'appNotifications'
+)
+with check (
+  public.current_app_role() in ('CLIENT', 'PROMOTER', 'PROMOTER_PRODUCTION_OFFICE', 'PRODUCTION', 'CREW')
+  and client_id = public.current_client_id()
+  and store_name = 'appNotifications'
+);
+
 create policy "Crew can read their shared work records"
 on public.app_records
 for select
