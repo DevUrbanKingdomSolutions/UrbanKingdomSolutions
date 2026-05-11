@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.04.077",
-  title: "V1.04.077 update installed",
-  body: "Protected mobile chat scrolling from refresh and typing updates while reading messages."
+  version: "V1.04.078",
+  title: "V1.04.078 update installed",
+  body: "Let mobile chat momentum scrolling finish before refreshing messages or typing updates."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -6941,7 +6941,7 @@ function scrollActiveMessageThreadToBottom() {
 
 function markMessageThreadUserScrolling() {
   if (!sendbirdActiveChannel) return;
-  messageThreadUserScrollingUntil = Date.now() + 700;
+  messageThreadUserScrollingUntil = Date.now() + 1200;
 }
 
 function userIsActivelyScrollingMessageThread() {
@@ -6953,6 +6953,10 @@ function queueMessageThreadRenderAfterScroll(options = {}) {
   messageThreadRenderQueued = true;
   window.clearTimeout(messageThreadScrollTimer);
   messageThreadScrollTimer = window.setTimeout(() => {
+    if (userIsActivelyScrollingMessageThread()) {
+      queueMessageThreadRenderAfterScroll(options);
+      return;
+    }
     messageThreadRenderQueued = false;
     if (!sendbirdActiveChannel) return;
     renderMessageThread();
@@ -10030,8 +10034,10 @@ function bindEvents() {
     positionOpenRecordMenus();
   });
   window.addEventListener("scroll", positionOpenRecordMenus, true);
+  $("#messageThread")?.addEventListener("touchstart", markMessageThreadUserScrolling, { passive: true });
   $("#messageThread")?.addEventListener("scroll", markMessageThreadUserScrolling, { passive: true });
   $("#messageThread")?.addEventListener("touchmove", markMessageThreadUserScrolling, { passive: true });
+  $("#messageThread")?.addEventListener("touchend", markMessageThreadUserScrolling, { passive: true });
   $("#messageThread")?.addEventListener("wheel", markMessageThreadUserScrolling, { passive: true });
   document.addEventListener("toggle", (event) => {
     if (event.target.matches?.(".table-wrap .record-options, #events .event-options")) positionOpenRecordMenus();
