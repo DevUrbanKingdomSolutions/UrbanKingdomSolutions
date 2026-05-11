@@ -2223,6 +2223,14 @@ td p {
   text-transform: uppercase;
 }
 
+.punch-summary-time {
+  display: block;
+  color: inherit;
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
 .punch-summary-item small {
   color: #176346;
   font-size: 11px;

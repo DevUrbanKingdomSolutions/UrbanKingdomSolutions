@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.04.044",
-  title: "V1.04.044 update installed",
-  body: "Added client-admin timecard note notifications for rental-photo misses and clock-ins more than 2 miles from the venue."
+  version: "V1.04.045",
+  title: "V1.04.045 update installed",
+  body: "Stacked Time Clock punch times directly under their punch titles."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -5227,7 +5227,7 @@ function clockCard(event) {
 
 function punchSummaryItem(label, value, location) {
   const set = !!value;
-  return `<span class="punch-summary-item ${set ? "is-set" : ""}"><b>${escapeHtml(label)}</b>${set ? escapeHtml(formatTime(value)) : "Not set"}</span>`;
+  return `<span class="punch-summary-item ${set ? "is-set" : ""}"><b>${escapeHtml(label)}</b><span class="punch-summary-time">${set ? escapeHtml(formatTime(value)) : "Not set"}</span></span>`;
 }
 
 function rentalClockWarning(event, card) {
