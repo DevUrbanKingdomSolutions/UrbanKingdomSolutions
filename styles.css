@@ -2117,7 +2117,7 @@ td p {
 
   #messages .chat-thread {
     min-height: 100%;
-    padding: 22px;
+    padding: 22px 22px 12px;
   }
 
   #messages .chat-thread-empty {
@@ -2424,7 +2424,7 @@ td p {
 .chat-thread {
   display: grid;
   gap: 12px;
-  padding: 18px 18px 48px;
+  padding: 18px;
 }
 
 .chat-thread-empty {
@@ -4667,7 +4667,7 @@ body:not(.owner-mode) .rate-field {
 
   .chat-thread {
     gap: 10px;
-    padding: 14px 2px 118px;
+    padding: 14px 2px calc(72px + env(safe-area-inset-bottom));
   }
 
   .message-bubble-row {

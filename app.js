@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.04.063",
-  title: "V1.04.063 update installed",
-  body: "Made message notifications live across desktop and mobile, and improved mobile chat scrolling."
+  version: "V1.04.064",
+  title: "V1.04.064 update installed",
+  body: "Tightened desktop and mobile chat spacing around the message composer."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
