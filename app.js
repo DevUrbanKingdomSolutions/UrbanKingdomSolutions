@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.04.068",
-  title: "V1.04.068 update installed",
-  body: "Made the mobile header and footer chrome stretch edge to edge."
+  version: "V1.04.069",
+  title: "V1.04.069 update installed",
+  body: "Refined mobile typography and section readability for a more premium app feel."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",

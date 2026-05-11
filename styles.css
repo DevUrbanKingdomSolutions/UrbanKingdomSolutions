@@ -3807,6 +3807,12 @@ body:not(.owner-mode) .rate-field {
     --mobile-shadow: 0 12px 30px rgba(29, 36, 40, 0.08);
   }
 
+  body {
+    font-size: 15px;
+    line-height: 1.45;
+    -webkit-font-smoothing: antialiased;
+  }
+
   body.mobile-nav-open {
     overflow: hidden;
   }
@@ -3932,10 +3938,30 @@ body:not(.owner-mode) .rate-field {
   .view:not(#messages) .panel-heading {
     min-height: auto;
     align-items: center;
+    position: relative;
     padding: 13px 14px 11px;
     border-bottom: 1px solid var(--mobile-line, rgba(195, 186, 169, 0.55));
     background:
       linear-gradient(90deg, color-mix(in srgb, var(--accent-soft) 42%, #ffffff), #ffffff 68%);
+  }
+
+  .view:not(#messages) .panel-heading::before {
+    width: 34px;
+    height: 3px;
+    border-radius: 999px;
+    content: "";
+    background: var(--accent);
+    box-shadow: 0 6px 14px color-mix(in srgb, var(--accent) 18%, transparent);
+  }
+
+  .view:not(#messages) .panel-heading h3,
+  .repeatable-heading h4 {
+    color: color-mix(in srgb, var(--accent-dark) 56%, var(--ink));
+    font-size: 13px;
+    font-weight: 900;
+    letter-spacing: 0.06em;
+    line-height: 1.2;
+    text-transform: uppercase;
   }
 
   .view:not(#messages) .list-controls {
@@ -3959,6 +3985,22 @@ body:not(.owner-mode) .rate-field {
     background: var(--mobile-surface, #ffffff);
     padding: 14px;
     box-shadow: none;
+  }
+
+  .record-card-main strong,
+  .compact-item strong {
+    color: var(--ink);
+    font-size: 16px;
+    font-weight: 850;
+    line-height: 1.25;
+  }
+
+  .record-card-main span,
+  .record-card-main p,
+  .compact-item span {
+    color: color-mix(in srgb, var(--muted) 86%, var(--ink));
+    font-size: 13px;
+    line-height: 1.42;
   }
 
   .view:not(#messages) .record-card:last-child {
@@ -4030,7 +4072,9 @@ body:not(.owner-mode) .rate-field {
   .topbar h2 {
     overflow: hidden;
     color: color-mix(in srgb, var(--accent-dark) 62%, var(--ink));
-    font-size: 22px;
+    font-size: 21px;
+    font-weight: 860;
+    line-height: 1.15;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
@@ -4109,7 +4153,9 @@ body:not(.owner-mode) .rate-field {
   .session-pill span {
     overflow: hidden;
     color: color-mix(in srgb, var(--accent-dark) 66%, var(--ink));
-    font-size: 13px;
+    font-size: 12px;
+    font-weight: 760;
+    line-height: 1.25;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
@@ -4159,11 +4205,21 @@ body:not(.owner-mode) .rate-field {
   }
 
   .metric {
-    padding: 14px;
+    padding: 16px 14px;
   }
 
   .metric strong {
-    font-size: 28px;
+    font-size: 29px;
+    font-weight: 850;
+    line-height: 1.05;
+  }
+
+  .metric span {
+    color: color-mix(in srgb, var(--accent-dark) 50%, var(--muted));
+    font-size: 11px;
+    font-weight: 900;
+    letter-spacing: 0.06em;
+    line-height: 1.2;
   }
 
   .panel-heading,
@@ -4505,14 +4561,16 @@ body:not(.owner-mode) .rate-field {
     grid-template-columns: minmax(0, 1fr) auto;
     gap: 8px;
     align-items: center;
+    padding-top: 2px;
   }
 
   .mobile-message-section-heading h4 {
     margin: 0;
-    color: var(--ink);
+    color: color-mix(in srgb, var(--accent-dark) 58%, var(--ink));
     font-size: 12px;
     font-weight: 900;
-    letter-spacing: 0.04em;
+    letter-spacing: 0.06em;
+    line-height: 1.2;
     text-transform: uppercase;
   }
 
@@ -4579,7 +4637,16 @@ body:not(.owner-mode) .rate-field {
   }
 
   .message-thread-card-main strong {
-    font-size: 15px;
+    color: var(--ink);
+    font-size: 16px;
+    font-weight: 850;
+    line-height: 1.25;
+  }
+
+  .message-thread-footer > span {
+    color: color-mix(in srgb, var(--muted) 88%, var(--ink));
+    font-size: 12px;
+    line-height: 1.3;
   }
 
   .message-thread-card-main p {
@@ -4631,7 +4698,9 @@ body:not(.owner-mode) .rate-field {
     justify-self: center;
     margin: 0;
     max-width: calc(100% - 112px);
+    color: color-mix(in srgb, var(--accent-dark) 62%, var(--ink));
     font-size: 18px;
+    font-weight: 860;
     line-height: 1.2;
     overflow: hidden;
     text-align: center;
