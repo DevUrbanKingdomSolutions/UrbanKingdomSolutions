@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.04.095",
-  title: "V1.04.095 update installed",
-  body: "Clamped the mobile app shell to the device width so pages do not create sideways scrolling."
+  version: "V1.04.096",
+  title: "V1.04.096 update installed",
+  body: "Kept Crew Home from inheriting the mobile chat screen state and hardened its refresh render."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -4849,6 +4849,11 @@ function renderCrewMobileHome() {
   if (!panel) return;
   panel.hidden = !isCrewRole();
   if (!isCrewRole()) return;
+  const status = $("#crewMobileStatus");
+  const hero = $("#crewMobileHero");
+  const actions = $("#crewMobileActions");
+  const tasks = $("#crewMobileTasks");
+  if (!status || !hero || !actions || !tasks) return;
   const workerId = activeCrewWorkerId();
   const worker = getWorker(workerId) || loggedInWorkerRecord();
   const events = [...visibleEvents()].sort((a, b) => new Date(a.startDate || 0) - new Date(b.startDate || 0));
@@ -4864,8 +4869,8 @@ function renderCrewMobileHome() {
   const venue = focusEvent ? getVenue(focusEvent.venueId) : null;
   const punch = focusEvent ? nextCrewPunch(focusCard) : null;
   const nextLabel = futureEvents[0]?.startDate ? formatDate(futureEvents[0].startDate) : "None booked";
-  $("#crewMobileStatus").textContent = activeCard ? "Clocked in now" : events.length ? `${events.length} booked` : "No booked events";
-  $("#crewMobileHero").innerHTML = `<div class="crew-home-title">
+  status.textContent = activeCard ? "Clocked in now" : events.length ? `${events.length} booked` : "No booked events";
+  hero.innerHTML = `<div class="crew-home-title">
       <span>Crew / Runner Home</span>
       <strong>${escapeHtml(worker?.name || currentSessionDisplayName())}</strong>
       <p>${escapeHtml(activeCard ? `Live on ${activeEvent?.name || activeCard.eventName || "current event"}` : focusEvent ? `Next: ${focusEvent.name}` : "Your booked events and call actions will appear here.")}</p>
@@ -4876,7 +4881,7 @@ function renderCrewMobileHome() {
       <button class="crew-home-stat" data-dashboard-link="clock" type="button"><span>Timecard</span><strong>${activeCard ? "Live" : "Ready"}</strong></button>
     </div>`;
   const canPunchFocusEvent = !!focusEvent && workerScheduledForEventDate(focusEvent, workerId, localDateKey());
-  $("#crewMobileActions").innerHTML = `<section class="crew-quick-clock">
+  actions.innerHTML = `<section class="crew-quick-clock">
       <div>
         <span>Quick Time Clock</span>
         <strong>${escapeHtml(focusEvent?.name || "No event selected")}</strong>
@@ -4892,7 +4897,7 @@ function renderCrewMobileHome() {
       <button class="ghost-button" data-mobile-go-view="vehicles" type="button">Vehicle Photos</button>
       <button class="ghost-button" data-mobile-go-view="reports" type="button">Report</button>
     </div>`;
-  $("#crewMobileTasks").innerHTML = `<section class="crew-week-card">
+  tasks.innerHTML = `<section class="crew-week-card">
       <div class="crew-week-heading"><span>Week Of</span><strong>${escapeHtml(crewWeekRangeLabel(weekDays))}</strong></div>
       <div class="crew-week-strip">${weekDays.map((day) => crewWeekDayCard(day, events, workerId)).join("")}</div>
     </section>
@@ -7011,7 +7016,7 @@ function renderMessageThread(options = {}) {
   if (!title || !meta || !thread || !form) return;
   $("#messages")?.classList.toggle("message-chat-open", !!sendbirdActiveChannel);
   document.body.classList.toggle("mobile-message-chat-open", state.activeView === "messages" && !!sendbirdActiveChannel && isMobileMessageLayout());
-  if (panel) panel.hidden = !sendbirdActiveChannel && isMobileMessageLayout();
+  if (panel) panel.hidden = state.activeView !== "messages" || (!sendbirdActiveChannel && isMobileMessageLayout());
   if (!sendbirdActiveChannel) {
     if (title) title.textContent = "Select a chat";
     if (meta) meta.textContent = "Choose a thread or direct message from the list.";
@@ -7630,6 +7635,11 @@ function setView(viewId, options = {}) {
   sessionStorage.setItem(LAST_ACTIVE_VIEW_KEY, viewId);
   applyAccessProfile();
   document.body.classList.toggle("messages-desktop-view", viewId === "messages");
+  document.body.classList.toggle("mobile-message-chat-open", viewId === "messages" && !!sendbirdActiveChannel && isMobileMessageLayout());
+  if (viewId !== "messages") {
+    $("#messages")?.classList.remove("message-chat-open");
+    $("#activeMessagePanel")?.setAttribute("hidden", "");
+  }
   $$(".view").forEach((view) => view.classList.toggle("active-view", view.id === viewId));
   $$(".nav-item").forEach((button) => button.classList.toggle("active", button.dataset.view === viewId));
   const label = combinedNavGroups().flatMap((group) => group.items).find(([view]) => view === viewId)?.[1];

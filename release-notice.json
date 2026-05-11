@@ -1,5 +1,5 @@
 {
-  "version": "V1.04.095",
-  "title": "V1.04.095 update installed",
-  "body": "Clamped the mobile app shell to the device width so pages do not create sideways scrolling."
+  "version": "V1.04.096",
+  "title": "V1.04.096 update installed",
+  "body": "Kept Crew Home from inheriting the mobile chat screen state and hardened its refresh render."
 }
