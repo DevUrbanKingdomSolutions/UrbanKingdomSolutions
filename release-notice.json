@@ -1,5 +1,5 @@
 {
-  "version": "V1.04.105",
-  "title": "V1.04.105 update installed",
-  "body": "Reduced message chat flashing by updating bubbles in place instead of rebuilding the whole chat."
+  "version": "V1.04.106",
+  "title": "V1.04.106 update installed",
+  "body": "Made message chat updates append or replace individual bubbles instead of repainting the chat list."
 }

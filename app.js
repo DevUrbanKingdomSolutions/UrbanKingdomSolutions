@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.04.105",
-  title: "V1.04.105 update installed",
-  body: "Reduced message chat flashing by updating bubbles in place instead of rebuilding the whole chat."
+  version: "V1.04.106",
+  title: "V1.04.106 update installed",
+  body: "Made message chat updates append or replace individual bubbles instead of repainting the chat list."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -7114,25 +7114,32 @@ function renderMessageThreadBubbles(thread, visibleMessages = []) {
     thread.innerHTML = `<div class="chat-thread"></div>`;
     list = thread.querySelector(".chat-thread");
   }
-  const existing = new Map(Array.from(list.querySelectorAll("[data-message-action-key]")).map((node) => [node.dataset.messageActionKey, node]));
-  const fragment = document.createDocumentFragment();
+  const currentNodes = Array.from(list.querySelectorAll("[data-message-action-key]"));
+  let needsRebuild = currentNodes.length > visibleMessages.length;
   visibleMessages.forEach((message) => {
     const key = messageActionKey(message);
-    const html = messageBubble(message);
-    const current = existing.get(key);
-    if (current && current.dataset.messageHtml === html) {
-      fragment.appendChild(current);
-    } else {
-      const template = document.createElement("template");
-      template.innerHTML = html.trim();
-      const node = template.content.firstElementChild;
-      if (node) {
-        node.dataset.messageHtml = html;
-        fragment.appendChild(node);
-      }
-    }
+    const current = currentNodes[visibleMessages.indexOf(message)];
+    if (current && current.dataset.messageActionKey !== key) needsRebuild = true;
   });
-  list.replaceChildren(fragment);
+  if (needsRebuild) {
+    list.innerHTML = visibleMessages.map((message) => messageBubble(message)).join("");
+    Array.from(list.querySelectorAll("[data-message-action-key]")).forEach((node) => {
+      node.dataset.messageHtml = node.outerHTML;
+    });
+    return;
+  }
+  visibleMessages.forEach((message, index) => {
+    const html = messageBubble(message);
+    const current = currentNodes[index];
+    if (current && current.dataset.messageHtml === html) return;
+    const template = document.createElement("template");
+    template.innerHTML = html.trim();
+    const node = template.content.firstElementChild;
+    if (!node) return;
+    node.dataset.messageHtml = html;
+    if (current) current.replaceWith(node);
+    else list.appendChild(node);
+  });
 }
 
 function activeMessageThreadTitle() {
