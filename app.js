@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.04.078",
-  title: "V1.04.078 update installed",
-  body: "Let mobile chat momentum scrolling finish before refreshing messages or typing updates."
+  version: "V1.04.079",
+  title: "V1.04.079 update installed",
+  body: "Open mobile chats at the newest message after the thread finishes rendering."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -6929,7 +6929,7 @@ function systemAdminThreadMessages() {
     }));
 }
 
-function scrollActiveMessageThreadToBottom() {
+function scrollActiveMessageThreadToBottom(options = {}) {
   window.requestAnimationFrame(() => {
     const target = activeMessageScrollTarget();
     if (!target) return;
@@ -6937,6 +6937,11 @@ function scrollActiveMessageThreadToBottom() {
     const thread = $("#messageThread");
     if (thread) thread.scrollTop = thread.scrollHeight;
   });
+  if (options.repeat) {
+    [45, 140, 320].forEach((delay) => {
+      window.setTimeout(() => scrollActiveMessageThreadToBottom(), delay);
+    });
+  }
 }
 
 function markMessageThreadUserScrolling() {
@@ -6965,11 +6970,13 @@ function queueMessageThreadRenderAfterScroll(options = {}) {
 }
 
 function renderOpenMessageThreadAtBottom() {
+  messageThreadUserScrollingUntil = 0;
+  messageThreadRenderQueued = false;
+  window.clearTimeout(messageThreadScrollTimer);
   renderMessaging();
   markMessageThreadNotificationsRead(sendbirdActiveThread?.type || "", activeMessageThreadKey()).catch((error) => console.warn("Message notification cleanup failed", error));
   if (isMobileMessageLayout()) $("#messages")?.scrollIntoView({ block: "start" });
-  scrollActiveMessageThreadToBottom();
-  window.setTimeout(scrollActiveMessageThreadToBottom, 80);
+  scrollActiveMessageThreadToBottom({ repeat: true });
 }
 
 function activeMessageScrollTarget() {
