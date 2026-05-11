@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.04.040",
-  title: "V1.04.040 update installed",
-  body: "Limited idle timer changes to Call Time and Wrap so lunch punches do not alter the clocked-in session behavior."
+  version: "V1.04.041",
+  title: "V1.04.041 update installed",
+  body: "Removed the in-app preset emoji picker so messages use the phone or desktop native emoji keyboard."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -6690,13 +6690,7 @@ function renderTypingStatus() {
   return `<span>${escapeHtml(names.join(", "))} ${names.length === 1 ? "is" : "are"} typing...</span>`;
 }
 
-const MESSAGE_EMOJIS = ["👍", "❤️", "🔥", "😂", "👏", "🙌", "✅", "👀", "🙏", "💪", "🎯", "🚗"];
-
 function renderMessageComposerTools() {
-  const picker = $("#messageEmojiPicker");
-  if (picker && !picker.innerHTML) {
-    picker.innerHTML = MESSAGE_EMOJIS.map((emoji) => `<button type="button" data-message-emoji="${emoji}" aria-label="Emoji ${emoji}">${emoji}</button>`).join("");
-  }
   renderMessageAttachmentPreview();
 }
 
@@ -9401,25 +9395,14 @@ function bindEvents() {
   }));
   $("#sendbirdMessageForm").addEventListener("click", (event) => {
     const tool = event.target.closest("[data-message-tool]");
-    const emoji = event.target.closest("[data-message-emoji]");
     const removeAttachment = event.target.closest("[data-remove-message-attachment]");
     if (tool?.dataset.messageTool === "photo") {
       $("#messagePhotoInput")?.click();
       return;
     }
-    if (tool?.dataset.messageTool === "emoji") {
-      const picker = $("#messageEmojiPicker");
-      if (picker) picker.hidden = !picker.hidden;
-      return;
-    }
     if (tool?.dataset.messageTool === "gif") {
       const url = window.prompt("Paste a GIF image link");
       if (url) insertIntoMessageInput(`${url.trim()} `);
-      return;
-    }
-    if (emoji) {
-      insertIntoMessageInput(emoji.dataset.messageEmoji || "");
-      $("#messageEmojiPicker").hidden = true;
       return;
     }
     if (removeAttachment) {

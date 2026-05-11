@@ -1,5 +1,5 @@
 {
-  "version": "V1.04.040",
-  "title": "V1.04.040 update installed",
-  "body": "Limited idle timer changes to Call Time and Wrap so lunch punches do not alter the clocked-in session behavior."
+  "version": "V1.04.041",
+  "title": "V1.04.041 update installed",
+  "body": "Removed the in-app preset emoji picker so messages use the phone or desktop native emoji keyboard."
 }

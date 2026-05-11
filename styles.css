@@ -2502,8 +2502,7 @@ td p {
   background: #ffffff;
 }
 
-.message-attachment-preview,
-.message-emoji-picker {
+.message-attachment-preview {
   grid-column: 1 / -1;
 }
 
@@ -2526,7 +2525,6 @@ td p {
 }
 
 .message-attachment-chip button,
-.message-emoji-picker button,
 .composer-tool-button {
   border: 0;
   cursor: pointer;
@@ -2538,16 +2536,6 @@ td p {
   font: inherit;
 }
 
-.message-emoji-picker {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  border-radius: 14px;
-  background: #fbfaf6;
-  padding: 8px;
-}
-
-.message-emoji-picker button,
 .composer-tool-button {
   display: grid;
   place-items: center;
