@@ -2613,10 +2613,6 @@ td p {
   background: linear-gradient(180deg, #f7f5ef 0%, #ffffff 100%);
 }
 
-#messageThread.message-thread-rendering {
-  opacity: 0;
-}
-
 .chat-thread {
   display: grid;
   gap: 12px;
