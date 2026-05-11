@@ -1,5 +1,5 @@
 {
-  "version": "V1.04.071",
-  "title": "V1.04.071 update installed",
-  "body": "Let mobile chat open at the newest message without forcing the scroll position afterward."
+  "version": "V1.04.072",
+  "title": "V1.04.072 update installed",
+  "body": "Opened mobile Messages on the chat selector before loading a selected thread."
 }

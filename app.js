@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.04.071",
-  title: "V1.04.071 update installed",
-  body: "Let mobile chat open at the newest message without forcing the scroll position afterward."
+  version: "V1.04.072",
+  title: "V1.04.072 update installed",
+  body: "Opened mobile Messages on the chat selector before loading a selected thread."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -6823,10 +6823,15 @@ function firstVisibleMessageThreadTarget(type = state.messagingThreadType) {
 async function selectMessageThreadType(type) {
   state.messagingThreadType = MESSAGE_THREAD_TYPES[type] ? type : "event";
   localStorage.setItem("productionCrewMessagingThreadType", state.messagingThreadType);
+  clearActiveMessageThread();
+  renderMessaging();
+}
+
+function clearActiveMessageThread() {
   sendbirdActiveChannel = null;
   sendbirdActiveThread = null;
   sendbirdMessages = [];
-  renderMessaging();
+  sendbirdTypingUsers = [];
 }
 
 function renderMessageThread() {
@@ -7344,6 +7349,7 @@ function setView(viewId) {
   }
   const previousView = state.activeView;
   viewId = protectedViewFor(viewId);
+  if (viewId === "messages" && previousView !== "messages") clearActiveMessageThread();
   state.activeView = viewId;
   sessionStorage.setItem(LAST_ACTIVE_VIEW_KEY, viewId);
   applyAccessProfile();
@@ -10380,17 +10386,19 @@ function bindEvents() {
     if (openMessageChannelButton) {
       const [type, eventId] = openMessageChannelButton.dataset.openMessageChannel.split(":");
       await openMessageChannel(type, eventId);
+      return;
     }
     if (openPermanentMessageButton) {
       const [type, ...keyParts] = openPermanentMessageButton.dataset.openPermanentMessage.split(":");
       await openPermanentMessageChannel(type, keyParts.join(":"));
+      return;
     }
-    if (openDirectMessageButton) await openDirectMessageChannel(openDirectMessageButton.dataset.openDirectMessage);
+    if (openDirectMessageButton) {
+      await openDirectMessageChannel(openDirectMessageButton.dataset.openDirectMessage);
+      return;
+    }
     if (closeMobileMessageButton) {
-      sendbirdActiveChannel = null;
-      sendbirdActiveThread = null;
-      sendbirdMessages = [];
-      sendbirdTypingUsers = [];
+      clearActiveMessageThread();
       renderMessaging();
       $("#messages")?.scrollIntoView({ block: "start" });
       return;
@@ -10407,9 +10415,7 @@ function bindEvents() {
       state.messageDirectScope = "all";
       localStorage.setItem("productionCrewMessagingThreadType", state.messagingThreadType);
       localStorage.setItem("productionCrewMessageDirectScope", state.messageDirectScope);
-      sendbirdActiveChannel = null;
-      sendbirdActiveThread = null;
-      sendbirdMessages = [];
+      clearActiveMessageThread();
       renderMessaging();
     }
     if (notifyProductionOfficeButton) await notifyRunnerToProductionOffice(notifyProductionOfficeButton.dataset.notifyProductionOffice);
