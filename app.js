@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.04.047",
-  title: "V1.04.047 update installed",
-  body: "Updated the app brand icon so only the 1 mark follows the active server color."
+  version: "V1.04.048",
+  title: "V1.04.048 update installed",
+  body: "Refined the app brand icon to match the no-text logo shape while keeping only the 1 mark role-colored."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
