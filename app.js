@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.04.090",
-  title: "V1.04.090 update installed",
-  body: "Reset outgoing mobile pages before navigation so only the chat thread opens at the newest message."
+  version: "V1.04.091",
+  title: "V1.04.091 update installed",
+  body: "Matched incoming message avatars to the sender's role color while keeping outgoing bubbles on the user's role color."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -7199,16 +7199,16 @@ function restoreActiveMessageScrollState(scrollState) {
 function messageBubble(message) {
   const senderName = message.sender?.nickname || message.sender?.userId || "Message";
   const senderId = message.sender?.userId || "";
-  const senderProfile = profileForSendbirdUserId(senderId);
+  const senderProfile = profileForSendbirdUserId(senderId, message.sender);
   const displayName = senderProfile?.name || senderProfile?.contactName || senderName;
   const isOwn = !!message.isLocalOwn || !!message.deliveryStatus || (senderId && baseSendbirdUserId(senderId) === baseSendbirdUserId(sendbirdClient?.currentUser?.userId));
   const sentAt = message.createdAt ? formatDate(message.createdAt) : "";
   const deliveryStatus = isOwn ? (message.deliveryStatus === "sending" ? "Sending..." : "Delivered") : "";
   const actionKey = messageActionKey(message);
   const reply = messageReplyData(message);
-  const tone = messageAvatarTone(senderProfile);
+  const tone = messageSenderTone(message, senderProfile);
   return `<article class="message-bubble-row ${isOwn ? "own" : ""} tone-${escapeHtml(tone)}" data-message-action-key="${escapeHtml(actionKey)}">
-    ${isOwn ? "" : messageAvatar(senderProfile, displayName)}
+    ${isOwn ? "" : messageAvatar(senderProfile, displayName, tone)}
     <div class="message-bubble">
       <div class="message-meta"><strong>${escapeHtml(isOwn ? "You" : displayName)}</strong><span>${escapeHtml(sentAt)}</span></div>
       ${reply ? `<div class="message-reply-quote"><span>${escapeHtml(reply.senderName || "Message")}</span><strong>${escapeHtml(reply.text || "Message")}</strong></div>` : ""}
@@ -7281,19 +7281,39 @@ function imageUrlFromText(text = "") {
   return String(text).split(/\s+/).find((part) => /^https?:\/\/\S+\.(gif|png|jpe?g|webp)(\?\S*)?$/i.test(part)) || "";
 }
 
-function profileForSendbirdUserId(userId) {
+function profileForSendbirdUserId(userId, identity = {}) {
   const id = baseSendbirdUserId(userId).trim();
   if (!id) return null;
   if (id === "adminProfile") return activeAdminProfile();
   if (id === "system_ops") return { id: "system_ops", name: "System", contactName: "System" };
-  return [
+  const matches = [
     ...state.workers,
     ...state.promoters,
     ...state.clientReps,
     ...state.systemProfiles,
     ...state.productionContacts,
     ...state.venueContacts
-  ].find((profile) => [profile.authUserId, profile.id, profile.email].map((value) => baseSendbirdUserId(value).trim()).includes(id)) || null;
+  ].filter((profile) => [profile.authUserId, profile.id, profile.email].map((value) => baseSendbirdUserId(value).trim()).includes(id));
+  if (matches.length <= 1) return matches[0] || null;
+  const displayName = normalizedMatchValue(identity?.nickname || identity?.name || "");
+  if (!displayName) return matches[0] || null;
+  return matches.find((profile) => normalizedMatchValue(profile.name || profile.contactName || "") === displayName)
+    || matches.find((profile) => normalizedMatchValue(profile.name || profile.contactName || "").includes(displayName))
+    || matches[0]
+    || null;
+}
+
+function messageData(message) {
+  try {
+    return JSON.parse(message?.data || "{}") || {};
+  } catch {
+    return {};
+  }
+}
+
+function messageSenderTone(message, profile) {
+  const tone = String(messageData(message).senderTone || "").trim();
+  return ["admin", "client", "promoter", "production", "crew"].includes(tone) ? tone : messageAvatarTone(profile);
 }
 
 function messageAvatarTone(profile) {
@@ -7313,9 +7333,9 @@ function messageAvatarTone(profile) {
   return "client";
 }
 
-function messageAvatar(profile, fallbackName = "User") {
+function messageAvatar(profile, fallbackName = "User", toneOverride = "") {
   const label = profile?.name || profile?.contactName || fallbackName;
-  const tone = messageAvatarTone(profile);
+  const tone = toneOverride || messageAvatarTone(profile);
   if (profile?.headshotData && !profile.hideHeadshot) {
     return `<img class="message-avatar image tone-${escapeHtml(tone)}" src="${profile.headshotData}" alt="${escapeHtml(label)} headshot">`;
   }
@@ -7447,6 +7467,7 @@ function messageDataPayload(extra = {}) {
     threadKey: sendbirdActiveThread
       ? messageThreadKey(sendbirdActiveThread.type, sendbirdActiveThread.eventId || "", sendbirdActiveThread.profileId || "")
       : "",
+    senderTone: messageAvatarTone(currentMessagingProfile()),
     phonePushPolicy: messagePushPolicy(),
     ...extra
   });
@@ -8657,14 +8678,23 @@ async function saveRunnerNote(stopId) {
 }
 
 function notificationSubscriberForCurrentUser() {
-  const worker = getWorker(state.activeWorkerId);
-  const promoter = getPromoter(state.activePromoterId);
-  const clientRep = activeClientRepRecord();
-  const profile = isCrewRole() ? worker : isProductionRole() ? promoter : isClientRole() ? clientRep : activeAdminProfile();
+  const profile = currentMessagingProfile();
   const fallbackId = isAdminRole()
     ? profile?.authUserId || profile?.id || authState.user?.id || authState.user?.email || ""
     : authState.user?.id || profile?.id || authState.user?.email || "";
   return notificationSubscriberForProfile(profile, fallbackId);
+}
+
+function currentMessagingProfile() {
+  const worker = loggedInWorkerRecord() || getWorker(state.activeWorkerId);
+  const promoter = activePromoterRecord() || getPromoter(state.activePromoterId);
+  const clientRep = activeClientRepRecord();
+  if (isAdminRole()) return activeAdminProfile();
+  if (isClientRole()) return clientRep;
+  if (isProductionTeamRole()) return state.productionContacts.find((profile) => profile.authUserId === authState.user?.id) || activeAdminProfile();
+  if (isProductionRole()) return promoter;
+  if (isCrewRole()) return worker;
+  return clientRep || worker || promoter || activeAdminProfile();
 }
 
 function notificationSubscriberForProfile(profile, fallbackId = "") {

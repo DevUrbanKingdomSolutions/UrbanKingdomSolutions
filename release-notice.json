@@ -1,5 +1,5 @@
 {
-  "version": "V1.04.090",
-  "title": "V1.04.090 update installed",
-  "body": "Reset outgoing mobile pages before navigation so only the chat thread opens at the newest message."
+  "version": "V1.04.091",
+  "title": "V1.04.091 update installed",
+  "body": "Matched incoming message avatars to the sender's role color while keeping outgoing bubbles on the user's role color."
 }
