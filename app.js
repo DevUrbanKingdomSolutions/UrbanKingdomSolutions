@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.04.085",
-  title: "V1.04.085 update installed",
-  body: "Polished mobile messaging open position, sender role colors, compact header spacing, and softer mobile page sections."
+  version: "V1.04.086",
+  title: "V1.04.086 update installed",
+  body: "Refined the mobile header layout with one user name, a visible search bar, and a premium role-color treatment."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
