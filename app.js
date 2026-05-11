@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.04.094",
-  title: "V1.04.094 update installed",
-  body: "Let the notification dropdown float fully below the locked header so it is no longer cut off."
+  version: "V1.04.095",
+  title: "V1.04.095 update installed",
+  body: "Clamped the mobile app shell to the device width so pages do not create sideways scrolling."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",

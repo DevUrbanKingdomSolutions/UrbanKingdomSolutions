@@ -4060,7 +4060,7 @@ body:not(.owner-mode) .rate-field {
   .app-shell {
     width: 100%;
     max-width: 100%;
-    overflow-x: hidden;
+    overflow-x: clip;
     overscroll-behavior-x: none;
   }
 
@@ -4085,11 +4085,11 @@ body:not(.owner-mode) .rate-field {
   }
 
   .app-shell {
-    width: 100vw;
-    max-width: 100vw;
+    width: 100%;
+    max-width: 100%;
     min-height: 100dvh;
     grid-template-columns: 1fr;
-    overflow-x: hidden;
+    overflow-x: clip;
     padding-bottom: calc(74px + env(safe-area-inset-bottom));
     background:
       linear-gradient(180deg, color-mix(in srgb, var(--accent-soft) 34%, transparent) 0, transparent 118px),
@@ -4180,8 +4180,8 @@ body:not(.owner-mode) .rate-field {
     bottom: var(--mobile-footer-height);
     left: 0;
     display: flex;
-    width: 100vw;
-    max-width: 100vw;
+    width: auto;
+    max-width: none;
     min-height: 0;
     flex-direction: column;
     overflow: hidden;
@@ -4193,8 +4193,10 @@ body:not(.owner-mode) .rate-field {
 
   .active-view {
     flex: 1 1 auto;
+    width: 100%;
+    max-width: 100%;
     min-height: 0;
-    overflow-x: hidden;
+    overflow-x: clip;
     overflow-y: auto;
     padding-bottom: 18px;
     -webkit-overflow-scrolling: touch;
@@ -4304,8 +4306,8 @@ body:not(.owner-mode) .rate-field {
     left: 0;
     z-index: 90;
     display: grid;
-    width: 100vw;
-    max-width: 100vw;
+    width: auto;
+    max-width: none;
     height: var(--mobile-topbar-height);
     grid-template-columns: auto minmax(0, 1fr) auto;
     align-items: start;
@@ -4392,6 +4394,7 @@ body:not(.owner-mode) .rate-field {
     gap: 10px;
     align-items: center;
     margin-top: 2px;
+    min-width: 0;
   }
 
   .topbar-tools > *,
@@ -4458,6 +4461,25 @@ body:not(.owner-mode) .rate-field {
 
   .connection-banner {
     margin: -4px 0 12px;
+  }
+
+  .content *,
+  .topbar *,
+  .mobile-bottom-nav * {
+    max-width: 100%;
+  }
+
+  .view,
+  .view > *,
+  .panel,
+  .stack-layout,
+  .split-layout,
+  .record-grid,
+  .record-card,
+  .list-controls,
+  form,
+  fieldset {
+    min-width: 0;
   }
 
   .session-pill {
@@ -5066,6 +5088,7 @@ body:not(.owner-mode) .rate-field {
     background: var(--mobile-bg, #fffefd);
     box-shadow: none;
     overflow: hidden;
+    max-width: 100%;
   }
 
   .active-message-heading {
@@ -5229,8 +5252,8 @@ body:not(.owner-mode) .rate-field {
     left: 0;
     z-index: 35;
     display: grid;
-    width: 100vw;
-    max-width: 100vw;
+    width: auto;
+    max-width: none;
     grid-template-columns: repeat(5, minmax(0, 1fr));
     gap: 4px;
     overflow: hidden;
