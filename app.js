@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.04.042",
-  title: "V1.04.042 update installed",
-  body: "Cleaned up the active sidebar highlight so the role color fills the edge without a white strip."
+  version: "V1.04.043",
+  title: "V1.04.043 update installed",
+  body: "Limited Time Clock to today's scheduled line and blocked Call Time when the worker is not scheduled today."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -4302,6 +4302,13 @@ function eventTouchesDate(event, dateKey) {
   return dateKey >= startKey && dateKey <= (endKey || startKey);
 }
 
+function workerScheduledForEventDate(event, workerId, dateKey = localDateKey()) {
+  if (!event || !workerId) return false;
+  const assignment = assignmentForEventWorker(event.id, workerId);
+  if (assignment) return eventTouchesDate(assignment, dateKey) || eventTouchesDate(event, dateKey);
+  return eventWorkerIds(event).includes(workerId) && eventTouchesDate(event, dateKey);
+}
+
 function dashboardHeroConfig() {
   if (isAdminRole()) {
     return {
@@ -4675,8 +4682,6 @@ function timecardForCrewEvent(eventId) {
   const cards = state.timecards.filter((card) => card.eventId === eventId && card.workerId === workerId);
   return cards.find((card) => timecardWorkDate(card) === today && !card.clockOut)
     || cards.find((card) => timecardWorkDate(card) === today)
-    || cards.find((card) => !card.clockOut)
-    || cards[0]
     || null;
 }
 
@@ -5084,20 +5089,30 @@ function renderClock() {
   const events = visibleEvents().filter((event) => {
     return workerId
       && eventWorkerIds(event).includes(workerId)
+      && workerScheduledForEventDate(event, workerId)
       && matchesSearch(event, `${getVenue(event.venueId)?.name || ""} ${getPromoter(event.promoterId)?.name || ""}`);
   });
-  $("#clockEventCount").textContent = events.length ? `Today / ${events.length} assigned` : "Today";
-  $("#clockCards").innerHTML = `${todayClockTimelineCard(events.length)}${events.map((event) => clockCard(event)).join("")}`;
+  const card = currentDayCrewTimecard();
+  const event = card?.eventId ? getEvent(card.eventId) : events[0] || null;
+  $("#clockEventCount").textContent = event ? "Today / scheduled" : "Today";
+  $("#clockCards").innerHTML = todayClockTimelineCard(event, card);
 }
 
-function todayClockTimelineCard(assignedEventCount = 0) {
-  const card = currentDayCrewTimecard();
+function todayClockTimelineCard(event = null, card = currentDayCrewTimecard()) {
   const today = localDateKey();
-  const event = card?.eventId ? getEvent(card.eventId) : null;
+  const workerId = activeCrewWorkerId();
+  const scheduledToday = event && workerScheduledForEventDate(event, workerId, today);
+  const punchActions = scheduledToday
+    ? `<div class="clock-actions">
+        <button class="primary-action" data-time-punch="clockIn" data-event-id="${escapeHtml(event.id)}" type="button">Call Time</button>
+        <button class="primary-action" data-time-punch="lunchOut" data-event-id="${escapeHtml(event.id)}" type="button">Lunch Out</button>
+        <button class="primary-action" data-time-punch="lunchIn" data-event-id="${escapeHtml(event.id)}" type="button">Lunch In</button>
+        <button class="primary-action" data-time-punch="clockOut" data-event-id="${escapeHtml(event.id)}" type="button">Wrap</button>
+      </div>`
+    : `<div class="clock-actions"><button class="primary-action" type="button" disabled>No scheduled event today</button></div>`;
+  const rentalWarning = scheduledToday && event ? rentalClockWarning(event, card) : "";
   const line = event
-    ? `${event.name}${assignedEventCount ? "" : " - no assigned events available in this view"}`
-    : assignedEventCount
-      ? "Use an assigned event below to update today's time."
+    ? `${event.name}${scheduledToday ? "" : " - not scheduled today"}`
       : "No assigned event is available for this worker today.";
   return `<article class="record-card clock-card clock-day-card">
     <div class="record-card-main">
@@ -5110,7 +5125,9 @@ function todayClockTimelineCard(assignedEventCount = 0) {
         ${punchSummaryItem("Lunch In", card?.lunchIn, card?.punchLocations?.lunchIn)}
         ${punchSummaryItem("Wrap", card?.clockOut, card?.punchLocations?.clockOut)}
       </div>
+      ${rentalWarning}
     </div>
+    ${punchActions}
   </article>`;
 }
 
@@ -9105,6 +9122,10 @@ async function crewPunch(eventId, field) {
   const nowDate = new Date();
   const now = toLocalInputValue(nowDate);
   const todayKey = localDateKey(nowDate);
+  if (field === "clockIn" && !workerScheduledForEventDate(event, workerId, todayKey)) {
+    toast("You are not scheduled for this event today.");
+    return;
+  }
   let card = null;
   const priorOpen = priorOpenCrewTimecards(eventId, workerId, todayKey);
   if (field === "clockOut" && priorOpen.length) {

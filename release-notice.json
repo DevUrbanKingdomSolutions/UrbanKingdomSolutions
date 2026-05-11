@@ -1,5 +1,5 @@
 {
-  "version": "V1.04.042",
-  "title": "V1.04.042 update installed",
-  "body": "Cleaned up the active sidebar highlight so the role color fills the edge without a white strip."
+  "version": "V1.04.043",
+  "title": "V1.04.043 update installed",
+  "body": "Limited Time Clock to today's scheduled line and blocked Call Time when the worker is not scheduled today."
 }
