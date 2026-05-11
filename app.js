@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.04.097",
-  title: "V1.04.097 update installed",
-  body: "Expanded Crew Home event profiles and clarified Needs Attention tasks."
+  version: "V1.04.098",
+  title: "V1.04.098 update installed",
+  body: "Restored pull-to-refresh on the Crew / Runner home dashboard."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -793,6 +793,7 @@ function updatePullRefreshIndicator(distance = 0) {
 function startedInsideScrollableSection(target) {
   let element = target?.nodeType === Node.ELEMENT_NODE ? target : target?.parentElement;
   while (element && element !== document.body && element !== document.documentElement) {
+    if (element.classList?.contains("active-view")) return false;
     const style = window.getComputedStyle(element);
     const canScrollY = /(auto|scroll)/.test(style.overflowY) && element.scrollHeight > element.clientHeight + 1;
     const canScrollX = /(auto|scroll)/.test(style.overflowX) && element.scrollWidth > element.clientWidth + 1;
@@ -806,11 +807,19 @@ function startedInsideGestureControl(target) {
   return !!target?.closest?.("input, textarea, select, button, summary, details, label, [data-open-message-image], #messageThread, #sendbirdMessageForm, .record-options, .modal-form");
 }
 
+function activePageScrollTop() {
+  const activeView = $(".active-view");
+  if (activeView && window.getComputedStyle(activeView).overflowY !== "visible") {
+    return activeView.scrollTop || 0;
+  }
+  return window.scrollY || document.documentElement.scrollTop || 0;
+}
+
 function initPullToRefresh() {
   if (!("ontouchstart" in window)) return;
   window.addEventListener("touchstart", (event) => {
     if (pullRefreshState.refreshing || document.body.classList.contains("modal-open")) return;
-    if (window.scrollY > 0) return;
+    if (activePageScrollTop() > 0) return;
     if (startedInsideScrollableSection(event.target)) return;
     pullRefreshState = {
       tracking: true,
