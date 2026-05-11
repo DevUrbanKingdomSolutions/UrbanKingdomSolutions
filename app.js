@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.04.034",
-  title: "V1.04.034 update installed",
-  body: "Changed the active nav highlight from a fade to a clean white tip with a solid role-color break line."
+  version: "V1.04.035",
+  title: "V1.04.035 update installed",
+  body: "Polished the active nav highlight with a richer role-color fill, crisp white tip, and no pale right edge."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
