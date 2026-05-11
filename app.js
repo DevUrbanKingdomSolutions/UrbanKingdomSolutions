@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.04.098",
-  title: "V1.04.098 update installed",
-  body: "Restored pull-to-refresh on the Crew / Runner home dashboard."
+  version: "V1.04.099",
+  title: "V1.04.099 update installed",
+  body: "Expanded the mobile pull-to-refresh behavior across all pages."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -797,7 +797,8 @@ function startedInsideScrollableSection(target) {
     const style = window.getComputedStyle(element);
     const canScrollY = /(auto|scroll)/.test(style.overflowY) && element.scrollHeight > element.clientHeight + 1;
     const canScrollX = /(auto|scroll)/.test(style.overflowX) && element.scrollWidth > element.clientWidth + 1;
-    if (canScrollY || canScrollX) return true;
+    if (canScrollY && element.scrollTop > 0) return true;
+    if (canScrollX && !canScrollY) return true;
     element = element.parentElement;
   }
   return false;
