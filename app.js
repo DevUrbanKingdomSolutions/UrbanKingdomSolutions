@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.04.073",
-  title: "V1.04.073 update installed",
-  body: "Forced the mobile Messages tab to reset to the chat selector every time it opens."
+  version: "V1.04.074",
+  title: "V1.04.074 update installed",
+  body: "Re-rendered the mobile Messages selector immediately after clearing the active chat."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -7349,7 +7349,8 @@ function setView(viewId) {
   }
   const previousView = state.activeView;
   viewId = protectedViewFor(viewId);
-  if (viewId === "messages") clearActiveMessageThread();
+  const resetMessagesSelector = viewId === "messages";
+  if (resetMessagesSelector) clearActiveMessageThread();
   state.activeView = viewId;
   sessionStorage.setItem(LAST_ACTIVE_VIEW_KEY, viewId);
   applyAccessProfile();
@@ -7361,6 +7362,7 @@ function setView(viewId) {
   if (location.hash !== `#${viewId}`) history.replaceState(null, "", `#${viewId}`);
   if (requestedView !== viewId) toast("That view is restricted for your role.");
   closeMobileNavigation();
+  if (resetMessagesSelector) renderMessaging();
   if (previousView !== viewId) resetViewScrollPosition();
 }
 
