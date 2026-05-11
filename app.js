@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.04.083",
-  title: "V1.04.083 update installed",
-  body: "Locked the mobile page content between the fixed header and footer so each page scrolls inside the middle section."
+  version: "V1.04.084",
+  title: "V1.04.084 update installed",
+  body: "Waited for the mobile chat panel to finish sizing before opening a thread at the newest message."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -6944,6 +6944,21 @@ function scrollActiveMessageThreadToBottom(options = {}) {
   }
 }
 
+function scrollActiveMessageThreadToBottomWhenReady(attempt = 0) {
+  const thread = $("#messageThread");
+  const panel = $("#activeMessagePanel");
+  const ready = !!thread
+    && !!panel
+    && !panel.hidden
+    && thread.clientHeight > 0
+    && thread.scrollHeight >= thread.clientHeight;
+  if (ready || attempt >= 12) {
+    scrollActiveMessageThreadToBottom({ repeat: true });
+    return;
+  }
+  window.setTimeout(() => scrollActiveMessageThreadToBottomWhenReady(attempt + 1), 50);
+}
+
 function markMessageThreadUserScrolling() {
   if (!sendbirdActiveChannel) return;
   messageThreadUserScrollingUntil = Date.now() + 1200;
@@ -6976,7 +6991,7 @@ function renderOpenMessageThreadAtBottom() {
   renderMessaging();
   markMessageThreadNotificationsRead(sendbirdActiveThread?.type || "", activeMessageThreadKey()).catch((error) => console.warn("Message notification cleanup failed", error));
   if (isMobileMessageLayout()) $("#messages")?.scrollIntoView({ block: "start" });
-  scrollActiveMessageThreadToBottom({ repeat: true });
+  scrollActiveMessageThreadToBottomWhenReady();
 }
 
 function activeMessageScrollTarget() {
