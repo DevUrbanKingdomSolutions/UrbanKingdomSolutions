@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.04.093",
-  title: "V1.04.093 update installed",
-  body: "Pinned the chat thread to the newest message immediately after sending to remove the blank-space flash."
+  version: "V1.04.094",
+  title: "V1.04.094 update installed",
+  body: "Let the notification dropdown float fully below the locked header so it is no longer cut off."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
