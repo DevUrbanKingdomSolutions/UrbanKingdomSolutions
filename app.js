@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.04.086",
-  title: "V1.04.086 update installed",
-  body: "Refined the mobile header layout with one user name, a visible search bar, and a premium role-color treatment."
+  version: "V1.04.087",
+  title: "V1.04.087 update installed",
+  body: "Split mobile gestures so left-edge swipe opens the menu while middle-page swipe goes back."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -308,6 +308,13 @@ let edgeSwipeNavState = {
   startY: 0,
   opening: false
 };
+let middleSwipeBackState = {
+  tracking: false,
+  startX: 0,
+  startY: 0,
+  active: false
+};
+let viewHistoryStack = [];
 
 const MESSAGE_THREAD_TYPES = {
   event: {
@@ -768,20 +775,7 @@ function initMobileAppLifecycle() {
     document.body.classList.add("app-paused");
   });
   appPlugin.addListener("backButton", () => {
-    if (document.body.classList.contains("modal-open")) {
-      closeActiveForm();
-      return;
-    }
-    if (document.body.classList.contains("mobile-nav-open")) {
-      closeMobileNavigation();
-      return;
-    }
-    const homeView = roleHomeView(assignedAccessForCurrentUser()[0] || state.accessRole);
-    if (state.activeView && state.activeView !== homeView) {
-      setView(homeView);
-      return;
-    }
-    appPlugin.exitApp?.();
+    if (!goBackOneLevel()) appPlugin.exitApp?.();
   });
 }
 
@@ -805,6 +799,10 @@ function startedInsideScrollableSection(target) {
     element = element.parentElement;
   }
   return false;
+}
+
+function startedInsideGestureControl(target) {
+  return !!target?.closest?.("input, textarea, select, button, summary, details, label, [data-open-message-image], #messageThread, #sendbirdMessageForm, .record-options, .modal-form");
 }
 
 function initPullToRefresh() {
@@ -843,6 +841,35 @@ function initPullToRefresh() {
     pullRefreshState = { tracking: false, startY: 0, armed: false, refreshing: false };
     updatePullRefreshIndicator(0);
   }, { passive: true });
+}
+
+function goBackOneLevel() {
+  if (document.body.classList.contains("modal-open")) {
+    closeActiveForm();
+    return true;
+  }
+  if (document.body.classList.contains("mobile-nav-open")) {
+    closeMobileNavigation();
+    return true;
+  }
+  if (state.activeView === "messages" && sendbirdActiveChannel) {
+    clearActiveMessageThread();
+    renderMessaging();
+    return true;
+  }
+  while (viewHistoryStack.length) {
+    const previous = viewHistoryStack.pop();
+    if (previous && previous !== state.activeView && assignedViews().includes(previous)) {
+      setView(previous, { skipHistory: true });
+      return true;
+    }
+  }
+  const homeView = roleHomeView(assignedAccessForCurrentUser()[0] || state.accessRole);
+  if (state.activeView && state.activeView !== homeView) {
+    setView(homeView, { skipHistory: true });
+    return true;
+  }
+  return false;
 }
 
 function initEdgeSwipeNavigation() {
@@ -884,6 +911,48 @@ function initEdgeSwipeNavigation() {
   }, { passive: true });
   window.addEventListener("touchcancel", () => {
     edgeSwipeNavState = { tracking: false, startX: 0, startY: 0, opening: false };
+  }, { passive: true });
+}
+
+function initMiddleSwipeBackNavigation() {
+  if (!("ontouchstart" in window)) return;
+  window.addEventListener("touchstart", (event) => {
+    if (document.body.classList.contains("modal-open") || document.body.classList.contains("mobile-nav-open")) return;
+    if (startedInsideGestureControl(event.target)) return;
+    const touch = event.touches[0];
+    if (!touch) return;
+    const width = window.innerWidth || document.documentElement.clientWidth || 0;
+    if (touch.clientX <= 56 || touch.clientX >= width - 24) return;
+    middleSwipeBackState = {
+      tracking: true,
+      startX: touch.clientX,
+      startY: touch.clientY,
+      active: false
+    };
+  }, { passive: true });
+  window.addEventListener("touchmove", (event) => {
+    if (!middleSwipeBackState.tracking) return;
+    const touch = event.touches[0];
+    if (!touch) return;
+    const deltaX = touch.clientX - middleSwipeBackState.startX;
+    const deltaY = Math.abs(touch.clientY - middleSwipeBackState.startY);
+    if (deltaX < -16 || deltaY > 72) middleSwipeBackState.tracking = false;
+    if (deltaX > 24 && deltaX > deltaY * 1.35) {
+      middleSwipeBackState.active = true;
+      event.preventDefault();
+    }
+  }, { passive: false });
+  window.addEventListener("touchend", (event) => {
+    if (!middleSwipeBackState.tracking) return;
+    const touch = event.changedTouches[0];
+    const deltaX = (touch?.clientX || 0) - middleSwipeBackState.startX;
+    const deltaY = Math.abs((touch?.clientY || 0) - middleSwipeBackState.startY);
+    const shouldBack = middleSwipeBackState.active && deltaX >= 72 && deltaX > deltaY * 1.35;
+    middleSwipeBackState = { tracking: false, startX: 0, startY: 0, active: false };
+    if (shouldBack) goBackOneLevel();
+  }, { passive: true });
+  window.addEventListener("touchcancel", () => {
+    middleSwipeBackState = { tracking: false, startX: 0, startY: 0, active: false };
   }, { passive: true });
 }
 
@@ -7421,7 +7490,7 @@ function applyWorkerPayDefaultsToTimecard(workerId) {
     if (vehicleUse === "Personal Vehicle") form.elements.vehicleRate.value = assignment?.personalVehicleRate || event?.personalVehicleRate || client?.defaultPersonalVehicleRate || worker?.defaultPersonalVehicleRate || "";
 }
 
-function setView(viewId) {
+function setView(viewId, options = {}) {
   const requestedView = viewId;
   if (!authState.session) {
     showAuthScreen("Log in to continue.");
@@ -7432,6 +7501,9 @@ function setView(viewId) {
   const resetMessagesSelector = viewId === "messages";
   if (resetMessagesSelector) clearActiveMessageThread();
   state.activeView = viewId;
+  if (!options.skipHistory && previousView && previousView !== viewId) {
+    viewHistoryStack = [...viewHistoryStack.filter((item) => item !== previousView), previousView].slice(-8);
+  }
   sessionStorage.setItem(LAST_ACTIVE_VIEW_KEY, viewId);
   applyAccessProfile();
   document.body.classList.toggle("messages-desktop-view", viewId === "messages");
@@ -10709,6 +10781,7 @@ async function init() {
   initMobileAppLifecycle();
   initPullToRefresh();
   initEdgeSwipeNavigation();
+  initMiddleSwipeBackNavigation();
   initPushRegistrationListeners();
   await registerAppShellServiceWorker();
   await clearPersistedLoginForFreshOpen();

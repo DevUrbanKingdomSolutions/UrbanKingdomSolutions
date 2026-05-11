@@ -1,5 +1,5 @@
 {
-  "version": "V1.04.086",
-  "title": "V1.04.086 update installed",
-  "body": "Refined the mobile header layout with one user name, a visible search bar, and a premium role-color treatment."
+  "version": "V1.04.087",
+  "title": "V1.04.087 update installed",
+  "body": "Split mobile gestures so left-edge swipe opens the menu while middle-page swipe goes back."
 }
