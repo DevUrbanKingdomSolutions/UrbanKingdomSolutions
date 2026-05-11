@@ -2455,6 +2455,49 @@ td p {
   border-color: color-mix(in srgb, var(--accent-dark) 88%, #ffffff);
 }
 
+.message-bubble-row.tone-admin {
+  --message-sender-accent: #b8352d;
+  --message-sender-dark: #87251f;
+  --message-sender-soft: #fff0ef;
+}
+
+.message-bubble-row.tone-client {
+  --message-sender-accent: #2d6cdf;
+  --message-sender-dark: #1d4f9f;
+  --message-sender-soft: #eef4ff;
+}
+
+.message-bubble-row.tone-promoter {
+  --message-sender-accent: #2c7a4b;
+  --message-sender-dark: #1f5b38;
+  --message-sender-soft: #eef8f2;
+}
+
+.message-bubble-row.tone-production {
+  --message-sender-accent: #b8871f;
+  --message-sender-dark: #866113;
+  --message-sender-soft: #fff7e4;
+}
+
+.message-bubble-row.tone-crew {
+  --message-sender-accent: #8a70d6;
+  --message-sender-dark: #6750a9;
+  --message-sender-soft: #f4f0ff;
+}
+
+.message-bubble-row:not(.own) .message-bubble {
+  border-color: color-mix(in srgb, var(--message-sender-accent, var(--accent)) 24%, var(--line));
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--message-sender-soft, #ffffff) 72%, #ffffff), #ffffff 78%);
+  box-shadow:
+    inset 4px 0 0 color-mix(in srgb, var(--message-sender-accent, var(--accent)) 70%, #ffffff),
+    0 8px 20px rgba(39, 45, 43, 0.06);
+}
+
+.message-bubble-row:not(.own) .message-meta strong {
+  color: color-mix(in srgb, var(--message-sender-dark, var(--accent-dark)) 72%, var(--ink));
+}
+
 .message-bubble-row.own .message-meta span,
 .message-bubble-row.own .message-bubble p {
   color: #e9fbfb;
@@ -3826,7 +3869,7 @@ body:not(.owner-mode) .rate-field {
 
 @media (max-width: 860px) {
   :root {
-    --mobile-topbar-height: calc(116px + env(safe-area-inset-top));
+    --mobile-topbar-height: calc(108px + env(safe-area-inset-top));
     --mobile-footer-height: calc(65px + env(safe-area-inset-bottom));
   }
 
@@ -3985,21 +4028,20 @@ body:not(.owner-mode) .rate-field {
   }
 
   .view:not(#messages) .panel:not(.form-panel):not(.modal-form) {
-    border: 1px solid var(--mobile-line, rgba(218, 222, 224, 0.72));
-    border-radius: 8px;
-    background: var(--mobile-surface, #ffffff);
-    box-shadow: var(--mobile-shadow, 0 12px 30px rgba(29, 36, 40, 0.08));
-    overflow: hidden;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    overflow: visible;
   }
 
   .view:not(#messages) .panel-heading {
     min-height: auto;
     align-items: center;
     position: relative;
-    padding: 13px 14px 11px;
-    border-bottom: 1px solid var(--mobile-line, rgba(195, 186, 169, 0.55));
-    background:
-      linear-gradient(90deg, color-mix(in srgb, var(--accent-soft) 42%, #ffffff), #ffffff 68%);
+    padding: 10px 2px 9px;
+    border-bottom: 1px solid color-mix(in srgb, var(--accent) 16%, rgba(195, 186, 169, 0.42));
+    background: transparent;
   }
 
   .view:not(#messages) .panel-heading::before {
@@ -4023,10 +4065,10 @@ body:not(.owner-mode) .rate-field {
 
   .view:not(#messages) .list-controls {
     margin: 0;
-    padding: 10px 14px;
+    padding: 10px 0;
     border-top: 0;
-    border-bottom: 1px solid var(--mobile-line, rgba(195, 186, 169, 0.55));
-    background: var(--mobile-surface-soft, #ffffff);
+    border-bottom: 1px solid color-mix(in srgb, var(--accent) 12%, rgba(195, 186, 169, 0.42));
+    background: transparent;
   }
 
   .view:not(#messages) .record-grid {
@@ -4039,8 +4081,8 @@ body:not(.owner-mode) .rate-field {
     border-width: 0 0 1px;
     border-color: var(--mobile-line, rgba(195, 186, 169, 0.62));
     border-radius: 0;
-    background: var(--mobile-surface, #ffffff);
-    padding: 14px;
+    background: transparent;
+    padding: 14px 2px;
     box-shadow: none;
   }
 
@@ -4065,11 +4107,12 @@ body:not(.owner-mode) .rate-field {
   }
 
   .view:not(#messages) .compact-item {
-    border-color: var(--mobile-line, rgba(218, 222, 224, 0.72));
-    border-radius: 8px;
-    background: var(--mobile-surface, #ffffff);
-    padding: 12px 14px;
-    box-shadow: 0 8px 18px rgba(29, 36, 40, 0.04);
+    border-width: 0 0 1px;
+    border-color: color-mix(in srgb, var(--accent) 12%, rgba(195, 186, 169, 0.48));
+    border-radius: 0;
+    background: transparent;
+    padding: 12px 2px;
+    box-shadow: none;
   }
 
   .topbar {
@@ -4084,9 +4127,9 @@ body:not(.owner-mode) .rate-field {
     height: var(--mobile-topbar-height);
     grid-template-columns: auto minmax(0, 1fr) auto;
     align-items: center;
-    gap: 8px 10px;
+    gap: 4px 10px;
     margin: 0;
-    padding: calc(16px + env(safe-area-inset-top)) 14px 12px;
+    padding: calc(10px + env(safe-area-inset-top)) 14px 8px;
     overflow: hidden;
     border-bottom: 1px solid var(--mobile-line, rgba(195, 186, 169, 0.55));
     background:
@@ -4122,12 +4165,12 @@ body:not(.owner-mode) .rate-field {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    min-height: 40px;
+    min-height: 36px;
     border: 1px solid color-mix(in srgb, var(--accent) 18%, var(--line));
     border-radius: 8px;
     background: color-mix(in srgb, var(--accent-soft) 34%, #ffffff);
     color: var(--accent-dark);
-    padding: 8px 10px;
+    padding: 6px 10px;
     font-weight: 800;
     z-index: 1;
   }
@@ -4135,7 +4178,7 @@ body:not(.owner-mode) .rate-field {
   .topbar h2 {
     overflow: hidden;
     color: color-mix(in srgb, var(--accent-dark) 62%, var(--ink));
-    font-size: 21px;
+    font-size: 20px;
     font-weight: 860;
     line-height: 1.15;
     text-overflow: ellipsis;
@@ -4150,7 +4193,7 @@ body:not(.owner-mode) .rate-field {
     grid-column: 1 / -1;
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(112px, 42vw);
-    gap: 8px;
+    gap: 6px;
     align-items: center;
   }
 
@@ -4164,7 +4207,7 @@ body:not(.owner-mode) .rate-field {
 
   .topbar-tools .search-input {
     grid-column: 2;
-    min-height: 36px;
+    min-height: 32px;
   }
 
   .topbar-tools .session-pill {
@@ -4186,9 +4229,9 @@ body:not(.owner-mode) .rate-field {
   }
 
   .notification-bell {
-    min-width: 40px;
-    width: 40px;
-    height: 40px;
+    min-width: 36px;
+    width: 36px;
+    height: 36px;
     border-color: color-mix(in srgb, var(--accent) 18%, var(--line));
     background: color-mix(in srgb, var(--accent-soft) 34%, #ffffff);
     color: var(--accent-dark);
@@ -4207,7 +4250,7 @@ body:not(.owner-mode) .rate-field {
   }
 
   .session-pill {
-    min-height: 36px;
+    min-height: 32px;
     padding: 0;
     border: 0;
     background: transparent;

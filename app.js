@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.04.084",
-  title: "V1.04.084 update installed",
-  body: "Waited for the mobile chat panel to finish sizing before opening a thread at the newest message."
+  version: "V1.04.085",
+  title: "V1.04.085 update installed",
+  body: "Polished mobile messaging open position, sender role colors, compact header spacing, and softer mobile page sections."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -280,6 +280,7 @@ let sendbirdMessageRefreshInFlight = false;
 let messageThreadScrollTimer = null;
 let messageThreadUserScrollingUntil = 0;
 let messageThreadRenderQueued = false;
+let messageThreadOpeningUntil = 0;
 let idleSignOutTimer = null;
 let signOutReloading = false;
 let installPromptEvent = null;
@@ -6836,6 +6837,7 @@ function clearActiveMessageThread() {
   sendbirdMessages = [];
   sendbirdTypingUsers = [];
   messageThreadRenderQueued = false;
+  messageThreadOpeningUntil = 0;
   window.clearTimeout(messageThreadScrollTimer);
   $("#messages")?.classList.remove("message-chat-open");
   document.body.classList.remove("mobile-message-chat-open");
@@ -6886,7 +6888,8 @@ function renderMessageThread() {
     typing.hidden = !typingHtml;
   }
   renderMessageComposerTools();
-  restoreActiveMessageScrollState(scrollState);
+  if (Date.now() < messageThreadOpeningUntil) scrollActiveMessageThreadToBottomWhenReady();
+  else restoreActiveMessageScrollState(scrollState);
 }
 
 function activeMessageThreadTitle() {
@@ -6938,7 +6941,7 @@ function scrollActiveMessageThreadToBottom(options = {}) {
     if (thread) thread.scrollTop = thread.scrollHeight;
   });
   if (options.repeat) {
-    [45, 140, 320].forEach((delay) => {
+    [45, 140, 320, 650].forEach((delay) => {
       window.setTimeout(() => scrollActiveMessageThreadToBottom(), delay);
     });
   }
@@ -6986,6 +6989,7 @@ function queueMessageThreadRenderAfterScroll(options = {}) {
 
 function renderOpenMessageThreadAtBottom() {
   messageThreadUserScrollingUntil = 0;
+  messageThreadOpeningUntil = Date.now() + 900;
   messageThreadRenderQueued = false;
   window.clearTimeout(messageThreadScrollTimer);
   renderMessaging();
@@ -7052,7 +7056,8 @@ function messageBubble(message) {
   const deliveryStatus = isOwn ? (message.deliveryStatus === "sending" ? "Sending..." : "Delivered") : "";
   const actionKey = messageActionKey(message);
   const reply = messageReplyData(message);
-  return `<article class="message-bubble-row ${isOwn ? "own" : ""}" data-message-action-key="${escapeHtml(actionKey)}">
+  const tone = messageAvatarTone(senderProfile);
+  return `<article class="message-bubble-row ${isOwn ? "own" : ""} tone-${escapeHtml(tone)}" data-message-action-key="${escapeHtml(actionKey)}">
     ${isOwn ? "" : messageAvatar(senderProfile, displayName)}
     <div class="message-bubble">
       <div class="message-meta"><strong>${escapeHtml(isOwn ? "You" : displayName)}</strong><span>${escapeHtml(sentAt)}</span></div>
