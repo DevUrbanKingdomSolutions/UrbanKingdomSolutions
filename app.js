@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.04.054",
-  title: "V1.04.054 update installed",
-  body: "Added image previews, message hold actions, reply context, and a wider desktop chat composer."
+  version: "V1.04.055",
+  title: "V1.04.055 update installed",
+  body: "Kept sent image previews visible, added full-screen chat image preview, and improved composer spacing."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -6830,7 +6830,25 @@ function messageMediaHtml(message) {
   const imageUrl = url || gifUrl;
   if (!imageUrl || !(type.startsWith("image/") || /\.(gif|png|jpe?g|webp)(\?.*)?$/i.test(imageUrl))) return "";
   const label = message.name || message.fileName || "Message image";
-  return `<a class="message-media-link" href="${escapeHtml(imageUrl)}" target="_blank" rel="noopener"><img class="message-media-image" src="${escapeHtml(imageUrl)}" alt="${escapeHtml(label)}"></a>`;
+  return `<button class="message-media-link" type="button" data-open-message-image="${escapeHtml(imageUrl)}" data-message-image-label="${escapeHtml(label)}"><img class="message-media-image" src="${escapeHtml(imageUrl)}" alt="${escapeHtml(label)}"></button>`;
+}
+
+function openMessageImagePreview(url, label = "Message image") {
+  if (!url) return;
+  $("#messageImagePreviewModal")?.remove();
+  const modal = document.createElement("section");
+  modal.id = "messageImagePreviewModal";
+  modal.className = "message-image-preview-modal";
+  modal.innerHTML = `<button class="message-image-preview-close" type="button" data-close-message-image-preview aria-label="Close image preview">×</button><img src="${escapeHtml(url)}" alt="${escapeHtml(label || "Message image")}">`;
+  $("#modalHost")?.appendChild(modal);
+  $("#modalBackdrop").classList.add("show");
+  document.body.classList.add("modal-open");
+}
+
+function closeMessageImagePreview() {
+  $("#messageImagePreviewModal")?.remove();
+  $("#modalBackdrop").classList.remove("show");
+  document.body.classList.remove("modal-open");
 }
 
 function imageUrlFromText(text = "") {
@@ -9128,9 +9146,9 @@ async function sendSendbirdMessage(event) {
   const reply = pendingMessageReply;
   if (!message && !attachments.length) return;
   input.value = "";
-  clearPendingMessageAttachments();
   clearPendingMessageReply();
   await sendSendbirdPayload({ message, attachments, reply });
+  clearPendingMessageAttachments();
 }
 
 async function sendSendbirdPayload({ message = "", attachments = [], reply = null } = {}) {
@@ -9163,7 +9181,16 @@ async function sendSendbirdPayload({ message = "", attachments = [], reply = nul
       sentFiles.push(await sendSendbirdFileAttachment(attachment, reply));
     }
     if (typeof sendbirdActiveChannel.endTyping === "function") sendbirdActiveChannel.endTyping();
-    const deliveredMessage = { ...(sentMessage || sentFiles[0] || optimisticMessage), isLocalOwn: true, replyTo: reply, deliveryStatus: "delivered" };
+    const deliveredSource = sentMessage || sentFiles[0] || optimisticMessage;
+    const deliveredMessage = {
+      ...deliveredSource,
+      previewUrl: deliveredSource.previewUrl || deliveredSource.url || sentFiles[0]?.url || sentFiles[0]?.plainUrl || optimisticMessage.previewUrl,
+      type: deliveredSource.type || deliveredSource.mimeType || deliveredSource.fileType || sentFiles[0]?.type || sentFiles[0]?.mimeType || sentFiles[0]?.fileType || optimisticMessage.type,
+      name: deliveredSource.name || deliveredSource.fileName || sentFiles[0]?.name || sentFiles[0]?.fileName || optimisticMessage.name,
+      isLocalOwn: true,
+      replyTo: reply,
+      deliveryStatus: "delivered"
+    };
     sendbirdMessages = sendbirdMessages.map((item) => item.messageId === optimisticId ? deliveredMessage : item);
     refreshSendbirdTypingUsers();
     renderMessageThread();
@@ -9883,7 +9910,17 @@ function bindEvents() {
     const cancelTimecardDetailButton = event.target.closest("[data-cancel-timecard-detail]");
     const messageReplyButton = event.target.closest("[data-message-reply]");
     const messageEmojiButton = event.target.closest("[data-message-emoji]");
+    const openMessageImageButton = event.target.closest("[data-open-message-image]");
+    const closeMessageImageButton = event.target.closest("[data-close-message-image-preview]");
 
+    if (openMessageImageButton) {
+      openMessageImagePreview(openMessageImageButton.dataset.openMessageImage, openMessageImageButton.dataset.messageImageLabel);
+      return;
+    }
+    if (closeMessageImageButton) {
+      closeMessageImagePreview();
+      return;
+    }
     if (messageReplyButton) {
       replyToMessageKey($("#messageActionMenu")?.dataset.messageActionKey || "");
       return;
@@ -10154,7 +10191,10 @@ function bindEvents() {
     }
   });
 
-  $("#modalBackdrop").addEventListener("click", closeActiveForm);
+  $("#modalBackdrop").addEventListener("click", () => {
+    if ($("#messageImagePreviewModal")) closeMessageImagePreview();
+    else closeActiveForm();
+  });
   document.addEventListener("keydown", (event) => {
     const timecardRow = event.target.closest?.("[data-timecard-row]");
     if (timecardRow && (event.key === "Enter" || event.key === " ")) {
@@ -10162,7 +10202,10 @@ function bindEvents() {
       openReadOnlyRecord("timecards", timecardRow.dataset.timecardRow);
       return;
     }
-    if (event.key === "Escape") closeActiveForm();
+    if (event.key === "Escape") {
+      if ($("#messageImagePreviewModal")) closeMessageImagePreview();
+      else closeActiveForm();
+    }
   });
   window.addEventListener("hashchange", () => {
     if (isPublicEventRoute()) {

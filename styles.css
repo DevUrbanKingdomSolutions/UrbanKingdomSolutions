@@ -2424,7 +2424,7 @@ td p {
 .chat-thread {
   display: grid;
   gap: 12px;
-  padding: 18px 18px 28px;
+  padding: 18px 18px 48px;
 }
 
 .chat-thread-empty {
@@ -2661,7 +2661,11 @@ td p {
   display: block;
   overflow: hidden;
   max-width: 260px;
+  border: 0;
   border-radius: 14px;
+  background: transparent;
+  padding: 0;
+  text-align: left;
 }
 
 .message-media-image {
@@ -2669,6 +2673,39 @@ td p {
   width: 100%;
   max-height: 240px;
   object-fit: cover;
+}
+
+.message-image-preview-modal {
+  position: fixed;
+  inset: calc(18px + env(safe-area-inset-top)) 18px calc(18px + env(safe-area-inset-bottom));
+  z-index: 70;
+  display: grid;
+  place-items: center;
+  border-radius: 18px;
+  background: rgba(16, 20, 22, 0.94);
+  padding: 42px 16px 16px;
+}
+
+.message-image-preview-modal img {
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.message-image-preview-close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.16);
+  color: #ffffff;
+  font-size: 24px;
 }
 
 #sendbirdMessageForm input {
@@ -4627,7 +4664,7 @@ body:not(.owner-mode) .rate-field {
 
   .chat-thread {
     gap: 10px;
-    padding: 14px 2px 148px;
+    padding: 14px 2px 176px;
   }
 
   .message-bubble-row {
