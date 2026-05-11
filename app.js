@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.04.102",
-  title: "V1.04.102 update installed",
-  body: "Smoothed message chat updates so sends and receives stay pinned without flashing."
+  version: "V1.04.103",
+  title: "V1.04.103 update installed",
+  body: "Prevented message chats from flashing to the top during send and receive updates."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -7078,6 +7078,7 @@ function renderMessageThread(options = {}) {
   }
   const shouldPinBottom = options.pinToBottom || Date.now() < messageThreadPinBottomUntil;
   const scrollState = shouldPinBottom ? null : captureActiveMessageScrollState();
+  if (shouldPinBottom) thread.classList.add("message-thread-rendering");
   title.textContent = activeMessageThreadTitle();
   meta.textContent = activeThreadManagementLabel();
   if (members) members.innerHTML = renderActiveThreadMembers();
@@ -7094,9 +7095,17 @@ function renderMessageThread(options = {}) {
     typing.hidden = !typingHtml;
   }
   renderMessageComposerTools();
-  if (shouldPinBottom) pinActiveMessageThreadToBottom();
-  else if (Date.now() < messageThreadOpeningUntil) scrollActiveMessageThreadToBottomWhenReady();
-  else restoreActiveMessageScrollState(scrollState);
+  if (shouldPinBottom) {
+    pinActiveMessageThreadToBottom();
+    window.requestAnimationFrame(() => {
+      pinActiveMessageThreadToBottom({ repeat: false });
+      thread.classList.remove("message-thread-rendering");
+    });
+  } else {
+    thread.classList.remove("message-thread-rendering");
+    if (Date.now() < messageThreadOpeningUntil) scrollActiveMessageThreadToBottomWhenReady();
+    else restoreActiveMessageScrollState(scrollState);
+  }
 }
 
 function activeMessageThreadTitle() {

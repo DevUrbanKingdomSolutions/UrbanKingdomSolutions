@@ -2608,8 +2608,13 @@ td p {
   min-height: 360px;
   max-height: 58vh;
   overflow-y: auto;
+  overflow-anchor: none;
   scroll-behavior: auto;
   background: linear-gradient(180deg, #f7f5ef 0%, #ffffff 100%);
+}
+
+#messageThread.message-thread-rendering {
+  opacity: 0;
 }
 
 .chat-thread {

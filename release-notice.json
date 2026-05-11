@@ -1,5 +1,5 @@
 {
-  "version": "V1.04.102",
-  "title": "V1.04.102 update installed",
-  "body": "Smoothed message chat updates so sends and receives stay pinned without flashing."
+  "version": "V1.04.103",
+  "title": "V1.04.103 update installed",
+  "body": "Prevented message chats from flashing to the top during send and receive updates."
 }
