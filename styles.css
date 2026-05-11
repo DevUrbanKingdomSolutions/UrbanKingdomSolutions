@@ -62,6 +62,23 @@ body[data-access-tone="crew"] {
 
 body[data-access-tone] {
   --signature-glow: 0 12px 28px color-mix(in srgb, var(--accent) 18%, transparent);
+  --brand-logo-image: url("assets/logo/app-logo-admin.png");
+}
+
+body[data-access-tone="client"] {
+  --brand-logo-image: url("assets/logo/app-logo-client.png");
+}
+
+body[data-access-tone="promoter"] {
+  --brand-logo-image: url("assets/logo/app-logo-promoter.png");
+}
+
+body[data-access-tone="production"] {
+  --brand-logo-image: url("assets/logo/app-logo-production.png");
+}
+
+body[data-access-tone="crew"] {
+  --brand-logo-image: url("assets/logo/app-logo-crew.png");
 }
 
 button,
@@ -247,28 +264,11 @@ button {
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
 }
 
-.app-logo-mark {
-  width: 76%;
-  height: 76%;
-  overflow: visible;
-}
-
-.app-logo-panel {
-  fill: #202427;
-  stroke: rgba(255, 255, 255, 0.78);
-  stroke-width: 1.3;
-  filter:
-    drop-shadow(1px 1px 0 color-mix(in srgb, var(--accent) 46%, #111719))
-    drop-shadow(0 2px 3px rgba(0, 0, 0, 0.58));
-}
-
-.app-logo-one {
-  fill: var(--accent);
-  stroke: color-mix(in srgb, var(--accent) 44%, #ffffff);
-  stroke-width: 1.5;
-  filter:
-    drop-shadow(0 0 3px color-mix(in srgb, var(--accent) 82%, transparent))
-    drop-shadow(0 0 7px color-mix(in srgb, var(--accent) 60%, transparent));
+.brand-logo-mark {
+  background-image: var(--brand-logo-image, url("assets/logo/app-logo-admin.png"));
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: 112%;
 }
 
 .brand h1 {
@@ -4581,6 +4581,13 @@ body:not(.owner-mode) .rate-field {
     left: 12px;
     max-width: none;
   }
+}
+
+.brand-logo-mark {
+  background-image: var(--brand-logo-image, url("assets/logo/app-logo-admin.png"));
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: 112%;
 }
 
 @media (max-width: 640px) {

@@ -1,12 +1,16 @@
-const APP_SHELL_CACHE = "production-crew-shell-v1.04.048";
+const APP_SHELL_CACHE = "production-crew-shell-v1.04.049";
 const APP_SHELL_ASSETS = [
   "./",
   "./index.html",
-  "./styles.css?v=V1.04.048-logo-shaped-app-icon",
-  "./app.js?v=V1.04.048-logo-shaped-app-icon",
+  "./styles.css?v=V1.04.049-actual-logo-assets",
+  "./app.js?v=V1.04.049-actual-logo-assets",
   "./release-notice.json",
   "./manifest.webmanifest",
-  "./assets/app-icon.svg"
+  "./assets/logo/app-logo-admin.png",
+  "./assets/logo/app-logo-client.png",
+  "./assets/logo/app-logo-promoter.png",
+  "./assets/logo/app-logo-production.png",
+  "./assets/logo/app-logo-crew.png"
 ];
 
 self.addEventListener("install", (event) => {
