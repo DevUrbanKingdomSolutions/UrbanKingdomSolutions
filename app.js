@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.04.037",
-  title: "V1.04.037 update installed",
-  body: "Restored the active nav color fade from role color into its darker shade while keeping the crisp white tab."
+  version: "V1.04.038",
+  title: "V1.04.038 update installed",
+  body: "Removed the redundant Open pill from selected message threads since selecting a thread opens the chat automatically."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -6433,7 +6433,6 @@ function permanentMessageCard(thread) {
     <div class="message-thread-card-main">
       <div class="message-thread-card-top">
         <span>${escapeHtml(thread.label)}</span>
-        ${active ? `<span class="status-pill">Open</span>` : ""}
       </div>
       <strong>${escapeHtml(thread.title)}</strong>
       <p>${escapeHtml(thread.subtitle)}</p>
@@ -6450,7 +6449,6 @@ function directMessageCard(profile) {
       <div>
         <div class="message-thread-card-top">
           <span>${escapeHtml(profile.kind)}</span>
-          ${active ? `<span class="status-pill">Open</span>` : ""}
         </div>
         <strong>${escapeHtml(profile.label)}</strong>
         <p>${escapeHtml(profile.email || profile.phone || "")}</p>
@@ -6472,7 +6470,6 @@ function eventMessageCard(event, threadType) {
     <div class="message-thread-card-main">
       <div class="message-thread-card-top">
         <span>${escapeHtml(MESSAGE_THREAD_TYPES[threadType]?.label || "Event Thread")}</span>
-        ${active ? `<span class="status-pill">Open</span>` : ""}
       </div>
       <strong>${escapeHtml(sendbirdThreadName(threadType, event))}</strong>
       <p>${escapeHtml(subtitles[threadType] || subtitles.event)}</p>
