@@ -11,7 +11,7 @@ const USER_ACCESS_FUNCTION = "user-access-management";
 const RENTAL_PHOTO_NOTIFICATION_FUNCTION = "send-rental-photo-notification";
 const NOVU_TRIGGER_FUNCTION = "trigger-novu-notification";
 const SENDBIRD_APP_ID = "2B54A2B2-CB8E-43DE-A7F8-B53059C09AB3";
-const SENDBIRD_MESSAGE_REFRESH_MS = 10;
+const SENDBIRD_MESSAGE_REFRESH_MS = 1200;
 const SENDBIRD_SDK_MODULE_SOURCES = [
   {
     chat: "https://esm.sh/@sendbird/chat@4.22.0",
@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.04.075",
-  title: "V1.04.075 update installed",
-  body: "Hid the mobile chat panel whenever Messages is reset to the selector."
+  version: "V1.04.076",
+  title: "V1.04.076 update installed",
+  body: "Smoothed mobile chat scrolling by backing off refresh polling and prioritizing vertical touch scroll."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",

@@ -4764,6 +4764,7 @@ body:not(.owner-mode) .rate-field {
     max-height: none;
     overflow-y: auto;
     overscroll-behavior: contain;
+    touch-action: pan-y;
     -webkit-overflow-scrolling: touch;
     background:
       linear-gradient(180deg, color-mix(in srgb, var(--accent-soft) 18%, transparent), transparent 160px),
