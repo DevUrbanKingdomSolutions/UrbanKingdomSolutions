@@ -1,5 +1,5 @@
 {
-  "version": "V1.04.082",
-  "title": "V1.04.082 update installed",
-  "body": "Locked the mobile header and footer to the device screen while page content scrolls underneath."
+  "version": "V1.04.083",
+  "title": "V1.04.083 update installed",
+  "body": "Locked the mobile page content between the fixed header and footer so each page scrolls inside the middle section."
 }
