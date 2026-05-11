@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.04.035",
-  title: "V1.04.035 update installed",
-  body: "Polished the active nav highlight with a richer role-color fill, crisp white tip, and no pale right edge."
+  version: "V1.04.036",
+  title: "V1.04.036 update installed",
+  body: "Refreshed Client Profile and My Profile with branded profile cards and logo image fields."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -1187,6 +1187,8 @@ async function formRecord(form) {
       record.photos = images;
     } else if (input.dataset.photoKey === "headshot") {
       record.headshotData = images[0];
+    } else if (input.dataset.photoKey === "logo") {
+      record.logoData = images[0];
     }
   }
   return record;
@@ -3649,6 +3651,32 @@ function profileSection(label, value) {
   return value ? `<div class="profile-section"><span>${escapeHtml(label)}</span><p>${escapeHtml(value)}</p></div>` : "";
 }
 
+function profileLogoHtml(profile, fallback = "Profile", className = "profile-logo-frame") {
+  const image = profile?.logoData || profile?.brandLogoData || profile?.headshotData || "";
+  const label = profile?.name || profile?.contactName || fallback;
+  return image
+    ? `<img class="${className}" src="${image}" alt="${escapeHtml(label)} image">`
+    : `<div class="${className} placeholder">${escapeHtml(initialsFor(label))}</div>`;
+}
+
+function profileHeroCard({ tone = "", title = "", subtitle = "", meta = "", imageHtml = "", actions = "", details = [], sections = [] }) {
+  const toneClass = tone ? ` profile-${tone}` : "";
+  const metaLine = meta ? `<span>${escapeHtml(meta)}</span>` : "";
+  return `<article class="profile-page-card premium-profile-card${toneClass}">
+    <div class="premium-profile-hero">
+      ${imageHtml || profileLogoHtml({ name: title }, title)}
+      <div class="premium-profile-title">
+        ${metaLine}
+        <h3>${escapeHtml(title || "Profile")}</h3>
+        <p>${escapeHtml(subtitle || "")}</p>
+      </div>
+      <div class="premium-profile-actions">${actions || ""}</div>
+    </div>
+    <div class="profile-detail-grid premium-detail-grid">${details.map(([label, value]) => detailItem(label, value)).join("")}</div>
+    ${sections.map(([label, value]) => profileSection(label, value)).join("")}
+  </article>`;
+}
+
 function readOnlyProfileCard(title, subtitle, details = [], sections = [], avatarHtml = "") {
   $("#recordViewTitle").textContent = title || "Profile";
   $("#recordViewBody").innerHTML = `<article class="profile-page-card">
@@ -3987,49 +4015,46 @@ function renderClientProfile() {
   const clientSmtpTestButton = smtpRouteIsReady(profile)
     ? `<button class="tiny-button owner-action" data-send-smtp-test="client" type="button">Test SMTP</button>`
     : "";
-  card.innerHTML = `<article class="profile-page-card">
-    <div class="profile-page-header">
-      <div class="profile-avatar-large placeholder">${escapeHtml(initialsFor(profile.name || authState.user?.email || "Me"))}</div>
-      <div>
-        <h3>${escapeHtml(profile.name || "My profile")}</h3>
-        <p>${escapeHtml(profile.title || "Client rep")}</p>
-      </div>
-      <button class="tiny-button owner-action" data-open-form="clientProfileForm" type="button">Edit Profile</button>
-    </div>
-    <div class="profile-detail-grid">
-      <div><span>Email</span><strong>${escapeHtml(profile.email || "")}</strong></div>
-      <div><span>Phone</span><strong>${escapeHtml(profile.phone || "")}</strong></div>
-      <div><span>Email Provider</span><strong>${escapeHtml(smtpProviderLabel(profile.smtpProvider))}</strong></div>
-      <div><span>Routing Status</span><strong>${escapeHtml(profile.emailRoutingStatus || "Not configured")}</strong></div>
-      <div><span>From Email</span><strong>${escapeHtml(profile.smtpFromEmail || "")}</strong></div>
-      <div><span>Reply-To</span><strong>${escapeHtml(profile.smtpReplyTo || "")}</strong></div>
-      <div><span>SMTP Username</span><strong>${escapeHtml(profile.smtpUsername || "")}</strong></div>
-      <div><span>Security</span><strong>${escapeHtml(profile.smtpSecure || "Not selected")}</strong></div>
-    </div>
-    <div class="profile-section"><span>SMTP Host</span><p>${escapeHtml(profile.smtpHost || "")}${profile.smtpPort ? ":" + escapeHtml(profile.smtpPort) : ""}</p></div>
-    <div class="profile-section"><span>SMTP Route</span><p>${escapeHtml(profile.smtpSecretRef ? "Saved securely" : "No app password saved")}</p><div class="row-actions">${clientSmtpTestButton}</div></div>
-  </article>`;
+  const profileActions = `<button class="tiny-button owner-action" data-open-form="clientProfileForm" type="button">Edit Profile</button>${clientSmtpTestButton}`;
+  card.innerHTML = profileHeroCard({
+    tone: "person",
+    title: profile.name || "My profile",
+    subtitle: profile.title || "Client rep",
+    meta: client?.name || "Client team",
+    imageHtml: profileLogoHtml(profile, profile.name || authState.user?.email || "Me"),
+    actions: profileActions,
+    details: [
+      ["Email", profile.email || ""],
+      ["Phone", profile.phone || ""],
+      ["Email Provider", smtpProviderLabel(profile.smtpProvider)],
+      ["Routing Status", profile.emailRoutingStatus || "Not configured"],
+      ["From Email", profile.smtpFromEmail || ""],
+      ["Reply-To", profile.smtpReplyTo || ""]
+    ],
+    sections: [
+      ["SMTP Host", `${profile.smtpHost || ""}${profile.smtpPort ? ":" + profile.smtpPort : ""}`],
+      ["SMTP Route", profile.smtpSecretRef ? "Saved securely" : "No app password saved"]
+    ]
+  });
   if (companyCard) {
-    const rateSummary = client ? `
-      <div class="profile-section"><span>Default Pay Rates</span><p>${currency(client.defaultDayRate || 0)}/${client.defaultIncludedHours || 10} hrs, +${currency(client.defaultAdditionalRate || 0)}/hr</p><p>Rented vehicle: ${currency(client.defaultRentedVehicleRate || 0)} | Personal vehicle: ${currency(client.defaultPersonalVehicleRate || 0)}</p></div>` : "";
-    companyCard.innerHTML = client ? `<article class="profile-page-card">
-      <div class="profile-page-header">
-        <div class="profile-avatar-large placeholder">${escapeHtml(initialsFor(client.name || "Company"))}</div>
-        <div>
-          <h3>${escapeHtml(client.name || "Client company")}</h3>
-          <p>${escapeHtml(client.status || "Active")}</p>
-        </div>
-        <button class="tiny-button owner-action" data-open-form="clientCompanyProfileForm" type="button">Edit Company</button>
-      </div>
-      <div class="profile-detail-grid">
-        <div><span>Main Contact</span><strong>${escapeHtml(client.contactName || "")}</strong></div>
-        <div><span>Email</span><strong>${escapeHtml(client.email || "")}</strong></div>
-        <div><span>Phone</span><strong>${escapeHtml(client.phone || "")}</strong></div>
-        <div><span>Package Layouts</span><strong>${clientPackageBadges(client.packageLayouts)}</strong></div>
-      </div>
-      ${rateSummary}
-      <div class="profile-section"><span>Company Notes</span><p>${escapeHtml(client.notes || "")}</p></div>
-    </article>` : `<div class="compact-item empty">No company profile connected yet.</div>`;
+    companyCard.innerHTML = client ? profileHeroCard({
+      tone: "company",
+      title: client.name || "Client company",
+      subtitle: client.status || "Active",
+      meta: "Client Profile",
+      imageHtml: profileLogoHtml(client, client.name || "Company"),
+      actions: `<button class="tiny-button owner-action" data-open-form="clientCompanyProfileForm" type="button">Edit Company</button>`,
+      details: [
+        ["Main Contact", client.contactName || ""],
+        ["Email", client.email || ""],
+        ["Phone", client.phone || ""],
+        ["Package Layouts", clientPackageLabels(client.packageLayouts).join(", ")]
+      ],
+      sections: [
+        ["Default Pay Rates", `${currency(client.defaultDayRate || 0)}/${client.defaultIncludedHours || 10} hrs, +${currency(client.defaultAdditionalRate || 0)}/hr\nRented vehicle: ${currency(client.defaultRentedVehicleRate || 0)} | Personal vehicle: ${currency(client.defaultPersonalVehicleRate || 0)}`],
+        ["Company Notes", client.notes || ""]
+      ]
+    }) : `<div class="compact-item empty">No company profile connected yet.</div>`;
   }
 }
 
@@ -5194,24 +5219,24 @@ function renderMyProfile() {
   }
   const phone = publicWorkerValue(worker, "phone") || "Hidden in public directory";
   const email = publicWorkerValue(worker, "email") || "Hidden in public directory";
-  $("#myProfileCard").innerHTML = `<article class="profile-page-card">
-    <div class="profile-page-header">
-      ${profileAvatarLarge(worker, worker.hideHeadshot)}
-      <div>
-        <h3>${escapeHtml(worker.name)}</h3>
-        <p>${escapeHtml(worker.role || "Crew / Runner")}</p>
-      </div>
-      <button class="tiny-button" data-edit="workers" data-id="${worker.id}" data-form="workerForm" type="button">Edit My Profile</button>
-    </div>
-    <div class="profile-detail-grid">
-      <div><span>Phone</span><strong>${escapeHtml(phone)}</strong></div>
-      <div><span>Email</span><strong>${escapeHtml(email)}</strong></div>
-      <div><span>Status</span><strong>${escapeHtml(worker.status || "")}</strong></div>
-      <div><span>Mailing Address</span><strong>${escapeHtml(worker.mailingAddress || "")}</strong></div>
-    </div>
-    <div class="profile-section"><span>Skills</span><p>${escapeHtml(worker.skills || "")}</p></div>
-    <div class="profile-section"><span>Notes</span><p>${escapeHtml(worker.notes || "")}</p></div>
-  </article>`;
+  $("#myProfileCard").innerHTML = profileHeroCard({
+    tone: "person",
+    title: worker.name || "My profile",
+    subtitle: worker.role || "Crew / Runner",
+    meta: worker.status || "Available",
+    imageHtml: profileAvatarLarge(worker, worker.hideHeadshot),
+    actions: `<button class="tiny-button" data-edit="workers" data-id="${worker.id}" data-form="workerForm" type="button">Edit My Profile</button>`,
+    details: [
+      ["Phone", phone],
+      ["Email", email],
+      ["Status", worker.status || ""],
+      ["Mailing Address", worker.mailingAddress || ""]
+    ],
+    sections: [
+      ["Skills", worker.skills || ""],
+      ["Notes", worker.notes || ""]
+    ]
+  });
 }
 
 function profileAvatarLarge(worker, hideHeadshot = false) {
