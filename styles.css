@@ -2209,11 +2209,11 @@ td p {
   display: grid;
   gap: 3px;
   min-height: 54px;
-  border: 1px solid var(--line);
+  border: 1px solid color-mix(in srgb, var(--accent) 18%, var(--line));
   border-radius: 8px;
-  background: #fbfaf6;
+  background: color-mix(in srgb, var(--accent-soft) 38%, #ffffff);
   padding: 8px 10px;
-  color: var(--muted);
+  color: var(--ink);
   font-size: 12px;
 }
 
@@ -2225,7 +2225,7 @@ td p {
 
 .punch-summary-time {
   display: block;
-  color: inherit;
+  color: var(--ink);
   font-size: 14px;
   font-weight: 800;
   line-height: 1.2;
@@ -2238,9 +2238,11 @@ td p {
 }
 
 .punch-summary-item.is-set {
-  border-color: #b9d8cf;
-  background: #effaf6;
-  color: #176346;
+  border-color: color-mix(in srgb, var(--accent) 38%, var(--line));
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--accent) 18%, #ffffff) 0 5px, transparent 5px),
+    color-mix(in srgb, var(--accent-surface) 48%, #ffffff);
+  color: var(--ink);
 }
 
 .clock-actions {

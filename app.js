@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.04.045",
-  title: "V1.04.045 update installed",
-  body: "Stacked Time Clock punch times directly under their punch titles."
+  version: "V1.04.046",
+  title: "V1.04.046 update installed",
+  body: "Updated Time Clock punch boxes to use soft role-color states with black text."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",

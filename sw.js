@@ -1,9 +1,9 @@
-const APP_SHELL_CACHE = "production-crew-shell-v1.04.045";
+const APP_SHELL_CACHE = "production-crew-shell-v1.04.046";
 const APP_SHELL_ASSETS = [
   "./",
   "./index.html",
-  "./styles.css?v=V1.04.045-time-punch-value-stack",
-  "./app.js?v=V1.04.045-time-punch-value-stack",
+  "./styles.css?v=V1.04.046-role-punch-colors",
+  "./app.js?v=V1.04.046-role-punch-colors",
   "./release-notice.json",
   "./manifest.webmanifest",
   "./assets/app-icon.svg"
