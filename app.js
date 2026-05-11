@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.04.069",
-  title: "V1.04.069 update installed",
-  body: "Refined mobile typography and section readability for a more premium app feel."
+  version: "V1.04.070",
+  title: "V1.04.070 update installed",
+  body: "Locked the mobile chat header and footer while the message pane scrolls to the newest message."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",

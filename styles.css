@@ -4469,6 +4469,8 @@ body:not(.owner-mode) .rate-field {
   }
 
   body.mobile-message-chat-open .content {
+    min-height: 100dvh;
+    overflow: hidden;
     padding-top: calc(8px + env(safe-area-inset-top));
   }
 
@@ -4543,7 +4545,7 @@ body:not(.owner-mode) .rate-field {
   }
 
   #messages.message-chat-open #activeMessagePanel {
-    display: grid;
+    display: flex;
   }
 
   .mobile-message-sections {
@@ -4669,23 +4671,31 @@ body:not(.owner-mode) .rate-field {
   }
 
   #activeMessagePanel {
-    min-height: calc(100dvh - 88px);
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: calc(126px + env(safe-area-inset-bottom));
+    left: 0;
+    z-index: 2;
+    display: flex;
+    min-height: 0;
+    flex-direction: column;
     border: 0;
     border-radius: 0;
-    background: transparent;
+    background: var(--mobile-bg, #fffefd);
     box-shadow: none;
-    overflow: visible;
+    overflow: hidden;
   }
 
   .active-message-heading {
-    position: sticky;
-    top: 0;
+    position: relative;
+    flex: 0 0 auto;
     z-index: 5;
     display: grid;
     grid-template-columns: auto minmax(0, 1fr);
     gap: 4px 10px;
     align-items: center;
-    padding: 4px 2px 10px;
+    padding: calc(10px + env(safe-area-inset-top)) 14px 10px;
     border-bottom: 1px solid var(--mobile-line, rgba(195, 186, 169, 0.56));
     background:
       linear-gradient(180deg, var(--mobile-chrome-solid, #ffffff), var(--mobile-chrome, rgba(245, 243, 238, 0.97)));
@@ -4743,8 +4753,9 @@ body:not(.owner-mode) .rate-field {
   }
 
   #messageThread {
-    height: calc(100dvh - 190px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
-    min-height: 240px;
+    flex: 1 1 auto;
+    height: auto;
+    min-height: 0;
     max-height: none;
     overflow-y: auto;
     overscroll-behavior: contain;
@@ -4756,7 +4767,7 @@ body:not(.owner-mode) .rate-field {
 
   .chat-thread {
     gap: 10px;
-    padding: 14px 2px 10px;
+    padding: 14px 14px 12px;
   }
 
   .message-bubble-row {
