@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.04.074",
-  title: "V1.04.074 update installed",
-  body: "Re-rendered the mobile Messages selector immediately after clearing the active chat."
+  version: "V1.04.075",
+  title: "V1.04.075 update installed",
+  body: "Hid the mobile chat panel whenever Messages is reset to the selector."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -6832,6 +6832,11 @@ function clearActiveMessageThread() {
   sendbirdActiveThread = null;
   sendbirdMessages = [];
   sendbirdTypingUsers = [];
+  $("#messages")?.classList.remove("message-chat-open");
+  document.body.classList.remove("mobile-message-chat-open");
+  const panel = $("#activeMessagePanel");
+  if (panel && isMobileMessageLayout()) panel.hidden = true;
+  $("#sendbirdMessageForm")?.setAttribute("hidden", "");
 }
 
 function renderMessageThread() {

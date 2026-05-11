@@ -1,5 +1,5 @@
 {
-  "version": "V1.04.074",
-  "title": "V1.04.074 update installed",
-  "body": "Re-rendered the mobile Messages selector immediately after clearing the active chat."
+  "version": "V1.04.075",
+  "title": "V1.04.075 update installed",
+  "body": "Hid the mobile chat panel whenever Messages is reset to the selector."
 }

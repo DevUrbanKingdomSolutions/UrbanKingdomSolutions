@@ -4548,6 +4548,11 @@ body:not(.owner-mode) .rate-field {
     display: flex;
   }
 
+  #messages:not(.message-chat-open) #activeMessagePanel,
+  #messages:not(.message-chat-open) #sendbirdMessageForm {
+    display: none;
+  }
+
   .mobile-message-sections {
     display: grid;
     gap: 20px;
