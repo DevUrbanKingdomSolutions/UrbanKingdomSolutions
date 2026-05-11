@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.04.055",
-  title: "V1.04.055 update installed",
-  body: "Kept sent image previews visible, added full-screen chat image preview, and improved composer spacing."
+  version: "V1.04.056",
+  title: "V1.04.056 update installed",
+  body: "Opened message threads at the most recent message by default."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -6718,6 +6718,13 @@ function scrollActiveMessageThreadToBottom() {
   });
 }
 
+function renderOpenMessageThreadAtBottom() {
+  renderMessaging();
+  if (isMobileMessageLayout()) $("#messages")?.scrollIntoView({ block: "start" });
+  scrollActiveMessageThreadToBottom();
+  window.setTimeout(scrollActiveMessageThreadToBottom, 80);
+}
+
 function activeMessageScrollTarget() {
   const thread = $("#messageThread");
   if (!thread) return null;
@@ -9051,8 +9058,7 @@ async function openMessageChannel(type, eventId, options = {}) {
     sendbirdMessages = await loadSendbirdMessages(sendbirdActiveChannel);
     startSendbirdMessageRefreshPoller();
     refreshSendbirdTypingUsers();
-    renderMessaging();
-    if (isMobileMessageLayout()) $("#messages")?.scrollIntoView({ block: "start" });
+    renderOpenMessageThreadAtBottom();
   } catch (error) {
     console.error(error);
     if (!options.silent) toast(error.message || "Could not open message thread.");
@@ -9088,8 +9094,7 @@ async function openDirectMessageChannel(profileId) {
     sendbirdMessages = await loadSendbirdMessages(sendbirdActiveChannel);
     startSendbirdMessageRefreshPoller();
     refreshSendbirdTypingUsers();
-    renderMessaging();
-    if (isMobileMessageLayout()) $("#messages")?.scrollIntoView({ block: "start" });
+    renderOpenMessageThreadAtBottom();
   } catch (error) {
     console.error(error);
     toast(error.message || "Could not open direct message.");
@@ -9126,8 +9131,7 @@ async function openPermanentMessageChannel(type, key) {
     sendbirdMessages = await loadSendbirdMessages(sendbirdActiveChannel);
     startSendbirdMessageRefreshPoller();
     refreshSendbirdTypingUsers();
-    renderMessaging();
-    if (isMobileMessageLayout()) $("#messages")?.scrollIntoView({ block: "start" });
+    renderOpenMessageThreadAtBottom();
   } catch (error) {
     console.error(error);
     toast(error.message || "Could not open message thread.");
