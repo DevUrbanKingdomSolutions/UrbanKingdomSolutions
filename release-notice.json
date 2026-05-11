@@ -1,5 +1,5 @@
 {
-  "version": "V1.04.043",
-  "title": "V1.04.043 update installed",
-  "body": "Limited Time Clock to today's scheduled line and blocked Call Time when the worker is not scheduled today."
+  "version": "V1.04.044",
+  "title": "V1.04.044 update installed",
+  "body": "Added client-admin timecard note notifications for rental-photo misses and clock-ins more than 2 miles from the venue."
 }

@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.04.043",
-  title: "V1.04.043 update installed",
-  body: "Limited Time Clock to today's scheduled line and blocked Call Time when the worker is not scheduled today."
+  version: "V1.04.044",
+  title: "V1.04.044 update installed",
+  body: "Added client-admin timecard note notifications for rental-photo misses and clock-ins more than 2 miles from the venue."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -4309,6 +4309,67 @@ function workerScheduledForEventDate(event, workerId, dateKey = localDateKey()) 
   return eventWorkerIds(event).includes(workerId) && eventTouchesDate(event, dateKey);
 }
 
+function numericCoordinate(value) {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
+}
+
+function venueCoordinates(venue) {
+  if (!venue) return null;
+  const latitude = numericCoordinate(venue.latitude ?? venue.lat ?? venue.location?.latitude ?? venue.location?.lat);
+  const longitude = numericCoordinate(venue.longitude ?? venue.lng ?? venue.lon ?? venue.location?.longitude ?? venue.location?.lng ?? venue.location?.lon);
+  return latitude === null || longitude === null ? null : { latitude, longitude };
+}
+
+function milesBetweenCoordinates(first, second) {
+  if (!first || !second) return null;
+  const toRadians = (value) => value * Math.PI / 180;
+  const earthRadiusMiles = 3958.8;
+  const dLat = toRadians(second.latitude - first.latitude);
+  const dLon = toRadians(second.longitude - first.longitude);
+  const lat1 = toRadians(first.latitude);
+  const lat2 = toRadians(second.latitude);
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) ** 2;
+  return earthRadiusMiles * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function clientAdminRecipientsForEvent(event) {
+  const clientId = eventClientId(event);
+  return state.clientReps.filter((rep) => {
+    if (clientId && rep.clientId !== clientId) return false;
+    return ensureClientRepAccessLevels(rep.accessLevels, "CLIENT_REP").includes("CLIENT_ADMIN");
+  });
+}
+
+async function applyVenueDistanceRule(card, event, location, field) {
+  if (field !== "clockIn" || !card?.id || !event || !location) return card;
+  const venue = getVenue(card.venueId || event.venueId);
+  const venueLocation = venueCoordinates(venue);
+  if (!venueLocation) return card;
+  const miles = milesBetweenCoordinates(location, venueLocation);
+  if (miles === null || miles <= 2) return card;
+  const worker = getWorker(card.workerId);
+  const message = `${worker?.name || "Crew member"} clocked in ${miles.toFixed(1)} miles from ${venue?.name || "the scheduled venue"}.`;
+  const updated = {
+    ...card,
+    adminNotes: appendTimecardAdminNote(card, message),
+    distanceWarnings: [
+      ...(Array.isArray(card.distanceWarnings) ? card.distanceWarnings : []),
+      {
+        type: "clockInVenueDistance",
+        miles: Number(miles.toFixed(2)),
+        thresholdMiles: 2,
+        venueId: venue?.id || "",
+        createdAt: new Date().toISOString()
+      }
+    ]
+  };
+  await notifyClientAdminsAboutTimecard(updated, event, message, {
+    transactionId: `timecard-distance-${updated.id}-${updated.distanceWarnings.length}`
+  });
+  return updated;
+}
+
 function dashboardHeroConfig() {
   if (isAdminRole()) {
     return {
@@ -5166,8 +5227,7 @@ function clockCard(event) {
 
 function punchSummaryItem(label, value, location) {
   const set = !!value;
-  const locationText = location ? `<small>Location saved</small>` : "";
-  return `<span class="punch-summary-item ${set ? "is-set" : ""}"><b>${escapeHtml(label)}</b>${set ? escapeHtml(formatDate(value)) : "Not set"}${locationText}</span>`;
+  return `<span class="punch-summary-item ${set ? "is-set" : ""}"><b>${escapeHtml(label)}</b>${set ? escapeHtml(formatTime(value)) : "Not set"}</span>`;
 }
 
 function rentalClockWarning(event, card) {
@@ -6249,11 +6309,13 @@ async function openNotification(id) {
   const notification = state.appNotifications.find((item) => item.id === id);
   if (!notification) return;
   if (!notification.readAt) await put("appNotifications", { ...notification, readAt: new Date().toISOString() });
+  await loadState();
   if (notification.viewId) setView(notification.viewId);
   if (notification.threadType && notification.threadKey) await openPermanentMessageChannel(notification.threadType, notification.threadKey);
+  if (notification.viewId === "timecards" && notification.recordId) openReadOnlyRecord("timecards", notification.recordId);
   const center = $("#notificationCenter");
   if (center) center.open = false;
-  await loadState();
+  renderNotificationSurfaces();
 }
 
 function renderMessagingConnectionStatus(configured, connected) {
@@ -8043,6 +8105,35 @@ async function createWorkflowAppNotification(workflowId, payload = {}, to = {}, 
   });
 }
 
+async function notifyClientAdminsAboutTimecard(card, event, message, options = {}) {
+  if (!card?.id || !message) return;
+  const recipients = clientAdminRecipientsForEvent(event);
+  const payload = {
+    message,
+    eventName: event?.name || card.eventName || "Assigned event",
+    workerName: getWorker(card.workerId)?.name || "Crew member",
+    timecardId: card.id,
+    timecardPageUrl: `${location.origin}${location.pathname}#timecards`
+  };
+  for (const rep of recipients) {
+    const subscriber = notificationSubscriberForProfile(rep, rep.authUserId || rep.id || rep.email || "");
+    if (!subscriber.subscriberId) continue;
+    await createWorkflowAppNotification(NOVU_WORKFLOWS.timecardIssue, payload, subscriber, {
+      type: "timecard",
+      viewId: "timecards",
+      recordId: card.id,
+      transactionId: options.transactionId || `timecard-${card.id}-${Date.now()}`
+    });
+    triggerNovuNotification(NOVU_WORKFLOWS.timecardIssue, payload, subscriber, {
+      silent: true,
+      skipInApp: true,
+      viewId: "timecards",
+      recordId: card.id,
+      transactionId: options.transactionId || `timecard-${card.id}-${rep.id || subscriber.subscriberId}`
+    }).catch((error) => console.warn(error));
+  }
+}
+
 async function triggerNovuNotification(workflowId, payload = {}, to = notificationSubscriberForCurrentUser(), options = {}) {
   if (!initializeSupabaseClient()) return { ok: false, message: "Supabase login is not configured." };
   if (!workflowId || !to?.subscriberId) return { ok: false, message: "Novu workflow or subscriber is missing." };
@@ -8060,7 +8151,7 @@ async function triggerNovuNotification(workflowId, payload = {}, to = notificati
     if (!options.silent) toast(message);
     return { ok: false, message };
   }
-  createWorkflowAppNotification(workflowId, payload, to, options).catch((noticeError) => console.warn("In-app notification save failed", noticeError));
+  if (!options.skipInApp) createWorkflowAppNotification(workflowId, payload, to, options).catch((noticeError) => console.warn("In-app notification save failed", noticeError));
   if (!options.silent) toast("Notification queued.");
   return { ok: true, data };
 }
@@ -9002,10 +9093,15 @@ async function sendRentalUrgentNotification(card) {
   const worker = getWorker(card.workerId);
   const result = await sendRentalPhotoNotification(event, worker, card, "urgent_start_missing");
   if (result.ok) {
-    await put("timecards", {
+    const message = "Urgent rental vehicle start-photo reminder was sent because start photos and plate number were still missing after 15 minutes.";
+    const updatedCard = {
       ...card,
       rentalUrgentNotificationSentAt: new Date().toISOString(),
-      adminNotes: appendTimecardAdminNote(card, "Urgent rental vehicle start-photo reminder was sent because start photos and plate number were still missing after 15 minutes.")
+      adminNotes: appendTimecardAdminNote(card, message)
+    };
+    await put("timecards", updatedCard);
+    await notifyClientAdminsAboutTimecard(updatedCard, event, `${worker?.name || "Crew member"} still has not submitted rental vehicle start photos after 15 minutes.`, {
+      transactionId: `timecard-photo-urgent-${updatedCard.id}`
     });
     await loadState();
     setView(state.activeView);
@@ -9182,6 +9278,7 @@ async function crewPunch(eventId, field) {
   if (location) {
     card.punchLocations = { ...(card.punchLocations || {}), [field]: location };
   }
+  card = await applyVenueDistanceRule(card, event, location, field);
   if (field === "clockIn" && !card.eventName) card.eventName = event?.name || "";
   if (field === "clockIn" && rentalVehicleRequired(event, card)) {
     const assignment = assignmentForEventWorker(eventId, workerId);
