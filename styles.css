@@ -2418,6 +2418,7 @@ td p {
   min-height: 360px;
   max-height: 58vh;
   overflow-y: auto;
+  scroll-behavior: auto;
   background: linear-gradient(180deg, #f7f5ef 0%, #ffffff 100%);
 }
 
@@ -4763,6 +4764,7 @@ body:not(.owner-mode) .rate-field {
     min-height: 0;
     max-height: none;
     overflow-y: auto;
+    scroll-behavior: auto;
     overscroll-behavior: contain;
     touch-action: pan-y;
     -webkit-overflow-scrolling: touch;

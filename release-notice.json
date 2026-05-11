@@ -1,5 +1,5 @@
 {
-  "version": "V1.04.076",
-  "title": "V1.04.076 update installed",
-  "body": "Smoothed mobile chat scrolling by backing off refresh polling and prioritizing vertical touch scroll."
+  "version": "V1.04.077",
+  "title": "V1.04.077 update installed",
+  "body": "Protected mobile chat scrolling from refresh and typing updates while reading messages."
 }

@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.04.076",
-  title: "V1.04.076 update installed",
-  body: "Smoothed mobile chat scrolling by backing off refresh polling and prioritizing vertical touch scroll."
+  version: "V1.04.077",
+  title: "V1.04.077 update installed",
+  body: "Protected mobile chat scrolling from refresh and typing updates while reading messages."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -277,6 +277,9 @@ let sendbirdInboundMessageHandlerReady = false;
 let sendbirdTypingPoller = null;
 let sendbirdMessageRefreshPoller = null;
 let sendbirdMessageRefreshInFlight = false;
+let messageThreadScrollTimer = null;
+let messageThreadUserScrollingUntil = 0;
+let messageThreadRenderQueued = false;
 let idleSignOutTimer = null;
 let signOutReloading = false;
 let installPromptEvent = null;
@@ -6832,6 +6835,8 @@ function clearActiveMessageThread() {
   sendbirdActiveThread = null;
   sendbirdMessages = [];
   sendbirdTypingUsers = [];
+  messageThreadRenderQueued = false;
+  window.clearTimeout(messageThreadScrollTimer);
   $("#messages")?.classList.remove("message-chat-open");
   document.body.classList.remove("mobile-message-chat-open");
   const panel = $("#activeMessagePanel");
@@ -6932,6 +6937,27 @@ function scrollActiveMessageThreadToBottom() {
     const thread = $("#messageThread");
     if (thread) thread.scrollTop = thread.scrollHeight;
   });
+}
+
+function markMessageThreadUserScrolling() {
+  if (!sendbirdActiveChannel) return;
+  messageThreadUserScrollingUntil = Date.now() + 700;
+}
+
+function userIsActivelyScrollingMessageThread() {
+  return Date.now() < messageThreadUserScrollingUntil;
+}
+
+function queueMessageThreadRenderAfterScroll(options = {}) {
+  const waitMs = Math.max(180, messageThreadUserScrollingUntil - Date.now() + 90);
+  messageThreadRenderQueued = true;
+  window.clearTimeout(messageThreadScrollTimer);
+  messageThreadScrollTimer = window.setTimeout(() => {
+    messageThreadRenderQueued = false;
+    if (!sendbirdActiveChannel) return;
+    renderMessageThread();
+    if (options.scrollToBottom) scrollActiveMessageThreadToBottom();
+  }, waitMs);
 }
 
 function renderOpenMessageThreadAtBottom() {
@@ -9149,8 +9175,12 @@ async function handleIncomingSendbirdMessage(channel, message) {
     const key = sendbirdMessageKey(message);
     if (!key || !sendbirdMessages.some((item) => sendbirdMessageKey(item) === key)) {
       sendbirdMessages = mergeVisibleSendbirdMessages([message]);
-      renderMessageThread();
-      if (wasAtBottom) scrollActiveMessageThreadToBottom();
+      if (userIsActivelyScrollingMessageThread() && !wasAtBottom) {
+        queueMessageThreadRenderAfterScroll();
+      } else {
+        renderMessageThread();
+        if (wasAtBottom) scrollActiveMessageThreadToBottom();
+      }
     }
     await markMessageThreadNotificationsRead(sendbirdActiveThread?.type || "", activeMessageThreadKey());
     return;
@@ -9341,6 +9371,10 @@ async function refreshActiveSendbirdMessages(options = {}) {
   try {
     const loadedMessages = await loadSendbirdMessages(sendbirdActiveChannel);
     sendbirdMessages = options.keepLocal ? mergeVisibleSendbirdMessages(loadedMessages) : loadedMessages;
+    if (userIsActivelyScrollingMessageThread() && !options.scrollToBottom) {
+      queueMessageThreadRenderAfterScroll();
+      return;
+    }
     renderMessageThread();
     if (options.scrollToBottom) scrollActiveMessageThreadToBottom();
   } catch (error) {
@@ -9353,10 +9387,18 @@ async function refreshActiveSendbirdMessages(options = {}) {
 function refreshSendbirdTypingUsers() {
   if (!sendbirdActiveChannel || typeof sendbirdActiveChannel.getTypingUsers !== "function") {
     sendbirdTypingUsers = [];
+    if (userIsActivelyScrollingMessageThread()) {
+      queueMessageThreadRenderAfterScroll();
+      return;
+    }
     renderMessageThread();
     return;
   }
   sendbirdTypingUsers = sendbirdActiveChannel.getTypingUsers() || [];
+  if (userIsActivelyScrollingMessageThread()) {
+    queueMessageThreadRenderAfterScroll();
+    return;
+  }
   renderMessageThread();
 }
 
@@ -9988,6 +10030,9 @@ function bindEvents() {
     positionOpenRecordMenus();
   });
   window.addEventListener("scroll", positionOpenRecordMenus, true);
+  $("#messageThread")?.addEventListener("scroll", markMessageThreadUserScrolling, { passive: true });
+  $("#messageThread")?.addEventListener("touchmove", markMessageThreadUserScrolling, { passive: true });
+  $("#messageThread")?.addEventListener("wheel", markMessageThreadUserScrolling, { passive: true });
   document.addEventListener("toggle", (event) => {
     if (event.target.matches?.(".table-wrap .record-options, #events .event-options")) positionOpenRecordMenus();
   }, true);
