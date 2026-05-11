@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.04.039",
-  title: "V1.04.039 update installed",
-  body: "Added message composer tools for photos, emoji, GIF links, thread push policy metadata, and clocked-in idle protection."
+  version: "V1.04.040",
+  title: "V1.04.040 update installed",
+  body: "Limited idle timer changes to Call Time and Wrap so lunch punches do not alter the clocked-in session behavior."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -9191,7 +9191,7 @@ async function crewPunch(eventId, field) {
   await put("timecards", card);
   await loadState();
   setView(state.activeView);
-  resetIdleSignOutTimer();
+  if (field === "clockIn" || field === "clockOut") resetIdleSignOutTimer();
   toast(location ? "Time updated with location." : "Time updated. Location was not captured.");
 }
 

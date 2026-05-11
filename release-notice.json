@@ -1,5 +1,5 @@
 {
-  "version": "V1.04.039",
-  "title": "V1.04.039 update installed",
-  "body": "Added message composer tools for photos, emoji, GIF links, thread push policy metadata, and clocked-in idle protection."
+  "version": "V1.04.040",
+  "title": "V1.04.040 update installed",
+  "body": "Limited idle timer changes to Call Time and Wrap so lunch punches do not alter the clocked-in session behavior."
 }
