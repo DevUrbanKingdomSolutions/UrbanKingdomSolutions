@@ -4654,9 +4654,12 @@ body:not(.owner-mode) .rate-field {
   }
 
   #messageThread {
-    min-height: calc(100dvh - 190px);
+    height: calc(100dvh - 190px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+    min-height: 240px;
     max-height: none;
-    overflow: visible;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
     background:
       linear-gradient(180deg, color-mix(in srgb, var(--accent-soft) 28%, transparent), transparent 220px),
       var(--mobile-bg, #f7f5ef);
@@ -4664,7 +4667,7 @@ body:not(.owner-mode) .rate-field {
 
   .chat-thread {
     gap: 10px;
-    padding: 14px 2px 176px;
+    padding: 14px 2px 118px;
   }
 
   .message-bubble-row {

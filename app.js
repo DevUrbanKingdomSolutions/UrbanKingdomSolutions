@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.04.062",
-  title: "V1.04.062 update installed",
-  body: "Created message notifications from incoming Sendbird group and direct messages."
+  version: "V1.04.063",
+  title: "V1.04.063 update installed",
+  body: "Made message notifications live across desktop and mobile, and improved mobile chat scrolling."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -282,6 +282,7 @@ let signOutReloading = false;
 let installPromptEvent = null;
 let appInstallState = window.matchMedia?.("(display-mode: standalone)").matches || navigator.standalone ? "installed" : "checking";
 let notificationRefreshPoller = null;
+let notificationRealtimeChannel = null;
 let releaseNoticePoller = null;
 let pendingActivationSession = null;
 let pendingActivationType = "";
@@ -2333,6 +2334,7 @@ async function applyAuthenticatedSession(session, preferredView = "") {
   await ensureWelcomeNotification();
   await ensureReleaseNotification();
   startNotificationAutoRefresh();
+  startNotificationRealtime();
   startReleaseNoticePoller();
   await syncLocalRecordsToSupabase();
   await refreshUserAccessList(false);
@@ -2546,6 +2548,7 @@ async function clearSavedLogin() {
 function clearLocalSessionCache() {
   window.clearInterval(notificationRefreshPoller);
   window.clearInterval(releaseNoticePoller);
+  stopNotificationRealtime();
   notificationRefreshPoller = null;
   releaseNoticePoller = null;
   sendbirdActiveChannel = null;
@@ -6304,6 +6307,49 @@ function startNotificationAutoRefresh() {
   }, NOTIFICATION_REFRESH_MS);
 }
 
+function stopNotificationRealtime() {
+  if (!notificationRealtimeChannel || !supabaseClient) {
+    notificationRealtimeChannel = null;
+    return;
+  }
+  supabaseClient.removeChannel?.(notificationRealtimeChannel);
+  notificationRealtimeChannel = null;
+}
+
+function startNotificationRealtime() {
+  if (!supabaseClient || !authState.session || notificationRealtimeChannel) return;
+  notificationRealtimeChannel = supabaseClient
+    .channel(`app-notifications-${authState.user?.id || Date.now()}`)
+    .on(
+      "postgres_changes",
+      {
+        event: "*",
+        schema: "public",
+        table: "app_records",
+        filter: "store_name=eq.appNotifications"
+      },
+      (payload) => {
+        applyRealtimeNotificationRecord(payload.new).catch((error) => console.warn("Realtime notification update failed", error));
+      }
+    )
+    .subscribe();
+}
+
+async function applyRealtimeNotificationRecord(row = {}) {
+  const notification = row.data;
+  if (!notification?.id || !notificationMatchesCurrentRecipient(notification)) return;
+  const activeThreadType = sendbirdActiveThread?.type || "";
+  const activeThreadKey = activeMessageThreadKey();
+  const isOpenMessageThread = notification.type === "message"
+    && activeThreadType
+    && activeThreadKey
+    && notification.threadType === activeThreadType
+    && notification.threadKey === activeThreadKey;
+  await put("appNotifications", isOpenMessageThread ? { ...notification, readAt: notification.readAt || new Date().toISOString() } : notification);
+  await loadState();
+  renderNotificationSurfaces();
+}
+
 function releaseNotificationId(version) {
   return `release-${String(version || "").toLowerCase().replaceAll(".", "-")}`;
 }
@@ -6321,8 +6367,11 @@ async function createAppNotification({ title, body = "", type = "info", viewId =
   };
   const id = await put("appNotifications", notification);
   const saved = { ...notification, id: notification.id || id };
+  state.appNotifications = [saved, ...state.appNotifications.filter((item) => item.id !== saved.id)]
+    .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+  renderNotificationSurfaces();
   if (type === "message") await syncAppNotificationToSupabase(saved);
-  await refreshNotificationsFromStorage();
+  refreshNotificationsFromStorage().catch((error) => console.warn("Notification refresh failed", error));
   return saved;
 }
 
@@ -6879,9 +6928,9 @@ function renderOpenMessageThreadAtBottom() {
 function activeMessageScrollTarget() {
   const thread = $("#messageThread");
   if (!thread) return null;
+  if (isMobileMessageLayout()) return thread;
   const threadCanScroll = thread.scrollHeight > thread.clientHeight + 2 && getComputedStyle(thread).overflowY !== "visible";
   if (threadCanScroll) return thread;
-  if (isMobileMessageLayout()) return document.scrollingElement || document.documentElement;
   return thread;
 }
 
@@ -9081,11 +9130,12 @@ async function createReceivedMessageNotification(channel, message) {
 async function handleIncomingSendbirdMessage(channel, message) {
   if (!message) return;
   if (messageBelongsToActiveThread(channel)) {
+    const wasAtBottom = isActiveMessageScrolledToBottom();
     const key = sendbirdMessageKey(message);
     if (!key || !sendbirdMessages.some((item) => sendbirdMessageKey(item) === key)) {
       sendbirdMessages = mergeVisibleSendbirdMessages([message]);
       renderMessageThread();
-      if (isActiveMessageScrolledToBottom()) scrollActiveMessageThreadToBottom();
+      if (wasAtBottom) scrollActiveMessageThreadToBottom();
     }
     await markMessageThreadNotificationsRead(sendbirdActiveThread?.type || "", activeMessageThreadKey());
     return;

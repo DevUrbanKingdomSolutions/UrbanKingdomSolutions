@@ -1,5 +1,5 @@
 {
-  "version": "V1.04.062",
-  "title": "V1.04.062 update installed",
-  "body": "Created message notifications from incoming Sendbird group and direct messages."
+  "version": "V1.04.063",
+  "title": "V1.04.063 update installed",
+  "body": "Made message notifications live across desktop and mobile, and improved mobile chat scrolling."
 }
