@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.04.066",
-  title: "V1.04.066 update installed",
-  body: "Improved the mobile left-edge swipe so it opens the menu instead of navigating back."
+  version: "V1.04.067",
+  title: "V1.04.067 update installed",
+  body: "Polished the mobile app shell with cleaner native white surfaces and role-color accents."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",

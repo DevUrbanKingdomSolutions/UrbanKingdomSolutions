@@ -3798,10 +3798,13 @@ body:not(.owner-mode) .rate-field {
   }
 
   body[data-access-tone] {
-    --mobile-bg: color-mix(in srgb, var(--accent-soft) 34%, #f7f5ef);
-    --mobile-chrome: color-mix(in srgb, var(--accent-soft) 72%, rgba(255, 253, 248, 0.96));
-    --mobile-chrome-solid: color-mix(in srgb, var(--accent-soft) 64%, #ffffff);
-    --mobile-line: color-mix(in srgb, var(--accent) 18%, rgba(195, 186, 169, 0.5));
+    --mobile-bg: #fffefd;
+    --mobile-surface: #ffffff;
+    --mobile-surface-soft: color-mix(in srgb, var(--accent-soft) 20%, #ffffff);
+    --mobile-chrome: rgba(255, 255, 255, 0.94);
+    --mobile-chrome-solid: #ffffff;
+    --mobile-line: color-mix(in srgb, var(--accent) 12%, rgba(218, 222, 224, 0.72));
+    --mobile-shadow: 0 12px 30px rgba(29, 36, 40, 0.08);
   }
 
   body.mobile-nav-open {
@@ -3813,8 +3816,8 @@ body:not(.owner-mode) .rate-field {
     grid-template-columns: 1fr;
     padding-bottom: calc(74px + env(safe-area-inset-bottom));
     background:
-      linear-gradient(180deg, color-mix(in srgb, var(--accent-soft) 48%, transparent) 0, transparent 220px),
-      var(--mobile-bg, var(--bg));
+      linear-gradient(180deg, color-mix(in srgb, var(--accent-soft) 34%, transparent) 0, transparent 118px),
+      var(--mobile-bg, #fffefd);
   }
 
   .sidebar {
@@ -3900,8 +3903,8 @@ body:not(.owner-mode) .rate-field {
     flex-direction: column;
     padding: calc(14px + env(safe-area-inset-top)) 14px 18px;
     background:
-      linear-gradient(180deg, color-mix(in srgb, var(--accent-soft) 34%, transparent) 0, transparent 190px),
-      var(--mobile-bg, var(--bg));
+      linear-gradient(180deg, color-mix(in srgb, var(--accent-soft) 26%, transparent) 0, transparent 120px),
+      var(--mobile-bg, #fffefd);
   }
 
   .active-view {
@@ -3919,30 +3922,33 @@ body:not(.owner-mode) .rate-field {
   }
 
   .view:not(#messages) .panel:not(.form-panel):not(.modal-form) {
-    border: 0;
-    border-radius: 0;
-    background: transparent;
-    box-shadow: none;
+    border: 1px solid var(--mobile-line, rgba(218, 222, 224, 0.72));
+    border-radius: 8px;
+    background: var(--mobile-surface, #ffffff);
+    box-shadow: var(--mobile-shadow, 0 12px 30px rgba(29, 36, 40, 0.08));
+    overflow: hidden;
   }
 
   .view:not(#messages) .panel-heading {
     min-height: auto;
     align-items: center;
-    padding: 4px 0 10px;
+    padding: 13px 14px 11px;
     border-bottom: 1px solid var(--mobile-line, rgba(195, 186, 169, 0.55));
+    background:
+      linear-gradient(90deg, color-mix(in srgb, var(--accent-soft) 42%, #ffffff), #ffffff 68%);
   }
 
   .view:not(#messages) .list-controls {
     margin: 0;
-    padding: 10px 0;
+    padding: 10px 14px;
     border-top: 0;
     border-bottom: 1px solid var(--mobile-line, rgba(195, 186, 169, 0.55));
-    background: transparent;
+    background: var(--mobile-surface-soft, #ffffff);
   }
 
   .view:not(#messages) .record-grid {
     gap: 0;
-    padding: 4px 0 12px;
+    padding: 0;
   }
 
   .view:not(#messages) .record-card {
@@ -3950,14 +3956,21 @@ body:not(.owner-mode) .rate-field {
     border-width: 0 0 1px;
     border-color: var(--mobile-line, rgba(195, 186, 169, 0.62));
     border-radius: 0;
-    background: transparent;
-    padding: 14px 2px;
+    background: var(--mobile-surface, #ffffff);
+    padding: 14px;
     box-shadow: none;
   }
 
+  .view:not(#messages) .record-card:last-child {
+    border-bottom: 0;
+  }
+
   .view:not(#messages) .compact-item {
-    padding-right: 2px;
-    padding-left: 2px;
+    border-color: var(--mobile-line, rgba(218, 222, 224, 0.72));
+    border-radius: 8px;
+    background: var(--mobile-surface, #ffffff);
+    padding: 12px 14px;
+    box-shadow: 0 8px 18px rgba(29, 36, 40, 0.04);
   }
 
   .topbar {
@@ -3969,10 +3982,10 @@ body:not(.owner-mode) .rate-field {
     align-items: center;
     gap: 8px 10px;
     margin: 0 0 14px;
-    padding: 0 0 10px;
+    padding: 2px 0 12px;
     border-bottom: 1px solid var(--mobile-line, rgba(195, 186, 169, 0.55));
     background:
-      linear-gradient(180deg, var(--mobile-chrome-solid, #ffffff), var(--mobile-chrome, rgba(245, 243, 238, 0.97)));
+      linear-gradient(180deg, #ffffff, var(--mobile-chrome, rgba(255, 255, 255, 0.94)));
     box-shadow: 0 8px 22px rgba(29, 36, 40, 0.04);
     backdrop-filter: blur(12px);
   }
@@ -4007,7 +4020,7 @@ body:not(.owner-mode) .rate-field {
     min-height: 40px;
     border: 1px solid color-mix(in srgb, var(--accent) 18%, var(--line));
     border-radius: 8px;
-    background: color-mix(in srgb, var(--accent-soft) 62%, #ffffff);
+    background: color-mix(in srgb, var(--accent-soft) 34%, #ffffff);
     color: var(--accent-dark);
     padding: 8px 10px;
     font-weight: 800;
@@ -4070,7 +4083,7 @@ body:not(.owner-mode) .rate-field {
     width: 40px;
     height: 40px;
     border-color: color-mix(in srgb, var(--accent) 18%, var(--line));
-    background: color-mix(in srgb, var(--accent-soft) 62%, #ffffff);
+    background: color-mix(in srgb, var(--accent-soft) 34%, #ffffff);
     color: var(--accent-dark);
   }
 
@@ -4547,7 +4560,8 @@ body:not(.owner-mode) .rate-field {
   }
 
   .message-thread-card.selected {
-    background: linear-gradient(90deg, color-mix(in srgb, var(--accent-soft) 60%, transparent), transparent 72%);
+    background:
+      linear-gradient(90deg, color-mix(in srgb, var(--accent-soft) 48%, #ffffff), #ffffff 76%);
     box-shadow: inset 4px 0 0 var(--accent);
   }
 
@@ -4667,8 +4681,8 @@ body:not(.owner-mode) .rate-field {
     overscroll-behavior: contain;
     -webkit-overflow-scrolling: touch;
     background:
-      linear-gradient(180deg, color-mix(in srgb, var(--accent-soft) 28%, transparent), transparent 220px),
-      var(--mobile-bg, #f7f5ef);
+      linear-gradient(180deg, color-mix(in srgb, var(--accent-soft) 18%, transparent), transparent 160px),
+      var(--mobile-bg, #fffefd);
   }
 
   .chat-thread {
@@ -4715,7 +4729,7 @@ body:not(.owner-mode) .rate-field {
     margin: 0;
     padding: 9px 2px;
     border-top: 0;
-    background: color-mix(in srgb, var(--mobile-chrome-solid, #ffffff) 90%, transparent);
+    background: rgba(255, 255, 255, 0.94);
     box-shadow: 0 -8px 18px rgba(29, 36, 40, 0.08), 0 -1px 0 var(--mobile-line, rgba(195, 186, 169, 0.45));
     backdrop-filter: blur(12px);
   }
@@ -4752,7 +4766,7 @@ body:not(.owner-mode) .rate-field {
     padding: 8px 8px calc(8px + env(safe-area-inset-bottom));
     border-top: 1px solid var(--mobile-line, var(--line));
     background:
-      linear-gradient(180deg, color-mix(in srgb, var(--accent-soft) 48%, rgba(255, 255, 255, 0.97)), rgba(255, 253, 248, 0.97));
+      linear-gradient(180deg, rgba(255, 255, 255, 0.96), #ffffff);
     box-shadow: 0 -8px 24px rgba(29, 36, 40, 0.08);
     backdrop-filter: blur(12px);
   }
@@ -4772,7 +4786,7 @@ body:not(.owner-mode) .rate-field {
   .mobile-bottom-nav button.active {
     background:
       linear-gradient(180deg, var(--accent) 0 4px, transparent 4px),
-      var(--accent-soft);
+      color-mix(in srgb, var(--accent-soft) 42%, #ffffff);
     color: var(--accent-dark);
     box-shadow: 0 10px 20px color-mix(in srgb, var(--accent) 10%, transparent);
   }
