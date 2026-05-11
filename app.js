@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.04.101",
-  title: "V1.04.101 update installed",
-  body: "Added swipe-right back from mobile message chats to the chat selector."
+  version: "V1.04.102",
+  title: "V1.04.102 update installed",
+  body: "Smoothed message chat updates so sends and receives stay pinned without flashing."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -282,6 +282,7 @@ let messageThreadUserScrollingUntil = 0;
 let messageThreadRenderQueued = false;
 let messageThreadOpeningUntil = 0;
 let messageThreadPinBottomUntil = 0;
+let messageThreadProgrammaticScrollUntil = 0;
 let idleSignOutTimer = null;
 let signOutReloading = false;
 let installPromptEvent = null;
@@ -7142,6 +7143,7 @@ function scrollActiveMessageThreadToBottom(options = {}) {
   window.requestAnimationFrame(() => {
     const thread = $("#messageThread");
     if (!thread) return;
+    messageThreadProgrammaticScrollUntil = Date.now() + 180;
     thread.scrollTop = thread.scrollHeight;
   });
   if (options.repeat) {
@@ -7155,6 +7157,7 @@ function pinActiveMessageThreadToBottom(options = {}) {
   const thread = $("#messageThread");
   if (!thread) return;
   messageThreadUserScrollingUntil = 0;
+  messageThreadProgrammaticScrollUntil = Date.now() + 180;
   thread.scrollTop = thread.scrollHeight;
   scrollActiveMessageThreadToBottom({ repeat: options.repeat !== false });
 }
@@ -7184,6 +7187,7 @@ function scrollActiveMessageThreadToBottomWhenReady(attempt = 0) {
 
 function markMessageThreadUserScrolling() {
   if (!sendbirdActiveChannel) return;
+  if (Date.now() < messageThreadProgrammaticScrollUntil) return;
   messageThreadUserScrollingUntil = Date.now() + 1200;
 }
 
@@ -7202,8 +7206,7 @@ function queueMessageThreadRenderAfterScroll(options = {}) {
     }
     messageThreadRenderQueued = false;
     if (!sendbirdActiveChannel) return;
-    renderMessageThread();
-    if (options.scrollToBottom) scrollActiveMessageThreadToBottom();
+    renderMessageThread({ pinToBottom: !!options.scrollToBottom });
   }, waitMs);
 }
 
@@ -7233,6 +7236,7 @@ function activeMessageScrollTop(target) {
 }
 
 function setActiveMessageScrollTop(target, top) {
+  messageThreadProgrammaticScrollUntil = Date.now() + 180;
   if (target === document.scrollingElement || target === document.documentElement) {
     window.scrollTo({ top, left: 0, behavior: "auto" });
     return;
@@ -9502,8 +9506,7 @@ async function handleIncomingSendbirdMessage(channel, message) {
       if (userIsActivelyScrollingMessageThread() && !wasAtBottom) {
         queueMessageThreadRenderAfterScroll();
       } else {
-        renderMessageThread();
-        if (wasAtBottom) scrollActiveMessageThreadToBottom();
+        renderMessageThread({ pinToBottom: wasAtBottom });
       }
     }
     await markMessageThreadNotificationsRead(sendbirdActiveThread?.type || "", activeMessageThreadKey());
@@ -9699,8 +9702,7 @@ async function refreshActiveSendbirdMessages(options = {}) {
       queueMessageThreadRenderAfterScroll();
       return;
     }
-    renderMessageThread();
-    if (options.scrollToBottom) scrollActiveMessageThreadToBottom();
+    renderMessageThread({ pinToBottom: !!options.scrollToBottom });
   } catch (error) {
     console.warn(error);
   } finally {
@@ -9715,7 +9717,7 @@ function refreshSendbirdTypingUsers() {
       queueMessageThreadRenderAfterScroll();
       return;
     }
-    renderMessageThread();
+    renderMessageThread({ pinToBottom: isActiveMessageScrolledToBottom() });
     return;
   }
   sendbirdTypingUsers = sendbirdActiveChannel.getTypingUsers() || [];
@@ -9723,7 +9725,7 @@ function refreshSendbirdTypingUsers() {
     queueMessageThreadRenderAfterScroll();
     return;
   }
-  renderMessageThread();
+  renderMessageThread({ pinToBottom: isActiveMessageScrolledToBottom() });
 }
 
 function startSendbirdTypingPoller() {

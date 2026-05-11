@@ -1,5 +1,5 @@
 {
-  "version": "V1.04.101",
-  "title": "V1.04.101 update installed",
-  "body": "Added swipe-right back from mobile message chats to the chat selector."
+  "version": "V1.04.102",
+  "title": "V1.04.102 update installed",
+  "body": "Smoothed message chat updates so sends and receives stay pinned without flashing."
 }
