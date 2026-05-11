@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.04.056",
-  title: "V1.04.056 update installed",
-  body: "Opened message threads at the most recent message by default."
+  version: "V1.04.057",
+  title: "V1.04.057 update installed",
+  body: "Added message-thread notifications, thread-level cleanup, and native push bridge handling."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -676,6 +676,38 @@ function initPushRegistrationListeners() {
     refreshMobileRuntimePanels();
     toast(error?.error || "Push registration failed.");
   });
+  push.addListener("pushNotificationReceived", (notification) => {
+    handleNativePushNotification(notification, { opened: false }).catch((error) => console.warn("Native notification handling failed", error));
+  });
+  push.addListener("pushNotificationActionPerformed", (action) => {
+    handleNativePushNotification(action?.notification || action, { opened: true }).catch((error) => console.warn("Native notification action failed", error));
+  });
+}
+
+function nativeNotificationData(notification = {}) {
+  return notification.data || notification.notification?.data || {};
+}
+
+async function handleNativePushNotification(notification = {}, options = {}) {
+  const data = nativeNotificationData(notification);
+  const id = data.notificationId || data.id || `native-${Date.now()}`;
+  if (!state.appNotifications.some((item) => item.id === id)) {
+    await put("appNotifications", {
+      id,
+      title: notification.title || data.title || "Notification",
+      body: notification.body || data.body || "",
+      type: data.type || "native",
+      viewId: data.viewId || "",
+      recordId: data.recordId || "",
+      recipientId: data.recipientId || currentThreadUserId(),
+      threadType: data.threadType || "",
+      threadKey: data.threadKey || "",
+      threadEventId: data.threadEventId || "",
+      threadProfileId: data.threadProfileId || ""
+    });
+    await refreshNotificationsFromStorage();
+  }
+  if (options.opened) await openNotification(id);
 }
 
 async function capturePunchLocation() {
@@ -6192,7 +6224,24 @@ async function refreshNotificationsFromStorage() {
   if (!authState.session) return;
   const existing = notificationSnapshot();
   await hydrateNotificationsFromSupabase();
-  const notifications = (await getAll("appNotifications")).sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+  let notifications = (await getAll("appNotifications")).sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+  const activeThreadType = sendbirdActiveThread?.type || "";
+  const activeThreadKey = activeMessageThreadKey();
+  const activeThreadNotices = activeThreadType && activeThreadKey
+    ? notifications.filter((notification) =>
+        !notification.readAt
+        && notification.type === "message"
+        && notification.threadType === activeThreadType
+        && notification.threadKey === activeThreadKey
+        && (!notification.recipientId || notification.recipientId === currentThreadUserId()))
+    : [];
+  if (activeThreadNotices.length) {
+    const now = new Date().toISOString();
+    for (const notification of activeThreadNotices) {
+      await put("appNotifications", { ...notification, readAt: now });
+    }
+    notifications = (await getAll("appNotifications")).sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+  }
   const next = notificationSnapshot(notifications);
   if (existing === next) return;
   state.appNotifications = notifications;
@@ -6211,7 +6260,7 @@ function releaseNotificationId(version) {
   return `release-${String(version || "").toLowerCase().replaceAll(".", "-")}`;
 }
 
-async function createAppNotification({ title, body = "", type = "info", viewId = "", recordId = "", recipientId = "" }) {
+async function createAppNotification({ title, body = "", type = "info", viewId = "", recordId = "", recipientId = "", ...extra }) {
   if (!title) return;
   await put("appNotifications", {
     title,
@@ -6219,7 +6268,8 @@ async function createAppNotification({ title, body = "", type = "info", viewId =
     type,
     viewId,
     recordId,
-    recipientId
+    recipientId,
+    ...extra
   });
   await refreshNotificationsFromStorage();
 }
@@ -6314,11 +6364,34 @@ async function openNotification(id) {
   if (!notification.readAt) await put("appNotifications", { ...notification, readAt: new Date().toISOString() });
   await loadState();
   if (notification.viewId) setView(notification.viewId);
-  if (notification.threadType && notification.threadKey) await openPermanentMessageChannel(notification.threadType, notification.threadKey);
+  if (notification.threadType && notification.threadKey) await openNotificationMessageThread(notification);
   if (notification.viewId === "timecards" && notification.recordId) openReadOnlyRecord("timecards", notification.recordId);
   const center = $("#notificationCenter");
   if (center) center.open = false;
   renderNotificationSurfaces();
+}
+
+async function openNotificationMessageThread(notification) {
+  if (notification.threadType === "direct") {
+    await openDirectMessageChannel(notification.threadProfileId || directProfileIdFromThreadKey(notification.threadKey));
+    return;
+  }
+  if (["event", "office", "crew"].includes(notification.threadType)) {
+    await openMessageChannel(notification.threadType, notification.threadEventId || threadEventIdFromThreadKey(notification.threadKey));
+    return;
+  }
+  await openPermanentMessageChannel(notification.threadType, notification.threadProfileId || notification.threadKey);
+}
+
+function threadEventIdFromThreadKey(threadKey = "") {
+  const [type, ...parts] = String(threadKey || "").split(":");
+  return ["event", "office", "crew"].includes(type) ? parts.join(":") : "";
+}
+
+function directProfileIdFromThreadKey(threadKey = "") {
+  const parts = String(threadKey || "").split(":").slice(1);
+  const currentId = currentThreadUserId();
+  return parts.find((part) => part && part !== currentId) || "";
 }
 
 function renderMessagingConnectionStatus(configured, connected) {
@@ -6720,6 +6793,7 @@ function scrollActiveMessageThreadToBottom() {
 
 function renderOpenMessageThreadAtBottom() {
   renderMessaging();
+  markMessageThreadNotificationsRead(sendbirdActiveThread?.type || "", activeMessageThreadKey()).catch((error) => console.warn("Message notification cleanup failed", error));
   if (isMobileMessageLayout()) $("#messages")?.scrollIntoView({ block: "start" });
   scrollActiveMessageThreadToBottom();
   window.setTimeout(scrollActiveMessageThreadToBottom, 80);
@@ -8797,6 +8871,70 @@ function sendbirdThreadUsers(type, event, directProfile) {
   return Array.from(new Set([currentId, ...ids].filter(Boolean)));
 }
 
+function activeMessageThreadKey() {
+  if (!sendbirdActiveThread) return "";
+  return messageThreadKey(sendbirdActiveThread.type, sendbirdActiveThread.eventId || "", sendbirdActiveThread.profileId || "");
+}
+
+function activeMessageNotificationMeta() {
+  if (!sendbirdActiveThread) return {};
+  const threadKey = activeMessageThreadKey();
+  return {
+    viewId: "messages",
+    threadType: sendbirdActiveThread.type,
+    threadKey,
+    threadEventId: sendbirdActiveThread.eventId || "",
+    threadProfileId: sendbirdActiveThread.profileId || ""
+  };
+}
+
+async function markMessageThreadNotificationsRead(threadType, threadKey) {
+  if (!threadType || !threadKey) return;
+  const now = new Date().toISOString();
+  const matches = state.appNotifications.filter((notification) =>
+    !notification.readAt
+    && notification.type === "message"
+    && notification.threadType === threadType
+    && notification.threadKey === threadKey
+    && (!notification.recipientId || notification.recipientId === currentThreadUserId())
+  );
+  for (const notification of matches) {
+    await put("appNotifications", { ...notification, readAt: now });
+  }
+  if (matches.length) {
+    await loadState();
+    renderNotificationSurfaces();
+  }
+}
+
+function messageNotificationRecipients() {
+  const currentId = currentThreadUserId();
+  return activeThreadMemberProfiles()
+    .map((member) => messageMemberIdentityKey(member))
+    .filter((id) => id && id !== currentId);
+}
+
+async function createMessageNotifications(message, deliveredMessage = {}) {
+  if (!sendbirdActiveThread) return;
+  const recipients = messageNotificationRecipients();
+  if (!recipients.length) return;
+  const meta = activeMessageNotificationMeta();
+  const sender = notificationSubscriberForCurrentUser();
+  const senderName = `${sender.firstName || ""} ${sender.lastName || ""}`.trim() || "Someone";
+  const preview = String(message || deliveredMessage.message || deliveredMessage.name || deliveredMessage.fileName || "Photo").replace(/\s+/g, " ").trim();
+  const messageId = sendbirdMessageKey(deliveredMessage) || String(deliveredMessage.reqId || deliveredMessage.requestId || Date.now());
+  for (const recipientId of recipients) {
+    await createAppNotification({
+      id: `message-${meta.threadKey}-${messageId}-${recipientId}`.replace(/[^a-zA-Z0-9:_-]/g, "-"),
+      title: activeMessageThreadTitle(),
+      body: `${senderName}: ${preview || "New message"}`,
+      type: "message",
+      recipientId,
+      ...meta
+    });
+  }
+}
+
 async function ensureSendbirdConnected() {
   if (sendbirdClient?.currentUser) return sendbirdClient;
   await connectSendbirdMessaging();
@@ -9196,6 +9334,7 @@ async function sendSendbirdPayload({ message = "", attachments = [], reply = nul
       deliveryStatus: "delivered"
     };
     sendbirdMessages = sendbirdMessages.map((item) => item.messageId === optimisticId ? deliveredMessage : item);
+    await createMessageNotifications(message, deliveredMessage);
     refreshSendbirdTypingUsers();
     renderMessageThread();
     scrollActiveMessageThreadToBottom();

@@ -1,5 +1,5 @@
 {
-  "version": "V1.04.056",
-  "title": "V1.04.056 update installed",
-  "body": "Opened message threads at the most recent message by default."
+  "version": "V1.04.057",
+  "title": "V1.04.057 update installed",
+  "body": "Added message-thread notifications, thread-level cleanup, and native push bridge handling."
 }
