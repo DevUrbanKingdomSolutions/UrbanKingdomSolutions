@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.04.058",
-  title: "V1.04.058 update installed",
-  body: "Expanded message notifications to all chat members across every access level."
+  version: "V1.04.059",
+  title: "V1.04.059 update installed",
+  body: "Published message notifications through the shared mobile bridge for all chat access levels."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -1033,11 +1033,19 @@ async function hydrateAppRecordsFromSupabase() {
 }
 
 async function hydrateNotificationsFromSupabase() {
-  if (!supabaseClient || !authState.session || !authState.roleRecord || isAdminRole() || !cloudClientId()) return;
+  if (!supabaseClient || !authState.session || !authState.roleRecord) return;
+  const clientIds = Array.from(new Set([
+    cloudClientId(),
+    authState.roleRecord?.client_id || "",
+    activeClientRecord()?.id || "",
+    ...state.events.map((event) => event.clientId).filter(Boolean),
+    ...state.clients.map((client) => client.id).filter(Boolean)
+  ].filter(Boolean)));
+  if (!clientIds.length) return;
   const { data, error } = await supabaseClient
     .from("app_records")
     .select("data")
-    .eq("client_id", cloudClientId())
+    .in("client_id", clientIds)
     .eq("store_name", "appNotifications");
   if (error) {
     console.warn("Could not load shared notifications.", error);
@@ -6262,16 +6270,43 @@ function releaseNotificationId(version) {
 
 async function createAppNotification({ title, body = "", type = "info", viewId = "", recordId = "", recipientId = "", ...extra }) {
   if (!title) return;
-  await put("appNotifications", {
+  const notification = {
+    ...extra,
     title,
     body,
     type,
     viewId,
     recordId,
-    recipientId,
-    ...extra
-  });
+    recipientId
+  };
+  const id = await put("appNotifications", notification);
+  const saved = { ...notification, id: notification.id || id };
+  if (type === "message") await syncAppNotificationToSupabase(saved);
   await refreshNotificationsFromStorage();
+  return saved;
+}
+
+function notificationCloudClientId(notification = {}) {
+  if (notification.clientId) return notification.clientId;
+  if (notification.threadType === "adminClient" && notification.threadProfileId) return notification.threadProfileId;
+  if (notification.threadEventId) return getEvent(notification.threadEventId)?.clientId || eventClientId(getEvent(notification.threadEventId));
+  return cloudClientId();
+}
+
+async function syncAppNotificationToSupabase(notification) {
+  if (!supabaseClient || !authState.session || !notification?.id) return;
+  const clientId = notificationCloudClientId(notification);
+  if (!clientId) return;
+  const { error } = await supabaseClient
+    .from("app_records")
+    .upsert({
+      client_id: clientId,
+      store_name: "appNotifications",
+      record_id: String(notification.id),
+      data: { ...notification, clientId },
+      updated_by: authState.user?.id || null
+    }, { onConflict: "client_id,store_name,record_id" });
+  if (error) throw error;
 }
 
 async function ensureWelcomeNotification() {
@@ -8879,12 +8914,16 @@ function activeMessageThreadKey() {
 function activeMessageNotificationMeta() {
   if (!sendbirdActiveThread) return {};
   const threadKey = activeMessageThreadKey();
+  const event = getEvent(sendbirdActiveThread.eventId);
   return {
     viewId: "messages",
     threadType: sendbirdActiveThread.type,
     threadKey,
     threadEventId: sendbirdActiveThread.eventId || "",
-    threadProfileId: sendbirdActiveThread.profileId || ""
+    threadProfileId: sendbirdActiveThread.profileId || "",
+    clientId: sendbirdActiveThread.type === "adminClient"
+      ? sendbirdActiveThread.profileId || cloudClientId()
+      : event?.clientId || eventClientId(event) || cloudClientId()
   };
 }
 
