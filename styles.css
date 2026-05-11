@@ -4667,7 +4667,7 @@ body:not(.owner-mode) .rate-field {
 
   .chat-thread {
     gap: 10px;
-    padding: 14px 2px calc(72px + env(safe-area-inset-bottom));
+    padding: 14px 2px 10px;
   }
 
   .message-bubble-row {
