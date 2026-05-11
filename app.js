@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.04.059",
-  title: "V1.04.059 update installed",
-  body: "Published message notifications through the shared mobile bridge for all chat access levels."
+  version: "V1.04.060",
+  title: "V1.04.060 update installed",
+  body: "Matched message notifications across profile, login, role, and device identities."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -6171,12 +6171,46 @@ function renderMessaging() {
 }
 
 function visibleNotifications() {
-  const currentId = currentThreadUserId();
+  const currentIds = notificationRecipientIdsForCurrentUser();
   return state.appNotifications
     .filter((notification) => notification.type !== "system" || isAdminRole())
     .filter((notification) => !notification.readAt)
-    .filter((notification) => !notification.recipientId || !currentId || notification.recipientId === currentId)
+    .filter((notification) => notificationMatchesCurrentRecipient(notification, currentIds))
     .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+}
+
+function notificationRecipientIdsForCurrentUser() {
+  const values = [
+    currentThreadUserId(),
+    currentSendbirdUserId(),
+    authState.user?.id,
+    authState.user?.email,
+    authState.roleRecord?.worker_id,
+    authState.roleRecord?.promoter_id,
+    authState.roleRecord?.client_id,
+    activeClientRepRecord()?.id,
+    activeClientRepRecord()?.authUserId,
+    activeClientRepRecord()?.email,
+    getWorker(state.activeWorkerId)?.id,
+    getWorker(state.activeWorkerId)?.authUserId,
+    getWorker(state.activeWorkerId)?.email,
+    getPromoter(state.activePromoterId)?.id,
+    getPromoter(state.activePromoterId)?.authUserId,
+    getPromoter(state.activePromoterId)?.email,
+    activeAdminProfile()?.id,
+    activeAdminProfile()?.authUserId,
+    activeAdminProfile()?.email
+  ];
+  return new Set(values.map((value) => baseSendbirdUserId(value).trim()).filter(Boolean));
+}
+
+function notificationMatchesCurrentRecipient(notification, currentIds = notificationRecipientIdsForCurrentUser()) {
+  const recipients = [
+    notification.recipientId,
+    ...(Array.isArray(notification.recipientIds) ? notification.recipientIds : [])
+  ].map((value) => baseSendbirdUserId(value).trim()).filter(Boolean);
+  if (!recipients.length) return true;
+  return recipients.some((id) => currentIds.has(id));
 }
 
 function unreadNotificationCount() {
@@ -6241,7 +6275,7 @@ async function refreshNotificationsFromStorage() {
         && notification.type === "message"
         && notification.threadType === activeThreadType
         && notification.threadKey === activeThreadKey
-        && (!notification.recipientId || notification.recipientId === currentThreadUserId()))
+        && notificationMatchesCurrentRecipient(notification))
     : [];
   if (activeThreadNotices.length) {
     const now = new Date().toISOString();
@@ -8935,7 +8969,7 @@ async function markMessageThreadNotificationsRead(threadType, threadKey) {
     && notification.type === "message"
     && notification.threadType === threadType
     && notification.threadKey === threadKey
-    && (!notification.recipientId || notification.recipientId === currentThreadUserId())
+    && notificationMatchesCurrentRecipient(notification)
   );
   for (const notification of matches) {
     await put("appNotifications", { ...notification, readAt: now });
@@ -8947,7 +8981,6 @@ async function markMessageThreadNotificationsRead(threadType, threadKey) {
 }
 
 function messageNotificationRecipients() {
-  const currentId = currentThreadUserId();
   const ids = new Set();
   activeThreadMemberProfiles().forEach((member) => {
     const id = messageMemberIdentityKey(member);
@@ -8965,7 +8998,8 @@ function messageNotificationRecipients() {
     const baseId = baseSendbirdUserId(id).trim();
     if (baseId) ids.add(baseId);
   });
-  return Array.from(ids).filter((id) => id && id !== currentId && id !== "system_ops");
+  notificationRecipientIdsForCurrentUser().forEach((id) => ids.add(id));
+  return Array.from(ids).filter((id) => id && id !== "system_ops");
 }
 
 async function createMessageNotifications(message, deliveredMessage = {}) {
