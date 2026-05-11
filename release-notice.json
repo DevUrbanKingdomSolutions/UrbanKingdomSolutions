@@ -1,5 +1,5 @@
 {
-  "version": "V1.04.089",
-  "title": "V1.04.089 update installed",
-  "body": "Kept chat bottom-opening isolated to the chat thread while normal mobile pages reset to the top."
+  "version": "V1.04.090",
+  "title": "V1.04.090 update installed",
+  "body": "Reset outgoing mobile pages before navigation so only the chat thread opens at the newest message."
 }

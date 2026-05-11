@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.04.089",
-  title: "V1.04.089 update installed",
-  body: "Kept chat bottom-opening isolated to the chat thread while normal mobile pages reset to the top."
+  version: "V1.04.090",
+  title: "V1.04.090 update installed",
+  body: "Reset outgoing mobile pages before navigation so only the chat thread opens at the newest message."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -7579,10 +7579,12 @@ function setView(viewId, options = {}) {
   }
   const previousView = state.activeView;
   viewId = protectedViewFor(viewId);
+  const changedView = previousView !== viewId;
+  if (changedView) resetViewScrollPosition(previousView);
   const resetMessagesSelector = viewId === "messages";
   if (resetMessagesSelector) clearActiveMessageThread();
   state.activeView = viewId;
-  if (!options.skipHistory && previousView && previousView !== viewId) {
+  if (!options.skipHistory && previousView && changedView) {
     viewHistoryStack = [...viewHistoryStack.filter((item) => item !== previousView), previousView].slice(-8);
   }
   sessionStorage.setItem(LAST_ACTIVE_VIEW_KEY, viewId);
@@ -7596,16 +7598,31 @@ function setView(viewId, options = {}) {
   if (requestedView !== viewId) toast("That view is restricted for your role.");
   closeMobileNavigation();
   if (resetMessagesSelector) renderMessaging();
-  if (previousView !== viewId) resetViewScrollPosition();
+  if (changedView) resetViewScrollPosition(viewId);
 }
 
-function resetViewScrollPosition() {
+function resetViewScrollPosition(viewId = state.activeView) {
+  const view = viewId ? document.getElementById(viewId) : $(".active-view");
+  resetScrollNode(view);
+  resetScrollNode($(".content"));
+  resetScrollNode(document.scrollingElement || document.documentElement);
+  if (window.scrollX || window.scrollY) window.scrollTo({ top: 0, left: 0, behavior: "auto" });
   requestAnimationFrame(() => {
-    $(".active-view")?.scrollTo?.({ top: 0, left: 0, behavior: "auto" });
-    $(".content")?.scrollTo?.({ top: 0, left: 0, behavior: "auto" });
-    document.documentElement.scrollTo?.({ top: 0, left: 0, behavior: "auto" });
-    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+    resetScrollNode(view);
+    resetScrollNode($(".content"));
+    resetScrollNode(document.scrollingElement || document.documentElement);
+    if (window.scrollX || window.scrollY) window.scrollTo({ top: 0, left: 0, behavior: "auto" });
   });
+}
+
+function resetScrollNode(node) {
+  if (!node || node === $("#messageThread")) return;
+  if (typeof node.scrollTo === "function") {
+    node.scrollTo({ top: 0, left: 0, behavior: "auto" });
+    return;
+  }
+  node.scrollTop = 0;
+  node.scrollLeft = 0;
 }
 
 function combinedNavGroups() {
