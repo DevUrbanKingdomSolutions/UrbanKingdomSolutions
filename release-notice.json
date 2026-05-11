@@ -1,5 +1,5 @@
 {
-  "version": "V1.04.061",
-  "title": "V1.04.061 update installed",
-  "body": "Pulled message notifications through crew worker client links."
+  "version": "V1.04.062",
+  "title": "V1.04.062 update installed",
+  "body": "Created message notifications from incoming Sendbird group and direct messages."
 }

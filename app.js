@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.04.061",
-  title: "V1.04.061 update installed",
-  body: "Pulled message notifications through crew worker client links."
+  version: "V1.04.062",
+  title: "V1.04.062 update installed",
+  body: "Created message notifications from incoming Sendbird group and direct messages."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -272,6 +272,8 @@ let pendingMessageAttachments = [];
 let pendingMessageReply = null;
 let messageActionTimer = null;
 let messageActionTargetKey = "";
+let sendbirdGroupChannelHandlerClass = null;
+let sendbirdInboundMessageHandlerReady = false;
 let sendbirdTypingPoller = null;
 let sendbirdMessageRefreshPoller = null;
 let sendbirdMessageRefreshInFlight = false;
@@ -6448,7 +6450,7 @@ async function openNotification(id) {
 
 async function openNotificationMessageThread(notification) {
   if (notification.threadType === "direct") {
-    await openDirectMessageChannel(notification.threadProfileId || directProfileIdFromThreadKey(notification.threadKey));
+    await openDirectMessageChannel(directProfileIdFromThreadKey(notification.threadKey) || notification.threadProfileId);
     return;
   }
   if (["event", "office", "crew"].includes(notification.threadType)) {
@@ -8967,6 +8969,28 @@ function activeMessageNotificationMeta() {
   };
 }
 
+function messageThreadMetaFromChannel(channel = {}) {
+  let data = {};
+  try {
+    data = JSON.parse(channel.data || "{}") || {};
+  } catch {
+    data = {};
+  }
+  const threadType = data.threadType || channel.customType || "event";
+  const threadKey = data.threadKey || messageThreadKey(threadType, data.eventId || "", data.profileId || "");
+  const eventId = data.eventId || threadEventIdFromThreadKey(threadKey);
+  const event = getEvent(eventId);
+  return {
+    viewId: "messages",
+    threadType,
+    threadKey,
+    threadEventId: eventId,
+    threadProfileId: threadType === "direct" ? "" : data.profileId || "",
+    clientId: data.clientId || (threadType === "adminClient" ? data.profileId : "") || event?.clientId || eventClientId(event) || cloudClientId(),
+    title: channel.name || sendbirdThreadName(threadType, event, { id: data.profileId || "" })
+  };
+}
+
 async function markMessageThreadNotificationsRead(threadType, threadKey) {
   if (!threadType || !threadKey) return;
   const now = new Date().toISOString();
@@ -8984,6 +9008,11 @@ async function markMessageThreadNotificationsRead(threadType, threadKey) {
     await loadState();
     renderNotificationSurfaces();
   }
+}
+
+function messageBelongsToActiveThread(channel = {}) {
+  if (!sendbirdActiveChannel || !channel) return false;
+  return channel.url && sendbirdActiveChannel.url && channel.url === sendbirdActiveChannel.url;
 }
 
 function messageNotificationRecipients() {
@@ -9027,6 +9056,58 @@ async function createMessageNotifications(message, deliveredMessage = {}) {
       ...meta
     });
   }
+}
+
+async function createReceivedMessageNotification(channel, message) {
+  if (!message || baseSendbirdUserId(message.sender?.userId) === baseSendbirdUserId(sendbirdClient?.currentUser?.userId)) return;
+  const meta = messageThreadMetaFromChannel(channel);
+  const preview = String(message.message || message.name || message.fileName || "New message").replace(/\s+/g, " ").trim();
+  const senderName = message.sender?.nickname || message.sender?.userId || "New message";
+  await createAppNotification({
+    id: `message-${meta.threadKey}-${sendbirdMessageKey(message) || message.reqId || Date.now()}-${currentThreadUserId()}`.replace(/[^a-zA-Z0-9:_-]/g, "-"),
+    title: meta.title || "Messages",
+    body: `${senderName}: ${preview || "New message"}`,
+    type: "message",
+    recipientId: currentThreadUserId(),
+    viewId: "messages",
+    threadType: meta.threadType,
+    threadKey: meta.threadKey,
+    threadEventId: meta.threadEventId,
+    threadProfileId: meta.threadProfileId,
+    clientId: meta.clientId
+  });
+}
+
+async function handleIncomingSendbirdMessage(channel, message) {
+  if (!message) return;
+  if (messageBelongsToActiveThread(channel)) {
+    const key = sendbirdMessageKey(message);
+    if (!key || !sendbirdMessages.some((item) => sendbirdMessageKey(item) === key)) {
+      sendbirdMessages = mergeVisibleSendbirdMessages([message]);
+      renderMessageThread();
+      if (isActiveMessageScrolledToBottom()) scrollActiveMessageThreadToBottom();
+    }
+    await markMessageThreadNotificationsRead(sendbirdActiveThread?.type || "", activeMessageThreadKey());
+    return;
+  }
+  await createReceivedMessageNotification(channel, message);
+}
+
+function startSendbirdInboundMessageHandler() {
+  if (!sendbirdClient?.groupChannel || sendbirdInboundMessageHandlerReady) return;
+  sendbirdInboundMessageHandlerReady = true;
+  const handler = sendbirdGroupChannelHandlerClass
+    ? new sendbirdGroupChannelHandlerClass({
+        onMessageReceived: (channel, message) => {
+          handleIncomingSendbirdMessage(channel, message).catch((error) => console.warn("Incoming message notification failed", error));
+        }
+      })
+    : {
+        onMessageReceived: (channel, message) => {
+          handleIncomingSendbirdMessage(channel, message).catch((error) => console.warn("Incoming message notification failed", error));
+        }
+      };
+  sendbirdClient.groupChannel.addGroupChannelHandler?.("productionCrewMessageNotifications", handler);
 }
 
 async function ensureSendbirdConnected() {
@@ -9075,6 +9156,7 @@ function resetSendbirdRuntimeCache() {
   sendbirdActiveThread = null;
   sendbirdMessages = [];
   sendbirdTypingUsers = [];
+  sendbirdInboundMessageHandlerReady = false;
   sendbirdClient = null;
   Object.keys(localStorage)
     .filter((key) => key.startsWith("sb-") || key.toLowerCase().includes("sendbird"))
@@ -9091,7 +9173,8 @@ async function loadSendbirdSdkModules() {
       ]);
       return {
         SendbirdChat: chatModule.default,
-        GroupChannelModule: groupChannelModule.GroupChannelModule
+        GroupChannelModule: groupChannelModule.GroupChannelModule,
+        GroupChannelHandler: groupChannelModule.GroupChannelHandler
       };
     } catch (error) {
       errors.push(error?.message || String(error));
@@ -9125,7 +9208,8 @@ async function connectSendbirdMessaging(options = {}) {
     if (options.clean) resetSendbirdRuntimeCache();
     sendbirdConnectionState = { status: "connecting", errorCode: "", errorMessage: "" };
     renderMessaging();
-    const { SendbirdChat, GroupChannelModule } = await loadSendbirdSdkModules();
+    const { SendbirdChat, GroupChannelModule, GroupChannelHandler } = await loadSendbirdSdkModules();
+    sendbirdGroupChannelHandlerClass = GroupChannelHandler || sendbirdGroupChannelHandlerClass;
     if (!sendbirdClient) {
       sendbirdClient = SendbirdChat.init({
         appId: SENDBIRD_APP_ID,
@@ -9140,6 +9224,7 @@ async function connectSendbirdMessaging(options = {}) {
     sendbirdConnectionState = { status: "connected", errorCode: "", errorMessage: "" };
     startSendbirdTypingPoller();
     startSendbirdMessageRefreshPoller();
+    startSendbirdInboundMessageHandler();
     await ensureDueEventMessageChannels();
     renderMessaging();
     if (!options.quiet) toast("Messaging connected.");
