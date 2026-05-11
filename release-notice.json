@@ -1,5 +1,5 @@
 {
-  "version": "V1.04.052",
-  "title": "V1.04.052 update installed",
-  "body": "Applied the role color accents to the mobile header, drawer, bottom nav, and message surfaces."
+  "version": "V1.04.053",
+  "title": "V1.04.053 update installed",
+  "body": "Hid idle typing text and made active chats stay pinned to new messages when already at the bottom."
 }

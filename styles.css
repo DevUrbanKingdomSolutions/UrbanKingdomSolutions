@@ -2533,6 +2533,11 @@ td p {
   background: #ffffff;
 }
 
+.typing-status[hidden],
+.typing-status:empty {
+  display: none;
+}
+
 #sendbirdMessageForm {
   display: grid;
   grid-template-columns: auto auto auto minmax(0, 1fr) auto;

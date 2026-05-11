@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.04.052",
-  title: "V1.04.052 update installed",
-  body: "Applied the role color accents to the mobile header, drawer, bottom nav, and message surfaces."
+  version: "V1.04.053",
+  title: "V1.04.053 update installed",
+  body: "Hid idle typing text and made active chats stay pinned to new messages when already at the bottom."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -6636,12 +6636,16 @@ function renderMessageThread() {
     if (title) title.textContent = "Select a chat";
     if (meta) meta.textContent = "Choose a thread or direct message from the list.";
     if (members) members.innerHTML = "";
-    if (typing) typing.innerHTML = "";
+    if (typing) {
+      typing.innerHTML = "";
+      typing.hidden = true;
+    }
     form.hidden = true;
     clearPendingMessageAttachments();
     thread.innerHTML = `<div class="chat-thread-empty">Choose a message thread from the list.</div>`;
     return;
   }
+  const scrollState = captureActiveMessageScrollState();
   title.textContent = activeMessageThreadTitle();
   meta.textContent = activeThreadManagementLabel();
   if (members) members.innerHTML = renderActiveThreadMembers();
@@ -6652,8 +6656,13 @@ function renderMessageThread() {
         ? `<div class="chat-thread">${visibleMessages.map((message) => messageBubble(message)).join("")}</div>`
         : `<div class="chat-thread-empty">No messages loaded yet.</div>`)
     : `<div class="chat-thread-empty">Choose a message thread from the list.</div>`;
-  if (typing) typing.innerHTML = renderTypingStatus();
+  if (typing) {
+    const typingHtml = renderTypingStatus();
+    typing.innerHTML = typingHtml;
+    typing.hidden = !typingHtml;
+  }
   renderMessageComposerTools();
+  restoreActiveMessageScrollState(scrollState);
 }
 
 function activeMessageThreadTitle() {
@@ -6697,10 +6706,65 @@ function systemAdminThreadMessages() {
 }
 
 function scrollActiveMessageThreadToBottom() {
-  const thread = $("#messageThread");
-  if (!thread) return;
   window.requestAnimationFrame(() => {
-    thread.scrollTop = thread.scrollHeight;
+    const target = activeMessageScrollTarget();
+    if (!target) return;
+    setActiveMessageScrollTop(target, target.scrollHeight);
+    const thread = $("#messageThread");
+    if (thread) thread.scrollTop = thread.scrollHeight;
+  });
+}
+
+function activeMessageScrollTarget() {
+  const thread = $("#messageThread");
+  if (!thread) return null;
+  const threadCanScroll = thread.scrollHeight > thread.clientHeight + 2 && getComputedStyle(thread).overflowY !== "visible";
+  if (threadCanScroll) return thread;
+  if (isMobileMessageLayout()) return document.scrollingElement || document.documentElement;
+  return thread;
+}
+
+function activeMessageScrollTop(target) {
+  return target === document.scrollingElement || target === document.documentElement
+    ? window.scrollY || target.scrollTop || 0
+    : target.scrollTop;
+}
+
+function setActiveMessageScrollTop(target, top) {
+  if (target === document.scrollingElement || target === document.documentElement) {
+    window.scrollTo({ top, left: 0, behavior: "auto" });
+    return;
+  }
+  target.scrollTop = top;
+}
+
+function isActiveMessageScrolledToBottom() {
+  const target = activeMessageScrollTarget();
+  if (!target) return true;
+  const gap = target.scrollHeight - target.clientHeight - activeMessageScrollTop(target);
+  return gap <= 96;
+}
+
+function captureActiveMessageScrollState() {
+  const target = activeMessageScrollTarget();
+  if (!target) return { target: null, top: 0, stickToBottom: true };
+  return {
+    target,
+    top: activeMessageScrollTop(target),
+    stickToBottom: isActiveMessageScrolledToBottom()
+  };
+}
+
+function restoreActiveMessageScrollState(scrollState) {
+  if (!scrollState?.target) return;
+  window.requestAnimationFrame(() => {
+    const target = activeMessageScrollTarget();
+    if (!target) return;
+    if (scrollState.stickToBottom) {
+      setActiveMessageScrollTop(target, target.scrollHeight);
+      return;
+    }
+    setActiveMessageScrollTop(target, Math.min(scrollState.top, target.scrollHeight));
   });
 }
 
@@ -6764,7 +6828,7 @@ function messageAvatar(profile, fallbackName = "User") {
 function renderTypingStatus() {
   if (!sendbirdActiveChannel) return "";
   const users = sendbirdTypingUsers.filter((user) => user?.userId !== sendbirdClient?.currentUser?.userId);
-  if (!users.length) return `<span>No one is typing</span>`;
+  if (!users.length) return "";
   const names = users.map((user) => typingUserDisplayName(user)).filter(Boolean).slice(0, 3);
   return `<span>${escapeHtml(names.join(", "))} ${names.length === 1 ? "is" : "are"} typing...</span>`;
 }
