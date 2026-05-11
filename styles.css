@@ -1638,6 +1638,14 @@ body.modal-open {
   overflow: hidden;
 }
 
+body.pull-refresh-settling .active-view {
+  transition: transform 180ms ease;
+}
+
+body.pull-refresh-dragging .active-view {
+  transition: none;
+}
+
 .pull-refresh-indicator {
   position: fixed;
   top: max(10px, env(safe-area-inset-top));
@@ -4199,6 +4207,8 @@ body:not(.owner-mode) .rate-field {
     overflow-x: clip;
     overflow-y: auto;
     padding-bottom: 18px;
+    transform: translateY(var(--pull-refresh-offset, 0));
+    will-change: transform;
     -webkit-overflow-scrolling: touch;
   }
 

@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.04.099",
-  title: "V1.04.099 update installed",
-  body: "Expanded the mobile pull-to-refresh behavior across all pages."
+  version: "V1.04.100",
+  title: "V1.04.100 update installed",
+  body: "Added a smoother drag-down refresh motion on mobile pages."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -782,6 +782,10 @@ function initMobileAppLifecycle() {
 
 function updatePullRefreshIndicator(distance = 0) {
   const indicator = $("#pullRefreshIndicator");
+  const pullOffset = pullRefreshState.refreshing ? 34 : Math.min(58, Math.max(0, distance * 0.42));
+  document.documentElement.style.setProperty("--pull-refresh-offset", `${pullOffset}px`);
+  document.body.classList.toggle("pull-refresh-dragging", distance > 0 && !pullRefreshState.refreshing);
+  document.body.classList.toggle("pull-refresh-settling", distance === 0 || pullRefreshState.refreshing);
   if (!indicator) return;
   const active = distance > 16 || pullRefreshState.refreshing;
   const ready = distance >= PULL_REFRESH_THRESHOLD || pullRefreshState.refreshing;
@@ -840,6 +844,7 @@ function initPullToRefresh() {
     const shouldRefresh = pullRefreshState.armed;
     pullRefreshState.tracking = false;
     if (!shouldRefresh) {
+      pullRefreshState.armed = false;
       updatePullRefreshIndicator(0);
       return;
     }
