@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.04.080",
-  title: "V1.04.080 update installed",
-  body: "Matched the chat composer, send button, sent bubbles, and message avatars to the active role color."
+  version: "V1.04.081",
+  title: "V1.04.081 update installed",
+  body: "Matched message sender initials and avatar rings to each sender role color."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -7126,12 +7126,30 @@ function profileForSendbirdUserId(userId) {
   ].find((profile) => [profile.authUserId, profile.id, profile.email].map((value) => baseSendbirdUserId(value).trim()).includes(id)) || null;
 }
 
+function messageAvatarTone(profile) {
+  if (!profile) return "client";
+  if (profile.id === "adminProfile" || profile.id === "system_ops" || state.systemProfiles.some((item) => item.id === profile.id)) return "admin";
+  const accessLevels = normalizeAccessLevels(profile.accessLevels, profile.loginRole || profile.role || "");
+  const baseRoles = accessLevels.map(baseRoleForAccess);
+  if (baseRoles.includes("ADMIN")) return "admin";
+  if (baseRoles.includes("CLIENT")) return "client";
+  if (baseRoles.includes("PROMOTER")) return "promoter";
+  if (baseRoles.includes("PRODUCTION")) return "production";
+  if (baseRoles.includes("CREW")) return "crew";
+  if (state.clientReps.some((item) => item.id === profile.id)) return "client";
+  if (state.promoters.some((item) => item.id === profile.id)) return "promoter";
+  if (state.productionContacts.some((item) => item.id === profile.id)) return "production";
+  if (state.workers.some((item) => item.id === profile.id)) return "crew";
+  return "client";
+}
+
 function messageAvatar(profile, fallbackName = "User") {
   const label = profile?.name || profile?.contactName || fallbackName;
+  const tone = messageAvatarTone(profile);
   if (profile?.headshotData && !profile.hideHeadshot) {
-    return `<img class="message-avatar image" src="${profile.headshotData}" alt="${escapeHtml(label)} headshot">`;
+    return `<img class="message-avatar image tone-${escapeHtml(tone)}" src="${profile.headshotData}" alt="${escapeHtml(label)} headshot">`;
   }
-  return `<div class="message-avatar">${escapeHtml(initialsFor(label))}</div>`;
+  return `<div class="message-avatar tone-${escapeHtml(tone)}">${escapeHtml(initialsFor(label))}</div>`;
 }
 
 function renderTypingStatus() {

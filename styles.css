@@ -2461,22 +2461,49 @@ td p {
 }
 
 .message-avatar {
+  --message-avatar-accent: var(--accent);
+  --message-avatar-dark: var(--accent-dark);
   display: grid;
   width: 36px;
   height: 36px;
   place-items: center;
   border-radius: 50%;
-  background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 82%, #ffffff), var(--accent-dark));
+  background: linear-gradient(135deg, color-mix(in srgb, var(--message-avatar-accent) 82%, #ffffff), var(--message-avatar-dark));
   color: #ffffff;
   font-size: 12px;
   font-weight: 800;
-  box-shadow: 0 8px 18px color-mix(in srgb, var(--accent) 18%, transparent);
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--message-avatar-accent) 18%, transparent);
+}
+
+.message-avatar.tone-admin {
+  --message-avatar-accent: #b8352d;
+  --message-avatar-dark: #87251f;
+}
+
+.message-avatar.tone-client {
+  --message-avatar-accent: #2d6cdf;
+  --message-avatar-dark: #1d4f9f;
+}
+
+.message-avatar.tone-promoter {
+  --message-avatar-accent: #2c7a4b;
+  --message-avatar-dark: #1f5b38;
+}
+
+.message-avatar.tone-production {
+  --message-avatar-accent: #b8871f;
+  --message-avatar-dark: #866113;
+}
+
+.message-avatar.tone-crew {
+  --message-avatar-accent: #8a70d6;
+  --message-avatar-dark: #6750a9;
 }
 
 .message-avatar.image {
   display: block;
   object-fit: cover;
-  border: 1px solid var(--line);
+  border: 2px solid color-mix(in srgb, var(--message-avatar-accent) 58%, #ffffff);
 }
 
 .message-bubble {
