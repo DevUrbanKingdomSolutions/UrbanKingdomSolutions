@@ -3451,6 +3451,42 @@ td p {
   white-space: pre-line;
 }
 
+.profile-popup-card {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.profile-popup-card .profile-page-header {
+  padding-bottom: 18px;
+  border-bottom: 1px solid color-mix(in srgb, var(--accent) 16%, var(--line));
+}
+
+.profile-popup-card .premium-profile-content {
+  padding: 0;
+}
+
+.profile-note-list {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.profile-note-list li {
+  padding: 0 0 10px;
+  border-bottom: 1px solid color-mix(in srgb, var(--accent) 10%, var(--line));
+  color: var(--ink);
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+.profile-note-list li:last-child {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
 .premium-profile-card {
   overflow: hidden;
   gap: 18px;

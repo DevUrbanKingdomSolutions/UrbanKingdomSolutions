@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.04.120",
-  title: "V1.04.120 update installed",
-  body: "Updated sidebar navigation so only one grouped section stays open at a time."
+  version: "V1.04.121",
+  title: "V1.04.121 update installed",
+  body: "Refined profile popups with grouped sections, listed dated notes, and collapsed nav groups on fresh startup."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -401,6 +401,16 @@ let state = {
   messageDirectPickerOpen: false,
   collapsedNavGroups: JSON.parse(localStorage.getItem("productionCrewCollapsedNavGroups") || "{}")
 };
+resetNavGroupsForFreshLoad();
+
+function resetNavGroupsForFreshLoad() {
+  const navigation = performance.getEntriesByType?.("navigation")?.[0];
+  const isHardRefresh = navigation?.type === "reload";
+  const isFreshWindow = !sessionStorage.getItem(ACTIVE_BROWSER_SESSION_KEY);
+  if (!isHardRefresh && !isFreshWindow) return;
+  state.collapsedNavGroups = {};
+  localStorage.removeItem("productionCrewCollapsedNavGroups");
+}
 
 const NAV_GROUPS = {
   ADMIN: [
@@ -3836,10 +3846,26 @@ function profileInfoSection(title, details = []) {
 }
 
 function profileTextSection(title, value) {
+  if (/note/i.test(title || "")) {
+    const entries = noteListEntries(value);
+    if (!entries.length) return "";
+    return `<section class="profile-info-section profile-text-section profile-note-section">
+      <h4>${escapeHtml(title)}</h4>
+      <ul class="profile-note-list">${entries.map((entry) => `<li>${escapeHtml(entry)}</li>`).join("")}</ul>
+    </section>`;
+  }
   return value ? `<section class="profile-info-section profile-text-section">
     <h4>${escapeHtml(title)}</h4>
     <p>${escapeHtml(value)}</p>
   </section>` : "";
+}
+
+function noteListEntries(value = "") {
+  return String(value || "")
+    .replace(/\s+(?=[A-Z][a-z]{2}\s+\d{1,2},\s+\d{4},?\s+\d{1,2}:\d{2}\s*(?:AM|PM)?\s+-\s+)/g, "\n")
+    .split(/\n+/)
+    .map((line) => line.trim())
+    .filter(Boolean);
 }
 
 function profileLogoHtml(profile, fallback = "Profile", className = "profile-logo-frame") {
@@ -3875,9 +3901,12 @@ function profileHeroCard({ tone = "", title = "", subtitle = "", meta = "", imag
   </article>`;
 }
 
-function readOnlyProfileCard(title, subtitle, details = [], sections = [], avatarHtml = "") {
+function readOnlyProfileCard(title, subtitle, details = [], sections = [], avatarHtml = "", groups = []) {
   $("#recordViewTitle").textContent = title || "Profile";
-  $("#recordViewBody").innerHTML = `<article class="profile-page-card">
+  const groupedContent = groups.length
+    ? groups.map(([groupTitle, groupDetails]) => profileInfoSection(groupTitle, groupDetails)).join("")
+    : profileInfoSection("Details", details);
+  $("#recordViewBody").innerHTML = `<article class="profile-page-card profile-popup-card">
     <div class="profile-page-header">
       ${avatarHtml || `<div class="profile-avatar-large placeholder">${escapeHtml(initialsFor(title || "Profile"))}</div>`}
       <div>
@@ -3885,8 +3914,10 @@ function readOnlyProfileCard(title, subtitle, details = [], sections = [], avata
         <p>${escapeHtml(subtitle || "")}</p>
       </div>
     </div>
-    <div class="profile-detail-grid">${details.map(([label, value]) => detailItem(label, value)).join("")}</div>
-    ${sections.map(([label, value]) => profileSection(label, value)).join("")}
+    <div class="premium-profile-content">
+      ${groupedContent}
+      ${sections.map(([label, value]) => profileTextSection(label, value)).join("")}
+    </div>
   </article>`;
 }
 
@@ -3897,36 +3928,51 @@ function openReadOnlyRecord(storeName, id) {
     return;
   }
   if (storeName === "workers") {
-    readOnlyProfileCard(record.name, record.role || "Crew / Runner", [
-      ["Phone", publicWorkerValue(record, "phone")],
-      ["Email", publicWorkerValue(record, "email")],
-      ["Status", record.status],
-      ["Mailing Address", record.mailingAddress]
-    ], [
+    readOnlyProfileCard(record.name, record.role || "Crew / Runner", [], [
       ["Skills", record.skills],
       ["Emergency Contact", isCrewRole() ? "" : record.emergency],
       ["Notes", canOwnerEdit() ? record.notes : ""]
-    ], profileAvatarLarge(record, record.hideHeadshot));
+    ], profileAvatarLarge(record, record.hideHeadshot), [
+      ["Contact", [
+        ["Phone", publicWorkerValue(record, "phone")],
+        ["Email", publicWorkerValue(record, "email")],
+        ["Mailing Address", record.mailingAddress]
+      ]],
+      ["Work Profile", [
+        ["Role", record.role || "Crew / Runner"],
+        ["Status", record.status],
+        ["Login", record.authUserId ? "Connected" : "Not connected"]
+      ]]
+    ]);
   } else if (storeName === "promoters") {
-    readOnlyProfileCard(record.name || record.contactName, record.companyName || "Promoter", [
-      ["Rep / Office", record.contactName],
-      ["Phone", record.phone],
-      ["Email", record.email],
-      ["Login", record.authUserId ? "Connected" : "Not connected"]
-    ], [
+    readOnlyProfileCard(record.name || record.contactName, record.companyName || "Promoter", [], [
       ["Billing Notes", record.billing],
       ["Production Notes", record.notes]
-    ], profileAvatarLarge(record, false));
+    ], profileAvatarLarge(record, false), [
+      ["Promoter Profile", [
+        ["Company", record.companyName || "Independent"],
+        ["Rep / Office", record.contactName],
+        ["Login", record.authUserId ? "Connected" : "Not connected"]
+      ]],
+      ["Contact", [
+        ["Phone", record.phone],
+        ["Email", record.email]
+      ]]
+    ]);
   } else if (storeName === "venues") {
-    readOnlyProfileCard(record.name, "Venue", [
-      ["Address", record.address],
-      ["Main Contact", record.contactName],
-      ["Phone", record.phone],
-      ["Email", record.email],
-      ["Parking", record.parking]
-    ], [
+    readOnlyProfileCard(record.name, "Venue", [], [
       ["Venue Contacts", venueContactsForVenue(record.id).map((contact) => `${contact.name || contact.contactName || "Contact"}${contact.title ? `, ${contact.title}` : ""} ${contact.phone || ""} ${contact.email || ""}`).join("\n")],
       ["Notes", record.notes]
+    ], "", [
+      ["Location", [
+        ["Address", record.address],
+        ["Parking", record.parking]
+      ]],
+      ["Main Contact", [
+        ["Name", record.contactName],
+        ["Phone", record.phone],
+        ["Email", record.email]
+      ]]
     ]);
   } else if (storeName === "events") {
     renderEventProfile(record);
@@ -3935,42 +3981,61 @@ function openReadOnlyRecord(storeName, id) {
   } else if (storeName === "vehicleLogs") {
     const event = getEvent(record.eventId);
     const worker = getWorker(record.workerId);
-    readOnlyProfileCard(record.vehicleType || "Vehicle Check", event?.name || "Vehicle", [
-      ["Runner", worker?.name],
-      ["Phase", record.phase || "Start"],
-      ["Plate", record.plateNumber],
-      ["Gas Gauge", record.gasGauge],
-      ["Scheduled Date", formatDate(record.scheduledDate)]
-    ], [
+    readOnlyProfileCard(record.vehicleType || "Vehicle Check", event?.name || "Vehicle", [], [
       ["Prior Damage", record.priorDamage],
       ["Notes", record.notes]
+    ], "", [
+      ["Assignment", [
+        ["Event", event?.name],
+        ["Runner", worker?.name],
+        ["Scheduled Date", formatDate(record.scheduledDate)]
+      ]],
+      ["Vehicle Check", [
+        ["Phase", record.phase || "Start"],
+        ["Plate", record.plateNumber],
+        ["Gas Gauge", record.gasGauge]
+      ]]
     ]);
   } else if (storeName === "accidentReports") {
-    readOnlyProfileCard(record.title, record.type || "Report", [
-      ["Event", getEvent(record.eventId)?.name],
-      ["Worker", getWorker(record.workerId)?.name],
-      ["Reported", formatDate(record.reportedAt)],
-      ["Location", record.incidentLocation]
-    ], [
+    readOnlyProfileCard(record.title, record.type || "Report", [], [
       ["Details", record.details],
       ["Damage / Injury Notes", record.injuryDescription || record.vehicleDamageDescription]
+    ], "", [
+      ["Report", [
+        ["Type", record.type || "Report"],
+        ["Reported", formatDate(record.reportedAt)]
+      ]],
+      ["Related Record", [
+        ["Event", getEvent(record.eventId)?.name],
+        ["Worker", getWorker(record.workerId)?.name],
+        ["Location", record.incidentLocation]
+      ]]
     ]);
   } else if (storeName === "runnerStops") {
-    readOnlyProfileCard(record.name, record.category || "Gig Directory", [
-      ["Phone", record.phone],
-      ["City", record.city],
-      ["State", record.state],
-      ["Address", record.address],
-      ["Hours", record.hours],
-      ["Best Use", record.bestUse]
-    ], [["Notes", record.notes]]);
+    readOnlyProfileCard(record.name, record.category || "Gig Directory", [], [["Notes", record.notes]], "", [
+      ["Contact", [
+        ["Phone", record.phone],
+        ["Hours", record.hours]
+      ]],
+      ["Location", [
+        ["Address", record.address],
+        ["City", record.city],
+        ["State", record.state]
+      ]],
+      ["Use", [
+        ["Category", record.category],
+        ["Best Use", record.bestUse]
+      ]]
+    ]);
   } else if (storeName === "profileNotes") {
-    readOnlyProfileCard(record.title || "Note", record.relatedType || "General note", [
-      ["Created", formatDateWithYear(record.createdAt || record.updatedAt)],
-      ["Updated", formatDateWithYear(record.updatedAt || record.createdAt)],
-      ["Created By", record.createdByName || ""],
-      ["Related To", record.relatedType || "General"]
-    ], [["Note", noteDescription(record.note, record.createdAt || record.updatedAt)]]);
+    readOnlyProfileCard(record.title || "Note", record.relatedType || "General note", [], [["Note", noteDescription(record.note, record.createdAt || record.updatedAt)]], "", [
+      ["Note Details", [
+        ["Created", formatDateWithYear(record.createdAt || record.updatedAt)],
+        ["Updated", formatDateWithYear(record.updatedAt || record.createdAt)],
+        ["Created By", record.createdByName || ""],
+        ["Related To", record.relatedType || "General"]
+      ]]
+    ]);
   } else {
     readOnlyProfileCard(record.name || record.title || "Record", storeName, Object.entries(record).slice(0, 8));
   }
@@ -3994,16 +4059,7 @@ function renderEventProfile(event) {
         ["Additional Rate", currency(assignment.additionalRate || event.additionalRate || activeClientRecord()?.defaultAdditionalRate || 0)]
       ]
     : [];
-  readOnlyProfileCard(event.name, event.type || "Event Profile", [
-    ["Start", formatDate(event.startDate)],
-    ["End", formatDate(event.endDate)],
-    ["Venue", venue?.name],
-    ["Venue Address", venue?.address],
-    ["Promoter", promoterLabel(promoter)],
-    ["Production Contact", event.productionContact],
-    ["Your Status", assignment?.status || (isCrewRole() ? "Assigned" : "")],
-    ...rateDetails
-  ], [
+  readOnlyProfileCard(event.name, event.type || "Event Profile", [], [
     ["Your Assignment", assignment ? [
       `Start: ${formatDate(assignment.startDate || event.startDate) || "Event start"}`,
       `End: ${formatDate(assignment.endDate || event.endDate) || "Event end"}`,
@@ -4015,6 +4071,22 @@ function renderEventProfile(event) {
     ["Venue Details", [venue?.parking ? `Parking: ${venue.parking}` : "", venue?.contactName ? `Contact: ${venue.contactName}` : "", venue?.phone, venue?.email, venue?.notes].filter(Boolean).join("\n")],
     ["Assigned Crew", crew.join(", ")],
     ["Event Notes", event.notes]
+  ], "", [
+    ["Event Details", [
+      ["Start", formatDate(event.startDate)],
+      ["End", formatDate(event.endDate)],
+      ["Type", event.type]
+    ]],
+    ["Production", [
+      ["Promoter", promoterLabel(promoter)],
+      ["Production Contact", event.productionContact],
+      ["Your Status", assignment?.status || (isCrewRole() ? "Assigned" : "")]
+    ]],
+    ["Location", [
+      ["Venue", venue?.name],
+      ["Venue Address", venue?.address]
+    ]],
+    ...(rateDetails.length ? [["Rates", rateDetails]] : [])
   ]);
 }
 
@@ -4028,18 +4100,23 @@ function timecardDetailRows(record) {
   return {
     title: worker?.name || "Timecard",
     subtitle: event?.name || record.eventName || "Timecard",
-    details: [
-      ["Crew Member", worker?.name],
-      ["Event", event?.name || record.eventName],
-      ["Venue", venue?.name],
-      ["Promoter", promoterLabel(promoter)],
-      ["Date", timecardDateLabel(record)],
-      ["Call", formatTime(record.clockIn)],
-      ["Lunch Out", formatTime(record.lunchOut)],
-      ["Lunch In", formatTime(record.lunchIn)],
-      ["Wrap", formatTime(record.clockOut) || "Live"],
-      ["Hours", timecardHours(record).toFixed(2)],
-      ...rateDetails
+    details: [],
+    groups: [
+      ["Crew / Event", [
+        ["Crew Member", worker?.name],
+        ["Event", event?.name || record.eventName],
+        ["Venue", venue?.name],
+        ["Promoter", promoterLabel(promoter)]
+      ]],
+      ["Timecard Line", [
+        ["Date", timecardDateLabel(record)],
+        ["Call", formatTime(record.clockIn)],
+        ["Lunch Out", formatTime(record.lunchOut)],
+        ["Lunch In", formatTime(record.lunchIn)],
+        ["Wrap", formatTime(record.clockOut) || "Live"],
+        ["Hours", timecardHours(record).toFixed(2)]
+      ]],
+      ...(rateDetails.length ? [["Pay", rateDetails]] : [])
     ],
     sections
   };
@@ -4066,7 +4143,7 @@ function renderTimecardProfile(timecardId, editable = false) {
     return;
   }
   const view = timecardDetailRows(record);
-  readOnlyProfileCard(view.title, view.subtitle, view.details, view.sections, profileAvatarLarge(getWorker(record.workerId) || { name: view.title }, getWorker(record.workerId)?.hideHeadshot));
+  readOnlyProfileCard(view.title, view.subtitle, view.details, view.sections, profileAvatarLarge(getWorker(record.workerId) || { name: view.title }, getWorker(record.workerId)?.hideHeadshot), view.groups);
   const actions = canAdminEdit()
     ? `<div class="profile-section profile-actions"><button class="primary-action" data-edit-timecard-detail="${escapeHtml(record.id)}" type="button">Edit Timecard Line</button></div>`
     : "";
@@ -5460,21 +5537,27 @@ function openEventAssignmentDetail(assignmentId) {
         ["Additional Rate", currency(assignment.additionalRate || event?.additionalRate || activeClientRecord()?.defaultAdditionalRate || 0)]
       ]
     : [];
-  readOnlyProfileCard(worker?.name || "Assignment", event?.name || "Event Assignment", [
-    ["Event", event?.name],
-    ["Status", assignment.status || "Assigned"],
-    ["Start", formatDate(assignment.startDate || event?.startDate)],
-    ["End", formatDate(assignment.endDate || event?.endDate)],
-    ["Venue", venue?.name],
-    ["Promoter", promoterLabel(promoter)],
-    ["Vehicle Use", assignment.vehicleUse || "No Vehicle"],
-    ["Vehicle Type", assignment.vehicleType],
-    ["License Plate", plate || "Not set"],
-    ...rateDetails
-  ], [
+  readOnlyProfileCard(worker?.name || "Assignment", event?.name || "Event Assignment", [], [
     ["Rental / Vehicle Info", [assignment.vehicleUse, assignment.vehicleType, plate ? `Plate: ${plate}` : ""].filter(Boolean).join("\n")],
     ["Notes", assignment.notes]
-  ], profileAvatarLarge(worker || { name: "Assignment" }, worker?.hideHeadshot));
+  ], profileAvatarLarge(worker || { name: "Assignment" }, worker?.hideHeadshot), [
+    ["Assignment", [
+      ["Event", event?.name],
+      ["Status", assignment.status || "Assigned"],
+      ["Start", formatDate(assignment.startDate || event?.startDate)],
+      ["End", formatDate(assignment.endDate || event?.endDate)]
+    ]],
+    ["Location / Partner", [
+      ["Venue", venue?.name],
+      ["Promoter", promoterLabel(promoter)]
+    ]],
+    ["Vehicle", [
+      ["Vehicle Use", assignment.vehicleUse || "No Vehicle"],
+      ["Vehicle Type", assignment.vehicleType],
+      ["License Plate", plate || "Not set"]
+    ]],
+    ...(rateDetails.length ? [["Rates", rateDetails]] : [])
+  ]);
   openForm("recordView");
 }
 
