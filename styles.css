@@ -833,7 +833,9 @@ button {
 }
 
 .directory-note-box {
-  border-top: 1px solid var(--border);
+  display: grid;
+  gap: 8px;
+  border-top: 1px solid color-mix(in srgb, var(--accent) 14%, var(--border));
   margin-top: 8px;
   padding-top: 8px;
 }
@@ -842,10 +844,61 @@ button {
   min-height: 58px;
 }
 
+.mini-note-list {
+  display: grid;
+  gap: 8px;
+}
+
 .mini-note-list p {
   color: var(--muted);
   font-size: 0.82rem;
   margin: 0 0 4px;
+}
+
+.runner-rating-box {
+  display: grid;
+  gap: 3px;
+  margin-top: 8px;
+}
+
+.runner-stars {
+  display: inline-flex;
+  gap: 2px;
+}
+
+.runner-star {
+  border: 0;
+  background: transparent;
+  color: #c5cbd0;
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+  padding: 0;
+}
+
+.runner-star.filled {
+  color: color-mix(in srgb, var(--accent) 76%, #d6a900);
+}
+
+.runner-star:disabled {
+  cursor: default;
+}
+
+.runner-rating-box span,
+.runner-note-item span {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.runner-note-item {
+  display: grid;
+  gap: 5px;
+  border-left: 3px solid color-mix(in srgb, var(--accent) 45%, transparent);
+  padding-left: 8px;
+}
+
+.runner-note-item textarea {
+  width: 100%;
 }
 
 .mini-table {

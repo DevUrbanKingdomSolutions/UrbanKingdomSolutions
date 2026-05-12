@@ -1,5 +1,5 @@
 const DB_NAME = "productionCrewDatabase";
-const DB_VERSION = 13;
+const DB_VERSION = 14;
 const SUPABASE_URL = "https://nnhqrhaltkmymnwxydwr.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5uaHFyaGFsdGtteW1ud3h5ZHdyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgwMjMxNDgsImV4cCI6MjA5MzU5OTE0OH0.X9iGhE61WehM57133LKCWMfXXDHmcb2rhw-ZPCKAJos";
 const LOGIN_SETUP_FUNCTION = "send-login-setup";
@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.04.130",
-  title: "V1.04.130 update installed",
-  body: "Polished the Gig Resources resource form and category notice spacing."
+  version: "V1.04.131",
+  title: "V1.04.131 update installed",
+  body: "Added Gig Resources star ratings and two-note review limits."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -66,6 +66,7 @@ const STORES = [
   "runnerStops",
   "runnerCategories",
   "runnerNotes",
+  "runnerRatings",
   "systemProfiles",
   "venueContacts",
   "productionCompanies",
@@ -87,6 +88,7 @@ const CLOUD_SYNC_STORES = new Set([
   "runnerStops",
   "runnerCategories",
   "runnerNotes",
+  "runnerRatings",
   "venueContacts",
   "productionCompanies",
   "productionContacts",
@@ -357,6 +359,7 @@ let state = {
   runnerStops: [],
   runnerCategories: [],
   runnerNotes: [],
+  runnerRatings: [],
   systemProfiles: [],
   venueContacts: [],
   productionCompanies: [],
@@ -1201,7 +1204,7 @@ async function cloudRecordCount() {
 }
 
 async function loadState() {
-  const [clients, clientReps, accessLevelDefs, eventAccessLinks, workers, venues, promoters, profileNotes, events, eventAssignments, eventSwaps, timecards, runnerStops, runnerCategories, runnerNotes, systemProfiles, venueContacts, productionCompanies, productionContacts, vehicleLogs, accidentReports, messageThreadSettings, appNotifications] = await Promise.all(STORES.map(getAll));
+  const [clients, clientReps, accessLevelDefs, eventAccessLinks, workers, venues, promoters, profileNotes, events, eventAssignments, eventSwaps, timecards, runnerStops, runnerCategories, runnerNotes, runnerRatings, systemProfiles, venueContacts, productionCompanies, productionContacts, vehicleLogs, accidentReports, messageThreadSettings, appNotifications] = await Promise.all(STORES.map(getAll));
   state = {
     ...state,
     clients: sortByName(clients),
@@ -1219,6 +1222,7 @@ async function loadState() {
     runnerStops: sortByName(runnerStops),
     runnerCategories: sortByName(runnerCategories),
     runnerNotes: runnerNotes.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0)),
+    runnerRatings,
     systemProfiles: sortByName(systemProfiles),
     venueContacts: sortByName(venueContacts),
     productionCompanies: sortByName(productionCompanies),
@@ -8044,24 +8048,100 @@ function renderActiveThreadMembers() {
 }
 
 function runnerStopRow(stop) {
-  const noteUi = isCrewRole() ? runnerStopNoteUi(stop) : "";
+  const feedbackUi = runnerStopFeedbackUi(stop);
   const location = [stop.city, stop.state].filter(Boolean).join(", ");
-  return `<tr><td><strong>${recordLink("runnerStops", stop.id, stop.name)}</strong><p>${escapeHtml(stop.phone)}</p>${location ? `<p>${escapeHtml(location)}</p>` : ""}</td><td>${escapeHtml(stop.category)}</td><td>${escapeHtml(stop.address)}</td><td>${escapeHtml(stop.hours)}</td><td>${escapeHtml(stop.bestUse)}${noteUi}</td><td>${actionButtons("runnerStops", stop.id, "runnerForm")}</td></tr>`;
+  return `<tr><td><strong>${recordLink("runnerStops", stop.id, stop.name)}</strong><p>${escapeHtml(stop.phone)}</p>${location ? `<p>${escapeHtml(location)}</p>` : ""}${feedbackUi.rating}</td><td>${escapeHtml(stop.category)}</td><td>${escapeHtml(stop.address)}</td><td>${escapeHtml(stop.hours)}</td><td>${escapeHtml(stop.bestUse)}${feedbackUi.notes}</td><td>${actionButtons("runnerStops", stop.id, "runnerForm")}</td></tr>`;
+}
+
+function currentRunnerFeedbackUserId() {
+  const profile = loggedInProfileRecord();
+  return authState.user?.id || profile?.authUserId || profile?.id || activeCrewWorkerId() || authState.user?.email || "";
+}
+
+function currentRunnerFeedbackUserLabel() {
+  const profile = loggedInProfileRecord();
+  return profile?.name || profile?.contactName || authState.user?.user_metadata?.name || authState.user?.email || "User";
+}
+
+function runnerRatingForCurrentUser(stopId) {
+  const userId = currentRunnerFeedbackUserId();
+  return state.runnerRatings.find((rating) => rating.stopId === stopId && rating.userId === userId);
+}
+
+function runnerRatingsForStop(stopId) {
+  return state.runnerRatings.filter((rating) => rating.stopId === stopId && Number(rating.rating) > 0);
+}
+
+function runnerRatingSummary(stopId) {
+  const ratings = runnerRatingsForStop(stopId);
+  if (!ratings.length) return { average: 0, count: 0 };
+  const average = ratings.reduce((sum, rating) => sum + Number(rating.rating || 0), 0) / ratings.length;
+  return { average, count: ratings.length };
+}
+
+function runnerRatingUi(stop) {
+  if (isAdminRole()) return "";
+  const current = runnerRatingForCurrentUser(stop.id);
+  const summary = runnerRatingSummary(stop.id);
+  const stars = [1, 2, 3, 4, 5].map((value) => {
+    const filled = current ? value <= Number(current.rating || 0) : value <= Math.round(summary.average || 0);
+    return `<button class="runner-star ${filled ? "filled" : ""}" data-rate-runner-stop="${escapeHtml(stop.id)}" data-rating="${value}" type="button" ${current ? "disabled" : ""} aria-label="Rate ${value} star${value === 1 ? "" : "s"}">★</button>`;
+  }).join("");
+  const summaryText = summary.count ? `${summary.average.toFixed(1)} from ${summary.count}` : "No ratings yet";
+  const ownText = current ? `Your rating: ${current.rating}` : "Rate once";
+  return `<div class="runner-rating-box"><div class="runner-stars">${stars}</div><span>${escapeHtml(summaryText)} · ${escapeHtml(ownText)}</span></div>`;
+}
+
+function runnerStopFeedbackUi(stop) {
+  return {
+    rating: runnerRatingUi(stop),
+    notes: runnerStopNoteUi(stop)
+  };
 }
 
 function runnerStopNoteUi(stop) {
+  if (isAdminRole()) return "";
   const notes = runnerNotesForStop(stop.id);
-  const remaining = Math.max(0, 5 - runnerNotesAddedThisYear(stop.id));
-  const noteList = notes.length ? `<div class="mini-note-list">${notes.slice(0, 3).map((note) => `<p>${escapeHtml(note.text)}</p>`).join("")}</div>` : "";
+  const ownNotes = runnerNotesForCurrentUser(stop.id);
+  const remaining = Math.max(0, 2 - ownNotes.length);
+  const noteList = notes.length ? `<div class="mini-note-list">${notes.slice(0, 6).map((note) => runnerNoteLine(note, stop.id)).join("")}</div>` : "";
   return `<div class="directory-note-box">
     ${noteList}
-    <textarea data-runner-note-input="${stop.id}" maxlength="500" rows="2" placeholder="Add note, 500 characters max"></textarea>
-    <div class="row-actions"><button class="tiny-button" data-save-runner-note="${stop.id}" type="button" ${remaining <= 0 ? "disabled" : ""}>Add Note</button><span class="muted">${remaining} notes left this year</span></div>
+    <textarea data-runner-note-input="${stop.id}" maxlength="500" rows="2" placeholder="${remaining > 0 ? "Add review note, 500 characters max" : "Two-note max reached"}" ${remaining <= 0 ? "disabled" : ""}></textarea>
+    <div class="row-actions"><button class="tiny-button" data-save-runner-note="${stop.id}" type="button" ${remaining <= 0 ? "disabled" : ""}>Add Note</button><span class="muted">${remaining} of 2 notes left</span></div>
   </div>`;
 }
 
 function runnerNotesForStop(stopId) {
   return state.runnerNotes.filter((note) => note.stopId === stopId).sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+}
+
+function runnerNotesForCurrentUser(stopId) {
+  const userId = currentRunnerFeedbackUserId();
+  const workerId = activeCrewWorkerId();
+  return state.runnerNotes.filter((note) => note.stopId === stopId && (note.userId === userId || (!note.userId && workerId && note.workerId === workerId)));
+}
+
+function runnerNoteEditable(note) {
+  const userId = currentRunnerFeedbackUserId();
+  const workerId = activeCrewWorkerId();
+  const isOwner = note.userId === userId || (!note.userId && workerId && note.workerId === workerId);
+  if (!isOwner) return false;
+  const created = new Date(note.createdAt || note.updatedAt || 0);
+  if (!Number.isFinite(created.getTime())) return false;
+  const expires = new Date(created);
+  expires.setMonth(expires.getMonth() + 6);
+  return new Date() <= expires;
+}
+
+function runnerNoteLine(note, stopId) {
+  const editable = runnerNoteEditable(note);
+  const label = note.userLabel || getWorker(note.workerId)?.name || "User";
+  const meta = `${label}${note.createdAt ? ` · ${new Date(note.createdAt).toLocaleDateString()}` : ""}`;
+  const body = editable
+    ? `<textarea data-runner-note-input="${escapeHtml(stopId)}" data-runner-note-id="${escapeHtml(note.id)}" maxlength="500" rows="2">${escapeHtml(note.text || "")}</textarea><button class="tiny-button" data-save-runner-note="${escapeHtml(stopId)}" data-note-id="${escapeHtml(note.id)}" type="button">Save Note</button>`
+    : `<p>${escapeHtml(note.text || "")}</p>`;
+  return `<div class="runner-note-item"><span>${escapeHtml(meta)}</span>${body}</div>`;
 }
 
 function runnerCategories() {
@@ -8091,11 +8171,6 @@ function runnerCategoriesAddedThisYear(workerId = state.activeWorkerId) {
 function hasUnlimitedRunnerCategoryAccess() {
   const roles = assignedAccessForCurrentUser();
   return ["CLIENT_ADMIN", "CLIENT_REP", "CLIENT_REP_LEAD", "PROMOTER_ADMIN", "PROMOTER_REP"].some((role) => roles.includes(role));
-}
-
-function runnerNotesAddedThisYear(stopId, workerId = state.activeWorkerId) {
-  const year = new Date().getFullYear();
-  return state.runnerNotes.filter((note) => note.stopId === stopId && note.workerId === workerId && Number(note.createdYear) === year).length;
 }
 
 function renderRunnerCategoryCreator() {
@@ -9302,9 +9377,12 @@ async function notifyRunnerToProductionOffice(workerId) {
   if (result.ok) await updateRunnerStatus(workerId, "At Production Office");
 }
 
-async function saveRunnerNote(stopId) {
-  if (!isCrewRole() || !state.activeWorkerId) return;
-  const textarea = document.querySelector(`[data-runner-note-input="${stopId}"]`);
+async function saveRunnerNote(stopId, noteId = "") {
+  if (isAdminRole() || !currentRunnerFeedbackUserId()) return;
+  const selector = noteId
+    ? `[data-runner-note-input="${stopId}"][data-runner-note-id="${noteId}"]`
+    : `[data-runner-note-input="${stopId}"]:not([data-runner-note-id])`;
+  const textarea = document.querySelector(selector);
   const text = String(textarea?.value || "").trim();
   if (!text) {
     toast("Enter a note first.");
@@ -9314,20 +9392,48 @@ async function saveRunnerNote(stopId) {
     toast("Directory notes are limited to 500 characters.");
     return;
   }
-  if (runnerNotesAddedThisYear(stopId) >= 5) {
-    toast("This worker has used all 5 notes for this directory entry this year.");
+  const existing = noteId ? state.runnerNotes.find((note) => note.id === noteId && note.stopId === stopId) : null;
+  if (existing && !runnerNoteEditable(existing)) {
+    toast("This note is past the six-month edit window.");
+    return;
+  }
+  if (!existing && runnerNotesForCurrentUser(stopId).length >= 2) {
+    toast("This resource already has your two notes.");
     return;
   }
   await put("runnerNotes", {
+    ...(existing || {}),
     stopId,
-    workerId: state.activeWorkerId,
+    userId: currentRunnerFeedbackUserId(),
+    userLabel: currentRunnerFeedbackUserLabel(),
+    workerId: activeCrewWorkerId(),
     text,
     createdYear: new Date().getFullYear()
   });
   textarea.value = "";
   await loadState();
   setView(state.activeView);
-  toast("Directory note added.");
+  toast(existing ? "Directory note updated." : "Directory note added.");
+}
+
+async function rateRunnerStop(stopId, rating) {
+  if (isAdminRole() || !currentRunnerFeedbackUserId()) return;
+  const value = Math.max(1, Math.min(5, Number(rating || 0)));
+  if (!value) return;
+  if (runnerRatingForCurrentUser(stopId)) {
+    toast("You already rated this resource.");
+    return;
+  }
+  await put("runnerRatings", {
+    stopId,
+    userId: currentRunnerFeedbackUserId(),
+    userLabel: currentRunnerFeedbackUserLabel(),
+    workerId: activeCrewWorkerId(),
+    rating: value
+  });
+  await loadState();
+  setView(state.activeView);
+  toast("Rating saved.");
 }
 
 function notificationSubscriberForCurrentUser() {
@@ -11220,6 +11326,7 @@ function bindEvents() {
     const payrollTab = event.target.closest("[data-payroll-view]");
     const profileNoteButton = event.target.closest("[data-save-profile-note]");
     const runnerNoteButton = event.target.closest("[data-save-runner-note]");
+    const runnerRatingButton = event.target.closest("[data-rate-runner-stop]");
     const runnerStatusButton = event.target.closest("[data-runner-status]");
     const selectVisibleButton = event.target.closest("[data-select-visible]");
     const clearSelectedButton = event.target.closest("[data-clear-selected]");
@@ -11518,7 +11625,8 @@ function bindEvents() {
     if (clockButton) await clockOutNow(clockButton.dataset.clockOut);
     if (punchButton) await crewPunch(punchButton.dataset.eventId, punchButton.dataset.timePunch);
     if (profileNoteButton) await saveProfileNote(profileNoteButton.dataset.saveProfileNote);
-    if (runnerNoteButton) await saveRunnerNote(runnerNoteButton.dataset.saveRunnerNote);
+    if (runnerRatingButton) await rateRunnerStop(runnerRatingButton.dataset.rateRunnerStop, runnerRatingButton.dataset.rating);
+    if (runnerNoteButton) await saveRunnerNote(runnerNoteButton.dataset.saveRunnerNote, runnerNoteButton.dataset.noteId || "");
     if (runnerStatusButton) await updateRunnerStatus(runnerStatusButton.dataset.runnerStatus, runnerStatusButton.dataset.status);
     if (selectVisibleButton) setVisibleProfileSelection(selectVisibleButton.dataset.selectVisible, true);
     if (clearSelectedButton) setVisibleProfileSelection(clearSelectedButton.dataset.clearSelected, false);
