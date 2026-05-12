@@ -10,7 +10,7 @@
     <title>Production Crew Database</title>
     <link rel="manifest" href="manifest.webmanifest">
     <link rel="icon" href="assets/logo/app-logo-admin.png" type="image/png">
-    <link rel="stylesheet" href="styles.css?v=V1.04.133-staffing-assignments">
+    <link rel="stylesheet" href="styles.css?v=V1.04.134-staffing-assignment-view">
   </head>
   <body>
     <div id="appLoadingOverlay" class="app-loading-overlay" aria-live="polite">
@@ -854,6 +854,26 @@
           </div>
         </section>
 
+        <section id="staffingAssignments" class="view">
+          <div class="stack-layout">
+            <section class="panel table-panel staffing-assignment-panel">
+              <div class="panel-heading">
+                <h3>Staffing Assignment</h3>
+                <div class="panel-tools">
+                  <span id="staffingAssignmentCount" class="muted"></span>
+                  <button class="tiny-button admin-action" data-dashboard-link="events" type="button">Open Events</button>
+                </div>
+              </div>
+              <div class="table-wrap">
+                <table>
+                  <thead><tr><th>Event</th><th>Crew / Role</th><th>Schedule</th><th>Location</th><th>Production Office Contact</th><th>Notes</th><th></th></tr></thead>
+                  <tbody id="staffingAssignmentTable"></tbody>
+                </table>
+              </div>
+            </section>
+          </div>
+        </section>
+
         <section id="workers" class="view">
           <div class="split-layout">
             <form id="workerForm" class="panel form-panel">
@@ -1592,6 +1612,6 @@
     <div id="modalHost"></div>
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js?v=V1.04.133-staffing-assignments"></script>
+    <script src="app.js?v=V1.04.134-staffing-assignment-view"></script>
   </body>
 </html>

@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.04.133",
-  title: "V1.04.133 update installed",
-  body: "Added structured Production Office staffing assignment fields."
+  version: "V1.04.134",
+  title: "V1.04.134 update installed",
+  body: "Added a Production Office staffing assignment view."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -144,7 +144,7 @@ const ACCESS_PROFILES = {
   CLIENT_ADMIN: {
     label: "CLIENT ADMIN",
     baseRole: "CLIENT",
-    views: ["dashboard", "clientCompanyProfile", "clientProfile", "workers", "promoters", "venues", "events", "productionBoard", "timecards", "vehicles", "reports", "payroll", "directory", "runner", "messages", "dataTools", "mobileApp"],
+    views: ["dashboard", "clientCompanyProfile", "clientProfile", "workers", "promoters", "venues", "events", "productionBoard", "staffingAssignments", "timecards", "vehicles", "reports", "payroll", "directory", "runner", "messages", "dataTools", "mobileApp"],
     canAdminEdit: true,
     canOwnerEdit: true,
     canVenueEdit: true,
@@ -156,7 +156,7 @@ const ACCESS_PROFILES = {
   CLIENT_REP: {
     label: "CLIENT REP",
     baseRole: "CLIENT",
-    views: ["dashboard", "clientProfile", "promoters", "events", "productionBoard", "vehicles", "reports", "directory", "runner", "messages", "dataTools", "mobileApp"],
+    views: ["dashboard", "clientProfile", "promoters", "events", "productionBoard", "staffingAssignments", "vehicles", "reports", "directory", "runner", "messages", "dataTools", "mobileApp"],
     canAdminEdit: true,
     canOwnerEdit: true,
     canVenueEdit: false,
@@ -168,7 +168,7 @@ const ACCESS_PROFILES = {
   CLIENT_REP_LEAD: {
     label: "CLIENT REP LEAD",
     baseRole: "CLIENT",
-    views: ["dashboard", "clientProfile", "workers", "promoters", "venues", "events", "productionBoard", "vehicles", "reports", "directory", "runner", "messages", "dataTools", "mobileApp"],
+    views: ["dashboard", "clientProfile", "workers", "promoters", "venues", "events", "productionBoard", "staffingAssignments", "vehicles", "reports", "directory", "runner", "messages", "dataTools", "mobileApp"],
     canAdminEdit: true,
     canOwnerEdit: true,
     canVenueEdit: true,
@@ -192,7 +192,7 @@ const ACCESS_PROFILES = {
   PROMOTER_ADMIN: {
     label: "PROMOTER ADMIN",
     baseRole: "PROMOTER",
-    views: ["productionBoard", "events", "workers", "promoters", "venues", "vehicles", "reports", "directory", "runner", "messages", "dataTools", "mobileApp"],
+    views: ["productionBoard", "staffingAssignments", "events", "workers", "promoters", "venues", "vehicles", "reports", "directory", "runner", "messages", "dataTools", "mobileApp"],
     canAdminEdit: true,
     canOwnerEdit: false,
     canVenueEdit: true,
@@ -204,7 +204,7 @@ const ACCESS_PROFILES = {
   PROMOTER_REP: {
     label: "PROMOTER REP",
     baseRole: "PROMOTER",
-    views: ["productionBoard", "events", "workers", "promoters", "venues", "vehicles", "reports", "directory", "runner", "messages", "mobileApp"],
+    views: ["productionBoard", "staffingAssignments", "events", "workers", "promoters", "venues", "vehicles", "reports", "directory", "runner", "messages", "mobileApp"],
     canAdminEdit: true,
     canOwnerEdit: false,
     canVenueEdit: true,
@@ -216,7 +216,7 @@ const ACCESS_PROFILES = {
   PRODUCTION: {
     label: "PRODUCTION",
     baseRole: "PRODUCTION",
-    views: ["productionBoard", "events", "vehicles", "reports", "directory", "messages", "mobileApp"],
+    views: ["productionBoard", "staffingAssignments", "events", "vehicles", "reports", "directory", "messages", "mobileApp"],
     canAdminEdit: false,
     canOwnerEdit: false,
     canVenueEdit: false,
@@ -228,7 +228,7 @@ const ACCESS_PROFILES = {
   PRODUCTION_TEAM_ACCESS: {
     label: "PRODUCTION TEAM ACCESS",
     baseRole: "PRODUCTION",
-    views: ["productionBoard", "events", "vehicles", "reports", "directory", "messages", "mobileApp"],
+    views: ["productionBoard", "staffingAssignments", "events", "vehicles", "reports", "directory", "messages", "mobileApp"],
     canAdminEdit: false,
     canOwnerEdit: false,
     canVenueEdit: false,
@@ -240,7 +240,7 @@ const ACCESS_PROFILES = {
   CREW: {
     label: "CREW / RUNNER",
     baseRole: "CREW",
-    views: ["dashboard", "workers", "clock", "productionResponse", "events", "timecards", "vehicles", "reports", "directory", "runner", "messages", "mobileApp"],
+    views: ["dashboard", "workers", "clock", "productionResponse", "staffingAssignments", "events", "timecards", "vehicles", "reports", "directory", "runner", "messages", "mobileApp"],
     canAdminEdit: false,
     canOwnerEdit: false,
     canVenueEdit: false,
@@ -429,7 +429,7 @@ const NAV_GROUPS = {
     { items: [["dashboard", "Dashboard"]] },
     { items: [["clientCompanyProfile", "Client Profile"], ["clientProfile", "My Profile"]] },
     { label: "PROFILES", items: [["workers", "Crew Profiles"], ["promoters", "Promoter Profiles"], ["venues", "Venues"]] },
-    { label: "EVENTS", items: [["events", "Events"], ["productionBoard", "Production Office"], ["timecards", "Timecards"], ["vehicles", "Vehicles"], ["reports", "Reports"]] },
+    { label: "EVENTS", items: [["events", "Events"], ["productionBoard", "Production Office"], ["staffingAssignments", "Staffing Assignment"], ["timecards", "Timecards"], ["vehicles", "Vehicles"], ["reports", "Reports"]] },
     { label: "PAYROLL", items: [["payroll", "Payroll"]] },
     { label: "DIRECTORIES", items: [["directory", "Directory"], ["runner", "Gig Resources"], ["messages", "Messages"]] },
     { label: "SETTINGS", items: [["dataTools", "Import / Export"], ["mobileApp", "Mobile Settings"]] }
@@ -438,7 +438,7 @@ const NAV_GROUPS = {
     { items: [["dashboard", "Dashboard"]] },
     { items: [["clientProfile", "My Profile"]] },
     { label: "PROFILES", items: [["promoters", "Promoter Profiles"]] },
-    { label: "EVENTS", items: [["events", "Events"], ["productionBoard", "Production Office"], ["vehicles", "Vehicles"], ["reports", "Reports"]] },
+    { label: "EVENTS", items: [["events", "Events"], ["productionBoard", "Production Office"], ["staffingAssignments", "Staffing Assignment"], ["vehicles", "Vehicles"], ["reports", "Reports"]] },
     { label: "DIRECTORIES", items: [["directory", "Directory"], ["runner", "Gig Resources"], ["messages", "Messages"]] },
     { label: "SETTINGS", items: [["dataTools", "Import / Export"], ["mobileApp", "Mobile Settings"]] }
   ],
@@ -446,7 +446,7 @@ const NAV_GROUPS = {
     { items: [["dashboard", "Dashboard"]] },
     { items: [["clientProfile", "My Profile"]] },
     { label: "PROFILES", items: [["workers", "Crew Profiles"], ["promoters", "Promoter Profiles"], ["venues", "Venues"]] },
-    { label: "EVENTS", items: [["events", "Events"], ["productionBoard", "Production Office"], ["vehicles", "Vehicles"], ["reports", "Reports"]] },
+    { label: "EVENTS", items: [["events", "Events"], ["productionBoard", "Production Office"], ["staffingAssignments", "Staffing Assignment"], ["vehicles", "Vehicles"], ["reports", "Reports"]] },
     { label: "DIRECTORIES", items: [["directory", "Directory"], ["runner", "Gig Resources"], ["messages", "Messages"]] },
     { label: "SETTINGS", items: [["dataTools", "Import / Export"], ["mobileApp", "Mobile Settings"]] }
   ],
@@ -455,28 +455,28 @@ const NAV_GROUPS = {
     { label: "SETTINGS", items: [["mobileApp", "Mobile Settings"]] }
   ],
   PROMOTER_ADMIN: [
-    { items: [["productionBoard", "Production Office"]] },
+    { items: [["productionBoard", "Production Office"], ["staffingAssignments", "Staffing Assignment"]] },
     { label: "PROFILES", items: [["workers", "Crew Profiles"], ["promoters", "Promoter Profiles"], ["venues", "Venues"]] },
     { label: "EVENTS", items: [["events", "Events"], ["vehicles", "Vehicles"], ["reports", "Reports"]] },
     { label: "DIRECTORIES", items: [["directory", "Directory"], ["runner", "Gig Resources"], ["messages", "Messages"]] },
     { label: "SETTINGS", items: [["dataTools", "Import / Export"], ["mobileApp", "Mobile Settings"]] }
   ],
   PROMOTER_REP: [
-    { items: [["productionBoard", "Production Office"]] },
+    { items: [["productionBoard", "Production Office"], ["staffingAssignments", "Staffing Assignment"]] },
     { label: "PROFILES", items: [["workers", "Crew Profiles"], ["promoters", "Promoter Profiles"], ["venues", "Venues"]] },
     { label: "EVENTS", items: [["events", "Events"], ["vehicles", "Vehicles"], ["reports", "Reports"]] },
     { label: "DIRECTORIES", items: [["directory", "Directory"], ["runner", "Gig Resources"], ["messages", "Messages"]] },
     { label: "SETTINGS", items: [["mobileApp", "Mobile Settings"]] }
   ],
   PRODUCTION_TEAM_ACCESS: [
-    { items: [["productionBoard", "Production Office"]] },
+    { items: [["productionBoard", "Production Office"], ["staffingAssignments", "Staffing Assignment"]] },
     { label: "EVENTS", items: [["events", "Events"], ["vehicles", "Vehicles"], ["reports", "Reports"]] },
     { label: "DIRECTORIES", items: [["directory", "Directory"], ["messages", "Messages"]] },
     { label: "SETTINGS", items: [["mobileApp", "Mobile Settings"]] }
   ],
   CREW: [
     { items: [["dashboard", "Home"], ["workers", "My Profile"], ["clock", "Time Clock"]] },
-    { label: "EVENTS", items: [["productionResponse", "Production Office"], ["events", "Events"], ["timecards", "Timecards"], ["vehicles", "Vehicles"], ["reports", "Reports"]] },
+    { label: "EVENTS", items: [["productionResponse", "Production Office"], ["staffingAssignments", "Staffing Assignment"], ["events", "Events"], ["timecards", "Timecards"], ["vehicles", "Vehicles"], ["reports", "Reports"]] },
     { label: "DIRECTORIES", items: [["directory", "Directory"], ["runner", "Gig Resources"], ["messages", "Messages"]] },
     { label: "SETTINGS", items: [["mobileApp", "Mobile Settings"]] }
   ]
@@ -3624,6 +3624,7 @@ function render() {
   renderAdminProfile();
   renderEvents();
   renderProductionBoard();
+  renderStaffingAssignments();
   renderProductionResponse();
   renderClock();
   renderWorkers();
@@ -5375,6 +5376,48 @@ function renderProductionBoard() {
         return `<tr><td>${profileCell(worker, worker.hideHeadshot, worker.email)}</td><td>${escapeHtml(eventsForWorker)}</td><td><span class="status-pill ${status === "On a Run" ? "warn" : ""}">${escapeHtml(status)}</span></td><td>${escapeHtml(worker.phone)}<p>${escapeHtml(worker.email)}</p></td><td><div class="row-actions"><button class="tiny-button" data-runner-status="${worker.id}" data-status="Available" type="button">Available</button><button class="tiny-button" data-runner-status="${worker.id}" data-status="On a Run" type="button">On a Run</button><button class="tiny-button" data-runner-status="${worker.id}" data-status="At Production Office" type="button">At Office</button><button class="tiny-button" data-notify-production-office="${worker.id}" type="button">Notify Office</button></div></td></tr>`;
       }).join("")
     : `<tr><td colspan="5" class="empty">Assigned runners will appear here.</td></tr>`;
+}
+
+function visibleStaffingAssignments() {
+  const events = visibleEvents();
+  const eventIds = new Set(events.map((event) => event.id));
+  let assignments = state.eventAssignments.filter((assignment) => eventIds.has(assignment.eventId) && !["Cancelled", "Swapped"].includes(assignment.status));
+  if (isCrewRole()) assignments = assignments.filter((assignment) => assignment.workerId === activeCrewWorkerId());
+  return assignments.sort((a, b) => {
+    const aDate = new Date(a.startDate || getEvent(a.eventId)?.startDate || 0).getTime() || 0;
+    const bDate = new Date(b.startDate || getEvent(b.eventId)?.startDate || 0).getTime() || 0;
+    return aDate - bDate;
+  });
+}
+
+function renderStaffingAssignments() {
+  const table = $("#staffingAssignmentTable");
+  const count = $("#staffingAssignmentCount");
+  if (!table || !count) return;
+  const assignments = visibleStaffingAssignments();
+  count.textContent = `${assignments.length} assignment${assignments.length === 1 ? "" : "s"}`;
+  table.innerHTML = assignments.length
+    ? assignments.map((assignment) => {
+        const event = getEvent(assignment.eventId);
+        const worker = getWorker(assignment.workerId);
+        const venue = getVenue(event?.venueId);
+        const contact = [assignment.onSiteContactName, assignment.onSiteContactPhone, assignment.onSiteContactEmail].filter(Boolean).map(escapeHtml).join("<br>");
+        const noteText = isCrewRole() ? assignment.crewNotes : [assignment.crewNotes, assignment.notes].filter(Boolean).join("\n");
+        const actions = `<div class="row-actions">
+          <button class="tiny-button" data-view-event-assignment="${escapeHtml(assignment.id)}" type="button">View</button>
+          ${canAdminEdit() ? `<button class="tiny-button" data-edit="eventAssignments" data-id="${escapeHtml(assignment.id)}" data-form="eventAssignmentForm" type="button">Edit</button>` : ""}
+        </div>`;
+        return `<tr>
+          <td><strong>${escapeHtml(event?.name || "Event")}</strong><p>${escapeHtml(venue?.name || "No venue")}</p></td>
+          <td>${profileCell(worker || { name: "Crew Member" }, worker?.hideHeadshot, worker?.email)}<p>${escapeHtml(assignmentRoleLine(assignment))}</p></td>
+          <td><strong>${escapeHtml(assignmentWorkDateLabel(assignment, event || {}))}</strong><p>Call: ${escapeHtml(formatTime(assignment.startDate || event?.startDate) || "TBD")}</p><p>Wrap: ${escapeHtml(assignment.endDate ? formatTime(assignment.endDate) : "TBD")}</p></td>
+          <td>${escapeHtml(assignmentCallLocation(assignment, event || {}) || "Venue location not set")}<p>${escapeHtml(assignmentParkingDetails(event || {}) || "")}</p></td>
+          <td>${contact || "Not set"}<p>${assignment.productionOfficeLinkReady === "yes" ? "Production Office link ready" : ""}</p></td>
+          <td>${escapeHtml(noteText || "")}</td>
+          <td>${actions}</td>
+        </tr>`;
+      }).join("")
+    : `<tr><td colspan="7" class="empty">Staffing assignments will appear here after runners are added to events.</td></tr>`;
 }
 
 function renderPublicEventAccess(data) {
