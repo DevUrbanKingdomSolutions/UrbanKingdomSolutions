@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.04.144",
-  title: "V1.04.144 update installed",
-  body: "Connected vehicle gas gauge checklist status to the selected gas level."
+  version: "V1.04.145",
+  title: "V1.04.145 update installed",
+  body: "Removed duplicate vehicle missing status from the event column."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -6535,7 +6535,7 @@ function vehicleCheckRow(group) {
   const logId = group.startLog?.id || group.endLog?.id || "";
   const status = vehicleChecklistStatus(group);
   return `<tr>
-    <td><strong>${logId ? recordLink("vehicleLogs", logId, event?.name || "Vehicle Check") : escapeHtml(event?.name || "")}</strong><p>${formatDate(event?.startDate)}${event?.endDate ? " - " + formatDate(event.endDate) : ""}</p>${vehicleStatusChips(status)}</td>
+    <td><strong>${logId ? recordLink("vehicleLogs", logId, event?.name || "Vehicle Check") : escapeHtml(event?.name || "")}</strong><p>${formatDate(event?.startDate)}${event?.endDate ? " - " + formatDate(event.endDate) : ""}</p></td>
     <td>${escapeHtml(worker?.name || "")}</td>
     <td><strong>${escapeHtml(vehicleType || "Vehicle")}</strong></td>
     <td>${escapeHtml(plate || "Not set")}</td>
@@ -6578,12 +6578,6 @@ function vehiclePhaseChecklist(log, phase, checks) {
     plateDone,
     items
   };
-}
-
-function vehicleStatusChips(status) {
-  const startClass = status.start.complete ? "" : " warn";
-  const endClass = status.end.complete ? "" : " warn";
-  return `<div class="vehicle-status-row"><span class="status-pill${startClass}">${status.start.complete ? "Start complete" : "Start photo missing"}</span><span class="status-pill${endClass}">${status.end.complete ? "End complete" : "End photo missing"}</span></div>`;
 }
 
 function vehiclePhotoChecklist(status) {

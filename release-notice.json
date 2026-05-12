@@ -1,5 +1,5 @@
 {
-  "version": "V1.04.144",
-  "title": "V1.04.144 update installed",
-  "body": "Connected vehicle gas gauge checklist status to the selected gas level."
+  "version": "V1.04.145",
+  "title": "V1.04.145 update installed",
+  "body": "Removed duplicate vehicle missing status from the event column."
 }
