@@ -1946,6 +1946,104 @@ body.pull-refresh-dragging .active-view {
   color: color-mix(in srgb, var(--accent-dark) 68%, var(--ink));
 }
 
+#vehicleForm.modal-form {
+  width: min(760px, calc(100vw - 32px));
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--accent-soft) 48%, #ffffff) 0, #ffffff 240px),
+    #ffffff;
+}
+
+#vehicleForm.modal-form .panel-heading {
+  align-items: start;
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--accent-soft) 76%, #ffffff), #ffffff 68%),
+    linear-gradient(180deg, color-mix(in srgb, var(--accent) 12%, transparent), transparent);
+  box-shadow: inset 5px 0 0 color-mix(in srgb, var(--accent) 72%, #ffffff);
+}
+
+#vehicleForm.modal-form .panel-heading h3 {
+  margin-bottom: 2px;
+  color: color-mix(in srgb, var(--accent-dark) 82%, var(--ink));
+}
+
+#vehicleForm.modal-form .panel-heading p {
+  margin: 0;
+  color: color-mix(in srgb, var(--accent-dark) 52%, var(--muted));
+  font-size: 12px;
+  font-weight: 800;
+}
+
+#vehicleForm.modal-form .ghost-button {
+  border: 0;
+  background: transparent;
+  color: color-mix(in srgb, var(--accent-dark) 72%, var(--ink));
+  font-weight: 850;
+}
+
+.vehicle-form-section,
+#vehicleForm .photo-fieldset,
+#vehicleForm .vehicle-rental-details {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 16px 16px 0;
+  padding: 14px;
+  border: 0;
+  border-radius: 14px;
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--accent-soft) 52%, rgba(255, 255, 255, 0.88)), rgba(255, 255, 255, 0.78)),
+    color-mix(in srgb, var(--accent) 5%, #ffffff);
+  box-shadow:
+    inset 4px 0 0 color-mix(in srgb, var(--accent) 48%, transparent),
+    0 10px 24px color-mix(in srgb, var(--accent) 8%, transparent);
+}
+
+.vehicle-form-section > span,
+#vehicleForm .photo-fieldset > span,
+#vehicleForm .vehicle-rental-details > span {
+  grid-column: 1 / -1;
+  color: color-mix(in srgb, var(--accent-dark) 76%, var(--ink));
+  font-size: 12px;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.vehicle-form-section label,
+#vehicleForm .photo-fieldset label,
+#vehicleForm .vehicle-rental-details label {
+  margin: 0;
+}
+
+#vehicleForm .vehicle-notes-section,
+#vehicleForm .vehicle-check-section {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+#vehicleForm .vehicle-notes-section label,
+#vehicleForm .vehicle-assignment-section .locked-assignment-field {
+  grid-column: 1 / -1;
+}
+
+#vehicleForm input,
+#vehicleForm select,
+#vehicleForm textarea {
+  border-color: color-mix(in srgb, var(--accent) 18%, var(--line));
+  background: rgba(255, 255, 255, 0.82);
+}
+
+#vehicleForm input:focus,
+#vehicleForm select:focus,
+#vehicleForm textarea:focus {
+  outline: none;
+  border-color: color-mix(in srgb, var(--accent) 56%, var(--line));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 14%, transparent);
+}
+
+#vehicleForm .primary-action {
+  background: linear-gradient(135deg, var(--accent), var(--accent-dark));
+  box-shadow: 0 12px 26px color-mix(in srgb, var(--accent) 22%, transparent);
+}
+
 .assignment-fieldset {
   background: linear-gradient(135deg, color-mix(in srgb, var(--role-color) 7%, #ffffff), #ffffff);
   border-color: color-mix(in srgb, var(--role-color) 18%, var(--line));
@@ -5657,6 +5755,18 @@ body:not(.owner-mode) .rate-field {
   }
 
   .photo-fieldset {
+    grid-template-columns: 1fr;
+  }
+
+  #vehicleForm.modal-form {
+    width: 100%;
+  }
+
+  #vehicleForm .vehicle-form-section,
+  #vehicleForm .photo-fieldset,
+  #vehicleForm .vehicle-rental-details,
+  #vehicleForm .vehicle-check-section,
+  #vehicleForm .vehicle-notes-section {
     grid-template-columns: 1fr;
   }
 

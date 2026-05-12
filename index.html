@@ -10,7 +10,7 @@
     <title>Production Crew Database</title>
     <link rel="manifest" href="manifest.webmanifest">
     <link rel="icon" href="assets/logo/app-logo-admin.png" type="image/png">
-    <link rel="stylesheet" href="styles.css?v=V1.04.147-vehicle-rental-details">
+    <link rel="stylesheet" href="styles.css?v=V1.04.148-vehicle-popup-polish">
   </head>
   <body>
     <div id="appLoadingOverlay" class="app-loading-overlay" aria-live="polite">
@@ -1155,41 +1155,50 @@
 
         <section id="vehicles" class="view">
           <div class="split-layout">
-            <form id="vehicleForm" class="panel form-panel scoped-form">
+            <form id="vehicleForm" class="panel form-panel scoped-form vehicle-check-form">
               <div class="panel-heading">
-                <h3>Vehicle Check</h3>
+                <div>
+                  <h3>Vehicle Check</h3>
+                  <p>Rental setup, phase details, photos, and notes</p>
+                </div>
                 <button class="ghost-button clear-form" type="button" data-form="vehicleForm">Clear</button>
               </div>
               <input type="hidden" name="id">
               <input type="hidden" name="assignmentId">
-              <label>Event<select name="eventId" required></select></label>
-              <label>Assigned worker<select name="workerId"></select></label>
-              <label class="locked-assignment-field">Assignment<input name="assignmentLabel" readonly placeholder="Auto-filled from event assignment"></label>
-              <label>Check type
-                <select name="phase">
-                  <option>Start</option>
-                  <option>End</option>
-                  <option>Scheduled</option>
-                </select>
-              </label>
-              <label>Vehicle type<input name="vehicleType" placeholder="Cargo van, box truck, pickup"></label>
+              <div class="vehicle-form-section vehicle-assignment-section">
+                <span>Assignment</span>
+                <label>Event<select name="eventId" required></select></label>
+                <label>Assigned worker<select name="workerId"></select></label>
+                <label class="locked-assignment-field">Assignment<input name="assignmentLabel" readonly placeholder="Auto-filled from event assignment"></label>
+                <label>Check type
+                  <select name="phase">
+                    <option>Start</option>
+                    <option>End</option>
+                    <option>Scheduled</option>
+                  </select>
+                </label>
+                <label>Vehicle type<input name="vehicleType" placeholder="Cargo van, box truck, pickup"></label>
+              </div>
               <div class="vehicle-rental-details" data-vehicle-rental-details>
                 <span>Rental details</span>
                 <label>Rental company<input name="rentalCompany" placeholder="Company name" data-client-admin-rental-field></label>
                 <label>Pickup location<input name="rentalPickupLocation" placeholder="Rental counter, venue, hotel, airport" data-client-admin-rental-field></label>
                 <label>Scheduled pickup<input name="rentalPickupDate" type="datetime-local" data-client-admin-rental-field></label>
               </div>
-              <label>Plate number<input name="plateNumber" placeholder="Plate"></label>
-              <label>Gas gauge
-                <select name="gasGauge">
-                  <option>Full</option>
-                  <option>3/4</option>
-                  <option>1/2</option>
-                  <option>1/4</option>
-                  <option>Empty</option>
-                </select>
-              </label>
-              <label>Scheduled date<input name="scheduledDate" type="datetime-local"></label>
+              <div class="vehicle-form-section vehicle-check-section">
+                <span>Check details</span>
+                <label>Plate number<input name="plateNumber" placeholder="Plate"></label>
+                <label>Gas gauge
+                  <select name="gasGauge">
+                    <option>Full</option>
+                    <option>3/4</option>
+                    <option>1/2</option>
+                    <option>1/4</option>
+                    <option>Empty</option>
+                  </select>
+                </label>
+                <label>Scheduled date<input name="scheduledDate" type="datetime-local"></label>
+              </div>
               <div class="photo-fieldset" data-vehicle-photo-section="start">
                 <span>Start photos</span>
                 <label>Front<input name="frontPhoto" type="file" accept="image/*" capture="environment" data-photo-key="startFront"></label>
@@ -1207,7 +1216,10 @@
                 <label>Passenger side<input name="endPassengerSidePhoto" type="file" accept="image/*" capture="environment" data-photo-key="endPassengerSide"></label>
                 <label>Gas gauge<input name="endGasGaugePhoto" type="file" accept="image/*" capture="environment" data-photo-key="endGasGauge"></label>
               </div>
-              <label>Notes<textarea name="notes" rows="3" placeholder="Mileage, dents, fuel receipt, pickup/dropoff notes"></textarea></label>
+              <div class="vehicle-form-section vehicle-notes-section">
+                <span>Notes</span>
+                <label>Notes<textarea name="notes" rows="3" placeholder="Mileage, dents, fuel receipt, pickup/dropoff notes"></textarea></label>
+              </div>
               <button class="primary-action" type="submit">Save Vehicle Check</button>
             </form>
             <section class="panel table-panel">
@@ -1654,6 +1666,6 @@
     <div id="modalHost"></div>
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js?v=V1.04.147-vehicle-rental-details"></script>
+    <script src="app.js?v=V1.04.148-vehicle-popup-polish"></script>
   </body>
 </html>

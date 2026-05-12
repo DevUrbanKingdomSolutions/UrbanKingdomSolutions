@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.04.147",
-  title: "V1.04.147 update installed",
-  body: "Added Client Admin rental details to vehicle checks with crew read-only access."
+  version: "V1.04.148",
+  title: "V1.04.148 update installed",
+  body: "Polished the vehicle Start and End edit popup layout."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
