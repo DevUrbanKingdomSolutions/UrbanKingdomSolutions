@@ -3730,14 +3730,50 @@ td p {
   margin-top: 8px;
 }
 
+.vehicle-phase-shell {
+  display: grid;
+  grid-template-columns: minmax(112px, 1fr) minmax(92px, max-content);
+  align-items: start;
+  gap: 12px;
+  min-width: 220px;
+}
+
+.vehicle-phase-detail {
+  display: grid;
+  gap: 8px;
+}
+
+.vehicle-phase-detail p {
+  margin: 2px 0 0;
+}
+
+.vehicle-phase-actions {
+  display: grid;
+  gap: 6px;
+  justify-items: start;
+}
+
+.vehicle-phase-actions .tiny-button {
+  width: 100%;
+  justify-content: center;
+}
+
+.vehicle-phase-shell .vehicle-photo-checklist {
+  display: grid;
+  gap: 5px;
+  margin-top: 0;
+}
+
 .vehicle-photo-checklist span {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   min-height: 24px;
   border-radius: 999px;
   padding: 3px 8px;
   font-size: 11px;
   font-weight: 800;
+  white-space: nowrap;
 }
 
 .vehicle-photo-checklist .is-done {

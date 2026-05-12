@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.04.140",
-  title: "V1.04.140 update installed",
-  body: "Added vehicle phase photo viewers and refined wrap photo requirements."
+  version: "V1.04.141",
+  title: "V1.04.141 update installed",
+  body: "Stacked vehicle photo actions and checklist items for cleaner start and end checks."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -6539,8 +6539,8 @@ function vehicleCheckRow(group) {
     <td>${escapeHtml(worker?.name || "")}</td>
     <td><strong>${escapeHtml(vehicleType || "Vehicle")}</strong></td>
     <td>${escapeHtml(plate || "Not set")}</td>
-    <td>${vehiclePhaseCell(group, "Start")}${vehiclePhotoChecklist(status.start)}</td>
-    <td>${vehiclePhaseCell(group, "End")}${vehiclePhotoChecklist(status.end)}</td>
+    <td><div class="vehicle-phase-shell">${vehiclePhaseCell(group, "Start")}${vehiclePhotoChecklist(status.start)}</div></td>
+    <td><div class="vehicle-phase-shell">${vehiclePhaseCell(group, "End")}${vehiclePhotoChecklist(status.end)}</div></td>
     <td>${group.logs.map((log) => vehiclePhotoGallery(log)).join("")}</td>
   </tr>`;
 }
@@ -6600,8 +6600,14 @@ function vehiclePhaseCell(group, phase) {
   const log = phase === "End" ? group.endLog : group.startLog;
   const disabled = canScopedEdit() ? "" : "disabled";
   const buttonLabel = log ? `View / Edit ${phase}` : `Add ${phase}`;
-  const meta = log ? `${escapeHtml(log.gasGauge || "")}<p>${formatDate(log.scheduledDate)}</p>` : `<p class="muted">Not started</p>`;
-  return `${meta}<button class="tiny-button" data-vehicle-phase="${phase}" data-log-id="${escapeHtml(log?.id || "")}" data-event-id="${escapeHtml(group.eventId)}" data-worker-id="${escapeHtml(group.workerId)}" data-assignment-id="${escapeHtml(group.assignmentId)}" type="button" ${disabled}>${buttonLabel}</button><button class="tiny-button" data-vehicle-photos="${phase}" data-log-id="${escapeHtml(log?.id || "")}" data-event-id="${escapeHtml(group.eventId)}" data-worker-id="${escapeHtml(group.workerId)}" data-assignment-id="${escapeHtml(group.assignmentId)}" type="button">Photos</button>`;
+  const meta = log ? `<strong>${escapeHtml(log.gasGauge || "Gas not set")}</strong><p>${formatDate(log.scheduledDate)}</p>` : `<p class="muted">Not started</p>`;
+  return `<div class="vehicle-phase-detail">
+    <div>${meta}</div>
+    <div class="vehicle-phase-actions">
+      <button class="tiny-button" data-vehicle-phase="${phase}" data-log-id="${escapeHtml(log?.id || "")}" data-event-id="${escapeHtml(group.eventId)}" data-worker-id="${escapeHtml(group.workerId)}" data-assignment-id="${escapeHtml(group.assignmentId)}" type="button" ${disabled}>${buttonLabel}</button>
+      <button class="tiny-button" data-vehicle-photos="${phase}" data-log-id="${escapeHtml(log?.id || "")}" data-event-id="${escapeHtml(group.eventId)}" data-worker-id="${escapeHtml(group.workerId)}" data-assignment-id="${escapeHtml(group.assignmentId)}" type="button">Photos</button>
+    </div>
+  </div>`;
 }
 
 function renderReports() {
