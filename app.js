@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.04.107",
-  title: "V1.04.107 update installed",
-  body: "Quieted open-chat notification refreshes so received messages do not flash the page."
+  version: "V1.04.108",
+  title: "V1.04.108 update installed",
+  body: "Deduplicated message notifications so one message shows as one notification."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -6397,11 +6397,34 @@ function renderMessaging() {
 
 function visibleNotifications() {
   const currentIds = notificationRecipientIdsForCurrentUser();
-  return state.appNotifications
+  return dedupeVisibleNotifications(state.appNotifications
     .filter((notification) => notification.type !== "system" || isAdminRole())
     .filter((notification) => !notification.readAt)
     .filter((notification) => notificationMatchesCurrentRecipient(notification, currentIds))
-    .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+    .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0)));
+}
+
+function dedupeVisibleNotifications(notifications = []) {
+  const seen = new Set();
+  return notifications.filter((notification) => {
+    const key = notificationDedupeKey(notification);
+    if (!key || !seen.has(key)) {
+      if (key) seen.add(key);
+      return true;
+    }
+    return false;
+  });
+}
+
+function notificationDedupeKey(notification = {}) {
+  if (notification.type !== "message") return notification.id || "";
+  return [
+    "message",
+    notification.threadKey || "",
+    notification.messageId || "",
+    notification.title || "",
+    notification.body || ""
+  ].join("|");
 }
 
 function notificationRecipientIdsForCurrentUser() {
@@ -9486,24 +9509,24 @@ function messageBelongsToActiveThread(channel = {}) {
 
 function messageNotificationRecipients() {
   const ids = new Set();
+  const currentBaseId = baseSendbirdUserId(currentThreadUserId() || currentSendbirdUserId()).trim();
+  const addId = (value) => {
+    const baseId = baseSendbirdUserId(value).trim();
+    if (baseId && baseId !== currentBaseId && baseId !== "system_ops") ids.add(baseId);
+  };
   activeThreadMemberProfiles().forEach((member) => {
-    const id = messageMemberIdentityKey(member);
-    if (id) ids.add(id);
+    addId(messageMemberIdentityKey(member));
   });
   currentThreadSetting()?.memberIds?.forEach((id) => {
-    const baseId = baseSendbirdUserId(id).trim();
-    if (baseId) ids.add(baseId);
+    addId(id);
   });
   sendbirdActiveChannel?.members?.forEach((member) => {
-    const baseId = baseSendbirdUserId(member?.userId).trim();
-    if (baseId) ids.add(baseId);
+    addId(member?.userId);
   });
   sendbirdThreadUsers(sendbirdActiveThread?.type || "", getEvent(sendbirdActiveThread?.eventId), { id: sendbirdActiveThread?.profileId || "" }).forEach((id) => {
-    const baseId = baseSendbirdUserId(id).trim();
-    if (baseId) ids.add(baseId);
+    addId(id);
   });
-  notificationRecipientIdsForCurrentUser().forEach((id) => ids.add(id));
-  return Array.from(ids).filter((id) => id && id !== "system_ops");
+  return Array.from(ids);
 }
 
 async function createMessageNotifications(message, deliveredMessage = {}) {
@@ -9521,6 +9544,7 @@ async function createMessageNotifications(message, deliveredMessage = {}) {
       title: activeMessageThreadTitle(),
       body: `${senderName}: ${preview || "New message"}`,
       type: "message",
+      messageId,
       recipientId,
       ...meta
     });
@@ -9537,6 +9561,7 @@ async function createReceivedMessageNotification(channel, message) {
     title: meta.title || "Messages",
     body: `${senderName}: ${preview || "New message"}`,
     type: "message",
+    messageId: sendbirdMessageKey(message) || String(message.reqId || Date.now()),
     recipientId: currentThreadUserId(),
     viewId: "messages",
     threadType: meta.threadType,

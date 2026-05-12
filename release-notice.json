@@ -1,5 +1,5 @@
 {
-  "version": "V1.04.107",
-  "title": "V1.04.107 update installed",
-  "body": "Quieted open-chat notification refreshes so received messages do not flash the page."
+  "version": "V1.04.108",
+  "title": "V1.04.108 update installed",
+  "body": "Deduplicated message notifications so one message shows as one notification."
 }
