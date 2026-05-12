@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.04.141",
-  title: "V1.04.141 update installed",
-  body: "Stacked vehicle photo actions and checklist items for cleaner start and end checks."
+  version: "V1.04.142",
+  title: "V1.04.142 update installed",
+  body: "Polished vehicle check buttons and role-color checklist styling."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",

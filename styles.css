@@ -3749,41 +3749,74 @@ td p {
 
 .vehicle-phase-actions {
   display: grid;
-  gap: 6px;
+  gap: 4px;
   justify-items: start;
 }
 
 .vehicle-phase-actions .tiny-button {
   width: 100%;
-  justify-content: center;
+  min-height: 26px;
+  justify-content: flex-start;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: color-mix(in srgb, var(--accent-dark) 76%, var(--ink));
+  padding: 2px 0;
+  box-shadow: none;
+  font-size: 12px;
+  font-weight: 850;
+  text-align: left;
+}
+
+.vehicle-phase-actions .tiny-button:hover,
+.vehicle-phase-actions .tiny-button:focus-visible {
+  color: var(--accent-dark);
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 4px;
 }
 
 .vehicle-phase-shell .vehicle-photo-checklist {
   display: grid;
-  gap: 5px;
+  gap: 3px;
   margin-top: 0;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--accent-soft) 54%, rgba(255, 255, 255, 0.72)), rgba(255, 255, 255, 0.58)),
+    color-mix(in srgb, var(--accent) 8%, transparent);
+  box-shadow: inset 3px 0 0 color-mix(in srgb, var(--accent) 42%, transparent);
 }
 
 .vehicle-photo-checklist span {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  min-height: 24px;
-  border-radius: 999px;
-  padding: 3px 8px;
+  justify-content: flex-start;
+  gap: 6px;
+  min-height: 20px;
+  border-radius: 0;
+  padding: 1px 0;
   font-size: 11px;
   font-weight: 800;
   white-space: nowrap;
 }
 
+.vehicle-photo-checklist span::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  flex: 0 0 6px;
+  border-radius: 999px;
+  background: currentColor;
+  opacity: 0.72;
+}
+
 .vehicle-photo-checklist .is-done {
-  background: #e7f4ef;
-  color: #176346;
+  color: var(--accent-dark);
 }
 
 .vehicle-photo-checklist .is-missing {
-  background: #fff4df;
-  color: var(--warn);
+  color: color-mix(in srgb, var(--warn) 82%, var(--ink));
 }
 
 .report-badge-row,
