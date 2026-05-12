@@ -1,5 +1,5 @@
 {
-  "version": "V1.04.113",
-  "title": "V1.04.113 update installed",
-  "body": "Softened desktop read-only pages so profile and data views feel native to the workspace instead of boxed in."
+  "version": "V1.04.114",
+  "title": "V1.04.114 update installed",
+  "body": "Reset sidebar navigation groups to collapsed after logout while preserving open sections during an active session."
 }

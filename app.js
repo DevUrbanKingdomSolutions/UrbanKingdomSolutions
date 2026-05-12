@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.04.113",
-  title: "V1.04.113 update installed",
-  body: "Softened desktop read-only pages so profile and data views feel native to the workspace instead of boxed in."
+  version: "V1.04.114",
+  title: "V1.04.114 update installed",
+  body: "Reset sidebar navigation groups to collapsed after logout while preserving open sections during an active session."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -7940,7 +7940,7 @@ function renderNavigation() {
     if (!items) return "";
     if (!group.label) return `<div class="nav-group nav-group-plain">${items}</div>`;
     const key = navGroupKey(group, index);
-    const isCollapsed = !!state.collapsedNavGroups[key];
+    const isCollapsed = navGroupIsCollapsed(key);
     return `<section class="nav-group ${isCollapsed ? "collapsed" : ""}">
       <button class="nav-group-toggle" data-nav-group="${escapeHtml(key)}" type="button" aria-expanded="${String(!isCollapsed)}">
         <span>${escapeHtml(group.label)}</span>
@@ -7996,8 +7996,12 @@ function navGroupKey(group, index) {
   return `${state.accessRole}:${group.label || `group-${index}`}`;
 }
 
+function navGroupIsCollapsed(key) {
+  return state.collapsedNavGroups[key] !== false;
+}
+
 function toggleNavGroup(key) {
-  state.collapsedNavGroups[key] = !state.collapsedNavGroups[key];
+  state.collapsedNavGroups[key] = !navGroupIsCollapsed(key);
   localStorage.setItem("productionCrewCollapsedNavGroups", JSON.stringify(state.collapsedNavGroups));
   renderNavigation();
 }
