@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.04.151",
-  title: "V1.04.151 update installed",
-  body: "Added sort and filter arrow controls to Crew Profiles columns."
+  version: "V1.04.152",
+  title: "V1.04.152 update installed",
+  body: "Normalized role logo sizes and alignment across the app."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
