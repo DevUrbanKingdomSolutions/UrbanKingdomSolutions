@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.04.111",
-  title: "V1.04.111 update installed",
-  body: "Cleaned up duplicate message notification records and stabilized future message notification keys."
+  version: "V1.04.112",
+  title: "V1.04.112 update installed",
+  body: "Refined desktop profile pages with cleaner profile headers and grouped information sections."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -3779,23 +3779,35 @@ function userAccessActions(row) {
 function openClientCompanyView(clientId) {
   const client = state.clients.find((item) => item.id === clientId);
   if (!client || !canSystemEdit()) return;
-  $("#clientCompanyViewBody").innerHTML = `<article class="profile-page-card">
-    <div class="profile-page-header">
-      <div class="profile-avatar-large placeholder">${escapeHtml(initialsFor(client.name || "Company"))}</div>
-      <div>
-        <h3>${escapeHtml(client.name || "Client company")}</h3>
-        <p>${escapeHtml(client.status || "Active")}</p>
-      </div>
-      <button class="tiny-button system-action" data-edit="clients" data-id="${client.id}" data-form="clientForm" type="button">Edit Information</button>
-    </div>
-    <div class="profile-detail-grid">
-      <div><span>Main Contact</span><strong>${escapeHtml(client.contactName || "")}</strong></div>
-      <div><span>Email</span><strong>${escapeHtml(client.email || "")}</strong></div>
-      <div><span>Phone</span><strong>${escapeHtml(client.phone || "")}</strong></div>
-      <div><span>Package Layouts</span><strong>${clientPackageBadges(client.packageLayouts)}</strong></div>
-    </div>
-    <div class="profile-section"><span>System Notes</span><p>${escapeHtml(client.notes || "")}</p></div>
-  </article>`;
+  $("#clientCompanyViewBody").innerHTML = profileHeroCard({
+    tone: "company",
+    title: client.name || "Client company",
+    subtitle: client.status || "Active",
+    meta: "Client Account",
+    imageHtml: profileLogoHtml(client, client.name || "Company"),
+    actions: `<button class="tiny-button system-action" data-edit="clients" data-id="${client.id}" data-form="clientForm" type="button">Edit Information</button>`,
+    groups: [
+      ["Company Details", [
+        ["Main Contact", client.contactName || ""],
+        ["Email", client.email || ""],
+        ["Phone", client.phone || ""],
+        ["Status", client.status || "Active"]
+      ]],
+      ["Default Pay Rates", [
+        ["Day Rate", currency(client.defaultDayRate || 0)],
+        ["Included Hours", client.defaultIncludedHours || 10],
+        ["Additional Hourly", currency(client.defaultAdditionalRate || 0)],
+        ["Rented Vehicle", currency(client.defaultRentedVehicleRate || 0)],
+        ["Personal Vehicle", currency(client.defaultPersonalVehicleRate || 0)]
+      ]],
+      ["Production Setup", [
+        ["Package Layouts", clientPackageLabels(client.packageLayouts).join(", ")]
+      ]]
+    ],
+    sections: [
+      ["System Notes", client.notes || ""]
+    ]
+  });
   $("#editViewedClientCompany").dataset.editClientId = client.id;
   openForm("clientCompanyView");
 }
@@ -3808,6 +3820,22 @@ function profileSection(label, value) {
   return value ? `<div class="profile-section"><span>${escapeHtml(label)}</span><p>${escapeHtml(value)}</p></div>` : "";
 }
 
+function profileInfoSection(title, details = []) {
+  const visibleDetails = details.filter(([, value]) => value !== undefined && value !== null && String(value).trim() !== "");
+  if (!visibleDetails.length) return "";
+  return `<section class="profile-info-section">
+    <h4>${escapeHtml(title)}</h4>
+    <div class="profile-info-grid">${visibleDetails.map(([label, value]) => detailItem(label, value)).join("")}</div>
+  </section>`;
+}
+
+function profileTextSection(title, value) {
+  return value ? `<section class="profile-info-section profile-text-section">
+    <h4>${escapeHtml(title)}</h4>
+    <p>${escapeHtml(value)}</p>
+  </section>` : "";
+}
+
 function profileLogoHtml(profile, fallback = "Profile", className = "profile-logo-frame") {
   const image = profile?.logoData || profile?.brandLogoData || profile?.headshotData || "";
   const label = profile?.name || profile?.contactName || fallback;
@@ -3816,9 +3844,14 @@ function profileLogoHtml(profile, fallback = "Profile", className = "profile-log
     : `<div class="${className} placeholder">${escapeHtml(initialsFor(label))}</div>`;
 }
 
-function profileHeroCard({ tone = "", title = "", subtitle = "", meta = "", imageHtml = "", actions = "", details = [], sections = [] }) {
+function profileHeroCard({ tone = "", title = "", subtitle = "", meta = "", imageHtml = "", actions = "", details = [], groups = [], sections = [] }) {
   const toneClass = tone ? ` profile-${tone}` : "";
   const metaLine = meta ? `<span>${escapeHtml(meta)}</span>` : "";
+  const groupedContent = groups.length
+    ? groups.map(([groupTitle, groupDetails]) => profileInfoSection(groupTitle, groupDetails)).join("")
+    : details.length
+      ? `<div class="profile-detail-grid premium-detail-grid">${details.map(([label, value]) => detailItem(label, value)).join("")}</div>`
+      : "";
   return `<article class="profile-page-card premium-profile-card${toneClass}">
     <div class="premium-profile-hero">
       ${imageHtml || profileLogoHtml({ name: title }, title)}
@@ -3829,8 +3862,10 @@ function profileHeroCard({ tone = "", title = "", subtitle = "", meta = "", imag
       </div>
       <div class="premium-profile-actions">${actions || ""}</div>
     </div>
-    <div class="profile-detail-grid premium-detail-grid">${details.map(([label, value]) => detailItem(label, value)).join("")}</div>
-    ${sections.map(([label, value]) => profileSection(label, value)).join("")}
+    <div class="premium-profile-content">
+      ${groupedContent}
+      ${sections.map(([label, value]) => profileTextSection(label, value)).join("")}
+    </div>
   </article>`;
 }
 
@@ -4210,18 +4245,24 @@ function renderClientProfile() {
     meta: client?.name || "Client team",
     imageHtml: profileLogoHtml(profile, profile.name || authState.user?.email || "Me"),
     actions: profileActions,
-    details: [
-      ["Email", profile.email || ""],
-      ["Phone", profile.phone || ""],
-      ["Email Provider", smtpProviderLabel(profile.smtpProvider)],
-      ["Routing Status", profile.emailRoutingStatus || "Not configured"],
-      ["From Email", profile.smtpFromEmail || ""],
-      ["Reply-To", profile.smtpReplyTo || ""]
+    groups: [
+      ["Contact", [
+        ["Email", profile.email || ""],
+        ["Phone", profile.phone || ""],
+        ["Client Company", client?.name || ""]
+      ]],
+      ["Email Routing", [
+        ["Provider", smtpProviderLabel(profile.smtpProvider)],
+        ["Status", profile.emailRoutingStatus || "Not configured"],
+        ["From Email", profile.smtpFromEmail || ""],
+        ["Reply-To", profile.smtpReplyTo || ""]
+      ]],
+      ["Delivery Setup", [
+        ["SMTP Host", `${profile.smtpHost || ""}${profile.smtpPort ? ":" + profile.smtpPort : ""}`],
+        ["App Password", profile.smtpSecretRef ? "Saved securely" : "No app password saved"]
+      ]]
     ],
-    sections: [
-      ["SMTP Host", `${profile.smtpHost || ""}${profile.smtpPort ? ":" + profile.smtpPort : ""}`],
-      ["SMTP Route", profile.smtpSecretRef ? "Saved securely" : "No app password saved"]
-    ]
+    sections: []
   });
   if (companyCard) {
     companyCard.innerHTML = client ? profileHeroCard({
@@ -4231,14 +4272,25 @@ function renderClientProfile() {
       meta: "Client Profile",
       imageHtml: profileLogoHtml(client, client.name || "Company"),
       actions: `<button class="tiny-button owner-action" data-open-form="clientCompanyProfileForm" type="button">Edit Company</button>`,
-      details: [
-        ["Main Contact", client.contactName || ""],
-        ["Email", client.email || ""],
-        ["Phone", client.phone || ""],
-        ["Package Layouts", clientPackageLabels(client.packageLayouts).join(", ")]
+      groups: [
+        ["Company Details", [
+          ["Main Contact", client.contactName || ""],
+          ["Email", client.email || ""],
+          ["Phone", client.phone || ""],
+          ["Status", client.status || "Active"]
+        ]],
+        ["Default Pay Rates", [
+          ["Day Rate", currency(client.defaultDayRate || 0)],
+          ["Included Hours", client.defaultIncludedHours || 10],
+          ["Additional Hourly", currency(client.defaultAdditionalRate || 0)],
+          ["Rented Vehicle", currency(client.defaultRentedVehicleRate || 0)],
+          ["Personal Vehicle", currency(client.defaultPersonalVehicleRate || 0)]
+        ]],
+        ["Production Setup", [
+          ["Package Layouts", clientPackageLabels(client.packageLayouts).join(", ")]
+        ]]
       ],
       sections: [
-        ["Default Pay Rates", `${currency(client.defaultDayRate || 0)}/${client.defaultIncludedHours || 10} hrs, +${currency(client.defaultAdditionalRate || 0)}/hr\nRented vehicle: ${currency(client.defaultRentedVehicleRate || 0)} | Personal vehicle: ${currency(client.defaultPersonalVehicleRate || 0)}`],
         ["Company Notes", client.notes || ""]
       ]
     }) : `<div class="compact-item empty">No company profile connected yet.</div>`;
@@ -4251,26 +4303,34 @@ function renderAdminProfile() {
   const profile = activeAdminProfile();
   const name = profile.name || authState.user?.user_metadata?.name || "System Admin";
   const email = profile.email || authState.user?.email || "";
-  card.innerHTML = `<article class="profile-page-card">
-    <div class="profile-page-header">
-      <div class="profile-avatar-large placeholder">${escapeHtml(initialsFor(name || email || "Admin"))}</div>
-      <div>
-        <h3>${escapeHtml(name)}</h3>
-        <p>${escapeHtml(email)}</p>
-      </div>
-    </div>
-    <div class="profile-detail-grid">
-      <div><span>Access Role</span><strong>ADMIN</strong></div>
-      <div><span>System Access</span><strong>Client setup and troubleshooting</strong></div>
-      <div><span>Email Provider</span><strong>${escapeHtml(smtpProviderLabel(profile.smtpProvider))}</strong></div>
-      <div><span>Routing Status</span><strong>${escapeHtml(profile.emailRoutingStatus || "Not configured")}</strong></div>
-      <div><span>From Email</span><strong>${escapeHtml(profile.smtpFromEmail || "")}</strong></div>
-      <div><span>Reply-To</span><strong>${escapeHtml(profile.smtpReplyTo || "")}</strong></div>
-    </div>
-    <div class="profile-section"><span>SMTP Host</span><p>${escapeHtml(profile.smtpHost || "")}${profile.smtpPort ? ":" + escapeHtml(profile.smtpPort) : ""}</p></div>
-    <div class="profile-section"><span>SMTP Route</span><p>${escapeHtml(profile.smtpSecretRef ? "Saved securely" : "No app password saved")}</p><div class="row-actions"><button class="tiny-button system-action" data-open-form="adminProfileForm" type="button">SMTP Settings</button><button class="tiny-button system-action" data-send-smtp-test="admin" type="button">Send Test Email</button></div></div>
-    <div class="profile-section"><span>Security Boundary</span><p>ADMIN can manage system setup and client accounts, but does not load sensitive production records, payroll, timecards, crew personal data, promoter records, or reports.</p></div>
-  </article>`;
+  card.innerHTML = profileHeroCard({
+    tone: "admin",
+    title: name,
+    subtitle: email,
+    meta: "System Profile",
+    imageHtml: `<div class="profile-avatar-large placeholder">${escapeHtml(initialsFor(name || email || "Admin"))}</div>`,
+    actions: `<button class="tiny-button system-action" data-open-form="adminProfileForm" type="button">SMTP Settings</button><button class="tiny-button system-action" data-send-smtp-test="admin" type="button">Send Test Email</button>`,
+    groups: [
+      ["Access", [
+        ["Server Role", "ADMIN"],
+        ["System Access", "Client setup and troubleshooting"],
+        ["Signed-In Email", email]
+      ]],
+      ["Email Routing", [
+        ["Provider", smtpProviderLabel(profile.smtpProvider)],
+        ["Status", profile.emailRoutingStatus || "Not configured"],
+        ["From Email", profile.smtpFromEmail || ""],
+        ["Reply-To", profile.smtpReplyTo || ""]
+      ]],
+      ["Delivery Setup", [
+        ["SMTP Host", `${profile.smtpHost || ""}${profile.smtpPort ? ":" + profile.smtpPort : ""}`],
+        ["App Password", profile.smtpSecretRef ? "Saved securely" : "No app password saved"]
+      ]]
+    ],
+    sections: [
+      ["Security Boundary", "ADMIN can manage system setup and client accounts, but does not load sensitive production records, payroll, timecards, crew personal data, promoter records, or reports."]
+    ]
+  });
 }
 
 function activeAdminProfile() {
@@ -5579,11 +5639,17 @@ function renderMyProfile() {
     meta: worker.status || "Available",
     imageHtml: profileAvatarLarge(worker, worker.hideHeadshot),
     actions: `<button class="tiny-button" data-edit="workers" data-id="${worker.id}" data-form="workerForm" type="button">Edit My Profile</button>`,
-    details: [
-      ["Phone", phone],
-      ["Email", email],
-      ["Status", worker.status || ""],
-      ["Mailing Address", worker.mailingAddress || ""]
+    groups: [
+      ["Contact", [
+        ["Phone", phone],
+        ["Email", email],
+        ["Mailing Address", worker.mailingAddress || ""]
+      ]],
+      ["Work Profile", [
+        ["Role", worker.role || "Crew / Runner"],
+        ["Status", worker.status || ""],
+        ["Login", worker.authUserId ? "Connected" : "Not connected"]
+      ]]
     ],
     sections: [
       ["Skills", worker.skills || ""],
