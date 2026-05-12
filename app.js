@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.04.150",
-  title: "V1.04.150 update installed",
-  body: "Moved profile pages into Settings navigation."
+  version: "V1.04.151",
+  title: "V1.04.151 update installed",
+  body: "Added sort and filter arrow controls to Crew Profiles columns."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -388,6 +388,9 @@ let state = {
   runnerSortKey: localStorage.getItem("productionCrewRunnerSortKey") || "name",
   runnerSortDirection: localStorage.getItem("productionCrewRunnerSortDirection") || "asc",
   runnerColumnFilters: JSON.parse(localStorage.getItem("productionCrewRunnerColumnFilters") || "{}"),
+  workerSortKey: localStorage.getItem("productionCrewWorkerSortKey") || "profile",
+  workerSortDirection: localStorage.getItem("productionCrewWorkerSortDirection") || "asc",
+  workerColumnFilters: JSON.parse(localStorage.getItem("productionCrewWorkerColumnFilters") || "{}"),
   staffingSortKey: localStorage.getItem("productionCrewStaffingSortKey") || "event",
   staffingSortDirection: localStorage.getItem("productionCrewStaffingSortDirection") || "asc",
   staffingColumnFilters: JSON.parse(localStorage.getItem("productionCrewStaffingColumnFilters") || "{}"),
@@ -639,6 +642,13 @@ const VEHICLE_COLUMNS = [
   ["start", "Start"],
   ["end", "End"],
   ["photos", "Photos"]
+];
+const WORKER_COLUMNS = [
+  ["profile", "Profile"],
+  ["role", "Role"],
+  ["status", "Status"],
+  ["phone", "Phone"],
+  ["info", "Info"]
 ];
 
 const $ = (selector) => document.querySelector(selector);
@@ -6180,11 +6190,58 @@ function renderWorkers() {
 
   $("#myProfileCard").innerHTML = "";
   document.querySelector("#workers .table-wrap").hidden = false;
-  const rows = visibleWorkers().filter((worker) => matchesSearch(worker));
+  renderWorkerTableHead();
+  const rows = sortWorkerRows(filterWorkerRows(visibleWorkers().filter((worker) => matchesSearch(worker))));
   $("#workerTableCount").textContent = `${rows.length} shown`;
   $("#workerTable").innerHTML = rows.length
     ? rows.map((worker) => workerProfileRow(worker)).join("")
     : `<tr><td colspan="6" class="empty">No crew profiles match this search.</td></tr>`;
+}
+
+function renderWorkerTableHead() {
+  const head = $("#workerHead");
+  if (!head) return;
+  head.innerHTML = `<tr>${WORKER_COLUMNS.map(([key, label]) => {
+    const activeSort = state.workerSortKey === key;
+    const activeFilter = !!state.workerColumnFilters?.[key];
+    const arrow = activeSort ? (state.workerSortDirection === "desc" ? "▼" : "▲") : "▾";
+    return `<th><div class="column-filter-heading">
+      <span>${escapeHtml(label)}</span>
+      <details class="column-filter-menu ${activeSort || activeFilter ? "active" : ""}">
+        <summary aria-label="${escapeHtml(label)} sort and filter">${arrow}</summary>
+        <div class="record-options-menu">
+          <button class="tiny-button" data-worker-sort="${escapeHtml(key)}" data-worker-sort-direction="asc" type="button">Sort A-Z</button>
+          <button class="tiny-button" data-worker-sort="${escapeHtml(key)}" data-worker-sort-direction="desc" type="button">Sort Z-A</button>
+          <label>Filter<input data-worker-column-filter="${escapeHtml(key)}" value="${escapeHtml(state.workerColumnFilters?.[key] || "")}" placeholder="Type to filter"></label>
+        </div>
+      </details>
+    </div></th>`;
+  }).join("")}<th></th></tr>`;
+}
+
+function filterWorkerRows(rows) {
+  const filters = state.workerColumnFilters || {};
+  return rows.filter((worker) => WORKER_COLUMNS.every(([key]) => {
+    const filter = String(filters[key] || "").trim().toLowerCase();
+    return !filter || workerColumnValue(worker, key).toLowerCase().includes(filter);
+  }));
+}
+
+function sortWorkerRows(rows) {
+  const key = state.workerSortKey || "profile";
+  const direction = state.workerSortDirection === "desc" ? -1 : 1;
+  return [...rows].sort((a, b) => direction * workerColumnValue(a, key).localeCompare(workerColumnValue(b, key), undefined, { numeric: true, sensitivity: "base" }));
+}
+
+function workerColumnValue(worker, key) {
+  if (key === "profile") return listText(`${worker.name || ""} ${publicWorkerValue(worker, "email") || worker.email || ""}`);
+  if (key === "role") return listText(worker.role);
+  if (key === "status") return listText(worker.status);
+  if (key === "phone") return listText(publicWorkerValue(worker, "phone") || worker.phone);
+  if (key === "info") {
+    return listText(`${worker.skills || ""} ${worker.defaultDayRate || worker.defaultRate || ""} ${worker.defaultIncludedHours || ""} ${accessBadges(worker.accessLevels, "CREW").replace(/<[^>]+>/g, " ")} ${loginStatus(worker).replace(/<[^>]+>/g, " ")}`);
+  }
+  return "";
 }
 
 function renderMyProfile() {
@@ -11693,6 +11750,13 @@ function bindEvents() {
       localStorage.setItem("productionCrewRunnerColumnFilters", JSON.stringify(state.runnerColumnFilters));
       renderRunnerStops();
     }
+    if (event.target?.matches?.("[data-worker-column-filter]")) {
+      const key = event.target.dataset.workerColumnFilter;
+      state.workerColumnFilters = { ...(state.workerColumnFilters || {}), [key]: event.target.value };
+      if (!state.workerColumnFilters[key]) delete state.workerColumnFilters[key];
+      localStorage.setItem("productionCrewWorkerColumnFilters", JSON.stringify(state.workerColumnFilters));
+      renderWorkers();
+    }
     if (event.target?.matches?.("[data-staffing-column-filter]")) {
       const key = event.target.dataset.staffingColumnFilter;
       state.staffingColumnFilters = { ...(state.staffingColumnFilters || {}), [key]: event.target.value };
@@ -11903,6 +11967,7 @@ function bindEvents() {
     const openButton = event.target.closest("[data-open-form]");
     const runnerResourceButton = event.target.closest("[data-runner-resource-action]");
     const runnerSortButton = event.target.closest("[data-runner-sort]");
+    const workerSortButton = event.target.closest("[data-worker-sort]");
     const staffingSortButton = event.target.closest("[data-staffing-sort]");
     const vehicleSortButton = event.target.closest("[data-vehicle-sort]");
     const quickProfileButton = event.target.closest("[data-open-quick-profile]");
@@ -12024,6 +12089,15 @@ function bindEvents() {
       localStorage.setItem("productionCrewRunnerSortDirection", state.runnerSortDirection);
       runnerSortButton.closest("details")?.removeAttribute("open");
       renderRunnerStops();
+      return;
+    }
+    if (workerSortButton) {
+      state.workerSortKey = workerSortButton.dataset.workerSort || "profile";
+      state.workerSortDirection = workerSortButton.dataset.workerSortDirection || "asc";
+      localStorage.setItem("productionCrewWorkerSortKey", state.workerSortKey);
+      localStorage.setItem("productionCrewWorkerSortDirection", state.workerSortDirection);
+      workerSortButton.closest("details")?.removeAttribute("open");
+      renderWorkers();
       return;
     }
     if (vehicleSortButton) {
