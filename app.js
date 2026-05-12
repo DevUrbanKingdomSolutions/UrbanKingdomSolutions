@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.04.148",
-  title: "V1.04.148 update installed",
-  body: "Polished the vehicle Start and End edit popup layout."
+  version: "V1.04.149",
+  title: "V1.04.149 update installed",
+  body: "Kept vehicle Start and End photo sections separated by selected phase."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -6912,8 +6912,8 @@ function vehicleRentalDetailsFor(log = {}) {
 function updateVehiclePhotoSections(form = $("#vehicleForm")) {
   if (!form) return;
   const phase = String(form.elements.phase?.value || "").toLowerCase();
-  const showStart = phase !== "end";
-  const showEnd = phase !== "start";
+  const showStart = phase === "start";
+  const showEnd = phase === "end";
   form.querySelectorAll("[data-vehicle-photo-section]").forEach((section) => {
     const sectionType = section.dataset.vehiclePhotoSection;
     section.hidden = sectionType === "start" ? !showStart : !showEnd;
