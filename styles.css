@@ -2766,6 +2766,10 @@ td p {
     gap: 0;
   }
 
+  #messages .mobile-message-list[hidden] {
+    display: none !important;
+  }
+
   #messages .message-thread-card {
     border-width: 1px 0 0;
     border-color: rgba(195, 186, 169, 0.45);

@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.05.016",
-  title: "V1.05.016 update installed",
-  body: "Refined message selectors with collapsible thread sections and admin client thread selection."
+  version: "V1.05.017",
+  title: "V1.05.017 update installed",
+  body: "Fixed message section collapse behavior so Permanent and Event thread groups close correctly."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",

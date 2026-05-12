@@ -1,5 +1,5 @@
 {
-  "version": "V1.05.016",
-  "title": "V1.05.016 update installed",
-  "body": "Refined message selectors with collapsible thread sections and admin client thread selection."
+  "version": "V1.05.017",
+  "title": "V1.05.017 update installed",
+  "body": "Fixed message section collapse behavior so Permanent and Event thread groups close correctly."
 }
