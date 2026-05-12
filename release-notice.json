@@ -1,5 +1,5 @@
 {
-  "version": "V1.04.109",
-  "title": "V1.04.109 update installed",
-  "body": "Stopped duplicate live message notifications and quieted open-chat receive updates."
+  "version": "V1.04.110",
+  "title": "V1.04.110 update installed",
+  "body": "Fixed direct message notification titles and removed the duplicate live receive notice."
 }

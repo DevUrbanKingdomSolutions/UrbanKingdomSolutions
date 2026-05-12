@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.04.109",
-  title: "V1.04.109 update installed",
-  body: "Stopped duplicate live message notifications and quieted open-chat receive updates."
+  version: "V1.04.110",
+  title: "V1.04.110 update installed",
+  body: "Fixed direct message notification titles and removed the duplicate live receive notice."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -6422,7 +6422,6 @@ function notificationDedupeKey(notification = {}) {
     "message",
     notification.threadKey || "",
     notification.messageId || "",
-    notification.title || "",
     notification.body || ""
   ].join("|");
 }
@@ -9543,9 +9542,10 @@ async function createMessageNotifications(message, deliveredMessage = {}) {
   const preview = String(message || deliveredMessage.message || deliveredMessage.name || deliveredMessage.fileName || "Photo").replace(/\s+/g, " ").trim();
   const messageId = sendbirdMessageKey(deliveredMessage) || String(deliveredMessage.reqId || deliveredMessage.requestId || Date.now());
   for (const recipientId of recipients) {
+    const title = sendbirdActiveThread.type === "direct" ? senderName : activeMessageThreadTitle();
     await createAppNotification({
       id: `message-${meta.threadKey}-${messageId}-${recipientId}`.replace(/[^a-zA-Z0-9:_-]/g, "-"),
-      title: activeMessageThreadTitle(),
+      title,
       body: `${senderName}: ${preview || "New message"}`,
       type: "message",
       messageId,
@@ -9556,34 +9556,7 @@ async function createMessageNotifications(message, deliveredMessage = {}) {
 }
 
 async function createReceivedMessageNotification(channel, message) {
-  if (!message || baseSendbirdUserId(message.sender?.userId) === baseSendbirdUserId(sendbirdClient?.currentUser?.userId)) return;
-  const meta = messageThreadMetaFromChannel(channel);
-  const messageId = sendbirdMessageKey(message) || String(message.reqId || Date.now());
-  const preview = String(message.message || message.name || message.fileName || "New message").replace(/\s+/g, " ").trim();
-  const senderName = message.sender?.nickname || message.sender?.userId || "New message";
-  const dedupeKey = [
-    "message",
-    meta.threadKey || "",
-    messageId,
-    meta.title || "Messages",
-    `${senderName}: ${preview || "New message"}`
-  ].join("|");
-  if (visibleNotifications().some((notification) => notificationDedupeKey(notification) === dedupeKey)) return;
-  await createAppNotification({
-    id: `message-${meta.threadKey}-${messageId}-${currentThreadUserId()}`.replace(/[^a-zA-Z0-9:_-]/g, "-"),
-    title: meta.title || "Messages",
-    body: `${senderName}: ${preview || "New message"}`,
-    type: "message",
-    messageId,
-    skipCloudSync: true,
-    recipientId: currentThreadUserId(),
-    viewId: "messages",
-    threadType: meta.threadType,
-    threadKey: meta.threadKey,
-    threadEventId: meta.threadEventId,
-    threadProfileId: meta.threadProfileId,
-    clientId: meta.clientId
-  });
+  return;
 }
 
 async function handleIncomingSendbirdMessage(channel, message) {
