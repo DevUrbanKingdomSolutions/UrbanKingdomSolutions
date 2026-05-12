@@ -10,7 +10,7 @@
     <title>Production Crew Database</title>
     <link rel="manifest" href="manifest.webmanifest">
     <link rel="icon" href="assets/logo/app-logo-admin.png" type="image/png">
-    <link rel="stylesheet" href="styles.css?v=V1.04.121-profile-note-lists">
+    <link rel="stylesheet" href="styles.css?v=V1.04.122-notes-view-icons">
   </head>
   <body>
     <div id="appLoadingOverlay" class="app-loading-overlay" aria-live="polite">
@@ -187,11 +187,21 @@
             <section class="panel">
               <div class="panel-heading">
                 <h3>Recent Notes</h3>
-                <button class="icon-button clean-icon-button owner-action" data-open-form="dashboardNoteForm" type="button" aria-label="Add note" title="Add note">+</button>
+                <div class="dashboard-heading-actions">
+                  <button class="icon-button clean-icon-button owner-action" data-open-recent-notes type="button" aria-label="View recent notes" title="View recent notes">⌕</button>
+                  <button class="icon-button clean-icon-button owner-action" data-open-form="dashboardNoteForm" type="button" aria-label="Add note" title="Add note">+</button>
+                </div>
               </div>
               <div id="recentNotes" class="compact-list"></div>
             </section>
           </div>
+          <section id="recentNotesView" class="panel form-panel owner-form">
+            <div class="panel-heading">
+              <h3>Recent Notes</h3>
+              <button class="ghost-button clear-form" type="button" data-form="recentNotesView">Close</button>
+            </div>
+            <div id="recentNotesViewBody" class="compact-list"></div>
+          </section>
           <form id="dashboardNoteForm" class="panel form-panel owner-form">
             <div class="panel-heading">
               <h3>Add Note</h3>
@@ -1506,6 +1516,6 @@
     <div id="modalHost"></div>
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js?v=V1.04.121-profile-note-lists"></script>
+    <script src="app.js?v=V1.04.122-notes-view-icons"></script>
   </body>
 </html>

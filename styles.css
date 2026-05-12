@@ -1583,9 +1583,15 @@ body.crew-mode .crew-mobile-home:not([hidden]) {
 
 .dashboard-heading-spacer {
   display: inline-block;
-  width: 32px;
+  width: 68px;
   height: 32px;
-  flex: 0 0 32px;
+  flex: 0 0 68px;
+}
+
+.dashboard-heading-actions {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
 }
 
 #recentNotes {
@@ -2150,8 +2156,7 @@ td p {
 
 .recent-note-view {
   align-self: center;
-  color: var(--accent-dark);
-  font-weight: 900;
+  flex: 0 0 auto;
 }
 
 .message-thread-card {

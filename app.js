@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.04.121",
-  title: "V1.04.121 update installed",
-  body: "Refined profile popups with grouped sections, listed dated notes, and collapsed nav groups on fresh startup."
+  version: "V1.04.122",
+  title: "V1.04.122 update installed",
+  body: "Expanded dashboard Recent Notes to show individual profile-note lines and added clean view icons."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -4513,7 +4513,7 @@ function renderDashboard() {
 
 function dashboardRecentNotes() {
   const canSeeProductionNotes = hasDataScope("CLIENT") || hasDataScope("PROMOTER");
-  const eventNotes = visibleEvents().map((item) => ({
+  const eventNotes = visibleEvents().flatMap((item) => dashboardNoteEntries({
     type: "Event",
     name: item.name,
     text: item.notes,
@@ -4521,7 +4521,7 @@ function dashboardRecentNotes() {
     storeName: "events",
     recordId: item.id
   }));
-  const venueNotes = canSeeProductionNotes ? state.venues.map((item) => ({
+  const venueNotes = canSeeProductionNotes ? state.venues.flatMap((item) => dashboardNoteEntries({
     type: "Venue",
     name: item.name,
     text: item.notes || item.parking,
@@ -4529,7 +4529,7 @@ function dashboardRecentNotes() {
     storeName: "venues",
     recordId: item.id
   })) : [];
-  const promoterNotes = canSeeProductionNotes ? visiblePromoters().map((item) => ({
+  const promoterNotes = canSeeProductionNotes ? visiblePromoters().flatMap((item) => dashboardNoteEntries({
     type: "Promoter",
     name: promoterLabel(item),
     text: item.notes,
@@ -4537,7 +4537,7 @@ function dashboardRecentNotes() {
     storeName: "promoters",
     recordId: item.id
   })) : [];
-  const runnerStopNotes = canSeeProductionNotes ? state.runnerStops.map((item) => ({
+  const runnerStopNotes = canSeeProductionNotes ? state.runnerStops.flatMap((item) => dashboardNoteEntries({
     type: "Runner",
     name: item.name,
     text: item.notes || item.bestUse,
@@ -4548,24 +4548,24 @@ function dashboardRecentNotes() {
   const timecardNotes = canViewTimecardAdminNotes() ? visibleRecords(state.timecards).flatMap((card) => {
     const worker = getWorker(card.workerId);
     const event = getEvent(card.eventId);
-    return {
+    return dashboardNoteEntries({
       type: "Timecard",
       name: [worker?.name, event?.name || card.eventName].filter(Boolean).join(" - ") || "Timecard",
       text: timecardProfileNoteText(card),
       updatedAt: card.updatedAt || card.createdAt,
       storeName: "timecards",
       recordId: card.id
-    };
+    });
   }) : [];
   const createdNotes = canSeeProductionNotes ? state.profileNotes
-    .filter((note) => note.note && !note.promoterId && (!note.clientId || note.clientId === cloudClientId() || note.clientId === activeClientRecord()?.id))
-    .map((note) => ({
+    .filter((note) => note.note && dashboardProfileNoteIsVisible(note))
+    .flatMap((note) => dashboardNoteEntries({
       type: note.relatedType ? `${titleCase(note.relatedType)} Note` : "Note",
-      name: note.title || note.createdByName || "Created note",
+      name: note.title || dashboardProfileNoteName(note) || note.createdByName || "Created note",
       text: note.note,
       updatedAt: note.updatedAt || note.createdAt,
-      storeName: note.workerId ? "workers" : "profileNotes",
-      recordId: note.workerId || note.id
+      storeName: "profileNotes",
+      recordId: note.id
     })) : [];
   return [
     ...createdNotes,
@@ -4577,13 +4577,34 @@ function dashboardRecentNotes() {
   ].filter((item) => item.text).sort((a, b) => new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0));
 }
 
+function dashboardNoteEntries(item) {
+  return noteListEntries(item.text).map((text, index) => ({
+    ...item,
+    text,
+    noteIndex: index
+  }));
+}
+
+function dashboardProfileNoteIsVisible(note) {
+  if (note.clientId && note.clientId !== cloudClientId() && note.clientId !== activeClientRecord()?.id) return false;
+  if (note.workerId) return visibleWorkers().some((worker) => worker.id === note.workerId);
+  if (note.promoterId) return visiblePromoters().some((promoter) => promoter.id === note.promoterId);
+  return true;
+}
+
+function dashboardProfileNoteName(note) {
+  if (note.workerId) return getWorker(note.workerId)?.name || "Crew / Runner";
+  if (note.promoterId) return promoterLabel(getPromoter(note.promoterId)) || "Promoter";
+  return "";
+}
+
 function titleCase(value = "") {
   return String(value || "").replace(/[-_]+/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
 function recentNoteItemHtml(item) {
   const target = item.storeName && item.recordId ? `${item.storeName}:${item.recordId}` : "";
-  const viewButton = target ? `<button class="link-button recent-note-view" data-view-record="${escapeHtml(target)}" type="button">View</button>` : "";
+  const viewButton = target ? `<button class="icon-button clean-icon-button recent-note-view" data-view-record="${escapeHtml(target)}" type="button" aria-label="View note" title="View note">⌕</button>` : "";
   const description = noteDescription(item.text, item.updatedAt);
   return `<div class="compact-item recent-note-item">
     <div>
@@ -4592,6 +4613,14 @@ function recentNoteItemHtml(item) {
     </div>
     ${viewButton}
   </div>`;
+}
+
+function openRecentNotesView() {
+  const notes = dashboardRecentNotes().slice(0, 8);
+  $("#recentNotesViewBody").innerHTML = notes.length
+    ? notes.map(recentNoteItemHtml).join("")
+    : `<div class="compact-item empty">Notes will appear here as you add them.</div>`;
+  openForm("recentNotesView");
 }
 
 function renderDashboardIdentity() {
@@ -11091,6 +11120,7 @@ function bindEvents() {
     const viewEventAssignmentButton = event.target.closest("[data-view-event-assignment]");
     const editTimecardDetailButton = event.target.closest("[data-edit-timecard-detail]");
     const saveTimecardDetailButton = event.target.closest("[data-save-timecard-detail]");
+    const openRecentNotesButton = event.target.closest("[data-open-recent-notes]");
     const cancelTimecardDetailButton = event.target.closest("[data-cancel-timecard-detail]");
     const messageReplyButton = event.target.closest("[data-message-reply]");
     const messageEmojiButton = event.target.closest("[data-message-emoji]");
@@ -11117,6 +11147,10 @@ function bindEvents() {
 
     if (openNotificationButton) {
       await openNotification(openNotificationButton.dataset.openNotification);
+      return;
+    }
+    if (openRecentNotesButton) {
+      openRecentNotesView();
       return;
     }
     if (quickProfileButton) {
