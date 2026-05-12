@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.05.007",
-  title: "V1.05.007 update installed",
-  body: "Added Admin Console account column controls and moved access levels into a popup view."
+  version: "V1.05.008",
+  title: "V1.05.008 update installed",
+  body: "Added Admin Console client account column controls."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -420,6 +420,9 @@ let state = {
   userAccessSortKey: localStorage.getItem("productionCrewUserAccessSortKey") || "user",
   userAccessSortDirection: localStorage.getItem("productionCrewUserAccessSortDirection") || "asc",
   userAccessColumnFilters: JSON.parse(localStorage.getItem("productionCrewUserAccessColumnFilters") || "{}"),
+  clientAccountSortKey: localStorage.getItem("productionCrewClientAccountSortKey") || "client",
+  clientAccountSortDirection: localStorage.getItem("productionCrewClientAccountSortDirection") || "asc",
+  clientAccountColumnFilters: JSON.parse(localStorage.getItem("productionCrewClientAccountColumnFilters") || "{}"),
   messagingThreadType: localStorage.getItem("productionCrewMessagingThreadType") || "event",
   messageEventFilter: localStorage.getItem("productionCrewMessageEventFilter") || "current",
   selectedMessageEventId: localStorage.getItem("productionCrewSelectedMessageEventId") || "",
@@ -706,6 +709,12 @@ const USER_ACCESS_COLUMNS = [
   ["role", "Role"],
   ["client", "Client"],
   ["profile", "Profile"]
+];
+const CLIENT_ACCOUNT_COLUMNS = [
+  ["client", "Client"],
+  ["contact", "Contact"],
+  ["status", "Status"],
+  ["notes", "System Notes"]
 ];
 
 const $ = (selector) => document.querySelector(selector);
@@ -3831,10 +3840,57 @@ function positionOpenRecordMenus() {
 
 function renderAdmin() {
   renderUserAccessTable("adminUserTable", "adminUserTableCount", state.userAccessRows.filter((row) => normalizeRole(row.role) === "ADMIN"));
-  $("#clientTableCount").textContent = `${state.clients.length} clients`;
-  $("#clientTable").innerHTML = state.clients.length
-    ? state.clients.map((client) => `<tr><td><button class="link-button" data-view-client-company="${client.id}" type="button"><strong>${escapeHtml(client.name)}</strong></button><p>${escapeHtml(client.email)}</p><p>${clientPackageBadges(client.packageLayouts)}</p></td><td>${escapeHtml(client.contactName)}<p>${escapeHtml(client.phone)}</p></td><td><span class="status-pill">${escapeHtml(client.status || "Active")}</span></td><td>${escapeHtml(client.notes)}${loginStatus(client)}</td><td>${actionButtons("clients", client.id, "clientForm", `<button class="tiny-button system-action" data-manage-client-packages="${client.id}" type="button">Packages</button>${loginSetupButton("clients", client)}`, canSystemEdit())}</td></tr>`).join("")
+  renderClientAccountHead();
+  const clients = sortClientAccounts(filterClientAccounts(state.clients));
+  $("#clientTableCount").textContent = `${clients.length} clients`;
+  $("#clientTable").innerHTML = clients.length
+    ? clients.map((client) => `<tr><td><button class="link-button" data-view-client-company="${client.id}" type="button"><strong>${escapeHtml(client.name)}</strong></button><p>${escapeHtml(client.email)}</p><p>${clientPackageBadges(client.packageLayouts)}</p></td><td>${escapeHtml(client.contactName)}<p>${escapeHtml(client.phone)}</p></td><td><span class="status-pill">${escapeHtml(client.status || "Active")}</span></td><td>${escapeHtml(client.notes)}${loginStatus(client)}</td><td>${actionButtons("clients", client.id, "clientForm", `<button class="tiny-button system-action" data-manage-client-packages="${client.id}" type="button">Packages</button>${loginSetupButton("clients", client)}`, canSystemEdit())}</td></tr>`).join("")
     : `<tr><td colspan="5" class="empty">No client accounts yet.</td></tr>`;
+}
+
+function renderClientAccountHead() {
+  const head = $("#clientAccountHead");
+  if (!head) return;
+  head.innerHTML = `<tr>${CLIENT_ACCOUNT_COLUMNS.map(([key, label]) => {
+    const activeSort = state.clientAccountSortKey === key;
+    const activeFilter = !!state.clientAccountColumnFilters?.[key];
+    const arrow = activeSort ? (state.clientAccountSortDirection === "desc" ? "▼" : "▲") : "▾";
+    return `<th><div class="column-filter-heading">
+      <span>${escapeHtml(label)}</span>
+      <details class="column-filter-menu ${activeSort || activeFilter ? "active" : ""}">
+        <summary aria-label="${escapeHtml(label)} sort and filter">${arrow}</summary>
+        <div class="record-options-menu">
+          <button class="tiny-button" data-client-account-sort="${escapeHtml(key)}" data-client-account-sort-direction="asc" type="button">Sort A-Z</button>
+          <button class="tiny-button" data-client-account-sort="${escapeHtml(key)}" data-client-account-sort-direction="desc" type="button">Sort Z-A</button>
+          <label>Filter<input data-client-account-column-filter="${escapeHtml(key)}" value="${escapeHtml(state.clientAccountColumnFilters?.[key] || "")}" placeholder="Type to filter"></label>
+        </div>
+      </details>
+    </div></th>`;
+  }).join("")}<th></th></tr>`;
+}
+
+function filterClientAccounts(clients) {
+  const filters = state.clientAccountColumnFilters || {};
+  return clients.filter((client) => {
+    return CLIENT_ACCOUNT_COLUMNS.every(([key]) => {
+      const filter = String(filters[key] || "").trim().toLowerCase();
+      return !filter || clientAccountColumnValue(client, key).toLowerCase().includes(filter);
+    });
+  });
+}
+
+function sortClientAccounts(clients) {
+  const key = state.clientAccountSortKey || "client";
+  const direction = state.clientAccountSortDirection === "desc" ? -1 : 1;
+  return [...clients].sort((a, b) => direction * clientAccountColumnValue(a, key).localeCompare(clientAccountColumnValue(b, key), undefined, { numeric: true, sensitivity: "base" }));
+}
+
+function clientAccountColumnValue(client, key) {
+  if (key === "client") return listText(`${client.name || ""} ${client.email || ""} ${normalizeClientPackages(client.packageLayouts).join(" ")}`);
+  if (key === "contact") return listText(`${client.contactName || ""} ${client.phone || ""}`);
+  if (key === "status") return listText(client.status || "Active");
+  if (key === "notes") return listText(`${client.notes || ""} ${client.setupStatus || ""} ${client.authUserId ? "login connected" : ""}`);
+  return "";
 }
 
 function openClientPackageForm(clientId) {
@@ -12192,6 +12248,13 @@ function bindEvents() {
       if (tableId === "adminUserTable") renderAdmin();
       else renderUserAccessTables();
     }
+    if (event.target?.matches?.("[data-client-account-column-filter]")) {
+      const key = event.target.dataset.clientAccountColumnFilter;
+      state.clientAccountColumnFilters = { ...(state.clientAccountColumnFilters || {}), [key]: event.target.value };
+      if (!state.clientAccountColumnFilters[key]) delete state.clientAccountColumnFilters[key];
+      localStorage.setItem("productionCrewClientAccountColumnFilters", JSON.stringify(state.clientAccountColumnFilters));
+      renderAdmin();
+    }
   });
   $("#dashboardCalendarPrev")?.addEventListener("click", () => {
     const month = dashboardCalendarMonthDate();
@@ -12367,6 +12430,7 @@ function bindEvents() {
     const promoterSortButton = event.target.closest("[data-promoter-sort]");
     const runnerStatusSortButton = event.target.closest("[data-runner-status-sort]");
     const userAccessSortButton = event.target.closest("[data-user-access-sort]");
+    const clientAccountSortButton = event.target.closest("[data-client-account-sort]");
     const quickProfileButton = event.target.closest("[data-open-quick-profile]");
     const deleteButton = event.target.closest("[data-delete]");
     const clockButton = event.target.closest("[data-clock-out]");
@@ -12571,6 +12635,15 @@ function bindEvents() {
       userAccessSortButton.closest("details")?.removeAttribute("open");
       if (tableId === "adminUserTable") renderAdmin();
       else renderUserAccessTables();
+      return;
+    }
+    if (clientAccountSortButton) {
+      state.clientAccountSortKey = clientAccountSortButton.dataset.clientAccountSort || "client";
+      state.clientAccountSortDirection = clientAccountSortButton.dataset.clientAccountSortDirection || "asc";
+      localStorage.setItem("productionCrewClientAccountSortKey", state.clientAccountSortKey);
+      localStorage.setItem("productionCrewClientAccountSortDirection", state.clientAccountSortDirection);
+      clientAccountSortButton.closest("details")?.removeAttribute("open");
+      renderAdmin();
       return;
     }
     if (requestMobilePermissionsButton) {
