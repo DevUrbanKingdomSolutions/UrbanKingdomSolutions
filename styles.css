@@ -2548,6 +2548,58 @@ td p {
   text-align: left;
 }
 
+.runner-resource-menu summary.icon-button {
+  width: 34px;
+  height: 34px;
+  border-color: color-mix(in srgb, var(--accent) 22%, var(--line));
+  background: color-mix(in srgb, var(--accent-soft) 70%, #ffffff);
+  color: var(--accent-dark);
+  box-shadow: 0 8px 22px color-mix(in srgb, var(--accent) 14%, transparent);
+}
+
+.runner-resource-menu .record-options-menu {
+  min-width: 190px;
+  border: 0;
+  border-radius: 12px;
+  background: #ffffff;
+  box-shadow: 0 18px 46px rgba(20, 29, 35, 0.16);
+}
+
+.runner-category-modal-form {
+  overflow: hidden;
+}
+
+.runner-category-modal-form.modal-form {
+  width: min(520px, calc(100vw - 32px));
+}
+
+.category-limit-notice {
+  position: relative;
+  display: grid;
+  gap: 6px;
+  margin: 4px 0 14px;
+  border: 0;
+  border-radius: 14px;
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--accent) 22%, #ffffff), #ffffff 76%),
+    #ffffff;
+  padding: 16px 18px 16px 22px;
+  box-shadow: inset 4px 0 0 var(--accent), 0 14px 34px color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+.category-limit-notice span {
+  color: color-mix(in srgb, var(--accent-dark) 82%, #1d282e);
+  font-size: 15px;
+  font-weight: 900;
+}
+
+.category-limit-notice p {
+  margin: 0;
+  color: #485861;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
 .clock-card {
   grid-template-columns: 1fr;
 }

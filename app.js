@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.04.124",
-  title: "V1.04.124 update installed",
-  body: "Renamed the directory areas and expanded Gig Resources category access for client and promoter roles."
+  version: "V1.04.125",
+  title: "V1.04.125 update installed",
+  body: "Updated Gig Resources actions with a premium add menu and category limit notice."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -2889,7 +2889,7 @@ function renderGlobalAddMenu() {
   const options = $("#globalAddMenuOptions");
   if (!menu || !options) return;
   const targets = quickProfileTargetsForCurrentUser();
-  menu.hidden = !targets.length;
+  menu.hidden = !targets.length || state.activeView === "runner";
   options.innerHTML = targets.map((target) => (
     `<button class="tiny-button" data-open-quick-profile="${escapeHtml(target.store)}" type="button">Add ${escapeHtml(target.label)}</button>`
   )).join("");
@@ -6654,7 +6654,7 @@ function renderRunnerStops() {
   $("#runnerTableCount").textContent = `${rows.length} shown`;
   $("#runnerTable").innerHTML = rows.length
     ? rows.map((stop) => runnerStopRow(stop)).join("")
-    : `<tr><td colspan="6" class="empty">No runner stops match this search.</td></tr>`;
+    : `<tr><td colspan="6" class="empty">No resources match this search.</td></tr>`;
 }
 
 function renderMessaging() {
@@ -8035,22 +8035,83 @@ function runnerNotesAddedThisYear(stopId, workerId = state.activeWorkerId) {
 }
 
 function renderRunnerCategoryCreator() {
-  const form = $("#runnerCategoryForm");
-  const limit = $("#runnerCategoryLimit");
-  const visible = isCrewRole() || hasUnlimitedRunnerCategoryAccess();
-  form.hidden = !visible;
-  if (!visible) return;
+  renderRunnerResourceActions();
+  prepareRunnerCategoryForm();
+}
+
+function canCreateRunnerCategory() {
+  return isCrewRole() || hasUnlimitedRunnerCategoryAccess();
+}
+
+function renderRunnerResourceActions() {
+  const menu = $("#runnerResourceMenu");
+  if (!menu) return;
+  const canCreateResource = currentProfile().canAdminEdit;
+  menu.hidden = !(canCreateRunnerCategory() || canCreateResource);
+  const categoryButton = menu.querySelector("[data-runner-resource-action='category']");
+  const resourceButton = menu.querySelector("[data-runner-resource-action='resource']");
+  if (categoryButton) categoryButton.hidden = !canCreateRunnerCategory();
+  if (resourceButton) resourceButton.hidden = !canCreateResource;
+}
+
+function runnerCategoryLimitStatus() {
   if (hasUnlimitedRunnerCategoryAccess()) {
-    limit.textContent = "";
-    form.querySelector("button").disabled = false;
-    return;
+    return {
+      allowed: true,
+      remaining: null,
+      title: "Unlimited categories",
+      body: "This access level can add as many Gig Resources categories as needed."
+    };
   }
   const windowInfo = runnerCategoryWindow();
   const used = windowInfo.used;
   const remaining = Math.max(0, 3 - used);
-  const resetText = windowInfo.resetAt ? ` Reset: ${windowInfo.resetAt.toLocaleDateString()}` : " Clock starts after your first custom category.";
-  limit.textContent = `${remaining} of 3 left.${resetText}`;
-  form.querySelector("button").disabled = remaining <= 0;
+  if (!used) {
+    return {
+      allowed: true,
+      remaining,
+      title: "3 category adds available",
+      body: "Your one-year countdown starts after your first custom category is submitted."
+    };
+  }
+  return {
+    allowed: remaining > 0,
+    remaining,
+    title: `${remaining} of 3 category adds left`,
+    body: windowInfo.resetAt
+      ? `This category window resets on ${windowInfo.resetAt.toLocaleDateString()}.`
+      : "This category window resets one year after your first custom category."
+  };
+}
+
+function prepareRunnerCategoryForm() {
+  const form = $("#runnerCategoryForm");
+  if (!form) return;
+  const notice = $("#runnerCategoryNotice");
+  const input = form.elements.name;
+  const submit = form.querySelector("button[type='submit']");
+  const visible = canCreateRunnerCategory();
+  form.hidden = !visible;
+  if (!visible) return;
+  const status = runnerCategoryLimitStatus();
+  if (notice) {
+    notice.innerHTML = `<span>${escapeHtml(status.title)}</span><p>${escapeHtml(status.body)}</p>`;
+  }
+  if (input) input.disabled = !status.allowed;
+  if (submit) {
+    submit.disabled = !status.allowed;
+    submit.textContent = status.allowed ? "Add Category" : "Category Limit Reached";
+  }
+}
+
+function openRunnerCategoryCreator() {
+  if (!canCreateRunnerCategory()) {
+    toast("This access view cannot add categories.");
+    return;
+  }
+  clearForm("runnerCategoryForm");
+  prepareRunnerCategoryForm();
+  openForm("runnerCategoryForm");
 }
 
 function applyWorkerPayDefaultsToTimecard(workerId) {
@@ -10523,7 +10584,7 @@ async function sendRentalUrgentNotification(card) {
 
 async function addRunnerCategory(event) {
   event.preventDefault();
-  if (!(isCrewRole() || hasUnlimitedRunnerCategoryAccess())) return;
+  if (!canCreateRunnerCategory()) return;
   const input = event.currentTarget.elements.name;
   const name = normalizeCategoryName(input.value);
   if (!name) {
@@ -10553,8 +10614,9 @@ async function addRunnerCategory(event) {
   state.runnerCategory = name;
   input.value = "";
   await loadState();
+  closeForm("runnerCategoryForm");
   setView(state.activeView);
-  toast("Runner category added.");
+  toast("Gig Resources category added.");
 }
 
 function normalizeCategoryName(value) {
@@ -11071,6 +11133,7 @@ function bindEvents() {
   document.body.addEventListener("click", async (event) => {
     const editButton = event.target.closest("[data-edit]");
     const openButton = event.target.closest("[data-open-form]");
+    const runnerResourceButton = event.target.closest("[data-runner-resource-action]");
     const quickProfileButton = event.target.closest("[data-open-quick-profile]");
     const deleteButton = event.target.closest("[data-delete]");
     const clockButton = event.target.closest("[data-clock-out]");
@@ -11165,6 +11228,17 @@ function bindEvents() {
     if (quickProfileButton) {
       $("#globalAddMenu")?.removeAttribute("open");
       await openQuickProfileForm(quickProfileButton.dataset.openQuickProfile);
+      return;
+    }
+    if (runnerResourceButton) {
+      $("#runnerResourceMenu")?.removeAttribute("open");
+      if (runnerResourceButton.dataset.runnerResourceAction === "category") {
+        openRunnerCategoryCreator();
+      } else {
+        await refreshSiteAccessLevelsForForm("runnerForm");
+        clearForm("runnerForm");
+        openForm("runnerForm");
+      }
       return;
     }
     if (requestMobilePermissionsButton) {

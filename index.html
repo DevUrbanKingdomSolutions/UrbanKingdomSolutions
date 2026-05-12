@@ -10,7 +10,7 @@
     <title>Production Crew Database</title>
     <link rel="manifest" href="manifest.webmanifest">
     <link rel="icon" href="assets/logo/app-logo-admin.png" type="image/png">
-    <link rel="stylesheet" href="styles.css?v=V1.04.124-gig-resources">
+    <link rel="stylesheet" href="styles.css?v=V1.04.125-gig-resource-actions">
   </head>
   <body>
     <div id="appLoadingOverlay" class="app-loading-overlay" aria-live="polite">
@@ -1457,7 +1457,7 @@
           <div class="split-layout">
             <form id="runnerForm" class="panel form-panel admin-form">
               <div class="panel-heading">
-                <h3>Add Runner Stop</h3>
+                <h3>New Resource</h3>
                 <button class="ghost-button clear-form" type="button" data-form="runnerForm">Clear</button>
               </div>
               <input type="hidden" name="id">
@@ -1483,21 +1483,31 @@
               <label>Hours<input name="hours" placeholder="Mon-Fri 8-6"></label>
               <label>Best use<textarea name="bestUse" rows="3" placeholder="What to send runners here for"></textarea></label>
               <label>Notes<textarea name="notes" rows="3" placeholder="Parking, entrance, account number"></textarea></label>
-              <button class="primary-action" type="submit">Save Runner Stop</button>
+              <button class="primary-action" type="submit">Save Resource</button>
+            </form>
+            <form id="runnerCategoryForm" class="panel form-panel runner-category-modal-form">
+              <div class="panel-heading">
+                <h3>New Category</h3>
+                <button class="ghost-button clear-form" type="button" data-form="runnerCategoryForm">Clear</button>
+              </div>
+              <div id="runnerCategoryNotice" class="category-limit-notice"></div>
+              <label>Category name<input name="name" placeholder="Pharmacy, coffee, weld shop"></label>
+              <button class="primary-action" type="submit">Add Category</button>
             </form>
             <section class="panel table-panel">
               <div class="panel-heading">
                 <h3>Gig Resources</h3>
                 <div class="panel-tools">
                   <span id="runnerTableCount" class="muted"></span>
-                  <button class="tiny-button admin-action" data-open-form="runnerForm" type="button">Add Stop</button>
+                  <details id="runnerResourceMenu" class="record-options runner-resource-menu">
+                    <summary class="icon-button" aria-label="Add Gig Resource" title="Add Gig Resource">+</summary>
+                    <div class="record-options-menu">
+                      <button class="tiny-button" data-runner-resource-action="category" type="button">New Category</button>
+                      <button class="tiny-button admin-action" data-runner-resource-action="resource" type="button">New Resource</button>
+                    </div>
+                  </details>
                 </div>
               </div>
-              <form id="runnerCategoryForm" class="inline-create-form">
-                <label>New category<input name="name" placeholder="Pharmacy, coffee, weld shop"></label>
-                <button class="secondary-action" type="submit">Add Category</button>
-                <span id="runnerCategoryLimit" class="muted"></span>
-              </form>
               <div id="runnerTabs" class="tab-row" role="tablist" aria-label="Gig directory categories"></div>
               <div class="table-wrap">
                 <table>
@@ -1516,6 +1526,6 @@
     <div id="modalHost"></div>
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js?v=V1.04.124-gig-resources"></script>
+    <script src="app.js?v=V1.04.125-gig-resource-actions"></script>
   </body>
 </html>
