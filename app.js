@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.04.122",
-  title: "V1.04.122 update installed",
-  body: "Expanded dashboard Recent Notes to show individual profile-note lines and added clean view icons."
+  version: "V1.04.123",
+  title: "V1.04.123 update installed",
+  body: "Standardized popup profile notes so each note line uses the date/time dash description format."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -3847,7 +3847,7 @@ function profileInfoSection(title, details = []) {
 
 function profileTextSection(title, value) {
   if (/note/i.test(title || "")) {
-    const entries = noteListEntries(value);
+    const entries = noteListEntries(value).map((entry) => noteDescription(entry));
     if (!entries.length) return "";
     return `<section class="profile-info-section profile-text-section profile-note-section">
       <h4>${escapeHtml(title)}</h4>
@@ -3866,6 +3866,12 @@ function noteListEntries(value = "") {
     .split(/\n+/)
     .map((line) => line.trim())
     .filter(Boolean);
+}
+
+function noteSectionText(value = "", timestamp = "") {
+  return noteListEntries(value)
+    .map((entry) => noteDescription(entry, timestamp))
+    .join("\n");
 }
 
 function profileLogoHtml(profile, fallback = "Profile", className = "profile-logo-frame") {
@@ -3931,7 +3937,7 @@ function openReadOnlyRecord(storeName, id) {
     readOnlyProfileCard(record.name, record.role || "Crew / Runner", [], [
       ["Skills", record.skills],
       ["Emergency Contact", isCrewRole() ? "" : record.emergency],
-      ["Notes", canOwnerEdit() ? record.notes : ""]
+      ["Notes", canOwnerEdit() ? noteSectionText(record.notes, record.updatedAt || record.createdAt) : ""]
     ], profileAvatarLarge(record, record.hideHeadshot), [
       ["Contact", [
         ["Phone", publicWorkerValue(record, "phone")],
@@ -3946,8 +3952,8 @@ function openReadOnlyRecord(storeName, id) {
     ]);
   } else if (storeName === "promoters") {
     readOnlyProfileCard(record.name || record.contactName, record.companyName || "Promoter", [], [
-      ["Billing Notes", record.billing],
-      ["Production Notes", record.notes]
+      ["Billing Notes", noteSectionText(record.billing, record.updatedAt || record.createdAt)],
+      ["Production Notes", noteSectionText(record.notes, record.updatedAt || record.createdAt)]
     ], profileAvatarLarge(record, false), [
       ["Promoter Profile", [
         ["Company", record.companyName || "Independent"],
@@ -3962,7 +3968,7 @@ function openReadOnlyRecord(storeName, id) {
   } else if (storeName === "venues") {
     readOnlyProfileCard(record.name, "Venue", [], [
       ["Venue Contacts", venueContactsForVenue(record.id).map((contact) => `${contact.name || contact.contactName || "Contact"}${contact.title ? `, ${contact.title}` : ""} ${contact.phone || ""} ${contact.email || ""}`).join("\n")],
-      ["Notes", record.notes]
+      ["Notes", noteSectionText(record.notes, record.updatedAt || record.createdAt)]
     ], "", [
       ["Location", [
         ["Address", record.address],
@@ -3983,7 +3989,7 @@ function openReadOnlyRecord(storeName, id) {
     const worker = getWorker(record.workerId);
     readOnlyProfileCard(record.vehicleType || "Vehicle Check", event?.name || "Vehicle", [], [
       ["Prior Damage", record.priorDamage],
-      ["Notes", record.notes]
+      ["Notes", noteSectionText(record.notes, record.updatedAt || record.createdAt)]
     ], "", [
       ["Assignment", [
         ["Event", event?.name],
@@ -3999,7 +4005,7 @@ function openReadOnlyRecord(storeName, id) {
   } else if (storeName === "accidentReports") {
     readOnlyProfileCard(record.title, record.type || "Report", [], [
       ["Details", record.details],
-      ["Damage / Injury Notes", record.injuryDescription || record.vehicleDamageDescription]
+      ["Damage / Injury Notes", noteSectionText(record.injuryDescription || record.vehicleDamageDescription, record.updatedAt || record.createdAt)]
     ], "", [
       ["Report", [
         ["Type", record.type || "Report"],
@@ -4012,7 +4018,7 @@ function openReadOnlyRecord(storeName, id) {
       ]]
     ]);
   } else if (storeName === "runnerStops") {
-    readOnlyProfileCard(record.name, record.category || "Gig Directory", [], [["Notes", record.notes]], "", [
+    readOnlyProfileCard(record.name, record.category || "Gig Directory", [], [["Notes", noteSectionText(record.notes, record.updatedAt || record.createdAt)]], "", [
       ["Contact", [
         ["Phone", record.phone],
         ["Hours", record.hours]
@@ -4028,7 +4034,7 @@ function openReadOnlyRecord(storeName, id) {
       ]]
     ]);
   } else if (storeName === "profileNotes") {
-    readOnlyProfileCard(record.title || "Note", record.relatedType || "General note", [], [["Note", noteDescription(record.note, record.createdAt || record.updatedAt)]], "", [
+    readOnlyProfileCard(record.title || "Note", record.relatedType || "General note", [], [["Note", noteSectionText(record.note, record.createdAt || record.updatedAt)]], "", [
       ["Note Details", [
         ["Created", formatDateWithYear(record.createdAt || record.updatedAt)],
         ["Updated", formatDateWithYear(record.updatedAt || record.createdAt)],
@@ -4070,7 +4076,7 @@ function renderEventProfile(event) {
     ["Vehicle / Rental Info", vehicleLine || (event.requiresRentalPhotos === "yes" || event.requiresRentalPhotos === true ? "Rental vehicle photos are required for assigned runners." : "")],
     ["Venue Details", [venue?.parking ? `Parking: ${venue.parking}` : "", venue?.contactName ? `Contact: ${venue.contactName}` : "", venue?.phone, venue?.email, venue?.notes].filter(Boolean).join("\n")],
     ["Assigned Crew", crew.join(", ")],
-    ["Event Notes", event.notes]
+    ["Event Notes", noteSectionText(event.notes, event.updatedAt || event.createdAt)]
   ], "", [
     ["Event Details", [
       ["Start", formatDate(event.startDate)],
@@ -5568,7 +5574,7 @@ function openEventAssignmentDetail(assignmentId) {
     : [];
   readOnlyProfileCard(worker?.name || "Assignment", event?.name || "Event Assignment", [], [
     ["Rental / Vehicle Info", [assignment.vehicleUse, assignment.vehicleType, plate ? `Plate: ${plate}` : ""].filter(Boolean).join("\n")],
-    ["Notes", assignment.notes]
+    ["Notes", noteSectionText(assignment.notes, assignment.updatedAt || assignment.createdAt)]
   ], profileAvatarLarge(worker || { name: "Assignment" }, worker?.hideHeadshot), [
     ["Assignment", [
       ["Event", event?.name],
