@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.04.138",
-  title: "V1.04.138 update installed",
-  body: "Updated message event selectors for admin access."
+  version: "V1.04.139",
+  title: "V1.04.139 update installed",
+  body: "Polished message event dropdown behavior."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -11894,20 +11894,7 @@ function bindEvents() {
       renderMessaging();
       return;
     }
-    if (messageEventFilter) {
-      state.messageEventFilter = messageEventFilter.value || "current";
-      localStorage.setItem("productionCrewMessageEventFilter", state.messageEventFilter);
-      const fallback = selectedMessageEvent();
-      if (fallback) localStorage.setItem("productionCrewSelectedMessageEventId", fallback.id);
-      renderMessaging();
-      return;
-    }
-    if (messageEventSelect) {
-      state.selectedMessageEventId = messageEventSelect.value || "";
-      localStorage.setItem("productionCrewSelectedMessageEventId", state.selectedMessageEventId);
-      renderMessaging();
-      return;
-    }
+    if (messageEventFilter || messageEventSelect) return;
     if (messageDirectScopeButton) {
       state.messageDirectScope = messageDirectScopeButton.dataset.messageDirectScope === "all" ? "all" : "event";
       state.messageDirectPickerOpen = false;
