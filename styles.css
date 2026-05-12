@@ -884,6 +884,15 @@ button {
   cursor: default;
 }
 
+.runner-stars-large {
+  gap: 6px;
+  justify-content: center;
+}
+
+.runner-stars-large .runner-star {
+  font-size: 30px;
+}
+
 .runner-rating-box span,
 .runner-note-item span {
   color: var(--muted);
@@ -899,6 +908,47 @@ button {
 
 .runner-note-item textarea {
   width: 100%;
+}
+
+.runner-rating-modal-form.modal-form {
+  width: min(520px, calc(100vw - 32px));
+  overflow: hidden;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--accent-soft) 34%, #ffffff), #ffffff 138px),
+    #ffffff;
+}
+
+.runner-rating-confirm {
+  display: grid;
+  gap: 14px;
+  margin: 16px 18px 0;
+}
+
+.runner-rating-confirm strong {
+  color: color-mix(in srgb, var(--accent-dark) 86%, #20282c);
+  font-size: 18px;
+  font-weight: 950;
+  text-align: center;
+}
+
+.runner-rating-confirm label {
+  margin: 0;
+}
+
+.runner-rating-confirm textarea {
+  border-color: color-mix(in srgb, var(--accent) 14%, var(--line));
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.runner-rating-confirm p {
+  margin: 0;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--accent-soft) 58%, #ffffff);
+  color: color-mix(in srgb, var(--accent-dark) 80%, #20282c);
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.4;
+  padding: 12px 14px;
 }
 
 .mini-table {

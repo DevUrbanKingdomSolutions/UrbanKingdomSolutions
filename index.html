@@ -10,7 +10,7 @@
     <title>Production Crew Database</title>
     <link rel="manifest" href="manifest.webmanifest">
     <link rel="icon" href="assets/logo/app-logo-admin.png" type="image/png">
-    <link rel="stylesheet" href="styles.css?v=V1.04.131-gig-resource-feedback">
+    <link rel="stylesheet" href="styles.css?v=V1.04.132-production-office-rating">
   </head>
   <body>
     <div id="appLoadingOverlay" class="app-loading-overlay" aria-live="polite">
@@ -790,7 +790,7 @@
           <div class="stack-layout">
             <section class="panel">
               <div class="panel-heading">
-                <h3>Crew Response</h3>
+                <h3>Production Office</h3>
                 <span id="productionResponseCount" class="muted"></span>
               </div>
               <div id="productionResponseCards" class="record-grid"></div>
@@ -802,7 +802,7 @@
           <div class="stack-layout">
             <section class="panel">
               <div class="panel-heading">
-                <h3>Production Board</h3>
+                <h3>Production Office</h3>
                 <span id="productionBoardCount" class="muted"></span>
               </div>
               <div id="productionBoardCards" class="record-grid"></div>
@@ -1507,6 +1507,21 @@
               <label>Category name<input name="name" placeholder="Pharmacy, coffee, weld shop"></label>
               <button class="primary-action" type="submit">Add Category</button>
             </form>
+            <form id="runnerRatingForm" class="panel form-panel runner-rating-modal-form">
+              <div class="panel-heading">
+                <h3>Rate Resource</h3>
+                <button class="ghost-button clear-form" type="button" data-form="runnerRatingForm">Cancel</button>
+              </div>
+              <input type="hidden" name="stopId">
+              <input type="hidden" name="rating">
+              <div class="runner-rating-confirm">
+                <strong id="runnerRatingResourceName">Resource</strong>
+                <div id="runnerRatingModalStars" class="runner-stars runner-stars-large"></div>
+                <label>Review note<textarea name="review" maxlength="500" rows="4" placeholder="Optional note, 500 characters max"></textarea></label>
+                <p>Once you submit, you cannot change your rating.</p>
+              </div>
+              <button class="primary-action" type="submit">Submit Rating</button>
+            </form>
             <section class="panel table-panel">
               <div class="panel-heading">
                 <h3>Gig Resources</h3>
@@ -1545,6 +1560,6 @@
     <div id="modalHost"></div>
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js?v=V1.04.131-gig-resource-feedback"></script>
+    <script src="app.js?v=V1.04.132-production-office-rating"></script>
   </body>
 </html>

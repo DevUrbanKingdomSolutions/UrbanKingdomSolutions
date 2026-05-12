@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.04.131",
-  title: "V1.04.131 update installed",
-  body: "Added Gig Resources star ratings and two-note review limits."
+  version: "V1.04.132",
+  title: "V1.04.132 update installed",
+  body: "Renamed Production Office pages and added rating confirmation for Gig Resources."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -429,7 +429,7 @@ const NAV_GROUPS = {
     { items: [["dashboard", "Dashboard"]] },
     { items: [["clientCompanyProfile", "Client Profile"], ["clientProfile", "My Profile"]] },
     { label: "PROFILES", items: [["workers", "Crew Profiles"], ["promoters", "Promoter Profiles"], ["venues", "Venues"]] },
-    { label: "EVENTS", items: [["events", "Events"], ["productionBoard", "Production Board"], ["timecards", "Timecards"], ["vehicles", "Vehicles"], ["reports", "Reports"]] },
+    { label: "EVENTS", items: [["events", "Events"], ["productionBoard", "Production Office"], ["timecards", "Timecards"], ["vehicles", "Vehicles"], ["reports", "Reports"]] },
     { label: "PAYROLL", items: [["payroll", "Payroll"]] },
     { label: "DIRECTORIES", items: [["directory", "Directory"], ["runner", "Gig Resources"], ["messages", "Messages"]] },
     { label: "SETTINGS", items: [["dataTools", "Import / Export"], ["mobileApp", "Mobile Settings"]] }
@@ -438,7 +438,7 @@ const NAV_GROUPS = {
     { items: [["dashboard", "Dashboard"]] },
     { items: [["clientProfile", "My Profile"]] },
     { label: "PROFILES", items: [["promoters", "Promoter Profiles"]] },
-    { label: "EVENTS", items: [["events", "Events"], ["productionBoard", "Production Board"], ["vehicles", "Vehicles"], ["reports", "Reports"]] },
+    { label: "EVENTS", items: [["events", "Events"], ["productionBoard", "Production Office"], ["vehicles", "Vehicles"], ["reports", "Reports"]] },
     { label: "DIRECTORIES", items: [["directory", "Directory"], ["runner", "Gig Resources"], ["messages", "Messages"]] },
     { label: "SETTINGS", items: [["dataTools", "Import / Export"], ["mobileApp", "Mobile Settings"]] }
   ],
@@ -446,7 +446,7 @@ const NAV_GROUPS = {
     { items: [["dashboard", "Dashboard"]] },
     { items: [["clientProfile", "My Profile"]] },
     { label: "PROFILES", items: [["workers", "Crew Profiles"], ["promoters", "Promoter Profiles"], ["venues", "Venues"]] },
-    { label: "EVENTS", items: [["events", "Events"], ["productionBoard", "Production Board"], ["vehicles", "Vehicles"], ["reports", "Reports"]] },
+    { label: "EVENTS", items: [["events", "Events"], ["productionBoard", "Production Office"], ["vehicles", "Vehicles"], ["reports", "Reports"]] },
     { label: "DIRECTORIES", items: [["directory", "Directory"], ["runner", "Gig Resources"], ["messages", "Messages"]] },
     { label: "SETTINGS", items: [["dataTools", "Import / Export"], ["mobileApp", "Mobile Settings"]] }
   ],
@@ -455,28 +455,28 @@ const NAV_GROUPS = {
     { label: "SETTINGS", items: [["mobileApp", "Mobile Settings"]] }
   ],
   PROMOTER_ADMIN: [
-    { items: [["productionBoard", "Production Board"]] },
+    { items: [["productionBoard", "Production Office"]] },
     { label: "PROFILES", items: [["workers", "Crew Profiles"], ["promoters", "Promoter Profiles"], ["venues", "Venues"]] },
     { label: "EVENTS", items: [["events", "Events"], ["vehicles", "Vehicles"], ["reports", "Reports"]] },
     { label: "DIRECTORIES", items: [["directory", "Directory"], ["runner", "Gig Resources"], ["messages", "Messages"]] },
     { label: "SETTINGS", items: [["dataTools", "Import / Export"], ["mobileApp", "Mobile Settings"]] }
   ],
   PROMOTER_REP: [
-    { items: [["productionBoard", "Production Board"]] },
+    { items: [["productionBoard", "Production Office"]] },
     { label: "PROFILES", items: [["workers", "Crew Profiles"], ["promoters", "Promoter Profiles"], ["venues", "Venues"]] },
     { label: "EVENTS", items: [["events", "Events"], ["vehicles", "Vehicles"], ["reports", "Reports"]] },
     { label: "DIRECTORIES", items: [["directory", "Directory"], ["runner", "Gig Resources"], ["messages", "Messages"]] },
     { label: "SETTINGS", items: [["mobileApp", "Mobile Settings"]] }
   ],
   PRODUCTION_TEAM_ACCESS: [
-    { items: [["productionBoard", "Production Board"]] },
+    { items: [["productionBoard", "Production Office"]] },
     { label: "EVENTS", items: [["events", "Events"], ["vehicles", "Vehicles"], ["reports", "Reports"]] },
     { label: "DIRECTORIES", items: [["directory", "Directory"], ["messages", "Messages"]] },
     { label: "SETTINGS", items: [["mobileApp", "Mobile Settings"]] }
   ],
   CREW: [
     { items: [["dashboard", "Home"], ["workers", "My Profile"], ["clock", "Time Clock"]] },
-    { label: "EVENTS", items: [["productionResponse", "Crew Response"], ["events", "Events"], ["timecards", "Timecards"], ["vehicles", "Vehicles"], ["reports", "Reports"]] },
+    { label: "EVENTS", items: [["productionResponse", "Production Office"], ["events", "Events"], ["timecards", "Timecards"], ["vehicles", "Vehicles"], ["reports", "Reports"]] },
     { label: "DIRECTORIES", items: [["directory", "Directory"], ["runner", "Gig Resources"], ["messages", "Messages"]] },
     { label: "SETTINGS", items: [["mobileApp", "Mobile Settings"]] }
   ]
@@ -4873,7 +4873,7 @@ function dashboardHeroConfig() {
       title: "Production board at a glance",
       body: "Track the live event surface: assigned crew, reports, vehicles, and office messaging.",
       primaryView: "productionBoard",
-      primaryLabel: "Open Production Board",
+      primaryLabel: "Open Production Office",
       secondaryView: "messages",
       secondaryLabel: "Messages",
       stats: [
@@ -4892,7 +4892,7 @@ function dashboardHeroConfig() {
       primaryView: "events",
       primaryLabel: "Open Events",
       secondaryView: "productionBoard",
-      secondaryLabel: "Production Board",
+      secondaryLabel: "Production Office",
       stats: [
         { label: "Events", value: visible.length, view: "events" },
         { label: "Clocked In", value: visibleRecords(state.timecards).filter((card) => !card.clockOut).length, view: "timecards" },
@@ -6649,7 +6649,7 @@ function renderRunnerStops() {
   if (isAdminRole()) {
     $("#runnerTableCount").textContent = "0 shown";
     renderRunnerCategoryControls(["All"]);
-    $("#runnerTable").innerHTML = `<tr><td colspan="6" class="empty">ADMIN does not load gig directory data.</td></tr>`;
+    $("#runnerTable").innerHTML = `<tr><td colspan="7" class="empty">ADMIN does not load gig directory data.</td></tr>`;
     return;
   }
   const categories = runnerCategories();
@@ -6663,7 +6663,7 @@ function renderRunnerStops() {
   $("#runnerTableCount").textContent = `${rows.length} shown`;
   $("#runnerTable").innerHTML = rows.length
     ? rows.map((stop) => runnerStopRow(stop)).join("")
-    : `<tr><td colspan="6" class="empty">No resources match this search.</td></tr>`;
+    : `<tr><td colspan="7" class="empty">No resources match this search.</td></tr>`;
 }
 
 function renderRunnerCategoryControls(categories = runnerCategories()) {
@@ -6682,11 +6682,13 @@ const RUNNER_COLUMNS = [
   ["category", "Category"],
   ["address", "Address"],
   ["hours", "Hours"],
-  ["bestUse", "Best use"]
+  ["bestUse", "Best use"],
+  ["rating", "Rating"]
 ];
 
 function runnerColumnValue(stop, key) {
   if (key === "name") return `${stop.name || ""} ${stop.phone || ""} ${[stop.city, stop.state].filter(Boolean).join(" ")}`;
+  if (key === "rating") return String(runnerRatingSummary(stop.id).average || 0);
   return String(stop[key] || "");
 }
 
@@ -8048,9 +8050,9 @@ function renderActiveThreadMembers() {
 }
 
 function runnerStopRow(stop) {
-  const feedbackUi = runnerStopFeedbackUi(stop);
+  const noteUi = runnerStopNoteUi(stop);
   const location = [stop.city, stop.state].filter(Boolean).join(", ");
-  return `<tr><td><strong>${recordLink("runnerStops", stop.id, stop.name)}</strong><p>${escapeHtml(stop.phone)}</p>${location ? `<p>${escapeHtml(location)}</p>` : ""}${feedbackUi.rating}</td><td>${escapeHtml(stop.category)}</td><td>${escapeHtml(stop.address)}</td><td>${escapeHtml(stop.hours)}</td><td>${escapeHtml(stop.bestUse)}${feedbackUi.notes}</td><td>${actionButtons("runnerStops", stop.id, "runnerForm")}</td></tr>`;
+  return `<tr><td><strong>${recordLink("runnerStops", stop.id, stop.name)}</strong><p>${escapeHtml(stop.phone)}</p>${location ? `<p>${escapeHtml(location)}</p>` : ""}</td><td>${escapeHtml(stop.category)}</td><td>${escapeHtml(stop.address)}</td><td>${escapeHtml(stop.hours)}</td><td>${escapeHtml(stop.bestUse)}${noteUi}</td><td>${runnerRatingUi(stop)}</td><td>${actionButtons("runnerStops", stop.id, "runnerForm")}</td></tr>`;
 }
 
 function currentRunnerFeedbackUserId() {
@@ -8085,18 +8087,11 @@ function runnerRatingUi(stop) {
   const summary = runnerRatingSummary(stop.id);
   const stars = [1, 2, 3, 4, 5].map((value) => {
     const filled = current ? value <= Number(current.rating || 0) : value <= Math.round(summary.average || 0);
-    return `<button class="runner-star ${filled ? "filled" : ""}" data-rate-runner-stop="${escapeHtml(stop.id)}" data-rating="${value}" type="button" ${current ? "disabled" : ""} aria-label="Rate ${value} star${value === 1 ? "" : "s"}">★</button>`;
+    return `<button class="runner-star ${filled ? "filled" : ""}" data-open-runner-rating="${escapeHtml(stop.id)}" data-rating="${value}" type="button" ${current ? "disabled" : ""} aria-label="Rate ${value} star${value === 1 ? "" : "s"}">★</button>`;
   }).join("");
   const summaryText = summary.count ? `${summary.average.toFixed(1)} from ${summary.count}` : "No ratings yet";
   const ownText = current ? `Your rating: ${current.rating}` : "Rate once";
   return `<div class="runner-rating-box"><div class="runner-stars">${stars}</div><span>${escapeHtml(summaryText)} · ${escapeHtml(ownText)}</span></div>`;
-}
-
-function runnerStopFeedbackUi(stop) {
-  return {
-    rating: runnerRatingUi(stop),
-    notes: runnerStopNoteUi(stop)
-  };
 }
 
 function runnerStopNoteUi(stop) {
@@ -8393,7 +8388,7 @@ function shortMobileLabel(label = "") {
   return label
     .replace("Crew Profiles", "Crew")
     .replace("My Profile", "Profile")
-    .replace("Production Board", "Board")
+    .replace("Production Office", "Office")
     .replace("Gig Resources", "Gigs")
     .replace("Promoter Profiles", "Promoters")
     .replace("Client Profile", "Client")
@@ -9431,6 +9426,72 @@ async function rateRunnerStop(stopId, rating) {
     workerId: activeCrewWorkerId(),
     rating: value
   });
+  await loadState();
+  setView(state.activeView);
+  toast("Rating saved.");
+}
+
+function renderRunnerRatingModalStars(selected = 0) {
+  const container = $("#runnerRatingModalStars");
+  if (!container) return;
+  container.innerHTML = [1, 2, 3, 4, 5].map((value) => (
+    `<button class="runner-star ${value <= Number(selected || 0) ? "filled" : ""}" data-select-runner-rating="${value}" type="button" aria-label="Select ${value} star${value === 1 ? "" : "s"}">★</button>`
+  )).join("");
+}
+
+function openRunnerRatingForm(stopId, rating = 0) {
+  const stop = state.runnerStops.find((item) => item.id === stopId);
+  if (!stop) return;
+  if (runnerRatingForCurrentUser(stopId)) {
+    toast("You already rated this resource.");
+    return;
+  }
+  clearForm("runnerRatingForm");
+  const form = $("#runnerRatingForm");
+  form.elements.stopId.value = stopId;
+  form.elements.rating.value = rating || "";
+  $("#runnerRatingResourceName").textContent = stop.name || "Resource";
+  renderRunnerRatingModalStars(rating);
+  openForm("runnerRatingForm");
+}
+
+async function saveRunnerRatingForm(event) {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const stopId = form.elements.stopId.value;
+  const rating = Number(form.elements.rating.value || 0);
+  const review = String(form.elements.review.value || "").trim();
+  if (!rating) {
+    toast("Choose a star rating first.");
+    return;
+  }
+  if (runnerRatingForCurrentUser(stopId)) {
+    toast("You already rated this resource.");
+    closeForm("runnerRatingForm");
+    return;
+  }
+  if (review && runnerNotesForCurrentUser(stopId).length >= 2) {
+    toast("This resource already has your two notes.");
+    return;
+  }
+  await put("runnerRatings", {
+    stopId,
+    userId: currentRunnerFeedbackUserId(),
+    userLabel: currentRunnerFeedbackUserLabel(),
+    workerId: activeCrewWorkerId(),
+    rating
+  });
+  if (review) {
+    await put("runnerNotes", {
+      stopId,
+      userId: currentRunnerFeedbackUserId(),
+      userLabel: currentRunnerFeedbackUserLabel(),
+      workerId: activeCrewWorkerId(),
+      text: review,
+      createdYear: new Date().getFullYear()
+    });
+  }
+  closeForm("runnerRatingForm");
   await loadState();
   setView(state.activeView);
   toast("Rating saved.");
@@ -11231,6 +11292,7 @@ function bindEvents() {
   $("#promoterForm").addEventListener("submit", (event) => saveForm(event, "promoters"));
   $("#runnerForm").addEventListener("submit", (event) => saveForm(event, "runnerStops"));
   $("#runnerCategoryForm").addEventListener("submit", addRunnerCategory);
+  $("#runnerRatingForm").addEventListener("submit", saveRunnerRatingForm);
   $("#timecardForm").addEventListener("submit", (event) => saveForm(event, "timecards"));
   $("#vehicleForm").addEventListener("submit", (event) => saveForm(event, "vehicleLogs"));
   $("#reportForm").addEventListener("submit", (event) => saveForm(event, "accidentReports"));
@@ -11326,7 +11388,8 @@ function bindEvents() {
     const payrollTab = event.target.closest("[data-payroll-view]");
     const profileNoteButton = event.target.closest("[data-save-profile-note]");
     const runnerNoteButton = event.target.closest("[data-save-runner-note]");
-    const runnerRatingButton = event.target.closest("[data-rate-runner-stop]");
+    const openRunnerRatingButton = event.target.closest("[data-open-runner-rating]");
+    const selectRunnerRatingButton = event.target.closest("[data-select-runner-rating]");
     const runnerStatusButton = event.target.closest("[data-runner-status]");
     const selectVisibleButton = event.target.closest("[data-select-visible]");
     const clearSelectedButton = event.target.closest("[data-clear-selected]");
@@ -11625,7 +11688,16 @@ function bindEvents() {
     if (clockButton) await clockOutNow(clockButton.dataset.clockOut);
     if (punchButton) await crewPunch(punchButton.dataset.eventId, punchButton.dataset.timePunch);
     if (profileNoteButton) await saveProfileNote(profileNoteButton.dataset.saveProfileNote);
-    if (runnerRatingButton) await rateRunnerStop(runnerRatingButton.dataset.rateRunnerStop, runnerRatingButton.dataset.rating);
+    if (openRunnerRatingButton) {
+      openRunnerRatingForm(openRunnerRatingButton.dataset.openRunnerRating, openRunnerRatingButton.dataset.rating);
+      return;
+    }
+    if (selectRunnerRatingButton) {
+      const form = $("#runnerRatingForm");
+      form.elements.rating.value = selectRunnerRatingButton.dataset.selectRunnerRating;
+      renderRunnerRatingModalStars(form.elements.rating.value);
+      return;
+    }
     if (runnerNoteButton) await saveRunnerNote(runnerNoteButton.dataset.saveRunnerNote, runnerNoteButton.dataset.noteId || "");
     if (runnerStatusButton) await updateRunnerStatus(runnerStatusButton.dataset.runnerStatus, runnerStatusButton.dataset.status);
     if (selectVisibleButton) setVisibleProfileSelection(selectVisibleButton.dataset.selectVisible, true);
