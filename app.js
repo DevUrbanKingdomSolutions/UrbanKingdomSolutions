@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.04.115",
-  title: "V1.04.115 update installed",
-  body: "Moved tools and mobile settings into the Settings navigation group so they no longer sit as main sidebar sections."
+  version: "V1.04.116",
+  title: "V1.04.116 update installed",
+  body: "Expanded dashboard Recent Notes with created notes, system notes, quick viewing, and a clean add-note action."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -3954,6 +3954,13 @@ function openReadOnlyRecord(storeName, id) {
       ["Hours", record.hours],
       ["Best Use", record.bestUse]
     ], [["Notes", record.notes]]);
+  } else if (storeName === "profileNotes") {
+    readOnlyProfileCard(record.title || "Note", record.relatedType || "General note", [
+      ["Created", formatDateWithYear(record.createdAt || record.updatedAt)],
+      ["Updated", formatDateWithYear(record.updatedAt || record.createdAt)],
+      ["Created By", record.createdByName || ""],
+      ["Related To", record.relatedType || "General"]
+    ], [["Note", record.note]]);
   } else {
     readOnlyProfileCard(record.name || record.title || "Record", storeName, Object.entries(record).slice(0, 8));
   }
@@ -4402,16 +4409,103 @@ function renderDashboard() {
       }).join("")
     : `<div class="compact-item empty">No one is clocked in right now.</div>`;
 
-  const noteItems = [
-    ...visibleEvents().map((item) => ({ type: "Event", name: item.name, text: item.notes, updatedAt: item.updatedAt })),
-    ...((hasDataScope("CLIENT") || hasDataScope("PROMOTER")) ? state.venues.map((item) => ({ type: "Venue", name: item.name, text: item.notes || item.parking, updatedAt: item.updatedAt })) : []),
-    ...((hasDataScope("CLIENT") || hasDataScope("PROMOTER")) ? visiblePromoters().map((item) => ({ type: "Promoter", name: promoterLabel(item), text: item.notes, updatedAt: item.updatedAt })) : []),
-    ...((hasDataScope("CLIENT") || hasDataScope("PROMOTER")) ? state.runnerStops.map((item) => ({ type: "Runner", name: item.name, text: item.notes || item.bestUse, updatedAt: item.updatedAt })) : [])
-  ].filter((item) => item.text).sort((a, b) => new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0));
+  const noteItems = dashboardRecentNotes();
 
   $("#recentNotes").innerHTML = noteItems.length
-    ? noteItems.slice(0, 8).map((item) => `<div class="compact-item"><strong>${escapeHtml(item.type)}: ${escapeHtml(item.name)}</strong><span>${escapeHtml(item.text)}</span></div>`).join("")
+    ? noteItems.slice(0, 8).map(recentNoteItemHtml).join("")
     : `<div class="compact-item empty">Notes will appear here as you add them.</div>`;
+}
+
+function dashboardRecentNotes() {
+  const canSeeProductionNotes = hasDataScope("CLIENT") || hasDataScope("PROMOTER");
+  const eventNotes = visibleEvents().map((item) => ({
+    type: "Event",
+    name: item.name,
+    text: item.notes,
+    updatedAt: item.updatedAt || item.createdAt,
+    storeName: "events",
+    recordId: item.id
+  }));
+  const venueNotes = canSeeProductionNotes ? state.venues.map((item) => ({
+    type: "Venue",
+    name: item.name,
+    text: item.notes || item.parking,
+    updatedAt: item.updatedAt || item.createdAt,
+    storeName: "venues",
+    recordId: item.id
+  })) : [];
+  const promoterNotes = canSeeProductionNotes ? visiblePromoters().map((item) => ({
+    type: "Promoter",
+    name: promoterLabel(item),
+    text: item.notes,
+    updatedAt: item.updatedAt || item.createdAt,
+    storeName: "promoters",
+    recordId: item.id
+  })) : [];
+  const runnerStopNotes = canSeeProductionNotes ? state.runnerStops.map((item) => ({
+    type: "Runner",
+    name: item.name,
+    text: item.notes || item.bestUse,
+    updatedAt: item.updatedAt || item.createdAt,
+    storeName: "runnerStops",
+    recordId: item.id
+  })) : [];
+  const timecardNotes = canViewTimecardAdminNotes() ? visibleRecords(state.timecards).flatMap((card) => {
+    const worker = getWorker(card.workerId);
+    const event = getEvent(card.eventId);
+    return [
+      {
+        type: "Timecard",
+        name: [worker?.name, event?.name || card.eventName].filter(Boolean).join(" - ") || "Timecard",
+        text: card.adminNotes,
+        updatedAt: card.updatedAt || card.createdAt,
+        storeName: "timecards",
+        recordId: card.id
+      },
+      {
+        type: "Timecard",
+        name: [worker?.name, event?.name || card.eventName].filter(Boolean).join(" - ") || "Timecard",
+        text: card.notes,
+        updatedAt: card.updatedAt || card.createdAt,
+        storeName: "timecards",
+        recordId: card.id
+      }
+    ];
+  }) : [];
+  const createdNotes = canSeeProductionNotes ? state.profileNotes
+    .filter((note) => note.note && !note.promoterId && (!note.clientId || note.clientId === cloudClientId() || note.clientId === activeClientRecord()?.id))
+    .map((note) => ({
+      type: note.relatedType ? `${titleCase(note.relatedType)} Note` : "Note",
+      name: note.title || note.createdByName || "Created note",
+      text: note.note,
+      updatedAt: note.updatedAt || note.createdAt,
+      storeName: note.workerId ? "workers" : "profileNotes",
+      recordId: note.workerId || note.id
+    })) : [];
+  return [
+    ...createdNotes,
+    ...eventNotes,
+    ...venueNotes,
+    ...promoterNotes,
+    ...runnerStopNotes,
+    ...timecardNotes
+  ].filter((item) => item.text).sort((a, b) => new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0));
+}
+
+function titleCase(value = "") {
+  return String(value || "").replace(/[-_]+/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function recentNoteItemHtml(item) {
+  const target = item.storeName && item.recordId ? `${item.storeName}:${item.recordId}` : "";
+  const viewButton = target ? `<button class="link-button recent-note-view" data-view-record="${escapeHtml(target)}" type="button">View</button>` : "";
+  return `<div class="compact-item recent-note-item">
+    <div>
+      <strong>${escapeHtml(item.type)}: ${escapeHtml(item.name)}</strong>
+      <span>${escapeHtml(item.text)}</span>
+    </div>
+    ${viewButton}
+  </div>`;
 }
 
 function renderDashboardIdentity() {
@@ -8872,6 +8966,36 @@ async function saveProfileNote(workerId) {
   toast("Profile note saved.");
 }
 
+async function saveDashboardNote(event) {
+  event.preventDefault();
+  if (!canOwnerEdit()) {
+    toast("Only Client Admin can add dashboard notes.");
+    return;
+  }
+  const form = event.currentTarget;
+  const note = form.elements.note.value.trim();
+  if (!note) {
+    toast("Add a note first.");
+    return;
+  }
+  const now = new Date().toISOString();
+  await put("profileNotes", {
+    id: form.elements.id.value || crypto.randomUUID(),
+    clientId: cloudClientId() || activeClientRecord()?.id || "",
+    title: form.elements.title.value.trim() || "Dashboard note",
+    relatedType: form.elements.relatedType.value || "general",
+    note,
+    createdByUserId: authState.user?.id || "",
+    createdByName: currentSessionDisplayName(),
+    createdAt: now,
+    updatedAt: now
+  });
+  closeForm("dashboardNoteForm");
+  await loadState();
+  render();
+  toast("Note added.");
+}
+
 async function updateRunnerStatus(workerId, status) {
   if (!(isClientRole() || isProductionRole() || (isCrewRole() && workerId === state.activeWorkerId))) return;
   const worker = getWorker(workerId);
@@ -10655,6 +10779,7 @@ function bindEvents() {
   $("#timecardForm select[name='vehicleUse']").addEventListener("change", () => applyWorkerPayDefaultsToTimecard($("#timecardForm").elements.workerId.value));
 
   $("#eventForm").addEventListener("submit", (event) => saveForm(event, "events"));
+  $("#dashboardNoteForm").addEventListener("submit", saveDashboardNote);
   $("#eventAssignmentForm").addEventListener("submit", (event) => saveForm(event, "eventAssignments"));
   $("#messageThreadManageForm").addEventListener("submit", saveMessageThreadAccess);
   $("#sendbirdMessageForm").addEventListener("submit", sendSendbirdMessage);

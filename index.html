@@ -10,7 +10,7 @@
     <title>Production Crew Database</title>
     <link rel="manifest" href="manifest.webmanifest">
     <link rel="icon" href="assets/logo/app-logo-admin.png" type="image/png">
-    <link rel="stylesheet" href="styles.css?v=V1.04.115-settings-tools">
+    <link rel="stylesheet" href="styles.css?v=V1.04.116-dashboard-notes">
   </head>
   <body>
     <div id="appLoadingOverlay" class="app-loading-overlay" aria-live="polite">
@@ -186,10 +186,29 @@
             <section class="panel">
               <div class="panel-heading">
                 <h3>Recent Notes</h3>
+                <button class="icon-button clean-icon-button owner-action" data-open-form="dashboardNoteForm" type="button" aria-label="Add note" title="Add note">+</button>
               </div>
               <div id="recentNotes" class="compact-list"></div>
             </section>
           </div>
+          <form id="dashboardNoteForm" class="panel form-panel owner-form">
+            <div class="panel-heading">
+              <h3>Add Note</h3>
+              <button class="ghost-button clear-form" type="button" data-form="dashboardNoteForm">Clear</button>
+            </div>
+            <input type="hidden" name="id">
+            <label>Title<input name="title" placeholder="Note title"></label>
+            <label>Note<textarea name="note" rows="4" required placeholder="Write the note here"></textarea></label>
+            <label>Related to
+              <select name="relatedType">
+                <option value="general">General</option>
+                <option value="event">Event</option>
+                <option value="crew">Crew / Runner</option>
+                <option value="timecard">Timecard</option>
+              </select>
+            </label>
+            <button class="primary-action" type="submit">Save Note</button>
+          </form>
           <section class="panel dashboard-calendar-panel">
             <div class="panel-heading">
               <h3>Calendar</h3>
@@ -1486,6 +1505,6 @@
     <div id="modalHost"></div>
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js?v=V1.04.115-settings-tools"></script>
+    <script src="app.js?v=V1.04.116-dashboard-notes"></script>
   </body>
 </html>

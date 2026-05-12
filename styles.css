@@ -2021,6 +2021,42 @@ td p {
   outline: none;
 }
 
+.clean-icon-button {
+  width: 32px;
+  height: 32px;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--accent-dark);
+  font-size: 22px;
+}
+
+.clean-icon-button:hover,
+.clean-icon-button:focus-visible {
+  background: color-mix(in srgb, var(--accent-soft) 72%, transparent);
+  box-shadow: none;
+}
+
+.recent-note-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+}
+
+.recent-note-item span {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.recent-note-view {
+  align-self: center;
+  color: var(--accent-dark);
+  font-weight: 900;
+}
+
 .message-thread-card {
   grid-template-columns: 1fr;
   cursor: pointer;
