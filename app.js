@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.04.146",
-  title: "V1.04.146 update installed",
-  body: "Moved vehicle sort and filter controls into column arrow menus."
+  version: "V1.04.147",
+  title: "V1.04.147 update installed",
+  body: "Added Client Admin rental details to vehicle checks with crew read-only access."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -3103,6 +3103,10 @@ function canScopedEdit() {
   return currentProfile().canScopedEdit;
 }
 
+function canEditVehicleRentalDetails() {
+  return assignedAccessForCurrentUser().includes("CLIENT_ADMIN");
+}
+
 function canSystemEdit() {
   return currentProfile().canSystemEdit;
 }
@@ -3361,6 +3365,23 @@ async function ensureVehicleChecksForAssignment(assignment) {
       scheduledDate: phase === "Start" ? assignment.startDate || eventRecord?.startDate || "" : assignment.endDate || eventRecord?.endDate || "",
       notes: `Auto-created for ${worker?.name || "runner"} rental vehicle assignment.`
     });
+  }
+}
+
+async function syncVehicleRentalDetails(merged) {
+  if (!canEditVehicleRentalDetails()) return;
+  const updates = {
+    rentalCompany: merged.rentalCompany || "",
+    rentalPickupLocation: merged.rentalPickupLocation || "",
+    rentalPickupDate: merged.rentalPickupDate || ""
+  };
+  const relatedLogs = state.vehicleLogs.filter((log) => {
+    if (log.id === merged.id) return false;
+    if (merged.assignmentId && log.assignmentId === merged.assignmentId) return true;
+    return log.eventId === merged.eventId && log.workerId === merged.workerId;
+  });
+  for (const log of relatedLogs) {
+    await put("vehicleLogs", { ...log, ...updates });
   }
 }
 
@@ -4072,6 +4093,9 @@ function openReadOnlyRecord(storeName, id) {
       ]],
       ["Vehicle Check", [
         ["Phase", record.phase || "Start"],
+        ["Rental Company", record.rentalCompany],
+        ["Pickup Location", record.rentalPickupLocation],
+        ["Scheduled Pickup", formatDate(record.rentalPickupDate)],
         ["Plate", record.plateNumber],
         ["Gas Gauge", record.gasGauge]
       ]]
@@ -6836,6 +6860,7 @@ function crewVisibleTimecardNotes(card) {
 function applyVehicleAssignmentLock(form = $("#vehicleForm")) {
   if (!form) return;
   updateVehiclePhotoSections(form);
+  updateVehicleRentalAccess(form);
   const log = form.elements.id?.value ? state.vehicleLogs.find((item) => item.id === form.elements.id.value) : null;
   const assignment = log?.assignmentId ? getEventAssignment(log.assignmentId) : assignmentForForm(form);
   if (assignment) {
@@ -6860,6 +6885,30 @@ function applyVehicleAssignmentLock(form = $("#vehicleForm")) {
   }
 }
 
+function updateVehicleRentalAccess(form = $("#vehicleForm")) {
+  if (!form) return;
+  const canEdit = canEditVehicleRentalDetails();
+  form.querySelectorAll("[data-client-admin-rental-field]").forEach((field) => {
+    field.readOnly = !canEdit;
+    field.classList.toggle("readonly-field", !canEdit);
+  });
+  const details = form.querySelector("[data-vehicle-rental-details]");
+  details?.classList.toggle("is-readonly", !canEdit);
+}
+
+function vehicleRentalDetailsFor(log = {}) {
+  const relatedLogs = state.vehicleLogs.filter((item) => {
+    if (log.assignmentId && item.assignmentId === log.assignmentId) return true;
+    return item.eventId === log.eventId && item.workerId === log.workerId;
+  });
+  const source = [log, ...relatedLogs].find((item) => item?.rentalCompany || item?.rentalPickupLocation || item?.rentalPickupDate) || {};
+  return {
+    rentalCompany: source.rentalCompany || "",
+    rentalPickupLocation: source.rentalPickupLocation || "",
+    rentalPickupDate: source.rentalPickupDate || ""
+  };
+}
+
 function updateVehiclePhotoSections(form = $("#vehicleForm")) {
   if (!form) return;
   const phase = String(form.elements.phase?.value || "").toLowerCase();
@@ -6874,7 +6923,8 @@ function updateVehiclePhotoSections(form = $("#vehicleForm")) {
 function openVehiclePhaseForm(button) {
   const logId = button.dataset.logId || "";
   if (logId) {
-    fillForm("vehicleForm", state.vehicleLogs.find((log) => log.id === logId) || {});
+    const log = state.vehicleLogs.find((item) => item.id === logId) || {};
+    fillForm("vehicleForm", { ...vehicleRentalDetailsFor(log), ...log });
     return;
   }
   clearForm("vehicleForm");
@@ -6883,6 +6933,14 @@ function openVehiclePhaseForm(button) {
   form.elements.eventId.value = button.dataset.eventId || "";
   form.elements.workerId.value = button.dataset.workerId || "";
   if (form.elements.assignmentId) form.elements.assignmentId.value = button.dataset.assignmentId || "";
+  const rentalDetails = vehicleRentalDetailsFor({
+    assignmentId: button.dataset.assignmentId || "",
+    eventId: button.dataset.eventId || "",
+    workerId: button.dataset.workerId || ""
+  });
+  Object.entries(rentalDetails).forEach(([key, value]) => {
+    if (form.elements[key]) form.elements[key].value = value || "";
+  });
   applyVehicleAssignmentLock(form);
   openForm("vehicleForm");
 }
@@ -9099,6 +9157,16 @@ async function saveForm(event, storeName) {
   }
   if (storeName === "vehicleLogs") {
     const assignment = getEventAssignment(merged.assignmentId) || assignmentForEventWorker(merged.eventId, merged.workerId);
+    if (!canEditVehicleRentalDetails()) {
+      const rentalDetails = vehicleRentalDetailsFor(existing || {
+        assignmentId: merged.assignmentId,
+        eventId: merged.eventId,
+        workerId: merged.workerId
+      });
+      merged.rentalCompany = rentalDetails.rentalCompany;
+      merged.rentalPickupLocation = rentalDetails.rentalPickupLocation;
+      merged.rentalPickupDate = rentalDetails.rentalPickupDate;
+    }
     if (assignment) {
       merged.assignmentId = assignment.id;
       merged.eventId = assignment.eventId;
@@ -9188,6 +9256,7 @@ async function saveForm(event, storeName) {
     await ensureDefaultAssignmentsForEvent(merged);
   }
   if (storeName === "eventAssignments") await afterAssignmentSaved(merged, existing || {});
+  if (storeName === "vehicleLogs") await syncVehicleRentalDetails(merged);
   if (storeName === "accidentReports" && !existing) {
     notifyReportSaved(merged).catch((error) => console.warn(error));
   }

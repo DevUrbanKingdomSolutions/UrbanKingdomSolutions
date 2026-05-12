@@ -1918,6 +1918,34 @@ body.pull-refresh-dragging .active-view {
   margin: 0;
 }
 
+.vehicle-rental-details {
+  display: grid;
+  gap: 10px;
+  margin: 14px 16px 0;
+  padding: 12px;
+  border-radius: 12px;
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--accent-soft) 60%, rgba(255, 255, 255, 0.78)), rgba(255, 255, 255, 0.72)),
+    color-mix(in srgb, var(--accent) 6%, transparent);
+  box-shadow: inset 4px 0 0 color-mix(in srgb, var(--accent) 48%, transparent);
+}
+
+.vehicle-rental-details > span {
+  color: color-mix(in srgb, var(--accent-dark) 72%, var(--ink));
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.vehicle-rental-details label {
+  margin: 0;
+}
+
+.vehicle-rental-details.is-readonly input {
+  background: rgba(255, 255, 255, 0.52);
+  color: color-mix(in srgb, var(--accent-dark) 68%, var(--ink));
+}
+
 .assignment-fieldset {
   background: linear-gradient(135deg, color-mix(in srgb, var(--role-color) 7%, #ffffff), #ffffff);
   border-color: color-mix(in srgb, var(--role-color) 18%, var(--line));

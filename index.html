@@ -10,7 +10,7 @@
     <title>Production Crew Database</title>
     <link rel="manifest" href="manifest.webmanifest">
     <link rel="icon" href="assets/logo/app-logo-admin.png" type="image/png">
-    <link rel="stylesheet" href="styles.css?v=V1.04.146-vehicle-column-controls">
+    <link rel="stylesheet" href="styles.css?v=V1.04.147-vehicle-rental-details">
   </head>
   <body>
     <div id="appLoadingOverlay" class="app-loading-overlay" aria-live="polite">
@@ -1173,6 +1173,12 @@
                 </select>
               </label>
               <label>Vehicle type<input name="vehicleType" placeholder="Cargo van, box truck, pickup"></label>
+              <div class="vehicle-rental-details" data-vehicle-rental-details>
+                <span>Rental details</span>
+                <label>Rental company<input name="rentalCompany" placeholder="Company name" data-client-admin-rental-field></label>
+                <label>Pickup location<input name="rentalPickupLocation" placeholder="Rental counter, venue, hotel, airport" data-client-admin-rental-field></label>
+                <label>Scheduled pickup<input name="rentalPickupDate" type="datetime-local" data-client-admin-rental-field></label>
+              </div>
               <label>Plate number<input name="plateNumber" placeholder="Plate"></label>
               <label>Gas gauge
                 <select name="gasGauge">
@@ -1648,6 +1654,6 @@
     <div id="modalHost"></div>
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js?v=V1.04.146-vehicle-column-controls"></script>
+    <script src="app.js?v=V1.04.147-vehicle-rental-details"></script>
   </body>
 </html>
