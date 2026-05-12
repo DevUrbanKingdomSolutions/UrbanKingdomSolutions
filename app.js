@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.05.002",
-  title: "V1.05.002 update installed",
-  body: "Moved Timecards sorting and filtering into column arrow menus."
+  version: "V1.05.003",
+  title: "V1.05.003 update installed",
+  body: "Moved Reports sorting and filtering into column arrow menus."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -402,9 +402,9 @@ let state = {
   vehicleSortKey: localStorage.getItem("productionCrewVehicleSortKey") || "date",
   vehicleSortDirection: localStorage.getItem("productionCrewVehicleSortDirection") || "desc",
   vehicleColumnFilters: JSON.parse(localStorage.getItem("productionCrewVehicleColumnFilters") || "{}"),
-  reportEventFilter: localStorage.getItem("productionCrewReportEventFilter") || "all",
-  reportFilter: localStorage.getItem("productionCrewReportFilter") || "all",
-  reportSort: localStorage.getItem("productionCrewReportSort") || "latest",
+  reportSortKey: localStorage.getItem("productionCrewReportSortKey") || "date",
+  reportSortDirection: localStorage.getItem("productionCrewReportSortDirection") || "desc",
+  reportColumnFilters: JSON.parse(localStorage.getItem("productionCrewReportColumnFilters") || "{}"),
   messagingThreadType: localStorage.getItem("productionCrewMessagingThreadType") || "event",
   messageEventFilter: localStorage.getItem("productionCrewMessageEventFilter") || "current",
   selectedMessageEventId: localStorage.getItem("productionCrewSelectedMessageEventId") || "",
@@ -658,6 +658,14 @@ const TIMECARD_COLUMNS = [
   ["lunchIn", "Lunch In"],
   ["wrap", "Wrap"],
   ["hours", "Hours"]
+];
+const REPORT_COLUMNS = [
+  ["type", "Type"],
+  ["event", "Event"],
+  ["worker", "Worker"],
+  ["title", "Title"],
+  ["date", "Date"],
+  ["photos", "Photos"]
 ];
 
 const $ = (selector) => document.querySelector(selector);
@@ -6770,18 +6778,34 @@ function vehiclePhaseCell(group, phase) {
 }
 
 function renderReports() {
-  renderEventFilterOptions("#reportEventFilter", state.reportEventFilter);
-  const eventFilter = $("#reportEventFilter");
-  const filter = $("#reportFilter");
-  const sort = $("#reportSort");
-  if (eventFilter) eventFilter.value = state.reportEventFilter;
-  if (filter) filter.value = state.reportFilter;
-  if (sort) sort.value = state.reportSort;
-  const rows = sortReports(filterReports(visibleRecords(state.accidentReports).filter((report) => recordMatchesEventFilter(report, state.reportEventFilter) && matchesSearch(report, `${getEvent(report.eventId)?.name || ""} ${getWorker(report.workerId)?.name || ""}`))));
+  renderReportTableHead();
+  const rows = sortReports(filterReports(visibleRecords(state.accidentReports).filter((report) => matchesSearch(report, `${getEvent(report.eventId)?.name || ""} ${getWorker(report.workerId)?.name || ""}`))));
   $("#reportTableCount").textContent = `${rows.length} shown`;
   $("#reportTable").innerHTML = rows.length
     ? rows.map(reportTableRow).join("")
     : `<tr><td colspan="7" class="empty">No accident reports match this search.</td></tr>`;
+}
+
+function renderReportTableHead() {
+  const head = $("#reportHead");
+  if (!head) return;
+  head.innerHTML = `<tr>${REPORT_COLUMNS.map(([key, label]) => {
+    const activeSort = state.reportSortKey === key;
+    const activeFilter = !!state.reportColumnFilters?.[key];
+    const arrow = activeSort ? (state.reportSortDirection === "desc" ? "▼" : "▲") : "▾";
+    const numeric = key === "photos";
+    return `<th><div class="column-filter-heading">
+      <span>${escapeHtml(label)}</span>
+      <details class="column-filter-menu ${activeSort || activeFilter ? "active" : ""}">
+        <summary aria-label="${escapeHtml(label)} sort and filter">${arrow}</summary>
+        <div class="record-options-menu">
+          <button class="tiny-button" data-report-sort="${escapeHtml(key)}" data-report-sort-direction="asc" type="button">${numeric ? "Sort low-high" : "Sort A-Z"}</button>
+          <button class="tiny-button" data-report-sort="${escapeHtml(key)}" data-report-sort-direction="desc" type="button">${numeric ? "Sort high-low" : "Sort Z-A"}</button>
+          <label>Filter<input data-report-column-filter="${escapeHtml(key)}" value="${escapeHtml(state.reportColumnFilters?.[key] || "")}" placeholder="Type to filter"></label>
+        </div>
+      </details>
+    </div></th>`;
+  }).join("")}<th></th></tr>`;
 }
 
 function reportTableRow(report) {
@@ -6823,22 +6847,38 @@ function reportSummaryChips(report) {
 }
 
 function filterReports(reports) {
+  const filters = state.reportColumnFilters || {};
   return reports.filter((report) => {
-    const type = listText(report.type);
-    if (state.reportFilter === "injury") return type.includes("injury");
-    if (state.reportFilter === "vehicle") return type.includes("vehicle");
-    if (state.reportFilter === "photos") return (report.photos || []).length || report.photoData;
-    return true;
+    return REPORT_COLUMNS.every(([key]) => {
+      const filter = String(filters[key] || "").trim().toLowerCase();
+      return !filter || reportColumnValue(report, key).toLowerCase().includes(filter);
+    });
   });
 }
 
 function sortReports(reports) {
+  const key = state.reportSortKey || "date";
+  const direction = state.reportSortDirection === "asc" ? 1 : -1;
   return [...reports].sort((a, b) => {
-    if (state.reportSort === "event") return listText(getEvent(a.eventId)?.name).localeCompare(listText(getEvent(b.eventId)?.name));
-    if (state.reportSort === "worker") return listText(getWorker(a.workerId)?.name).localeCompare(listText(getWorker(b.workerId)?.name));
-    if (state.reportSort === "type") return listText(a.type).localeCompare(listText(b.type));
-    return new Date(b.reportedAt || b.createdAt || 0) - new Date(a.reportedAt || a.createdAt || 0);
+    if (key === "date") return direction * (new Date(a.reportedAt || a.createdAt || 0) - new Date(b.reportedAt || b.createdAt || 0));
+    if (key === "photos") return direction * (reportPhotoCount(a) - reportPhotoCount(b));
+    return direction * reportColumnValue(a, key).localeCompare(reportColumnValue(b, key), undefined, { numeric: true, sensitivity: "base" });
   });
+}
+
+function reportPhotoCount(report) {
+  const photos = Array.isArray(report.photos) ? report.photos : report.photos ? [report.photos] : report.photoData ? [report.photoData] : [];
+  return photos.length;
+}
+
+function reportColumnValue(report, key) {
+  if (key === "type") return listText(report.type);
+  if (key === "event") return listText(getEvent(report.eventId)?.name);
+  if (key === "worker") return listText(getWorker(report.workerId)?.name);
+  if (key === "title") return listText(`${report.title || ""} ${report.details || ""} ${reportSummaryChips(report).replace(/<[^>]+>/g, " ")}`);
+  if (key === "date") return listText(formatDate(report.reportedAt || report.createdAt));
+  if (key === "photos") return listText(reportPhotoCount(report) ? `${reportPhotoCount(report)} photos has photos` : "no photos");
+  return "";
 }
 
 function vehiclePhotoGallery(log) {
@@ -11828,6 +11868,13 @@ function bindEvents() {
       localStorage.setItem("productionCrewVehicleColumnFilters", JSON.stringify(state.vehicleColumnFilters));
       renderVehicles();
     }
+    if (event.target?.matches?.("[data-report-column-filter]")) {
+      const key = event.target.dataset.reportColumnFilter;
+      state.reportColumnFilters = { ...(state.reportColumnFilters || {}), [key]: event.target.value };
+      if (!state.reportColumnFilters[key]) delete state.reportColumnFilters[key];
+      localStorage.setItem("productionCrewReportColumnFilters", JSON.stringify(state.reportColumnFilters));
+      renderReports();
+    }
   });
   $("#dashboardCalendarPrev")?.addEventListener("click", () => {
     const month = dashboardCalendarMonthDate();
@@ -11961,21 +12008,6 @@ function bindEvents() {
     if (event.target.matches("[data-report-type], select[name='eventId'], select[name='workerId']")) updateReportTypeFields($("#reportForm"));
   });
   $("#vehicleForm").addEventListener("change", () => applyVehicleAssignmentLock($("#vehicleForm")));
-  $("#reportEventFilter").addEventListener("change", (event) => {
-    state.reportEventFilter = event.target.value;
-    localStorage.setItem("productionCrewReportEventFilter", state.reportEventFilter);
-    renderReports();
-  });
-  $("#reportFilter").addEventListener("change", (event) => {
-    state.reportFilter = event.target.value;
-    localStorage.setItem("productionCrewReportFilter", state.reportFilter);
-    renderReports();
-  });
-  $("#reportSort").addEventListener("change", (event) => {
-    state.reportSort = event.target.value;
-    localStorage.setItem("productionCrewReportSort", state.reportSort);
-    renderReports();
-  });
   $$("[data-smtp-provider]").forEach((select) => {
     select.addEventListener("change", () => updateSmtpForm(select.form, true));
   });
@@ -12013,6 +12045,7 @@ function bindEvents() {
     const timecardSortButton = event.target.closest("[data-timecard-sort]");
     const staffingSortButton = event.target.closest("[data-staffing-sort]");
     const vehicleSortButton = event.target.closest("[data-vehicle-sort]");
+    const reportSortButton = event.target.closest("[data-report-sort]");
     const quickProfileButton = event.target.closest("[data-open-quick-profile]");
     const deleteButton = event.target.closest("[data-delete]");
     const clockButton = event.target.closest("[data-clock-out]");
@@ -12159,6 +12192,15 @@ function bindEvents() {
       localStorage.setItem("productionCrewVehicleSortDirection", state.vehicleSortDirection);
       vehicleSortButton.closest("details")?.removeAttribute("open");
       renderVehicles();
+      return;
+    }
+    if (reportSortButton) {
+      state.reportSortKey = reportSortButton.dataset.reportSort || "date";
+      state.reportSortDirection = reportSortButton.dataset.reportSortDirection || "desc";
+      localStorage.setItem("productionCrewReportSortKey", state.reportSortKey);
+      localStorage.setItem("productionCrewReportSortDirection", state.reportSortDirection);
+      reportSortButton.closest("details")?.removeAttribute("open");
+      renderReports();
       return;
     }
     if (requestMobilePermissionsButton) {

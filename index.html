@@ -10,7 +10,7 @@
     <title>Production Crew Database</title>
     <link rel="manifest" href="manifest.webmanifest">
     <link rel="icon" href="assets/logo/app-logo-admin.png" type="image/png">
-    <link rel="stylesheet" href="styles.css?v=V1.05.002-timecard-column-controls">
+    <link rel="stylesheet" href="styles.css?v=V1.05.003-report-column-controls">
   </head>
   <body>
     <div id="appLoadingOverlay" class="app-loading-overlay" aria-live="polite">
@@ -1365,30 +1365,9 @@
                   <button class="tiny-button scoped-action" data-open-report-type="Vehicle Damage" type="button">Add Vehicle Damage</button>
                 </div>
               </div>
-              <div class="list-controls">
-                <label>Event
-                  <select id="reportEventFilter"></select>
-                </label>
-                <label>Filter
-                  <select id="reportFilter">
-                    <option value="all">All reports</option>
-                    <option value="injury">Injury reports</option>
-                    <option value="vehicle">Vehicle damage</option>
-                    <option value="photos">Has photos</option>
-                  </select>
-                </label>
-                <label>Sort
-                  <select id="reportSort">
-                    <option value="latest">Latest report</option>
-                    <option value="event">Event name</option>
-                    <option value="worker">Worker name</option>
-                    <option value="type">Report type</option>
-                  </select>
-                </label>
-              </div>
               <div class="table-wrap">
                 <table>
-                  <thead><tr><th>Type</th><th>Event</th><th>Worker</th><th>Title</th><th>Date</th><th>Photos</th><th></th></tr></thead>
+                  <thead id="reportHead"></thead>
                   <tbody id="reportTable"></tbody>
                 </table>
               </div>
@@ -1644,6 +1623,6 @@
     <div id="modalHost"></div>
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js?v=V1.05.002-timecard-column-controls"></script>
+    <script src="app.js?v=V1.05.003-report-column-controls"></script>
   </body>
 </html>
