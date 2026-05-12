@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.05.011",
-  title: "V1.05.011 update installed",
-  body: "Tightened profile creation and access assignment options to follow the role hierarchy."
+  version: "V1.05.012",
+  title: "V1.05.012 update installed",
+  body: "Cleaned up notification read, clear, and cloud sync behavior."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -7935,7 +7935,9 @@ async function refreshNotificationsFromStorage() {
   if (activeThreadNotices.length) {
     const now = new Date().toISOString();
     for (const notification of activeThreadNotices) {
-      await put("appNotifications", { ...notification, readAt: now });
+      const updated = { ...notification, readAt: now };
+      await put("appNotifications", updated);
+      await syncAppNotificationToSupabase(updated);
     }
     notifications = (await getAll("appNotifications")).sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
   }
@@ -7965,7 +7967,9 @@ async function cleanupDuplicateMessageNotifications() {
   });
   if (!removeIds.length) return;
   for (const id of removeIds) {
+    const notification = notifications.find((item) => item.id === id);
     await remove("appNotifications", id);
+    if (notification) await deleteAppNotificationFromSupabase(notification);
   }
   state.appNotifications = state.appNotifications.filter((notification) => !removeIds.includes(notification.id));
 }
@@ -8049,7 +8053,7 @@ async function createAppNotification({ title, body = "", type = "info", viewId =
   state.appNotifications = [saved, ...state.appNotifications.filter((item) => item.id !== saved.id)]
     .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
   renderNotificationSurfaces();
-  if (type === "message" && !skipCloudSync) syncAppNotificationToSupabase(saved).catch((error) => console.warn("Message notification sync failed", error));
+  if (!skipCloudSync) syncAppNotificationToSupabase(saved).catch((error) => console.warn("Notification sync failed", error));
   refreshNotificationsFromStorage().catch((error) => console.warn("Notification refresh failed", error));
   return saved;
 }
@@ -8076,6 +8080,19 @@ async function syncAppNotificationToSupabase(notification) {
       data: { ...notification, clientId },
       updated_by: authState.user?.id || null
     }, { onConflict: "client_id,store_name,record_id" });
+  if (error) throw error;
+}
+
+async function deleteAppNotificationFromSupabase(notification) {
+  if (!supabaseClient || !authState.session || !notification?.id) return;
+  const clientId = notificationCloudClientId(notification);
+  if (!clientId) return;
+  const { error } = await supabaseClient
+    .from("app_records")
+    .delete()
+    .eq("client_id", clientId)
+    .eq("store_name", "appNotifications")
+    .eq("record_id", String(notification.id));
   if (error) throw error;
 }
 
@@ -8150,7 +8167,9 @@ async function markNotificationsRead() {
   const now = new Date().toISOString();
   const notifications = visibleNotifications().filter((notification) => !notification.readAt);
   for (const notification of notifications) {
-    await put("appNotifications", { ...notification, readAt: now });
+    const updated = { ...notification, readAt: now };
+    await put("appNotifications", updated);
+    await syncAppNotificationToSupabase(updated);
   }
   await loadState();
 }
@@ -8159,6 +8178,7 @@ async function clearReadNotifications() {
   const read = state.appNotifications.filter((notification) => notification.readAt);
   for (const notification of read) {
     await remove("appNotifications", notification.id);
+    await deleteAppNotificationFromSupabase(notification);
   }
   await loadState();
 }
@@ -8166,7 +8186,11 @@ async function clearReadNotifications() {
 async function openNotification(id) {
   const notification = state.appNotifications.find((item) => item.id === id);
   if (!notification) return;
-  if (!notification.readAt) await put("appNotifications", { ...notification, readAt: new Date().toISOString() });
+  if (!notification.readAt) {
+    const updated = { ...notification, readAt: new Date().toISOString() };
+    await put("appNotifications", updated);
+    await syncAppNotificationToSupabase(updated);
+  }
   await loadState();
   if (notification.viewId) setView(notification.viewId);
   if (notification.threadType && notification.threadKey) await openNotificationMessageThread(notification);
@@ -11232,7 +11256,9 @@ async function markMessageThreadNotificationsRead(threadType, threadKey) {
     && notificationMatchesCurrentRecipient(notification)
   );
   for (const notification of matches) {
-    await put("appNotifications", { ...notification, readAt: now });
+    const updated = { ...notification, readAt: now };
+    await put("appNotifications", updated);
+    await syncAppNotificationToSupabase(updated);
   }
   if (matches.length) {
     state.appNotifications = state.appNotifications.map((notification) =>

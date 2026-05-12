@@ -1,5 +1,5 @@
 {
-  "version": "V1.05.011",
-  "title": "V1.05.011 update installed",
-  "body": "Tightened profile creation and access assignment options to follow the role hierarchy."
+  "version": "V1.05.012",
+  "title": "V1.05.012 update installed",
+  "body": "Cleaned up notification read, clear, and cloud sync behavior."
 }
