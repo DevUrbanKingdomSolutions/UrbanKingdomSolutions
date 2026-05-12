@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.04.119",
-  title: "V1.04.119 update installed",
-  body: "Aligned dashboard note and clocked-in headers and made Recent Notes scroll cleanly after two visible notes."
+  version: "V1.04.120",
+  title: "V1.04.120 update installed",
+  body: "Updated sidebar navigation so only one grouped section stays open at a time."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -8102,9 +8102,21 @@ function navGroupIsCollapsed(key) {
 }
 
 function toggleNavGroup(key) {
-  state.collapsedNavGroups[key] = !navGroupIsCollapsed(key);
+  const shouldOpen = navGroupIsCollapsed(key);
+  if (shouldOpen) collapseSiblingNavGroups(key);
+  state.collapsedNavGroups[key] = !shouldOpen;
   localStorage.setItem("productionCrewCollapsedNavGroups", JSON.stringify(state.collapsedNavGroups));
   renderNavigation();
+}
+
+function collapseSiblingNavGroups(key) {
+  const accessPrefix = key.split(":")[0];
+  Object.keys(state.collapsedNavGroups).forEach((groupKey) => {
+    if (groupKey.startsWith(`${accessPrefix}:`)) state.collapsedNavGroups[groupKey] = true;
+  });
+  combinedNavGroups().forEach((group, index) => {
+    if (group.label) state.collapsedNavGroups[navGroupKey(group, index)] = true;
+  });
 }
 
 function applyAccessProfile() {
