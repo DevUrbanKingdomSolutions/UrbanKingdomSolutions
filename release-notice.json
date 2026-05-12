@@ -1,5 +1,5 @@
 {
-  "version": "V1.05.010",
-  "title": "V1.05.010 update installed",
-  "body": "Tightened access hierarchy so higher assigned roles stay active across shared pages."
+  "version": "V1.05.011",
+  "title": "V1.05.011 update installed",
+  "body": "Tightened profile creation and access assignment options to follow the role hierarchy."
 }

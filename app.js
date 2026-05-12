@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.05.010",
-  title: "V1.05.010 update installed",
-  body: "Tightened access hierarchy so higher assigned roles stay active across shared pages."
+  version: "V1.05.011",
+  title: "V1.05.011 update installed",
+  body: "Tightened profile creation and access assignment options to follow the role hierarchy."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -2315,6 +2315,11 @@ async function saveProfileAccess(event) {
   const accessLevels = storeName === "clientReps"
     ? ensureClientRepAccessLevels(record.accessLevels)
     : normalizeAccessLevels(record.accessLevels, storeName === "promoters" ? "PROMOTER_ADMIN" : storeName === "workers" ? "CREW" : "CLIENT_REP");
+  const blockedLevels = accessLevels.filter((role) => !grantableAccessLevelsForCurrentUser().includes(role));
+  if (blockedLevels.length) {
+    toast("This access view cannot assign one or more selected roles.");
+    return;
+  }
   const updated = { ...profile, accessLevels, loginRole: baseRoleForAccess(accessLevels[0] || profile.loginRole) };
   await put(storeName, updated);
   try {
@@ -2334,16 +2339,12 @@ async function openQuickProfileForm(targetStore) {
   const profileMode = targetStore === "promoterCompany" || targetStore === "promoterRep" ? targetStore : targetStore;
   const normalizedStore = targetStore === "promoterCompany" || targetStore === "promoterRep" ? "promoters" : targetStore;
   if (!["clients", "workers", "promoters"].includes(normalizedStore)) return;
+  if (!canOpenQuickProfileTarget(targetStore)) {
+    toast("This access view cannot add that profile type.");
+    return;
+  }
   if (normalizedStore === "clients" && !canSystemEdit()) {
     toast("Only ADMIN can add client accounts.");
-    return;
-  }
-  if (normalizedStore === "workers" && !canOwnerEdit()) {
-    toast("This access view cannot add crew profiles.");
-    return;
-  }
-  if (normalizedStore === "promoters" && !(canOwnerEdit() || isProductionRole())) {
-    toast("This access view cannot add promoter profiles.");
     return;
   }
   await refreshSiteAccessLevelsForForm("quickProfileForm");
@@ -2393,6 +2394,10 @@ async function saveQuickProfile(event) {
   const record = await formRecord(form);
   const targetStore = record.targetStore;
   const profileMode = record.profileMode || targetStore;
+  if (!canOpenQuickProfileTarget(profileMode)) {
+    toast("This access view cannot add that profile type.");
+    return;
+  }
   const firstName = String(record.firstName || "").trim();
   const lastName = String(record.lastName || "").trim();
   const fullName = `${firstName} ${lastName}`.trim();
@@ -2404,6 +2409,11 @@ async function saveQuickProfile(event) {
   const accessLevels = targetStore === "clients"
     ? ensureClientRepAccessLevels(record.accessLevels, "CLIENT_ADMIN")
     : normalizeAccessLevels(record.accessLevels, quickProfileDefaultAccess(targetStore)[0]);
+  const blockedLevels = accessLevels.filter((role) => !quickProfileAccessOptions(profileMode).includes(role));
+  if (blockedLevels.length) {
+    toast("This access view cannot assign one or more selected roles.");
+    return;
+  }
   const id = crypto.randomUUID();
   let syncMessage = "";
 
@@ -2962,6 +2972,36 @@ function accessRolePriority(role) {
   return ACCESS_ROLE_PRIORITY[level] || SERVER_ROLE_PRIORITY[baseRole] || 0;
 }
 
+function grantableAccessLevelsForCurrentUser() {
+  const allRoles = accessLevelDefinitions().map((level) => level.id).filter((role) => role !== "ADMIN");
+  if (isAdminRole()) return allRoles;
+  const assigned = assignedAccessForCurrentUser();
+  if (assigned.includes("CLIENT_ADMIN")) return allRoles.filter((role) => baseRoleForAccess(role) !== "ADMIN");
+  if (assigned.includes("CLIENT_REP_LEAD")) {
+    const blocked = new Set(["CLIENT", "CLIENT_ADMIN"]);
+    return allRoles.filter((role) => !blocked.has(role) && baseRoleForAccess(role) !== "ADMIN");
+  }
+  if (assigned.includes("CLIENT_REP")) {
+    const blocked = new Set(["CLIENT", "CLIENT_ADMIN", "CLIENT_REP_LEAD", "CLIENT_ACCOUNTING"]);
+    return allRoles.filter((role) => !blocked.has(role) && !["ADMIN", "CLIENT"].includes(baseRoleForAccess(role)));
+  }
+  if (assigned.includes("PROMOTER_ADMIN")) {
+    return allRoles.filter((role) => ["PROMOTER", "PRODUCTION", "CREW"].includes(baseRoleForAccess(role)) && role !== "PROMOTER_ADMIN");
+  }
+  if (assigned.includes("PROMOTER_REP")) {
+    return allRoles.filter((role) => ["PRODUCTION", "CREW"].includes(baseRoleForAccess(role)));
+  }
+  if (assigned.includes("PRODUCTION_TEAM_ACCESS")) {
+    return allRoles.filter((role) => baseRoleForAccess(role) === "CREW");
+  }
+  return [];
+}
+
+function filterGrantableAccessLevels(roles) {
+  const grantable = new Set(grantableAccessLevelsForCurrentUser());
+  return roles.filter((role) => grantable.has(role));
+}
+
 function assignedAccessForCurrentUser() {
   const baseRole = normalizeRole(authState.roleRecord?.role || state.accessRole);
   if (baseRole === "ADMIN") return ["ADMIN"];
@@ -2980,20 +3020,15 @@ function assignedAccessForCurrentUser() {
 
 function accessLevelOptionsForForm(form) {
   let roles = accessLevelDefinitions().map((level) => level.id).filter((role) => role !== "ADMIN");
-  if (form?.id === "accountAccessForm") return roles;
+  if (form?.id === "accountAccessForm") return isAdminRole() ? roles : filterGrantableAccessLevels(roles);
   if (form?.id === "quickProfileForm") return quickProfileAccessOptions(form.elements.targetStore?.value || "");
   if (form?.id === "profileAccessForm") {
-    if (isClientRole()) return roles.filter((role) => baseRoleForAccess(role) !== "ADMIN");
-    if (isProductionRole()) {
-      const blocked = new Set(["CLIENT", "CLIENT_ADMIN", "CLIENT_REP", "CLIENT_REP_LEAD", "CLIENT_ACCOUNTING"]);
-      return roles.filter((role) => !blocked.has(role) && !["ADMIN", "CLIENT"].includes(baseRoleForAccess(role)));
-    }
-    if (isAdminRole()) return roles;
-    return [];
+    return filterGrantableAccessLevels(roles);
   }
   if (["clientProfileForm", "workerForm", "promoterForm"].includes(form?.id)) return [];
+  if (form?.id === "clientForm") return filterGrantableAccessLevels(roles.filter((role) => baseRoleForAccess(role) === "CLIENT"));
   if (form?.id !== "clientForm") roles = roles.filter((role) => !["CLIENT", "PRODUCTION"].includes(baseRoleForAccess(role)));
-  return roles;
+  return filterGrantableAccessLevels(roles);
 }
 
 function accessLevelLabel(role) {
@@ -3002,16 +3037,10 @@ function accessLevelLabel(role) {
 
 function quickProfileAccessOptions(targetStore) {
   const roles = accessLevelDefinitions().map((level) => level.id).filter((role) => role !== "ADMIN");
-  if (isProductionRole()) {
-    return roles.filter((role) => !["ADMIN", "CLIENT"].includes(baseRoleForAccess(role)));
-  }
-  if (isClientRole()) {
-    return roles.filter((role) => baseRoleForAccess(role) !== "ADMIN");
-  }
   if (targetStore === "clients" || isAdminRole()) {
     return roles.filter((role) => baseRoleForAccess(role) === "CLIENT");
   }
-  return roles;
+  return filterGrantableAccessLevels(roles);
 }
 
 function quickProfileTargetsForCurrentUser() {
@@ -3030,6 +3059,14 @@ function quickProfileTargetsForCurrentUser() {
   return targets;
 }
 
+function canOpenQuickProfileTarget(targetStore) {
+  const normalizedStore = targetStore === "promoterCompany" || targetStore === "promoterRep" ? "promoters" : targetStore;
+  if (normalizedStore === "clients") return canSystemEdit();
+  if (normalizedStore === "workers") return canOwnerEdit() || isProductionRole();
+  if (normalizedStore === "promoters") return canOwnerEdit() || isProductionRole();
+  return false;
+}
+
 function renderGlobalAddMenu() {
   const menu = $("#globalAddMenu");
   const options = $("#globalAddMenuOptions");
@@ -3042,10 +3079,15 @@ function renderGlobalAddMenu() {
 }
 
 function quickProfileDefaultAccess(targetStore) {
-  if (targetStore === "clients") return ["CLIENT_ADMIN"];
-  if (targetStore === "promoterRep") return ["PROMOTER_REP"];
-  if (targetStore === "promoters" || targetStore === "promoterCompany") return ["PROMOTER_ADMIN"];
-  return ["CREW"];
+  const preferred = targetStore === "clients"
+    ? ["CLIENT_ADMIN"]
+    : targetStore === "promoterRep"
+      ? ["PROMOTER_REP"]
+      : targetStore === "promoters" || targetStore === "promoterCompany"
+        ? ["PROMOTER_ADMIN"]
+        : ["CREW"];
+  const allowed = quickProfileAccessOptions(targetStore);
+  return preferred.filter((role) => allowed.includes(role)).length ? preferred.filter((role) => allowed.includes(role)) : allowed.slice(0, 1);
 }
 
 function quickProfileTitle(targetStore) {
