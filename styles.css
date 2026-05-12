@@ -2611,11 +2611,12 @@ td p {
 }
 
 .runner-category-controls {
-  display: grid;
-  grid-template-columns: auto minmax(180px, 280px);
-  gap: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
   align-items: center;
-  padding: 12px 14px;
+  justify-content: flex-start;
+  padding: 10px 14px 11px;
   border-bottom: 1px solid var(--line);
   background: #fbfaf6;
 }
@@ -2628,7 +2629,8 @@ td p {
   font: inherit;
   font-size: 13px;
   font-weight: 900;
-  padding: 6px 0;
+  line-height: 1;
+  padding: 7px 2px;
   text-transform: uppercase;
 }
 
@@ -2642,6 +2644,7 @@ td p {
 .runner-category-select-label {
   display: grid;
   gap: 5px;
+  width: min(280px, calc(100% - 52px));
   color: #5d6970;
   font-size: 11px;
   font-weight: 900;
@@ -2650,6 +2653,7 @@ td p {
 
 .runner-category-select-label select {
   min-height: 38px;
+  width: 100%;
   border: 1px solid color-mix(in srgb, var(--accent) 16%, var(--line));
   border-radius: 10px;
   background: #ffffff;

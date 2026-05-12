@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.04.126",
-  title: "V1.04.126 update installed",
-  body: "Refined Gig Resources category selection and softened the add icon."
+  version: "V1.04.127",
+  title: "V1.04.127 update installed",
+  body: "Tightened the Gig Resources category control spacing."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
