@@ -10,7 +10,7 @@
     <title>Production Crew Database</title>
     <link rel="manifest" href="manifest.webmanifest">
     <link rel="icon" href="assets/logo/app-logo-admin.png" type="image/png">
-    <link rel="stylesheet" href="styles.css?v=V1.05.001-stabilization-polish">
+    <link rel="stylesheet" href="styles.css?v=V1.05.002-timecard-column-controls">
   </head>
   <body>
     <div id="appLoadingOverlay" class="app-loading-overlay" aria-live="polite">
@@ -1087,31 +1087,9 @@
                   <button class="tiny-button admin-action" data-open-form="timecardForm" type="button">Add Timecard</button>
                 </div>
               </div>
-              <div class="list-controls">
-                <label>Event
-                  <select id="timecardEventFilter"></select>
-                </label>
-                <label>Filter
-                  <select id="timecardFilter">
-                    <option value="all">All timecards</option>
-                    <option value="live">Live only</option>
-                    <option value="complete">Complete only</option>
-                    <option value="missing-lunch">Missing lunch</option>
-                  </select>
-                </label>
-                <label>Sort
-                  <select id="timecardSort">
-                    <option value="latest">Latest call time</option>
-                    <option value="worker">Crew member name</option>
-                    <option value="event">Event name</option>
-                    <option value="hours">Hours worked</option>
-                    <option value="pay">Estimated pay</option>
-                  </select>
-                </label>
-              </div>
               <div class="table-wrap">
                 <table>
-                  <thead><tr><th>Crew Member</th><th>Event</th><th>Venue</th><th>Call</th><th>Lunch</th><th>Wrap</th><th>Hours</th><th>Pay Basis</th><th>Est.</th><th></th></tr></thead>
+                  <thead id="timecardHead"></thead>
                   <tbody id="timecardTable"></tbody>
                 </table>
               </div>
@@ -1666,6 +1644,6 @@
     <div id="modalHost"></div>
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js?v=V1.05.001-stabilization-polish"></script>
+    <script src="app.js?v=V1.05.002-timecard-column-controls"></script>
   </body>
 </html>

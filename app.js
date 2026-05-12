@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.05.001",
-  title: "V1.05.001 milestone started",
-  body: "Started the Stabilization and Polish milestone for visual consistency, permissions, notifications, data sync review, mobile polish, and native readiness."
+  version: "V1.05.002",
+  title: "V1.05.002 update installed",
+  body: "Moved Timecards sorting and filtering into column arrow menus."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -396,9 +396,9 @@ let state = {
   staffingColumnFilters: JSON.parse(localStorage.getItem("productionCrewStaffingColumnFilters") || "{}"),
   directoryTab: "crew",
   payrollView: localStorage.getItem("productionCrewPayrollView") || "worker",
-  timecardEventFilter: localStorage.getItem("productionCrewTimecardEventFilter") || "all",
-  timecardFilter: localStorage.getItem("productionCrewTimecardFilter") || "all",
-  timecardSort: localStorage.getItem("productionCrewTimecardSort") || "latest",
+  timecardSortKey: localStorage.getItem("productionCrewTimecardSortKey") || "date",
+  timecardSortDirection: localStorage.getItem("productionCrewTimecardSortDirection") || "desc",
+  timecardColumnFilters: JSON.parse(localStorage.getItem("productionCrewTimecardColumnFilters") || "{}"),
   vehicleSortKey: localStorage.getItem("productionCrewVehicleSortKey") || "date",
   vehicleSortDirection: localStorage.getItem("productionCrewVehicleSortDirection") || "desc",
   vehicleColumnFilters: JSON.parse(localStorage.getItem("productionCrewVehicleColumnFilters") || "{}"),
@@ -649,6 +649,15 @@ const WORKER_COLUMNS = [
   ["status", "Status"],
   ["phone", "Phone"],
   ["info", "Info"]
+];
+const TIMECARD_COLUMNS = [
+  ["date", "Date"],
+  ["event", "Event"],
+  ["call", "Call"],
+  ["lunchOut", "Lunch out"],
+  ["lunchIn", "Lunch In"],
+  ["wrap", "Wrap"],
+  ["hours", "Hours"]
 ];
 
 const $ = (selector) => document.querySelector(selector);
@@ -6353,31 +6362,46 @@ function promoterNoteBox(workerId) {
 }
 
 function renderTimecards() {
-  renderEventFilterOptions("#timecardEventFilter", state.timecardEventFilter);
-  const eventFilter = $("#timecardEventFilter");
-  const filter = $("#timecardFilter");
-  const sort = $("#timecardSort");
   const showRates = canViewRates();
-  if (!showRates && state.timecardSort === "pay") state.timecardSort = "latest";
-  if (eventFilter) eventFilter.value = state.timecardEventFilter;
-  if (filter) filter.value = state.timecardFilter;
-  if (sort) sort.value = state.timecardSort;
-  sort?.querySelector("option[value='pay']")?.toggleAttribute("hidden", !showRates);
+  renderTimecardTableHead();
   const rows = sortTimecards(filterTimecards(visibleRecords(state.timecards).filter((card) => {
     const worker = getWorker(card.workerId);
     const venue = getVenue(card.venueId);
     const promoter = getPromoter(card.promoterId);
     const event = getEvent(card.eventId);
-    return recordMatchesEventFilter(card, state.timecardEventFilter) && matchesSearch(card, `${worker?.name || ""} ${venue?.name || ""} ${promoter?.name || ""} ${event?.name || ""}`);
+    return matchesSearch(card, `${worker?.name || ""} ${venue?.name || ""} ${promoter?.name || ""} ${event?.name || ""}`);
   })));
   $("#timecardTableCount").textContent = `${rows.length} shown`;
   $("#timecardTable").closest("table").classList.add("timecard-week-table");
   const showAdminNotes = canViewTimecardAdminNotes();
   $("#timecardTable").closest("table").classList.toggle("timecard-admin-notes-table", showAdminNotes);
-  $("#timecardTable").closest("table").querySelector("thead").innerHTML = `<tr><th>Date</th><th>Event</th><th>Call</th><th>Lunch out</th><th>Lunch In</th><th>Wrap</th><th>Hours</th>${showAdminNotes ? "<th>Notes</th>" : ""}</tr>`;
+  renderTimecardTableHead(showAdminNotes);
   $("#timecardTable").innerHTML = rows.length
     ? renderTimecardWeekRows(rows, showAdminNotes)
     : `<tr><td colspan="${showAdminNotes ? 8 : 7}" class="empty">No timecards match this search.</td></tr>`;
+}
+
+function renderTimecardTableHead(showAdminNotes = canViewTimecardAdminNotes()) {
+  const head = $("#timecardHead");
+  if (!head) return;
+  const columns = showAdminNotes ? [...TIMECARD_COLUMNS, ["notes", "Notes"]] : TIMECARD_COLUMNS;
+  head.innerHTML = `<tr>${columns.map(([key, label]) => {
+    const activeSort = state.timecardSortKey === key;
+    const activeFilter = !!state.timecardColumnFilters?.[key];
+    const arrow = activeSort ? (state.timecardSortDirection === "desc" ? "▼" : "▲") : "▾";
+    const numeric = ["hours"].includes(key);
+    return `<th><div class="column-filter-heading">
+      <span>${escapeHtml(label)}</span>
+      <details class="column-filter-menu ${activeSort || activeFilter ? "active" : ""}">
+        <summary aria-label="${escapeHtml(label)} sort and filter">${arrow}</summary>
+        <div class="record-options-menu">
+          <button class="tiny-button" data-timecard-sort="${escapeHtml(key)}" data-timecard-sort-direction="asc" type="button">${numeric ? "Sort low-high" : "Sort A-Z"}</button>
+          <button class="tiny-button" data-timecard-sort="${escapeHtml(key)}" data-timecard-sort-direction="desc" type="button">${numeric ? "Sort high-low" : "Sort Z-A"}</button>
+          <label>Filter<input data-timecard-column-filter="${escapeHtml(key)}" value="${escapeHtml(state.timecardColumnFilters?.[key] || "")}" placeholder="Type to filter"></label>
+        </div>
+      </details>
+    </div></th>`;
+  }).join("")}</tr>`;
 }
 
 function renderTimecardWeekRows(rows, showAdminNotes = false) {
@@ -6413,22 +6437,48 @@ function timecardWeekRow(card, showAdminNotes = false) {
 }
 
 function filterTimecards(cards) {
+  const filters = state.timecardColumnFilters || {};
   return cards.filter((card) => {
-    if (state.timecardFilter === "live") return !card.clockOut;
-    if (state.timecardFilter === "complete") return !!card.clockOut;
-    if (state.timecardFilter === "missing-lunch") return !card.lunchOut || !card.lunchIn;
-    return true;
+    return Object.entries(filters).every(([key, value]) => {
+      const filter = String(value || "").trim().toLowerCase();
+      return !filter || timecardColumnValue(card, key).toLowerCase().includes(filter);
+    });
   });
 }
 
 function sortTimecards(cards) {
+  const key = state.timecardSortKey || "date";
+  const direction = state.timecardSortDirection === "asc" ? 1 : -1;
   return [...cards].sort((a, b) => {
-    if (state.timecardSort === "worker") return listText(getWorker(a.workerId)?.name).localeCompare(listText(getWorker(b.workerId)?.name));
-    if (state.timecardSort === "event") return listText(getEvent(a.eventId)?.name || a.eventName).localeCompare(listText(getEvent(b.eventId)?.name || b.eventName));
-    if (state.timecardSort === "hours") return timecardHours(b) - timecardHours(a);
-    if (state.timecardSort === "pay") return estimatedPay(b) - estimatedPay(a);
-    return new Date(b.clockIn || b.createdAt || 0) - new Date(a.clockIn || a.createdAt || 0);
+    if (key === "hours") return direction * (timecardHours(a) - timecardHours(b));
+    if (key === "date" || key === "call" || key === "lunchOut" || key === "lunchIn" || key === "wrap") {
+      return direction * (new Date(timecardSortDate(a, key) || 0) - new Date(timecardSortDate(b, key) || 0));
+    }
+    return direction * timecardColumnValue(a, key).localeCompare(timecardColumnValue(b, key), undefined, { numeric: true, sensitivity: "base" });
   });
+}
+
+function timecardSortDate(card, key) {
+  if (key === "date") return timecardWorkDate(card) || card.clockIn || card.createdAt;
+  if (key === "call") return card.clockIn;
+  if (key === "lunchOut") return card.lunchOut;
+  if (key === "lunchIn") return card.lunchIn;
+  if (key === "wrap") return card.clockOut;
+  return "";
+}
+
+function timecardColumnValue(card, key) {
+  const worker = getWorker(card.workerId);
+  const event = getEvent(card.eventId);
+  if (key === "date") return listText(timecardDateLabel(card));
+  if (key === "event") return listText(`${event?.name || card.eventName || ""} ${worker?.name || ""}`);
+  if (key === "call") return listText(formatTime(card.clockIn) || "not set");
+  if (key === "lunchOut") return listText(formatTime(card.lunchOut) || "not set missing lunch");
+  if (key === "lunchIn") return listText(formatTime(card.lunchIn) || "not set missing lunch");
+  if (key === "wrap") return listText(formatTime(card.clockOut) || "live");
+  if (key === "hours") return listText(timecardHours(card).toFixed(2));
+  if (key === "notes") return listText(timecardTableNotes(card) || "no notes");
+  return "";
 }
 
 function renderPayroll() {
@@ -11757,6 +11807,13 @@ function bindEvents() {
       localStorage.setItem("productionCrewWorkerColumnFilters", JSON.stringify(state.workerColumnFilters));
       renderWorkers();
     }
+    if (event.target?.matches?.("[data-timecard-column-filter]")) {
+      const key = event.target.dataset.timecardColumnFilter;
+      state.timecardColumnFilters = { ...(state.timecardColumnFilters || {}), [key]: event.target.value };
+      if (!state.timecardColumnFilters[key]) delete state.timecardColumnFilters[key];
+      localStorage.setItem("productionCrewTimecardColumnFilters", JSON.stringify(state.timecardColumnFilters));
+      renderTimecards();
+    }
     if (event.target?.matches?.("[data-staffing-column-filter]")) {
       const key = event.target.dataset.staffingColumnFilter;
       state.staffingColumnFilters = { ...(state.staffingColumnFilters || {}), [key]: event.target.value };
@@ -11904,21 +11961,6 @@ function bindEvents() {
     if (event.target.matches("[data-report-type], select[name='eventId'], select[name='workerId']")) updateReportTypeFields($("#reportForm"));
   });
   $("#vehicleForm").addEventListener("change", () => applyVehicleAssignmentLock($("#vehicleForm")));
-  $("#timecardEventFilter").addEventListener("change", (event) => {
-    state.timecardEventFilter = event.target.value;
-    localStorage.setItem("productionCrewTimecardEventFilter", state.timecardEventFilter);
-    renderTimecards();
-  });
-  $("#timecardFilter").addEventListener("change", (event) => {
-    state.timecardFilter = event.target.value;
-    localStorage.setItem("productionCrewTimecardFilter", state.timecardFilter);
-    renderTimecards();
-  });
-  $("#timecardSort").addEventListener("change", (event) => {
-    state.timecardSort = event.target.value;
-    localStorage.setItem("productionCrewTimecardSort", state.timecardSort);
-    renderTimecards();
-  });
   $("#reportEventFilter").addEventListener("change", (event) => {
     state.reportEventFilter = event.target.value;
     localStorage.setItem("productionCrewReportEventFilter", state.reportEventFilter);
@@ -11968,6 +12010,7 @@ function bindEvents() {
     const runnerResourceButton = event.target.closest("[data-runner-resource-action]");
     const runnerSortButton = event.target.closest("[data-runner-sort]");
     const workerSortButton = event.target.closest("[data-worker-sort]");
+    const timecardSortButton = event.target.closest("[data-timecard-sort]");
     const staffingSortButton = event.target.closest("[data-staffing-sort]");
     const vehicleSortButton = event.target.closest("[data-vehicle-sort]");
     const quickProfileButton = event.target.closest("[data-open-quick-profile]");
@@ -12098,6 +12141,15 @@ function bindEvents() {
       localStorage.setItem("productionCrewWorkerSortDirection", state.workerSortDirection);
       workerSortButton.closest("details")?.removeAttribute("open");
       renderWorkers();
+      return;
+    }
+    if (timecardSortButton) {
+      state.timecardSortKey = timecardSortButton.dataset.timecardSort || "date";
+      state.timecardSortDirection = timecardSortButton.dataset.timecardSortDirection || "desc";
+      localStorage.setItem("productionCrewTimecardSortKey", state.timecardSortKey);
+      localStorage.setItem("productionCrewTimecardSortDirection", state.timecardSortDirection);
+      timecardSortButton.closest("details")?.removeAttribute("open");
+      renderTimecards();
       return;
     }
     if (vehicleSortButton) {
