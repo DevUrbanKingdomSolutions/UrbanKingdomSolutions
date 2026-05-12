@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.05.003",
-  title: "V1.05.003 update installed",
-  body: "Moved Reports sorting and filtering into column arrow menus."
+  version: "V1.05.004",
+  title: "V1.05.004 update installed",
+  body: "Moved Venue Book sorting and filtering into column arrow menus."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -405,6 +405,9 @@ let state = {
   reportSortKey: localStorage.getItem("productionCrewReportSortKey") || "date",
   reportSortDirection: localStorage.getItem("productionCrewReportSortDirection") || "desc",
   reportColumnFilters: JSON.parse(localStorage.getItem("productionCrewReportColumnFilters") || "{}"),
+  venueSortKey: localStorage.getItem("productionCrewVenueSortKey") || "name",
+  venueSortDirection: localStorage.getItem("productionCrewVenueSortDirection") || "asc",
+  venueColumnFilters: JSON.parse(localStorage.getItem("productionCrewVenueColumnFilters") || "{}"),
   messagingThreadType: localStorage.getItem("productionCrewMessagingThreadType") || "event",
   messageEventFilter: localStorage.getItem("productionCrewMessageEventFilter") || "current",
   selectedMessageEventId: localStorage.getItem("productionCrewSelectedMessageEventId") || "",
@@ -666,6 +669,12 @@ const REPORT_COLUMNS = [
   ["title", "Title"],
   ["date", "Date"],
   ["photos", "Photos"]
+];
+const VENUE_COLUMNS = [
+  ["name", "Name"],
+  ["address", "Address"],
+  ["contact", "Contact"],
+  ["parking", "Parking"]
 ];
 
 const $ = (selector) => document.querySelector(selector);
@@ -7195,11 +7204,60 @@ function photoGallery(items) {
 }
 
 function renderVenues() {
-  const rows = visibleVenues().filter((venue) => matchesSearch(venue));
+  renderVenueTableHead();
+  const rows = sortVenues(filterVenues(visibleVenues().filter((venue) => matchesSearch(venue))));
   $("#venueTableCount").textContent = `${rows.length} shown`;
   $("#venueTable").innerHTML = rows.length
     ? rows.map((venue) => `<tr><td><strong>${recordLink("venues", venue.id, venue.name)}</strong><p>${escapeHtml(venue.notes)}</p></td><td>${escapeHtml(venue.address)}</td><td>${venueContactSummary(venue)}</td><td>${escapeHtml(venue.parking)}</td><td>${actionButtons("venues", venue.id, "venueForm", "", canVenueEdit())}</td></tr>`).join("")
     : `<tr><td colspan="5" class="empty">No venues match this search.</td></tr>`;
+}
+
+function renderVenueTableHead() {
+  const head = $("#venueHead");
+  if (!head) return;
+  head.innerHTML = `<tr>${VENUE_COLUMNS.map(([key, label]) => {
+    const activeSort = state.venueSortKey === key;
+    const activeFilter = !!state.venueColumnFilters?.[key];
+    const arrow = activeSort ? (state.venueSortDirection === "desc" ? "▼" : "▲") : "▾";
+    return `<th><div class="column-filter-heading">
+      <span>${escapeHtml(label)}</span>
+      <details class="column-filter-menu ${activeSort || activeFilter ? "active" : ""}">
+        <summary aria-label="${escapeHtml(label)} sort and filter">${arrow}</summary>
+        <div class="record-options-menu">
+          <button class="tiny-button" data-venue-sort="${escapeHtml(key)}" data-venue-sort-direction="asc" type="button">Sort A-Z</button>
+          <button class="tiny-button" data-venue-sort="${escapeHtml(key)}" data-venue-sort-direction="desc" type="button">Sort Z-A</button>
+          <label>Filter<input data-venue-column-filter="${escapeHtml(key)}" value="${escapeHtml(state.venueColumnFilters?.[key] || "")}" placeholder="Type to filter"></label>
+        </div>
+      </details>
+    </div></th>`;
+  }).join("")}<th></th></tr>`;
+}
+
+function filterVenues(venues) {
+  const filters = state.venueColumnFilters || {};
+  return venues.filter((venue) => {
+    return VENUE_COLUMNS.every(([key]) => {
+      const filter = String(filters[key] || "").trim().toLowerCase();
+      return !filter || venueColumnValue(venue, key).toLowerCase().includes(filter);
+    });
+  });
+}
+
+function sortVenues(venues) {
+  const key = state.venueSortKey || "name";
+  const direction = state.venueSortDirection === "desc" ? -1 : 1;
+  return [...venues].sort((a, b) => direction * venueColumnValue(a, key).localeCompare(venueColumnValue(b, key), undefined, { numeric: true, sensitivity: "base" }));
+}
+
+function venueColumnValue(venue, key) {
+  if (key === "name") return listText(`${venue.name || ""} ${venue.notes || ""}`);
+  if (key === "address") return listText(venue.address);
+  if (key === "contact") {
+    const contacts = venueContactsForVenue(venue.id).map((contact) => `${contact.name || contact.contactName || ""} ${contact.title || ""} ${contact.phone || ""} ${contact.email || ""}`).join(" ");
+    return listText(`${venue.contactName || ""} ${venue.phone || ""} ${venue.email || ""} ${contacts}`);
+  }
+  if (key === "parking") return listText(venue.parking);
+  return "";
 }
 
 function venueContactsForVenue(venueId) {
@@ -11875,6 +11933,13 @@ function bindEvents() {
       localStorage.setItem("productionCrewReportColumnFilters", JSON.stringify(state.reportColumnFilters));
       renderReports();
     }
+    if (event.target?.matches?.("[data-venue-column-filter]")) {
+      const key = event.target.dataset.venueColumnFilter;
+      state.venueColumnFilters = { ...(state.venueColumnFilters || {}), [key]: event.target.value };
+      if (!state.venueColumnFilters[key]) delete state.venueColumnFilters[key];
+      localStorage.setItem("productionCrewVenueColumnFilters", JSON.stringify(state.venueColumnFilters));
+      renderVenues();
+    }
   });
   $("#dashboardCalendarPrev")?.addEventListener("click", () => {
     const month = dashboardCalendarMonthDate();
@@ -12046,6 +12111,7 @@ function bindEvents() {
     const staffingSortButton = event.target.closest("[data-staffing-sort]");
     const vehicleSortButton = event.target.closest("[data-vehicle-sort]");
     const reportSortButton = event.target.closest("[data-report-sort]");
+    const venueSortButton = event.target.closest("[data-venue-sort]");
     const quickProfileButton = event.target.closest("[data-open-quick-profile]");
     const deleteButton = event.target.closest("[data-delete]");
     const clockButton = event.target.closest("[data-clock-out]");
@@ -12201,6 +12267,15 @@ function bindEvents() {
       localStorage.setItem("productionCrewReportSortDirection", state.reportSortDirection);
       reportSortButton.closest("details")?.removeAttribute("open");
       renderReports();
+      return;
+    }
+    if (venueSortButton) {
+      state.venueSortKey = venueSortButton.dataset.venueSort || "name";
+      state.venueSortDirection = venueSortButton.dataset.venueSortDirection || "asc";
+      localStorage.setItem("productionCrewVenueSortKey", state.venueSortKey);
+      localStorage.setItem("productionCrewVenueSortDirection", state.venueSortDirection);
+      venueSortButton.closest("details")?.removeAttribute("open");
+      renderVenues();
       return;
     }
     if (requestMobilePermissionsButton) {

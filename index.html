@@ -10,7 +10,7 @@
     <title>Production Crew Database</title>
     <link rel="manifest" href="manifest.webmanifest">
     <link rel="icon" href="assets/logo/app-logo-admin.png" type="image/png">
-    <link rel="stylesheet" href="styles.css?v=V1.05.003-report-column-controls">
+    <link rel="stylesheet" href="styles.css?v=V1.05.004-venue-column-controls">
   </head>
   <body>
     <div id="appLoadingOverlay" class="app-loading-overlay" aria-live="polite">
@@ -1409,7 +1409,7 @@
               </div>
               <div class="table-wrap">
                 <table>
-                  <thead><tr><th>Name</th><th>Address</th><th>Contact</th><th>Parking</th><th></th></tr></thead>
+                  <thead id="venueHead"></thead>
                   <tbody id="venueTable"></tbody>
                 </table>
               </div>
@@ -1623,6 +1623,6 @@
     <div id="modalHost"></div>
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js?v=V1.05.003-report-column-controls"></script>
+    <script src="app.js?v=V1.05.004-venue-column-controls"></script>
   </body>
 </html>
