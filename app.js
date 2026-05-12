@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.05.005",
-  title: "V1.05.005 update installed",
-  body: "Moved Promoter Profiles sorting and filtering into column arrow menus."
+  version: "V1.05.006",
+  title: "V1.05.006 update installed",
+  body: "Moved Production Office runner status sorting and filtering into column arrow menus."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -411,6 +411,9 @@ let state = {
   promoterSortKey: localStorage.getItem("productionCrewPromoterSortKey") || "rep",
   promoterSortDirection: localStorage.getItem("productionCrewPromoterSortDirection") || "asc",
   promoterColumnFilters: JSON.parse(localStorage.getItem("productionCrewPromoterColumnFilters") || "{}"),
+  runnerStatusSortKey: localStorage.getItem("productionCrewRunnerStatusSortKey") || "runner",
+  runnerStatusSortDirection: localStorage.getItem("productionCrewRunnerStatusSortDirection") || "asc",
+  runnerStatusColumnFilters: JSON.parse(localStorage.getItem("productionCrewRunnerStatusColumnFilters") || "{}"),
   messagingThreadType: localStorage.getItem("productionCrewMessagingThreadType") || "event",
   messageEventFilter: localStorage.getItem("productionCrewMessageEventFilter") || "current",
   selectedMessageEventId: localStorage.getItem("productionCrewSelectedMessageEventId") || "",
@@ -685,6 +688,12 @@ const PROMOTER_COLUMNS = [
   ["phone", "Phone"],
   ["email", "Email"],
   ["notes", "Notes"]
+];
+const RUNNER_STATUS_COLUMNS = [
+  ["runner", "Runner"],
+  ["events", "Assigned Events"],
+  ["status", "Status"],
+  ["contact", "Contact"]
 ];
 
 const $ = (selector) => document.querySelector(selector);
@@ -5476,7 +5485,7 @@ function crewRentalTask(event, card) {
 function renderProductionBoard() {
   const events = visibleEvents().filter((event) => matchesSearch(event, `${getVenue(event.venueId)?.name || ""} ${getPromoter(event.promoterId)?.name || ""}`));
   const runnerIds = assignedWorkerIdsForVisibleEvents();
-  const runners = state.workers.filter((worker) => runnerIds.has(worker.id));
+  const runners = sortRunnerStatusRows(filterRunnerStatusRows(state.workers.filter((worker) => runnerIds.has(worker.id)), events));
   $("#productionBoardCount").textContent = `${events.length} events / ${runners.length} runners`;
   $("#productionBoardCards").innerHTML = events.length
     ? events.map((event) => {
@@ -5491,6 +5500,7 @@ function renderProductionBoard() {
       }).join("")
     : `<div class="compact-item empty">No production-board events match this view.</div>`;
 
+  renderRunnerStatusHead();
   $("#runnerStatusTable").innerHTML = runners.length
     ? runners.map((worker) => {
         const eventsForWorker = events.filter((event) => eventWorkerIds(event).includes(worker.id)).map((event) => event.name).join(", ");
@@ -5498,6 +5508,51 @@ function renderProductionBoard() {
         return `<tr><td>${profileCell(worker, worker.hideHeadshot, worker.email)}</td><td>${escapeHtml(eventsForWorker)}</td><td><span class="status-pill ${status === "On a Run" ? "warn" : ""}">${escapeHtml(status)}</span></td><td>${escapeHtml(worker.phone)}<p>${escapeHtml(worker.email)}</p></td><td><div class="row-actions"><button class="tiny-button" data-runner-status="${worker.id}" data-status="Available" type="button">Available</button><button class="tiny-button" data-runner-status="${worker.id}" data-status="On a Run" type="button">On a Run</button><button class="tiny-button" data-runner-status="${worker.id}" data-status="At Production Office" type="button">At Office</button><button class="tiny-button" data-notify-production-office="${worker.id}" type="button">Notify Office</button></div></td></tr>`;
       }).join("")
     : `<tr><td colspan="5" class="empty">Assigned runners will appear here.</td></tr>`;
+}
+
+function renderRunnerStatusHead() {
+  const head = $("#runnerStatusHead");
+  if (!head) return;
+  head.innerHTML = `<tr>${RUNNER_STATUS_COLUMNS.map(([key, label]) => {
+    const activeSort = state.runnerStatusSortKey === key;
+    const activeFilter = !!state.runnerStatusColumnFilters?.[key];
+    const arrow = activeSort ? (state.runnerStatusSortDirection === "desc" ? "▼" : "▲") : "▾";
+    return `<th><div class="column-filter-heading">
+      <span>${escapeHtml(label)}</span>
+      <details class="column-filter-menu ${activeSort || activeFilter ? "active" : ""}">
+        <summary aria-label="${escapeHtml(label)} sort and filter">${arrow}</summary>
+        <div class="record-options-menu">
+          <button class="tiny-button" data-runner-status-sort="${escapeHtml(key)}" data-runner-status-sort-direction="asc" type="button">Sort A-Z</button>
+          <button class="tiny-button" data-runner-status-sort="${escapeHtml(key)}" data-runner-status-sort-direction="desc" type="button">Sort Z-A</button>
+          <label>Filter<input data-runner-status-column-filter="${escapeHtml(key)}" value="${escapeHtml(state.runnerStatusColumnFilters?.[key] || "")}" placeholder="Type to filter"></label>
+        </div>
+      </details>
+    </div></th>`;
+  }).join("")}<th></th></tr>`;
+}
+
+function filterRunnerStatusRows(runners, events) {
+  const filters = state.runnerStatusColumnFilters || {};
+  return runners.filter((worker) => {
+    return RUNNER_STATUS_COLUMNS.every(([key]) => {
+      const filter = String(filters[key] || "").trim().toLowerCase();
+      return !filter || runnerStatusColumnValue(worker, key, events).toLowerCase().includes(filter);
+    });
+  });
+}
+
+function sortRunnerStatusRows(runners, events) {
+  const key = state.runnerStatusSortKey || "runner";
+  const direction = state.runnerStatusSortDirection === "desc" ? -1 : 1;
+  return [...runners].sort((a, b) => direction * runnerStatusColumnValue(a, key, events).localeCompare(runnerStatusColumnValue(b, key, events), undefined, { numeric: true, sensitivity: "base" }));
+}
+
+function runnerStatusColumnValue(worker, key, events) {
+  if (key === "runner") return listText(`${worker.name || ""} ${worker.email || ""}`);
+  if (key === "events") return events.filter((event) => eventWorkerIds(event).includes(worker.id)).map((event) => event.name).join(" ");
+  if (key === "status") return listText(worker.runnerStatus || "Available");
+  if (key === "contact") return listText(`${worker.phone || ""} ${worker.email || ""}`);
+  return "";
 }
 
 function visibleStaffingAssignments() {
@@ -12004,6 +12059,13 @@ function bindEvents() {
       localStorage.setItem("productionCrewPromoterColumnFilters", JSON.stringify(state.promoterColumnFilters));
       renderPromoters();
     }
+    if (event.target?.matches?.("[data-runner-status-column-filter]")) {
+      const key = event.target.dataset.runnerStatusColumnFilter;
+      state.runnerStatusColumnFilters = { ...(state.runnerStatusColumnFilters || {}), [key]: event.target.value };
+      if (!state.runnerStatusColumnFilters[key]) delete state.runnerStatusColumnFilters[key];
+      localStorage.setItem("productionCrewRunnerStatusColumnFilters", JSON.stringify(state.runnerStatusColumnFilters));
+      renderProductionBoard();
+    }
   });
   $("#dashboardCalendarPrev")?.addEventListener("click", () => {
     const month = dashboardCalendarMonthDate();
@@ -12177,6 +12239,7 @@ function bindEvents() {
     const reportSortButton = event.target.closest("[data-report-sort]");
     const venueSortButton = event.target.closest("[data-venue-sort]");
     const promoterSortButton = event.target.closest("[data-promoter-sort]");
+    const runnerStatusSortButton = event.target.closest("[data-runner-status-sort]");
     const quickProfileButton = event.target.closest("[data-open-quick-profile]");
     const deleteButton = event.target.closest("[data-delete]");
     const clockButton = event.target.closest("[data-clock-out]");
@@ -12350,6 +12413,15 @@ function bindEvents() {
       localStorage.setItem("productionCrewPromoterSortDirection", state.promoterSortDirection);
       promoterSortButton.closest("details")?.removeAttribute("open");
       renderPromoters();
+      return;
+    }
+    if (runnerStatusSortButton) {
+      state.runnerStatusSortKey = runnerStatusSortButton.dataset.runnerStatusSort || "runner";
+      state.runnerStatusSortDirection = runnerStatusSortButton.dataset.runnerStatusSortDirection || "asc";
+      localStorage.setItem("productionCrewRunnerStatusSortKey", state.runnerStatusSortKey);
+      localStorage.setItem("productionCrewRunnerStatusSortDirection", state.runnerStatusSortDirection);
+      runnerStatusSortButton.closest("details")?.removeAttribute("open");
+      renderProductionBoard();
       return;
     }
     if (requestMobilePermissionsButton) {
