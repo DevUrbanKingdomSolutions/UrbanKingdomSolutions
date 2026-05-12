@@ -10,7 +10,7 @@
     <title>Production Crew Database</title>
     <link rel="manifest" href="manifest.webmanifest">
     <link rel="icon" href="assets/logo/app-logo-admin.png" type="image/png">
-    <link rel="stylesheet" href="styles.css?v=V1.04.136-nav-production-office">
+    <link rel="stylesheet" href="styles.css?v=V1.04.137-event-documents">
   </head>
   <body>
     <div id="appLoadingOverlay" class="app-loading-overlay" aria-live="polite">
@@ -817,6 +817,40 @@
                 </label>
               </div>
               <div id="eventCards" class="record-grid event-card-grid"></div>
+            </section>
+          </div>
+        </section>
+
+        <section id="eventDocuments" class="view">
+          <div class="stack-layout">
+            <section class="panel">
+              <div class="panel-heading">
+                <h3>Documents</h3>
+                <span class="muted">Event documents</span>
+              </div>
+              <div class="compact-list">
+                <div class="compact-item empty">
+                  <strong>Document workspace</strong>
+                  <p>Uploaded document packages and event document sections will be organized here.</p>
+                </div>
+              </div>
+            </section>
+          </div>
+        </section>
+
+        <section id="emailTemplates" class="view">
+          <div class="stack-layout">
+            <section class="panel">
+              <div class="panel-heading">
+                <h3>Email Templates</h3>
+                <span class="muted">Client admin</span>
+              </div>
+              <div class="compact-list">
+                <div class="compact-item empty">
+                  <strong>Template workspace</strong>
+                  <p>Email template layouts will be built here next.</p>
+                </div>
+              </div>
             </section>
           </div>
         </section>
@@ -1637,6 +1671,6 @@
     <div id="modalHost"></div>
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js?v=V1.04.136-nav-production-office"></script>
+    <script src="app.js?v=V1.04.137-event-documents"></script>
   </body>
 </html>

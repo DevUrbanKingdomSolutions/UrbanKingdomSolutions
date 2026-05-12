@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.04.136",
-  title: "V1.04.136 update installed",
-  body: "Updated Production Office and Messages navigation."
+  version: "V1.04.137",
+  title: "V1.04.137 update installed",
+  body: "Added Events documents and email templates pages."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -144,7 +144,7 @@ const ACCESS_PROFILES = {
   CLIENT_ADMIN: {
     label: "CLIENT ADMIN",
     baseRole: "CLIENT",
-    views: ["dashboard", "clientCompanyProfile", "clientProfile", "workers", "promoters", "venues", "events", "productionBoard", "staffingAssignments", "staffingSchedule", "timecards", "vehicles", "reports", "payroll", "directory", "runner", "messages", "dataTools", "mobileApp"],
+    views: ["dashboard", "clientCompanyProfile", "clientProfile", "workers", "promoters", "venues", "events", "eventDocuments", "emailTemplates", "productionBoard", "staffingAssignments", "staffingSchedule", "timecards", "vehicles", "reports", "payroll", "directory", "runner", "messages", "dataTools", "mobileApp"],
     canAdminEdit: true,
     canOwnerEdit: true,
     canVenueEdit: true,
@@ -168,7 +168,7 @@ const ACCESS_PROFILES = {
   CLIENT_REP_LEAD: {
     label: "CLIENT REP LEAD",
     baseRole: "CLIENT",
-    views: ["dashboard", "clientProfile", "workers", "promoters", "venues", "events", "productionBoard", "staffingAssignments", "staffingSchedule", "vehicles", "reports", "directory", "runner", "messages", "dataTools", "mobileApp"],
+    views: ["dashboard", "clientProfile", "workers", "promoters", "venues", "events", "eventDocuments", "emailTemplates", "productionBoard", "staffingAssignments", "staffingSchedule", "vehicles", "reports", "directory", "runner", "messages", "dataTools", "mobileApp"],
     canAdminEdit: true,
     canOwnerEdit: true,
     canVenueEdit: true,
@@ -432,7 +432,7 @@ const NAV_GROUPS = {
     { items: [["dashboard", "Dashboard"]] },
     { items: [["clientCompanyProfile", "Client Profile"], ["clientProfile", "My Profile"]] },
     { label: "PROFILES", items: [["workers", "Crew Profiles"], ["promoters", "Promoter Profiles"], ["venues", "Venues"]] },
-    { label: "EVENTS", items: [["events", "Events"], ["timecards", "Timecards"], ["vehicles", "Vehicles"], ["reports", "Reports"]] },
+    { label: "EVENTS", items: [["events", "Events"], ["eventDocuments", "Documents"], ["emailTemplates", "Email Templates"], ["timecards", "Timecards"], ["vehicles", "Vehicles"], ["reports", "Reports"]] },
     { label: "PRODUCTION OFFICE", items: [["productionBoard", "Production Office"], ["staffingAssignments", "Staffing Assignment"], ["staffingSchedule", "Staffing Schedule"]] },
     { label: "PAYROLL", items: [["payroll", "Payroll"]] },
     { label: "DIRECTORIES", items: [["directory", "Directory"], ["runner", "Gig Resources"]] },
@@ -453,7 +453,7 @@ const NAV_GROUPS = {
     { items: [["dashboard", "Dashboard"]] },
     { items: [["clientProfile", "My Profile"]] },
     { label: "PROFILES", items: [["workers", "Crew Profiles"], ["promoters", "Promoter Profiles"], ["venues", "Venues"]] },
-    { label: "EVENTS", items: [["events", "Events"], ["vehicles", "Vehicles"], ["reports", "Reports"]] },
+    { label: "EVENTS", items: [["events", "Events"], ["eventDocuments", "Documents"], ["emailTemplates", "Email Templates"], ["vehicles", "Vehicles"], ["reports", "Reports"]] },
     { label: "PRODUCTION OFFICE", items: [["productionBoard", "Production Office"], ["staffingAssignments", "Staffing Assignment"], ["staffingSchedule", "Staffing Schedule"]] },
     { label: "DIRECTORIES", items: [["directory", "Directory"], ["runner", "Gig Resources"]] },
     { items: [["messages", "Messages"]] },
