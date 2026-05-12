@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.05.004",
-  title: "V1.05.004 update installed",
-  body: "Moved Venue Book sorting and filtering into column arrow menus."
+  version: "V1.05.005",
+  title: "V1.05.005 update installed",
+  body: "Moved Promoter Profiles sorting and filtering into column arrow menus."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -408,6 +408,9 @@ let state = {
   venueSortKey: localStorage.getItem("productionCrewVenueSortKey") || "name",
   venueSortDirection: localStorage.getItem("productionCrewVenueSortDirection") || "asc",
   venueColumnFilters: JSON.parse(localStorage.getItem("productionCrewVenueColumnFilters") || "{}"),
+  promoterSortKey: localStorage.getItem("productionCrewPromoterSortKey") || "rep",
+  promoterSortDirection: localStorage.getItem("productionCrewPromoterSortDirection") || "asc",
+  promoterColumnFilters: JSON.parse(localStorage.getItem("productionCrewPromoterColumnFilters") || "{}"),
   messagingThreadType: localStorage.getItem("productionCrewMessagingThreadType") || "event",
   messageEventFilter: localStorage.getItem("productionCrewMessageEventFilter") || "current",
   selectedMessageEventId: localStorage.getItem("productionCrewSelectedMessageEventId") || "",
@@ -675,6 +678,13 @@ const VENUE_COLUMNS = [
   ["address", "Address"],
   ["contact", "Contact"],
   ["parking", "Parking"]
+];
+const PROMOTER_COLUMNS = [
+  ["rep", "Rep"],
+  ["company", "Company"],
+  ["phone", "Phone"],
+  ["email", "Email"],
+  ["notes", "Notes"]
 ];
 
 const $ = (selector) => document.querySelector(selector);
@@ -7319,7 +7329,8 @@ async function saveVenueContactsForVenue(venueId, form) {
 }
 
 function renderPromoters() {
-  const rows = visiblePromoters().filter((promoter) => matchesSearch(promoter));
+  renderPromoterTableHead();
+  const rows = sortPromoters(filterPromoters(visiblePromoters().filter((promoter) => matchesSearch(promoter))));
   $("#promoterTableCount").textContent = `${rows.length} shown`;
   $("#promoterTable").innerHTML = rows.length
     ? rows.map((promoter) => {
@@ -7327,6 +7338,52 @@ function renderPromoters() {
         return `<tr><td>${profileSelect("promoters", promoter.id)}${profileCell(promoter, false, promoter.contactName, "promoters", promoter.id)}</td><td><strong>${escapeHtml(promoter.companyName || "Independent")}</strong><p>${escapeHtml(promoter.contactName)}</p></td><td>${escapeHtml(promoter.phone)}</td><td>${escapeHtml(promoter.email)}</td><td>${escapeHtml(promoter.notes || promoter.billing)}<p>${accessBadges(promoter.accessLevels, "PROMOTER_ADMIN")}</p>${smtpStatus}${loginStatus(promoter)}</td><td>${actionButtons("promoters", promoter.id, "promoterForm", loginSetupButton("promoters", promoter), canEditPromoter(promoter))}</td></tr>`;
       }).join("")
     : `<tr><td colspan="6" class="empty">No promoter profiles match this search.</td></tr>`;
+}
+
+function renderPromoterTableHead() {
+  const head = $("#promoterHead");
+  if (!head) return;
+  head.innerHTML = `<tr>${PROMOTER_COLUMNS.map(([key, label]) => {
+    const activeSort = state.promoterSortKey === key;
+    const activeFilter = !!state.promoterColumnFilters?.[key];
+    const arrow = activeSort ? (state.promoterSortDirection === "desc" ? "▼" : "▲") : "▾";
+    return `<th><div class="column-filter-heading">
+      <span>${escapeHtml(label)}</span>
+      <details class="column-filter-menu ${activeSort || activeFilter ? "active" : ""}">
+        <summary aria-label="${escapeHtml(label)} sort and filter">${arrow}</summary>
+        <div class="record-options-menu">
+          <button class="tiny-button" data-promoter-sort="${escapeHtml(key)}" data-promoter-sort-direction="asc" type="button">Sort A-Z</button>
+          <button class="tiny-button" data-promoter-sort="${escapeHtml(key)}" data-promoter-sort-direction="desc" type="button">Sort Z-A</button>
+          <label>Filter<input data-promoter-column-filter="${escapeHtml(key)}" value="${escapeHtml(state.promoterColumnFilters?.[key] || "")}" placeholder="Type to filter"></label>
+        </div>
+      </details>
+    </div></th>`;
+  }).join("")}<th></th></tr>`;
+}
+
+function filterPromoters(promoters) {
+  const filters = state.promoterColumnFilters || {};
+  return promoters.filter((promoter) => {
+    return PROMOTER_COLUMNS.every(([key]) => {
+      const filter = String(filters[key] || "").trim().toLowerCase();
+      return !filter || promoterColumnValue(promoter, key).toLowerCase().includes(filter);
+    });
+  });
+}
+
+function sortPromoters(promoters) {
+  const key = state.promoterSortKey || "rep";
+  const direction = state.promoterSortDirection === "desc" ? -1 : 1;
+  return [...promoters].sort((a, b) => direction * promoterColumnValue(a, key).localeCompare(promoterColumnValue(b, key), undefined, { numeric: true, sensitivity: "base" }));
+}
+
+function promoterColumnValue(promoter, key) {
+  if (key === "rep") return listText(`${promoter.contactName || ""} ${promoter.name || ""} ${promoter.title || ""}`);
+  if (key === "company") return listText(promoter.companyName || "Independent");
+  if (key === "phone") return listText(promoter.phone);
+  if (key === "email") return listText(promoter.email);
+  if (key === "notes") return listText(`${promoter.notes || ""} ${promoter.billing || ""} ${(promoter.accessLevels || []).join(" ")} ${promoter.smtpSecretRef ? "smtp saved" : ""} ${promoter.setupStatus || ""}`);
+  return "";
 }
 
 function renderRunnerStops() {
@@ -11940,6 +11997,13 @@ function bindEvents() {
       localStorage.setItem("productionCrewVenueColumnFilters", JSON.stringify(state.venueColumnFilters));
       renderVenues();
     }
+    if (event.target?.matches?.("[data-promoter-column-filter]")) {
+      const key = event.target.dataset.promoterColumnFilter;
+      state.promoterColumnFilters = { ...(state.promoterColumnFilters || {}), [key]: event.target.value };
+      if (!state.promoterColumnFilters[key]) delete state.promoterColumnFilters[key];
+      localStorage.setItem("productionCrewPromoterColumnFilters", JSON.stringify(state.promoterColumnFilters));
+      renderPromoters();
+    }
   });
   $("#dashboardCalendarPrev")?.addEventListener("click", () => {
     const month = dashboardCalendarMonthDate();
@@ -12112,6 +12176,7 @@ function bindEvents() {
     const vehicleSortButton = event.target.closest("[data-vehicle-sort]");
     const reportSortButton = event.target.closest("[data-report-sort]");
     const venueSortButton = event.target.closest("[data-venue-sort]");
+    const promoterSortButton = event.target.closest("[data-promoter-sort]");
     const quickProfileButton = event.target.closest("[data-open-quick-profile]");
     const deleteButton = event.target.closest("[data-delete]");
     const clockButton = event.target.closest("[data-clock-out]");
@@ -12276,6 +12341,15 @@ function bindEvents() {
       localStorage.setItem("productionCrewVenueSortDirection", state.venueSortDirection);
       venueSortButton.closest("details")?.removeAttribute("open");
       renderVenues();
+      return;
+    }
+    if (promoterSortButton) {
+      state.promoterSortKey = promoterSortButton.dataset.promoterSort || "rep";
+      state.promoterSortDirection = promoterSortButton.dataset.promoterSortDirection || "asc";
+      localStorage.setItem("productionCrewPromoterSortKey", state.promoterSortKey);
+      localStorage.setItem("productionCrewPromoterSortDirection", state.promoterSortDirection);
+      promoterSortButton.closest("details")?.removeAttribute("open");
+      renderPromoters();
       return;
     }
     if (requestMobilePermissionsButton) {
