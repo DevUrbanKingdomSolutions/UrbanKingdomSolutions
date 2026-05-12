@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.04.137",
-  title: "V1.04.137 update installed",
-  body: "Added Events documents and email templates pages."
+  version: "V1.04.138",
+  title: "V1.04.138 update installed",
+  body: "Updated message event selectors for admin access."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -7523,6 +7523,7 @@ function mobileMessagingChatCards() {
   const eventThreads = mobileEventThreadCards();
   const directProfiles = mobileDirectMessageProfiles();
   const permanentThreads = ["adminClient", "system"].flatMap((type) => visibleMessageThreadTypes().some(([visibleType]) => visibleType === type) ? permanentMessageThreadTargets(type) : []);
+  const showEventControls = messageEventControlsPinnedOpen() || state.messageEventPickerOpen;
   return `<div class="mobile-message-sections">
     ${permanentThreads.length ? `<section class="mobile-message-section">
       <div class="mobile-message-section-heading"><h4>Permanent Threads</h4></div>
@@ -7531,9 +7532,9 @@ function mobileMessagingChatCards() {
     <section class="mobile-message-section">
       <div class="mobile-message-section-heading">
         <h4>Event Threads</h4>
-        <button class="tiny-button" data-message-event-options type="button">Options</button>
+        ${messageEventControlsPinnedOpen() ? "" : `<button class="tiny-button" data-message-event-options type="button">Events</button>`}
       </div>
-      <div class="mobile-message-list">${state.messageEventPickerOpen ? mobileMessageEventControls() : ""}${eventThreads || `<div class="compact-item empty">No event threads are available for this schedule view.</div>`}</div>
+      <div class="mobile-message-list">${showEventControls ? mobileMessageEventControls() : ""}${eventThreads || `<div class="compact-item empty">No event threads are available for this schedule view.</div>`}</div>
     </section>
     <section class="mobile-message-section">
       <div class="mobile-message-section-heading">
@@ -7545,6 +7546,10 @@ function mobileMessagingChatCards() {
         : `<div class="compact-item empty">No direct message contacts are available yet.</div>`}</div>
     </section>
   </div>`;
+}
+
+function messageEventControlsPinnedOpen() {
+  return ["CLIENT_ADMIN", "PROMOTER_ADMIN"].includes(normalizeAccessLevel(state.accessRole));
 }
 
 function mobileDirectPickerMenu() {

@@ -2496,6 +2496,28 @@ td p {
     text-transform: uppercase;
   }
 
+  #messages .mobile-message-event-controls {
+    display: grid;
+    grid-template-columns: 0.82fr 1.18fr;
+    gap: 10px;
+    padding: 10px 14px 12px;
+    border-top: 1px solid rgba(195, 186, 169, 0.24);
+    border-bottom: 1px solid rgba(195, 186, 169, 0.38);
+    background: linear-gradient(135deg, color-mix(in srgb, var(--role-color) 7%, #ffffff), #ffffff);
+  }
+
+  #messages .mobile-message-event-controls select {
+    min-width: 0;
+    min-height: 38px;
+    border: 1px solid color-mix(in srgb, var(--role-color) 18%, var(--line));
+    border-radius: 999px;
+    background-color: #ffffff;
+    color: var(--ink);
+    font-size: 13px;
+    font-weight: 750;
+    padding: 0 34px 0 14px;
+  }
+
   #messages .mobile-message-list {
     display: grid;
     gap: 0;
@@ -5743,13 +5765,20 @@ body:not(.owner-mode) .rate-field {
     display: grid;
     grid-template-columns: 0.8fr 1.2fr;
     gap: 8px;
-    padding: 10px 0;
+    padding: 10px 2px;
     border-bottom: 1px solid var(--mobile-line, rgba(195, 186, 169, 0.46));
   }
 
   .mobile-message-event-controls select {
     min-width: 0;
     min-height: 38px;
+    border: 1px solid color-mix(in srgb, var(--role-color) 18%, var(--line));
+    border-radius: 999px;
+    background: #ffffff;
+    color: var(--ink);
+    font-size: 13px;
+    font-weight: 750;
+    padding: 0 34px 0 14px;
   }
 
   .mobile-message-direct-menu {
