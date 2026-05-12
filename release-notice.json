@@ -1,5 +1,5 @@
 {
-  "version": "V1.05.012",
-  "title": "V1.05.012 update installed",
-  "body": "Cleaned up notification read, clear, and cloud sync behavior."
+  "version": "V1.05.013",
+  "title": "V1.05.013 update installed",
+  "body": "Tightened cloud bridge pulls so newer local records are protected and sync results are clearer."
 }

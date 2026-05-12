@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.05.012",
-  title: "V1.05.012 update installed",
-  body: "Cleaned up notification read, clear, and cloud sync behavior."
+  version: "V1.05.013",
+  title: "V1.05.013 update installed",
+  body: "Tightened cloud bridge pulls so newer local records are protected and sync results are clearer."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -1182,7 +1182,7 @@ async function put(storeName, record) {
     const savedRecord = {
       ...record,
       id: record.id || crypto.randomUUID(),
-      updatedAt: now,
+      updatedAt: cloudSyncPaused && record.updatedAt ? record.updatedAt : now,
       createdAt: record.createdAt || now
     };
     const request = store.put(savedRecord);
@@ -1245,25 +1245,54 @@ async function deleteCloudRecord(storeName, id) {
   if (error) throw error;
 }
 
+function recordSyncTime(record = {}, fallback = "") {
+  const times = [record.updatedAt, record.createdAt, fallback]
+    .map((value) => Date.parse(value || ""))
+    .filter((value) => !Number.isNaN(value));
+  return times.length ? Math.max(...times) : 0;
+}
+
+function shouldHydrateCloudRecord(localRecord, cloudRecord, cloudUpdatedAt) {
+  if (!localRecord) return true;
+  return recordSyncTime(cloudRecord, cloudUpdatedAt) >= recordSyncTime(localRecord);
+}
+
 async function hydrateAppRecordsFromSupabase() {
-  if (!supabaseClient || !authState.session || !authState.roleRecord || isAdminRole() || !cloudClientId()) return;
+  if (!supabaseClient || !authState.session || !authState.roleRecord || isAdminRole() || !cloudClientId()) return { pulled: 0, skipped: 0 };
   const { data, error } = await supabaseClient
     .from("app_records")
     .select("store_name, data, updated_at")
     .eq("client_id", cloudClientId());
   if (error) {
     console.warn("Could not load shared app records.", error);
-    return;
+    return { pulled: 0, skipped: 0 };
   }
   cloudSyncPaused = true;
+  const localRecordsByStore = new Map();
+  const localRecordMap = async (storeName) => {
+    if (!localRecordsByStore.has(storeName)) {
+      localRecordsByStore.set(storeName, new Map((await getAll(storeName)).map((record) => [record.id, record])));
+    }
+    return localRecordsByStore.get(storeName);
+  };
+  let pulled = 0;
+  let skipped = 0;
   try {
     for (const row of data || []) {
       if (!CLOUD_SYNC_STORES.has(row.store_name) || !row.data?.id) continue;
+      const localRecords = await localRecordMap(row.store_name);
+      if (!shouldHydrateCloudRecord(localRecords.get(row.data.id), row.data, row.updated_at)) {
+        skipped += 1;
+        continue;
+      }
       await put(row.store_name, row.data);
+      localRecords.set(row.data.id, row.data);
+      pulled += 1;
     }
   } finally {
     cloudSyncPaused = false;
   }
+  return { pulled, skipped };
 }
 
 async function hydrateNotificationsFromSupabase() {
@@ -1300,19 +1329,23 @@ async function hydrateNotificationsFromSupabase() {
 }
 
 async function syncLocalRecordsToSupabase() {
-  if (!supabaseClient || !authState.session || !authState.roleRecord || isAdminRole() || !cloudClientId()) return;
+  if (!supabaseClient || !authState.session || !authState.roleRecord || isAdminRole() || !cloudClientId()) return { published: 0, failed: 0 };
   const records = [];
   for (const storeName of CLOUD_SYNC_STORES) {
     for (const record of state[storeName] || []) records.push([storeName, record]);
   }
+  let published = 0;
+  let failed = 0;
   for (const [storeName, record] of records) {
     try {
       await syncRecordToSupabase(storeName, record);
+      published += 1;
     } catch (error) {
       console.warn("Could not publish local record to Supabase.", error);
-      break;
+      failed += 1;
     }
   }
+  return { published, failed };
 }
 
 async function cloudRecordCount() {
@@ -12158,10 +12191,12 @@ async function publishCloudData() {
     toast("No local demo records found in this browser.");
     return;
   }
-  await syncLocalRecordsToSupabase();
+  const result = await syncLocalRecordsToSupabase();
   const count = await cloudRecordCount();
   $("#cloudSyncStatus").textContent = `Shared records: ${count}`;
-  toast(`Published ${localCount} local records to cloud.`);
+  toast(result.failed
+    ? `Published ${result.published} records. ${result.failed} need attention.`
+    : `Published ${result.published || localCount} local records to cloud.`);
 }
 
 async function pullCloudData() {
@@ -12169,12 +12204,14 @@ async function pullCloudData() {
     toast("ADMIN cannot pull production records.");
     return;
   }
-  await hydrateAppRecordsFromSupabase();
+  const result = await hydrateAppRecordsFromSupabase();
   await loadState();
   setView(state.activeView);
   const count = await cloudRecordCount();
   $("#cloudSyncStatus").textContent = `Shared records: ${count}`;
-  toast(`Pulled ${count} shared records from cloud.`);
+  toast(result?.skipped
+    ? `Pulled ${result.pulled} shared records. Kept ${result.skipped} newer local records.`
+    : `Pulled ${result?.pulled ?? count} shared records from cloud.`);
 }
 
 function bindEvents() {
