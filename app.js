@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.04.108",
-  title: "V1.04.108 update installed",
-  body: "Deduplicated message notifications so one message shows as one notification."
+  version: "V1.04.109",
+  title: "V1.04.109 update installed",
+  body: "Stopped duplicate live message notifications and quieted open-chat receive updates."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -6601,7 +6601,7 @@ function releaseNotificationId(version) {
   return `release-${String(version || "").toLowerCase().replaceAll(".", "-")}`;
 }
 
-async function createAppNotification({ title, body = "", type = "info", viewId = "", recordId = "", recipientId = "", ...extra }) {
+async function createAppNotification({ title, body = "", type = "info", viewId = "", recordId = "", recipientId = "", skipCloudSync = false, ...extra }) {
   if (!title) return;
   const notification = {
     ...extra,
@@ -6617,7 +6617,7 @@ async function createAppNotification({ title, body = "", type = "info", viewId =
   state.appNotifications = [saved, ...state.appNotifications.filter((item) => item.id !== saved.id)]
     .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
   renderNotificationSurfaces();
-  if (type === "message") syncAppNotificationToSupabase(saved).catch((error) => console.warn("Message notification sync failed", error));
+  if (type === "message" && !skipCloudSync) syncAppNotificationToSupabase(saved).catch((error) => console.warn("Message notification sync failed", error));
   refreshNotificationsFromStorage().catch((error) => console.warn("Notification refresh failed", error));
   return saved;
 }
@@ -9497,8 +9497,12 @@ async function markMessageThreadNotificationsRead(threadType, threadKey) {
     await put("appNotifications", { ...notification, readAt: now });
   }
   if (matches.length) {
-    await loadState();
-    renderNotificationSurfaces();
+    state.appNotifications = state.appNotifications.map((notification) =>
+      matches.some((match) => match.id === notification.id)
+        ? { ...notification, readAt: now }
+        : notification
+    );
+    renderNotifications();
   }
 }
 
@@ -9509,10 +9513,10 @@ function messageBelongsToActiveThread(channel = {}) {
 
 function messageNotificationRecipients() {
   const ids = new Set();
-  const currentBaseId = baseSendbirdUserId(currentThreadUserId() || currentSendbirdUserId()).trim();
+  const currentIds = notificationRecipientIdsForCurrentUser();
   const addId = (value) => {
     const baseId = baseSendbirdUserId(value).trim();
-    if (baseId && baseId !== currentBaseId && baseId !== "system_ops") ids.add(baseId);
+    if (baseId && !currentIds.has(baseId) && baseId !== "system_ops") ids.add(baseId);
   };
   activeThreadMemberProfiles().forEach((member) => {
     addId(messageMemberIdentityKey(member));
@@ -9554,14 +9558,24 @@ async function createMessageNotifications(message, deliveredMessage = {}) {
 async function createReceivedMessageNotification(channel, message) {
   if (!message || baseSendbirdUserId(message.sender?.userId) === baseSendbirdUserId(sendbirdClient?.currentUser?.userId)) return;
   const meta = messageThreadMetaFromChannel(channel);
+  const messageId = sendbirdMessageKey(message) || String(message.reqId || Date.now());
   const preview = String(message.message || message.name || message.fileName || "New message").replace(/\s+/g, " ").trim();
   const senderName = message.sender?.nickname || message.sender?.userId || "New message";
+  const dedupeKey = [
+    "message",
+    meta.threadKey || "",
+    messageId,
+    meta.title || "Messages",
+    `${senderName}: ${preview || "New message"}`
+  ].join("|");
+  if (visibleNotifications().some((notification) => notificationDedupeKey(notification) === dedupeKey)) return;
   await createAppNotification({
-    id: `message-${meta.threadKey}-${sendbirdMessageKey(message) || message.reqId || Date.now()}-${currentThreadUserId()}`.replace(/[^a-zA-Z0-9:_-]/g, "-"),
+    id: `message-${meta.threadKey}-${messageId}-${currentThreadUserId()}`.replace(/[^a-zA-Z0-9:_-]/g, "-"),
     title: meta.title || "Messages",
     body: `${senderName}: ${preview || "New message"}`,
     type: "message",
-    messageId: sendbirdMessageKey(message) || String(message.reqId || Date.now()),
+    messageId,
+    skipCloudSync: true,
     recipientId: currentThreadUserId(),
     viewId: "messages",
     threadType: meta.threadType,

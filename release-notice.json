@@ -1,5 +1,5 @@
 {
-  "version": "V1.04.108",
-  "title": "V1.04.108 update installed",
-  "body": "Deduplicated message notifications so one message shows as one notification."
+  "version": "V1.04.109",
+  "title": "V1.04.109 update installed",
+  "body": "Stopped duplicate live message notifications and quieted open-chat receive updates."
 }
