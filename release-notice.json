@@ -1,5 +1,5 @@
 {
-  "version": "V1.04.145",
-  "title": "V1.04.145 update installed",
-  "body": "Removed duplicate vehicle missing status from the event column."
+  "version": "V1.04.146",
+  "title": "V1.04.146 update installed",
+  "body": "Moved vehicle sort and filter controls into column arrow menus."
 }

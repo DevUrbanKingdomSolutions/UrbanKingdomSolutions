@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.04.145",
-  title: "V1.04.145 update installed",
-  body: "Removed duplicate vehicle missing status from the event column."
+  version: "V1.04.146",
+  title: "V1.04.146 update installed",
+  body: "Moved vehicle sort and filter controls into column arrow menus."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -396,9 +396,9 @@ let state = {
   timecardEventFilter: localStorage.getItem("productionCrewTimecardEventFilter") || "all",
   timecardFilter: localStorage.getItem("productionCrewTimecardFilter") || "all",
   timecardSort: localStorage.getItem("productionCrewTimecardSort") || "latest",
-  vehicleEventFilter: localStorage.getItem("productionCrewVehicleEventFilter") || "all",
-  vehicleFilter: localStorage.getItem("productionCrewVehicleFilter") || "all",
-  vehicleSort: localStorage.getItem("productionCrewVehicleSort") || "latest",
+  vehicleSortKey: localStorage.getItem("productionCrewVehicleSortKey") || "date",
+  vehicleSortDirection: localStorage.getItem("productionCrewVehicleSortDirection") || "desc",
+  vehicleColumnFilters: JSON.parse(localStorage.getItem("productionCrewVehicleColumnFilters") || "{}"),
   reportEventFilter: localStorage.getItem("productionCrewReportEventFilter") || "all",
   reportFilter: localStorage.getItem("productionCrewReportFilter") || "all",
   reportSort: localStorage.getItem("productionCrewReportSort") || "latest",
@@ -634,6 +634,15 @@ const STAFFING_ASSIGNMENT_COLUMNS = [
   ["schedule", "Schedule"],
   ["contact", "Production Office Contact"],
   ["notes", "Notes"]
+];
+const VEHICLE_COLUMNS = [
+  ["event", "Event"],
+  ["worker", "Worker"],
+  ["vehicle", "Vehicle"],
+  ["plate", "License Plate"],
+  ["start", "Start"],
+  ["end", "End"],
+  ["photos", "Photos"]
 ];
 
 const $ = (selector) => document.querySelector(selector);
@@ -6453,15 +6462,9 @@ function listText(value) {
 }
 
 function renderVehicles() {
-  renderEventFilterOptions("#vehicleEventFilter", state.vehicleEventFilter);
+  renderVehicleTableHead();
   const logs = visibleRecords(state.vehicleLogs).filter((log) => matchesSearch(log, `${getEvent(log.eventId)?.name || ""} ${getWorker(log.workerId)?.name || ""}`));
-  const filter = $("#vehicleFilter");
-  const sort = $("#vehicleSort");
-  const eventFilter = $("#vehicleEventFilter");
-  if (eventFilter) eventFilter.value = state.vehicleEventFilter;
-  if (filter) filter.value = state.vehicleFilter;
-  if (sort) sort.value = state.vehicleSort;
-  const rows = sortVehicleRows(filterVehicleRows(groupedVehicleRows(logs).filter((group) => recordMatchesEventFilter(group, state.vehicleEventFilter))));
+  const rows = sortVehicleRows(filterVehicleRows(groupedVehicleRows(logs)));
   $("#vehicleTableCount").textContent = `${rows.length} shown`;
   $("#vehicleTable").innerHTML = rows.length
     ? rows.map(vehicleCheckRow).join("")
@@ -6469,26 +6472,63 @@ function renderVehicles() {
 }
 
 function filterVehicleRows(rows) {
+  const filters = state.vehicleColumnFilters || {};
   return rows.filter((group) => {
-    const status = vehicleChecklistStatus(group);
-    const plate = vehicleGroupPlate(group);
-    if (state.vehicleFilter === "missing-start") return !status.start.complete;
-    if (state.vehicleFilter === "missing-end") return !status.end.complete;
-    if (state.vehicleFilter === "missing-plate") return !plate;
-    if (state.vehicleFilter === "complete") return status.start.complete && status.end.complete;
-    return true;
+    return VEHICLE_COLUMNS.every(([key]) => {
+      const filter = String(filters[key] || "").trim().toLowerCase();
+      return !filter || vehicleColumnValue(group, key).toLowerCase().includes(filter);
+    });
   });
 }
 
 function sortVehicleRows(rows) {
-  const sortValue = state.vehicleSort;
+  const sortValue = state.vehicleSortKey || "date";
+  const direction = state.vehicleSortDirection === "asc" ? 1 : -1;
   return [...rows].sort((a, b) => {
-    if (sortValue === "event") return listText(getEvent(a.eventId)?.name).localeCompare(listText(getEvent(b.eventId)?.name));
-    if (sortValue === "worker") return listText(getWorker(a.workerId)?.name).localeCompare(listText(getWorker(b.workerId)?.name));
-    if (sortValue === "plate") return listText(vehicleGroupPlate(a)).localeCompare(listText(vehicleGroupPlate(b)));
-    if (sortValue === "vehicle") return listText(vehicleGroupType(a)).localeCompare(listText(vehicleGroupType(b)));
-    return new Date(b.startLog?.scheduledDate || b.endLog?.scheduledDate || 0) - new Date(a.startLog?.scheduledDate || a.endLog?.scheduledDate || 0);
+    if (sortValue === "date") return direction * (new Date(a.startLog?.scheduledDate || a.endLog?.scheduledDate || 0) - new Date(b.startLog?.scheduledDate || b.endLog?.scheduledDate || 0));
+    return direction * vehicleColumnValue(a, sortValue).localeCompare(vehicleColumnValue(b, sortValue), undefined, { numeric: true, sensitivity: "base" });
   });
+}
+
+function renderVehicleTableHead() {
+  const head = $("#vehicleHead");
+  if (!head) return;
+  head.innerHTML = `<tr>${VEHICLE_COLUMNS.map(([key, label]) => {
+    const activeSort = state.vehicleSortKey === key || (key === "event" && state.vehicleSortKey === "date");
+    const activeFilter = !!state.vehicleColumnFilters?.[key];
+    const arrow = activeSort ? (state.vehicleSortDirection === "desc" ? "▼" : "▲") : "▾";
+    const sortAscLabel = key === "event" ? "Sort oldest" : "Sort A-Z";
+    const sortDescLabel = key === "event" ? "Sort newest" : "Sort Z-A";
+    const sortKey = key === "event" ? "date" : key;
+    return `<th><div class="column-filter-heading">
+      <span>${escapeHtml(label)}</span>
+      <details class="column-filter-menu ${activeSort || activeFilter ? "active" : ""}">
+        <summary aria-label="${escapeHtml(label)} sort and filter">${arrow}</summary>
+        <div class="record-options-menu">
+          <button class="tiny-button" data-vehicle-sort="${escapeHtml(sortKey)}" data-vehicle-sort-direction="asc" type="button">${sortAscLabel}</button>
+          <button class="tiny-button" data-vehicle-sort="${escapeHtml(sortKey)}" data-vehicle-sort-direction="desc" type="button">${sortDescLabel}</button>
+          <label>Filter<input data-vehicle-column-filter="${escapeHtml(key)}" value="${escapeHtml(state.vehicleColumnFilters?.[key] || "")}" placeholder="Type to filter"></label>
+        </div>
+      </details>
+    </div></th>`;
+  }).join("")}</tr>`;
+}
+
+function vehicleColumnValue(group, key) {
+  const status = vehicleChecklistStatus(group);
+  const startMissing = status.start.items.filter((item) => !item.done).map((item) => item.label).join(" ");
+  const endMissing = status.end.items.filter((item) => !item.done).map((item) => item.label).join(" ");
+  if (key === "event") {
+    const event = getEvent(group.eventId);
+    return listText(`${event?.name || ""} ${formatDate(event?.startDate)} ${formatDate(event?.endDate)}`);
+  }
+  if (key === "worker") return listText(getWorker(group.workerId)?.name);
+  if (key === "vehicle") return listText(vehicleGroupType(group));
+  if (key === "plate") return listText(vehicleGroupPlate(group));
+  if (key === "start") return listText(`${group.startLog?.gasGauge || ""} ${formatDate(group.startLog?.scheduledDate)} ${status.start.complete ? "complete" : `missing ${startMissing}`}`);
+  if (key === "end") return listText(`${group.endLog?.gasGauge || ""} ${formatDate(group.endLog?.scheduledDate)} ${status.end.complete ? "complete" : `missing ${endMissing}`}`);
+  if (key === "photos") return listText(group.logs.map((log) => vehiclePhotoGallery(log)).join("") ? "photos uploaded" : "no photos");
+  return "";
 }
 
 function vehicleGroupType(group) {
@@ -11595,6 +11635,13 @@ function bindEvents() {
       localStorage.setItem("productionCrewStaffingColumnFilters", JSON.stringify(state.staffingColumnFilters));
       renderStaffingAssignments();
     }
+    if (event.target?.matches?.("[data-vehicle-column-filter]")) {
+      const key = event.target.dataset.vehicleColumnFilter;
+      state.vehicleColumnFilters = { ...(state.vehicleColumnFilters || {}), [key]: event.target.value };
+      if (!state.vehicleColumnFilters[key]) delete state.vehicleColumnFilters[key];
+      localStorage.setItem("productionCrewVehicleColumnFilters", JSON.stringify(state.vehicleColumnFilters));
+      renderVehicles();
+    }
   });
   $("#dashboardCalendarPrev")?.addEventListener("click", () => {
     const month = dashboardCalendarMonthDate();
@@ -11743,21 +11790,6 @@ function bindEvents() {
     localStorage.setItem("productionCrewTimecardSort", state.timecardSort);
     renderTimecards();
   });
-  $("#vehicleEventFilter").addEventListener("change", (event) => {
-    state.vehicleEventFilter = event.target.value;
-    localStorage.setItem("productionCrewVehicleEventFilter", state.vehicleEventFilter);
-    renderVehicles();
-  });
-  $("#vehicleFilter").addEventListener("change", (event) => {
-    state.vehicleFilter = event.target.value;
-    localStorage.setItem("productionCrewVehicleFilter", state.vehicleFilter);
-    renderVehicles();
-  });
-  $("#vehicleSort").addEventListener("change", (event) => {
-    state.vehicleSort = event.target.value;
-    localStorage.setItem("productionCrewVehicleSort", state.vehicleSort);
-    renderVehicles();
-  });
   $("#reportEventFilter").addEventListener("change", (event) => {
     state.reportEventFilter = event.target.value;
     localStorage.setItem("productionCrewReportEventFilter", state.reportEventFilter);
@@ -11807,6 +11839,7 @@ function bindEvents() {
     const runnerResourceButton = event.target.closest("[data-runner-resource-action]");
     const runnerSortButton = event.target.closest("[data-runner-sort]");
     const staffingSortButton = event.target.closest("[data-staffing-sort]");
+    const vehicleSortButton = event.target.closest("[data-vehicle-sort]");
     const quickProfileButton = event.target.closest("[data-open-quick-profile]");
     const deleteButton = event.target.closest("[data-delete]");
     const clockButton = event.target.closest("[data-clock-out]");
@@ -11926,6 +11959,15 @@ function bindEvents() {
       localStorage.setItem("productionCrewRunnerSortDirection", state.runnerSortDirection);
       runnerSortButton.closest("details")?.removeAttribute("open");
       renderRunnerStops();
+      return;
+    }
+    if (vehicleSortButton) {
+      state.vehicleSortKey = vehicleSortButton.dataset.vehicleSort || "date";
+      state.vehicleSortDirection = vehicleSortButton.dataset.vehicleSortDirection || "desc";
+      localStorage.setItem("productionCrewVehicleSortKey", state.vehicleSortKey);
+      localStorage.setItem("productionCrewVehicleSortDirection", state.vehicleSortDirection);
+      vehicleSortButton.closest("details")?.removeAttribute("open");
+      renderVehicles();
       return;
     }
     if (requestMobilePermissionsButton) {
