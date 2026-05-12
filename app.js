@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.04.117",
-  title: "V1.04.117 update installed",
-  body: "Added a soft role-color wash to open sidebar navigation groups for a more premium visual pass."
+  version: "V1.04.118",
+  title: "V1.04.118 update installed",
+  body: "Refined dashboard payroll controls, recent note timestamps, note popups, and modal presentation."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -3816,6 +3816,16 @@ function profileSection(label, value) {
   return value ? `<div class="profile-section"><span>${escapeHtml(label)}</span><p>${escapeHtml(value)}</p></div>` : "";
 }
 
+function noteDescription(text = "", timestamp = "") {
+  const clean = String(text || "").trim();
+  if (!clean) return "";
+  const date = formatDateWithYear(timestamp || new Date());
+  const firstLine = clean.split(/\n+/)[0] || "";
+  const alreadyStamped = /^[A-Z][a-z]{2}\s+\d{1,2},\s+\d{4},?\s+\d{1,2}:\d{2}\s*(AM|PM)?\s+-\s+/i.test(firstLine)
+    || /^\d{1,2}\/\d{1,2}\/\d{2,4},?\s+\d{1,2}:\d{2}/.test(firstLine);
+  return alreadyStamped ? clean : `${date} - ${clean}`;
+}
+
 function profileInfoSection(title, details = []) {
   const visibleDetails = details.filter(([, value]) => value !== undefined && value !== null && String(value).trim() !== "");
   if (!visibleDetails.length) return "";
@@ -3960,7 +3970,7 @@ function openReadOnlyRecord(storeName, id) {
       ["Updated", formatDateWithYear(record.updatedAt || record.createdAt)],
       ["Created By", record.createdByName || ""],
       ["Related To", record.relatedType || "General"]
-    ], [["Note", record.note]]);
+    ], [["Note", noteDescription(record.note, record.createdAt || record.updatedAt)]]);
   } else {
     readOnlyProfileCard(record.name || record.title || "Record", storeName, Object.entries(record).slice(0, 8));
   }
@@ -4014,8 +4024,7 @@ function timecardDetailRows(record) {
   const venue = getVenue(record.venueId || event?.venueId);
   const promoter = getPromoter(record.promoterId || event?.promoterId);
   const rateDetails = canViewRates() ? [["Pay Basis", payBasis(record)], ["Estimated Pay", currency(estimatedPay(record))]] : [];
-  const sections = [["Notes", crewVisibleTimecardNotes(record)]];
-  if (canViewTimecardAdminNotes()) sections.push(["Client Admin Notes", record.adminNotes]);
+  const sections = [["Notes", timecardProfileNoteText(record)]];
   return {
     title: worker?.name || "Timecard",
     subtitle: event?.name || record.eventName || "Timecard",
@@ -4034,6 +4043,15 @@ function timecardDetailRows(record) {
     ],
     sections
   };
+}
+
+function timecardProfileNoteText(record) {
+  if (!canViewTimecardAdminNotes()) return noteDescription(crewVisibleTimecardNotes(record), record.updatedAt || record.createdAt);
+  const notes = [record.notes, record.adminNotes]
+    .map((note) => String(note || "").trim())
+    .filter(Boolean);
+  const uniqueNotes = [...new Set(notes)];
+  return uniqueNotes.map((note) => noteDescription(note, record.updatedAt || record.createdAt)).join("\n");
 }
 
 function renderTimecardProfile(timecardId, editable = false) {
@@ -4453,24 +4471,14 @@ function dashboardRecentNotes() {
   const timecardNotes = canViewTimecardAdminNotes() ? visibleRecords(state.timecards).flatMap((card) => {
     const worker = getWorker(card.workerId);
     const event = getEvent(card.eventId);
-    return [
-      {
-        type: "Timecard",
-        name: [worker?.name, event?.name || card.eventName].filter(Boolean).join(" - ") || "Timecard",
-        text: card.adminNotes,
-        updatedAt: card.updatedAt || card.createdAt,
-        storeName: "timecards",
-        recordId: card.id
-      },
-      {
-        type: "Timecard",
-        name: [worker?.name, event?.name || card.eventName].filter(Boolean).join(" - ") || "Timecard",
-        text: card.notes,
-        updatedAt: card.updatedAt || card.createdAt,
-        storeName: "timecards",
-        recordId: card.id
-      }
-    ];
+    return {
+      type: "Timecard",
+      name: [worker?.name, event?.name || card.eventName].filter(Boolean).join(" - ") || "Timecard",
+      text: timecardProfileNoteText(card),
+      updatedAt: card.updatedAt || card.createdAt,
+      storeName: "timecards",
+      recordId: card.id
+    };
   }) : [];
   const createdNotes = canSeeProductionNotes ? state.profileNotes
     .filter((note) => note.note && !note.promoterId && (!note.clientId || note.clientId === cloudClientId() || note.clientId === activeClientRecord()?.id))
@@ -4499,10 +4507,11 @@ function titleCase(value = "") {
 function recentNoteItemHtml(item) {
   const target = item.storeName && item.recordId ? `${item.storeName}:${item.recordId}` : "";
   const viewButton = target ? `<button class="link-button recent-note-view" data-view-record="${escapeHtml(target)}" type="button">View</button>` : "";
+  const description = noteDescription(item.text, item.updatedAt);
   return `<div class="compact-item recent-note-item">
     <div>
       <strong>${escapeHtml(item.type)}: ${escapeHtml(item.name)}</strong>
-      <span>${escapeHtml(item.text)}</span>
+      <span>${escapeHtml(description)}</span>
     </div>
     ${viewButton}
   </div>`;
@@ -4792,21 +4801,23 @@ function dashboardHeroConfig() {
 
 function dashboardHeroStat(stat) {
   const view = assignedViews().includes(stat.view) ? stat.view : "";
-  const control = stat.payroll ? `<label class="metric-control desktop-hero-payroll-range" aria-label="Payroll range">
-    <span>Range</span>
-    <select id="dashboardPayrollRange">
-      <option value="lifetime">Lifetime</option>
-      <option value="year">Yearly</option>
-      <option value="month">Monthly</option>
-      <option value="week">Weekly</option>
-      <option value="day">Daily</option>
-      <option value="event">By Event</option>
-    </select>
-  </label>
-  <label id="dashboardPayrollEventControl" class="metric-control desktop-hero-payroll-event" hidden>
-    <span>Event</span>
-    <select id="dashboardPayrollEvent"></select>
-  </label>` : "";
+  const control = stat.payroll ? `<div class="desktop-hero-payroll-controls">
+    <label class="metric-control desktop-hero-payroll-range" aria-label="Payroll range">
+      <span>Range</span>
+      <select id="dashboardPayrollRange">
+        <option value="lifetime">Lifetime</option>
+        <option value="year">Yearly</option>
+        <option value="month">Monthly</option>
+        <option value="week">Weekly</option>
+        <option value="day">Daily</option>
+        <option value="event">By Event</option>
+      </select>
+    </label>
+    <label id="dashboardPayrollEventControl" class="metric-control desktop-hero-payroll-event" hidden>
+      <span>Event</span>
+      <select id="dashboardPayrollEvent"></select>
+    </label>
+  </div>` : "";
   const attrs = view ? ` data-dashboard-link="${escapeHtml(view)}"` : "";
   const tag = view && !stat.payroll ? "button" : "div";
   const type = tag === "button" ? ` type="button"` : "";

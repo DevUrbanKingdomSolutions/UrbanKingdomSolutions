@@ -1067,6 +1067,21 @@ body[data-access-tone="crew"] .desktop-dashboard-hero {
   margin-top: 12px;
 }
 
+.desktop-hero-payroll-controls {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
+  align-items: end;
+}
+
+.desktop-hero-payroll-controls:has(.desktop-hero-payroll-event:not([hidden])) {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.desktop-hero-payroll-controls .metric-control {
+  min-width: 0;
+}
+
 .metric-control span {
   font-size: 11px;
 }
@@ -1553,7 +1568,17 @@ body.crew-mode .crew-mobile-home:not([hidden]) {
 
 .dashboard-grid {
   grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: stretch;
   margin-bottom: 18px;
+}
+
+.dashboard-grid > .panel {
+  display: flex;
+  flex-direction: column;
+}
+
+.dashboard-grid > .panel > .compact-list {
+  flex: 1 1 auto;
 }
 
 .panel {
@@ -1628,7 +1653,31 @@ body.crew-mode .crew-mobile-home:not([hidden]) {
   width: min(680px, calc(100vw - 32px));
   max-height: calc(100vh - 42px);
   overflow: auto;
+  border: 0;
+  border-radius: 16px;
+  background: #ffffff;
+  box-shadow: 0 26px 80px rgba(23, 31, 35, 0.2);
   transform: translate(-50%, -50%);
+}
+
+.form-panel.modal-form .panel-heading {
+  border-bottom-color: color-mix(in srgb, var(--accent) 14%, var(--line));
+  background: linear-gradient(90deg, color-mix(in srgb, var(--accent-soft) 58%, #ffffff), #ffffff 68%);
+}
+
+.form-panel.modal-form .profile-page-card {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.form-panel.modal-form .profile-detail-grid div,
+.form-panel.modal-form .profile-section {
+  border-width: 0 0 1px;
+  border-radius: 0;
+  background: transparent;
+  padding-right: 0;
+  padding-left: 0;
 }
 
 .modal-backdrop {
@@ -2051,6 +2100,7 @@ td p {
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 12px;
   align-items: center;
+  min-height: 76px;
 }
 
 .recent-note-item span {
