@@ -1,5 +1,5 @@
 {
-  "version": "V1.05.009",
-  "title": "V1.05.009 update installed",
-  "body": "Split Admin Console into dashboard, admin users, client accounts, user accounts, and access-level popup sections."
+  "version": "V1.05.010",
+  "title": "V1.05.010 update installed",
+  "body": "Tightened access hierarchy so higher assigned roles stay active across shared pages."
 }

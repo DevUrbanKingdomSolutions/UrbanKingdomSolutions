@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.05.009",
-  title: "V1.05.009 update installed",
-  body: "Split Admin Console into dashboard, admin users, client accounts, user accounts, and access-level popup sections."
+  version: "V1.05.010",
+  title: "V1.05.010 update installed",
+  body: "Tightened access hierarchy so higher assigned roles stay active across shared pages."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -562,6 +562,13 @@ const ACCESS_ROLE_PRIORITY = {
   PROMOTER_REP: 50,
   PRODUCTION_TEAM_ACCESS: 40,
   PRODUCTION: 40,
+  CREW: 10
+};
+const SERVER_ROLE_PRIORITY = {
+  ADMIN: 100,
+  CLIENT: 90,
+  PROMOTER: 70,
+  PRODUCTION: 50,
   CREW: 10
 };
 
@@ -2186,7 +2193,8 @@ function accessLevelsForUserAccessRow(row) {
 }
 
 function supabaseRoleFromAccessLevels(levels, fallback = "CLIENT") {
-  const baseRoles = normalizeAccessLevels(levels, fallback).map(baseRoleForAccess);
+  const baseRoles = sortAccessRoles(normalizeAccessLevels(levels, fallback)).map(baseRoleForAccess);
+  if (baseRoles.includes("ADMIN")) return "ADMIN";
   if (baseRoles.includes("CLIENT")) return "CLIENT";
   if (baseRoles.includes("PROMOTER")) return "PROMOTER";
   if (baseRoles.includes("PRODUCTION")) return "PRODUCTION";
@@ -2943,9 +2951,15 @@ function assignedAccessForRole(role) {
 
 function sortAccessRoles(roles = []) {
   return Array.from(new Set(roles.filter(Boolean))).sort((a, b) => {
-    const priorityDelta = (ACCESS_ROLE_PRIORITY[b] || 0) - (ACCESS_ROLE_PRIORITY[a] || 0);
+    const priorityDelta = accessRolePriority(b) - accessRolePriority(a);
     return priorityDelta || accessLevelLabel(a).localeCompare(accessLevelLabel(b));
   });
+}
+
+function accessRolePriority(role) {
+  const level = normalizeAccessLevel(role);
+  const baseRole = baseRoleForAccess(level);
+  return ACCESS_ROLE_PRIORITY[level] || SERVER_ROLE_PRIORITY[baseRole] || 0;
 }
 
 function assignedAccessForCurrentUser() {
@@ -9421,9 +9435,8 @@ function collapseSiblingNavGroups(key) {
 
 function applyAccessProfile() {
   const assignedAccess = assignedAccessForCurrentUser();
-  if (!assignedAccess.includes(state.accessRole)) {
-    state.accessRole = assignedAccess[0] || normalizeRole(authState.roleRecord?.role);
-  }
+  const primaryAccess = assignedAccess[0] || normalizeRole(authState.roleRecord?.role);
+  if (state.accessRole !== primaryAccess) state.accessRole = primaryAccess;
   const profile = currentProfile();
   document.body.classList.toggle("admin-mode", isAdminRole());
   document.body.classList.toggle("owner-mode", isClientRole());
@@ -9463,7 +9476,7 @@ function applyAccessProfile() {
   $$(".system-action").forEach((button) => { button.hidden = !profile.canSystemEdit; });
   $$(".worker-action").forEach((button) => { button.hidden = !(isClientRole() || isCrewRole()); });
   $$(".crew-action").forEach((button) => { button.hidden = !isCrewRole(); });
-  if (!assignedViews().includes(state.activeView)) setView(roleHomeView(assignedAccess[0] || state.accessRole));
+  if (!assignedViews().includes(state.activeView)) setView(roleHomeView(primaryAccess || state.accessRole));
 }
 
 function renderAccessRoleOptions() {
