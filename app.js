@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.04.116",
-  title: "V1.04.116 update installed",
-  body: "Expanded dashboard Recent Notes with created notes, system notes, quick viewing, and a clean add-note action."
+  version: "V1.04.117",
+  title: "V1.04.117 update installed",
+  body: "Added a soft role-color wash to open sidebar navigation groups for a more premium visual pass."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",

@@ -298,6 +298,15 @@ button {
   gap: 8px;
 }
 
+.nav-group:not(.collapsed) .nav-group-items {
+  border-radius: 10px;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--accent) 12%, transparent), color-mix(in srgb, var(--accent-dark) 10%, transparent)),
+    rgba(255, 255, 255, 0.035);
+  padding: 6px;
+  box-shadow: inset 1px 0 0 color-mix(in srgb, var(--accent) 22%, transparent);
+}
+
 .nav-group-toggle {
   display: flex;
   align-items: center;
@@ -3696,6 +3705,30 @@ body:not(.owner-mode) .rate-field {
   .nav-group,
   .nav-group-items {
     gap: 6px;
+  }
+
+  .nav-group:not(.collapsed) .nav-group-items {
+    position: relative;
+    overflow: hidden;
+    border: 1px solid color-mix(in srgb, var(--accent) 16%, rgba(255, 255, 255, 0.08));
+    border-radius: 12px;
+    background:
+      linear-gradient(135deg, color-mix(in srgb, var(--accent) 15%, transparent), transparent 64%),
+      linear-gradient(180deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.018)),
+      color-mix(in srgb, var(--accent-dark) 18%, transparent);
+    padding: 7px;
+    box-shadow:
+      inset 1px 0 0 color-mix(in srgb, var(--accent) 34%, transparent),
+      inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  }
+
+  .nav-group:not(.collapsed) .nav-group-items::before {
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 3px;
+    content: "";
+    background: linear-gradient(180deg, transparent, color-mix(in srgb, var(--accent) 82%, #ffffff), transparent);
+    opacity: 0.72;
   }
 
   .nav-group-toggle {
