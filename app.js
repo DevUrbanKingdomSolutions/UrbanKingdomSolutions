@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.04.114",
-  title: "V1.04.114 update installed",
-  body: "Reset sidebar navigation groups to collapsed after logout while preserving open sections during an active session."
+  version: "V1.04.115",
+  title: "V1.04.115 update installed",
+  body: "Moved tools and mobile settings into the Settings navigation group so they no longer sit as main sidebar sections."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -416,8 +416,7 @@ const NAV_GROUPS = {
     { label: "EVENTS", items: [["events", "Events"], ["productionBoard", "Production Board"], ["timecards", "Timecards"], ["vehicles", "Vehicles"], ["reports", "Reports"]] },
     { label: "PAYROLL", items: [["payroll", "Payroll"]] },
     { label: "DIRECTORIES", items: [["directory", "Crew Directory"], ["runner", "Gig Directory"], ["messages", "Messages"]] },
-    { label: "TOOLS", items: [["dataTools", "Import / Export"]] },
-    { label: "SETTINGS", items: [["mobileApp", "Mobile Settings"]] }
+    { label: "SETTINGS", items: [["dataTools", "Import / Export"], ["mobileApp", "Mobile Settings"]] }
   ],
   CLIENT_REP: [
     { items: [["dashboard", "Dashboard"]] },
@@ -425,8 +424,7 @@ const NAV_GROUPS = {
     { label: "PROFILES", items: [["promoters", "Promoter Profiles"]] },
     { label: "EVENTS", items: [["events", "Events"], ["productionBoard", "Production Board"], ["vehicles", "Vehicles"], ["reports", "Reports"]] },
     { label: "DIRECTORIES", items: [["directory", "Crew Directory"], ["runner", "Gig Directory"], ["messages", "Messages"]] },
-    { label: "TOOLS", items: [["dataTools", "Import / Export"]] },
-    { label: "SETTINGS", items: [["mobileApp", "Mobile Settings"]] }
+    { label: "SETTINGS", items: [["dataTools", "Import / Export"], ["mobileApp", "Mobile Settings"]] }
   ],
   CLIENT_REP_LEAD: [
     { items: [["dashboard", "Dashboard"]] },
@@ -434,8 +432,7 @@ const NAV_GROUPS = {
     { label: "PROFILES", items: [["workers", "Crew Profiles"], ["promoters", "Promoter Profiles"], ["venues", "Venues"]] },
     { label: "EVENTS", items: [["events", "Events"], ["productionBoard", "Production Board"], ["vehicles", "Vehicles"], ["reports", "Reports"]] },
     { label: "DIRECTORIES", items: [["directory", "Crew Directory"], ["runner", "Gig Directory"], ["messages", "Messages"]] },
-    { label: "TOOLS", items: [["dataTools", "Import / Export"]] },
-    { label: "SETTINGS", items: [["mobileApp", "Mobile Settings"]] }
+    { label: "SETTINGS", items: [["dataTools", "Import / Export"], ["mobileApp", "Mobile Settings"]] }
   ],
   CLIENT_ACCOUNTING: [
     { label: "PAYROLL", items: [["timecards", "Timecards"], ["payroll", "Payroll"]] },
@@ -446,8 +443,7 @@ const NAV_GROUPS = {
     { label: "PROFILES", items: [["workers", "Crew Profiles"], ["promoters", "Promoter Profiles"], ["venues", "Venues"]] },
     { label: "EVENTS", items: [["events", "Events"], ["vehicles", "Vehicles"], ["reports", "Reports"]] },
     { label: "DIRECTORIES", items: [["directory", "Crew Directory"], ["messages", "Messages"]] },
-    { label: "TOOLS", items: [["dataTools", "Import / Export"]] },
-    { label: "SETTINGS", items: [["mobileApp", "Mobile Settings"]] }
+    { label: "SETTINGS", items: [["dataTools", "Import / Export"], ["mobileApp", "Mobile Settings"]] }
   ],
   PROMOTER_REP: [
     { items: [["productionBoard", "Production Board"]] },
