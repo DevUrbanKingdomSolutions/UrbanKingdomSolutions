@@ -1,5 +1,5 @@
 {
-  "version": "V1.05.008",
-  "title": "V1.05.008 update installed",
-  "body": "Added Admin Console client account column controls."
+  "version": "V1.05.009",
+  "title": "V1.05.009 update installed",
+  "body": "Split Admin Console into dashboard, admin users, client accounts, user accounts, and access-level popup sections."
 }

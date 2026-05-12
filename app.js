@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.05.008",
-  title: "V1.05.008 update installed",
-  body: "Added Admin Console client account column controls."
+  version: "V1.05.009",
+  title: "V1.05.009 update installed",
+  body: "Split Admin Console into dashboard, admin users, client accounts, user accounts, and access-level popup sections."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -133,7 +133,7 @@ const ACCESS_PROFILES = {
   ADMIN: {
     label: "ADMIN",
     baseRole: "ADMIN",
-    views: ["adminProfile", "admin", "messages", "mobileApp"],
+    views: ["adminProfile", "admin", "adminUsers", "adminClients", "adminUserAccounts", "adminAccessLevels", "messages", "mobileApp"],
     canAdminEdit: false,
     canOwnerEdit: false,
     canVenueEdit: false,
@@ -444,7 +444,7 @@ function resetNavGroupsForFreshLoad() {
 
 const NAV_GROUPS = {
   ADMIN: [
-    { items: [["admin", "Admin Console"]] },
+    { label: "ADMIN CONSOLE", items: [["admin", "Dashboard"], ["adminUsers", "Admin Users"], ["adminClients", "Client Accounts"], ["adminUserAccounts", "User Accounts"], ["adminAccessLevels", "Access Levels"]] },
     { items: [["messages", "Messages"]] },
     { label: "SETTINGS", items: [["adminProfile", "My Profile"], ["mobileApp", "Mobile Settings"]] }
   ],
@@ -2464,7 +2464,7 @@ async function saveQuickProfile(event) {
 
   closeForm("quickProfileForm");
   await loadState();
-  setView(targetStore === "clients" ? "admin" : targetStore);
+  setView(targetStore === "clients" ? "adminClients" : targetStore);
   toast(syncMessage || "Person created. Use Send Login Setup when ready.");
 }
 
@@ -3840,6 +3840,10 @@ function positionOpenRecordMenus() {
 
 function renderAdmin() {
   renderUserAccessTable("adminUserTable", "adminUserTableCount", state.userAccessRows.filter((row) => normalizeRole(row.role) === "ADMIN"));
+  $("#adminUsersHeroCount").textContent = state.userAccessRows.filter((row) => normalizeRole(row.role) === "ADMIN").length;
+  $("#adminClientsHeroCount").textContent = state.clients.length;
+  $("#adminUserAccountsHeroCount").textContent = userAccessRowsForView().length;
+  $("#adminAccessLevelsHeroCount").textContent = accessLevelRowsForDisplay().length;
   renderClientAccountHead();
   const clients = sortClientAccounts(filterClientAccounts(state.clients));
   $("#clientTableCount").textContent = `${clients.length} clients`;
@@ -3928,7 +3932,7 @@ async function saveClientPackages(event) {
     message = "Saved locally. Supabase package sync needs attention.";
   }
   await loadState();
-  setView("admin");
+  setView("adminClients");
   closeForm("clientPackageForm");
   toast(message);
 }
@@ -3975,7 +3979,10 @@ function openAccessLevelsView() {
       <h3>Access Levels</h3>
       <p>Security role definitions and the pages they can open.</p>
     </div>
-    <button class="icon-button clean-icon-button" data-close-access-levels type="button" aria-label="Close access levels">×</button>
+    <div class="panel-tools">
+      ${canSystemEdit() ? `<button class="tiny-button system-action" data-open-form="accessLevelForm" type="button">Add Access Level</button>` : ""}
+      <button class="icon-button clean-icon-button" data-close-access-levels type="button" aria-label="Close access levels">×</button>
+    </div>
   </div>
   <div class="access-level-view-list" data-access-level-list></div>`;
   $("#modalHost")?.appendChild(modal);
@@ -5153,8 +5160,8 @@ function dashboardHeroConfig() {
       secondaryLabel: "Data Tools",
       stats: [
         { label: "System Notices", value: systemAdminThreadMessages().length, view: "messages" },
-        { label: "Client Accounts", value: state.clients.length, view: "admin" },
-        { label: "Access Levels", value: accessLevelDefinitions().filter((level) => level.id !== "ADMIN").length, view: "admin" }
+        { label: "Client Accounts", value: state.clients.length, view: "adminClients" },
+        { label: "Access Levels", value: accessLevelRowsForDisplay().length, view: "adminAccessLevels" }
       ]
     };
   }
@@ -9244,6 +9251,12 @@ function setView(viewId, options = {}) {
     showAuthScreen("Log in to continue.");
     return;
   }
+  if (viewId === "adminAccessLevels") {
+    if (accessRoleForView("adminAccessLevels")) openAccessLevelsView();
+    else toast("That view is restricted for your role.");
+    closeMobileNavigation();
+    return;
+  }
   const previousView = state.activeView;
   viewId = protectedViewFor(viewId);
   const changedView = previousView !== viewId;
@@ -12759,7 +12772,8 @@ function bindEvents() {
       return;
     }
 
-  if (openButton) {
+    if (openButton) {
+      if ($("#accessLevelViewModal")) closeAccessLevelsView();
       await refreshSiteAccessLevelsForForm(openButton.dataset.openForm);
       clearForm(openButton.dataset.openForm);
       if (openButton.dataset.openForm === "adminProfileForm" && isAdminRole()) {

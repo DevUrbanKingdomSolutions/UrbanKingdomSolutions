@@ -10,7 +10,7 @@
     <title>Production Crew Database</title>
     <link rel="manifest" href="manifest.webmanifest">
     <link rel="icon" href="assets/logo/app-logo-admin.png" type="image/png">
-    <link rel="stylesheet" href="styles.css?v=V1.05.008-client-account-column-controls">
+    <link rel="stylesheet" href="styles.css?v=V1.05.009-admin-console-sections">
   </head>
   <body>
     <div id="appLoadingOverlay" class="app-loading-overlay" aria-live="polite">
@@ -543,17 +543,50 @@
               <p class="form-note">Saving updates the site access on the profile and the Supabase security level for this login account.</p>
               <button class="primary-action" type="submit">Save Account Access</button>
             </form>
-            <section class="panel table-panel">
+            <section class="panel admin-console-dashboard">
               <div class="panel-heading">
-                <h3>Admin Console</h3>
-                <div class="panel-tools">
-                  <span id="adminUserTableCount" class="muted"></span>
-                </div>
+                <h3>Admin Console Dashboard</h3>
+                <span class="muted">System setup and account health</span>
               </div>
               <div class="compact-list">
                 <div class="compact-item">
                   <strong>System-only access</strong>
                   <p>Admin can manage client accounts, role setup, app configuration, and troubleshooting tools without opening production data, payroll, timecards, reports, or crew personal details.</p>
+                </div>
+              </div>
+              <div class="admin-console-hero-grid">
+                <button class="admin-console-hero" data-dashboard-link="adminUsers" type="button">
+                  <span>Admin Users</span>
+                  <strong id="adminUsersHeroCount">0</strong>
+                  <small>System-level accounts</small>
+                </button>
+                <button class="admin-console-hero" data-dashboard-link="adminClients" type="button">
+                  <span>Client Accounts</span>
+                  <strong id="adminClientsHeroCount">0</strong>
+                  <small>Companies configured</small>
+                </button>
+                <button class="admin-console-hero" data-dashboard-link="adminUserAccounts" type="button">
+                  <span>User Accounts</span>
+                  <strong id="adminUserAccountsHeroCount">0</strong>
+                  <small>Known login records</small>
+                </button>
+                <button class="admin-console-hero" data-view-access-levels type="button">
+                  <span>Access Levels</span>
+                  <strong id="adminAccessLevelsHeroCount">0</strong>
+                  <small>Site role definitions</small>
+                </button>
+              </div>
+            </section>
+          </div>
+        </section>
+
+        <section id="adminUsers" class="view">
+          <div class="stack-layout">
+            <section class="panel table-panel">
+              <div class="panel-heading">
+                <h3>Admin Users</h3>
+                <div class="panel-tools">
+                  <span id="adminUserTableCount" class="muted"></span>
                 </div>
               </div>
               <div class="table-wrap">
@@ -563,6 +596,11 @@
                 </table>
               </div>
             </section>
+          </div>
+        </section>
+
+        <section id="adminClients" class="view">
+          <div class="stack-layout">
             <section class="panel table-panel">
               <div class="panel-heading">
                 <h3>Client Accounts</h3>
@@ -578,21 +616,11 @@
                 </table>
               </div>
             </section>
-            <section class="panel table-panel">
-              <div class="panel-heading">
-                <h3>Access Levels</h3>
-                <div class="panel-tools">
-                  <button class="tiny-button system-action" data-view-access-levels type="button">View Access Levels</button>
-                  <button class="tiny-button system-action" data-open-form="accessLevelForm" type="button">Add Access Level</button>
-                </div>
-              </div>
-              <div class="compact-list">
-                <div class="compact-item">
-                  <strong>Site access definitions</strong>
-                  <p>Open the access level view when you need to review security levels, page access, or custom site roles.</p>
-                </div>
-              </div>
-            </section>
+          </div>
+        </section>
+
+        <section id="adminUserAccounts" class="view">
+          <div class="stack-layout">
             <section class="panel table-panel">
               <div class="panel-heading">
                 <h3>User Accounts</h3>
@@ -1623,6 +1651,6 @@
     <div id="modalHost"></div>
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js?v=V1.05.008-client-account-column-controls"></script>
+    <script src="app.js?v=V1.05.009-admin-console-sections"></script>
   </body>
 </html>

@@ -1869,6 +1869,56 @@ body.modal-open {
   border-bottom: 0;
 }
 
+.admin-console-dashboard {
+  overflow: hidden;
+}
+
+.admin-console-hero-grid {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(210px, 1fr);
+  gap: 14px;
+  overflow-x: auto;
+  padding: 6px 2px 4px;
+  scrollbar-width: thin;
+}
+
+.admin-console-hero {
+  min-height: 136px;
+  border: 0;
+  border-radius: 0;
+  background:
+    linear-gradient(90deg, #ffffff 0 8px, transparent 8px),
+    linear-gradient(135deg, color-mix(in srgb, var(--accent-soft) 74%, #ffffff), color-mix(in srgb, var(--accent) 16%, #ffffff));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 10%, transparent);
+  color: var(--ink);
+  cursor: pointer;
+  display: grid;
+  align-content: space-between;
+  gap: 10px;
+  padding: 18px 18px 16px 22px;
+  text-align: left;
+}
+
+.admin-console-hero span {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.admin-console-hero strong {
+  font-size: clamp(2rem, 5vw, 3rem);
+  letter-spacing: 0;
+  line-height: 0.9;
+}
+
+.admin-console-hero small {
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+
 body.pull-refresh-settling .active-view {
   transition: transform 180ms ease;
 }
