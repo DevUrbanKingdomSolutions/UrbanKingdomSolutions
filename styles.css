@@ -5231,7 +5231,7 @@ body:not(.owner-mode) .rate-field {
     min-height: 0;
     flex-direction: column;
     overflow: hidden;
-    padding: 14px 14px 0;
+    padding: 14px 12px 0;
     background:
       linear-gradient(180deg, color-mix(in srgb, var(--accent-soft) 26%, transparent) 0, transparent 120px),
       var(--mobile-bg, #fffefd);
@@ -5296,11 +5296,45 @@ body:not(.owner-mode) .rate-field {
   }
 
   .view:not(#messages) .list-controls {
-    margin: 0;
-    padding: 10px 0;
+    gap: 10px;
+    margin: 2px 0 0;
+    padding: 12px 0;
     border-top: 0;
     border-bottom: 1px solid color-mix(in srgb, var(--accent) 12%, rgba(195, 186, 169, 0.42));
     background: transparent;
+  }
+
+  .view:not(#messages) .list-controls select,
+  .view:not(#messages) .list-controls input,
+  .view:not(#messages) .panel:not(.form-panel):not(.modal-form) select,
+  .view:not(#messages) .panel:not(.form-panel):not(.modal-form) input[type="search"] {
+    min-height: 40px;
+    border: 1px solid color-mix(in srgb, var(--accent) 14%, rgba(205, 212, 214, 0.72));
+    border-radius: 999px;
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.92), color-mix(in srgb, var(--accent-soft) 18%, #ffffff));
+    color: var(--ink);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.86), 0 8px 18px color-mix(in srgb, var(--accent) 7%, transparent);
+  }
+
+  .view:not(#messages) .row-actions .tiny-button,
+  .view:not(#messages) .row-actions .secondary-action,
+  .view:not(#messages) .event-actions .tiny-button,
+  .view:not(#messages) .event-actions .secondary-action {
+    border: 0;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--accent-soft) 38%, #ffffff);
+    color: color-mix(in srgb, var(--accent-dark) 72%, var(--ink));
+    box-shadow: 0 8px 18px color-mix(in srgb, var(--accent) 8%, transparent);
+    font-weight: 850;
+  }
+
+  .view:not(#messages) .row-actions .tiny-button:hover,
+  .view:not(#messages) .row-actions .tiny-button:focus-visible,
+  .view:not(#messages) .event-actions .tiny-button:hover,
+  .view:not(#messages) .event-actions .tiny-button:focus-visible {
+    background: color-mix(in srgb, var(--accent-soft) 58%, #ffffff);
+    color: var(--accent-dark);
   }
 
   .view:not(#messages) .record-grid {
@@ -5697,6 +5731,9 @@ body:not(.owner-mode) .rate-field {
     display: flex;
     flex-direction: column;
     max-height: min(72dvh, 680px);
+    border: 0;
+    background: transparent;
+    box-shadow: none;
   }
 
   .table-panel .panel-heading {
@@ -5709,7 +5746,45 @@ body:not(.owner-mode) .rate-field {
     max-width: 100%;
     min-height: 220px;
     overflow: auto;
+    border-top: 1px solid color-mix(in srgb, var(--accent) 12%, rgba(195, 186, 169, 0.46));
+    border-bottom: 1px solid color-mix(in srgb, var(--accent) 10%, rgba(195, 186, 169, 0.34));
+    border-radius: 0;
+    background:
+      linear-gradient(90deg, color-mix(in srgb, var(--accent-soft) 18%, #ffffff), #ffffff 18px, #ffffff);
+    box-shadow: none;
     -webkit-overflow-scrolling: touch;
+  }
+
+  .table-wrap table {
+    border-collapse: separate;
+    border-spacing: 0;
+  }
+
+  .table-wrap th {
+    border-bottom: 1px solid color-mix(in srgb, var(--accent) 18%, rgba(195, 186, 169, 0.5));
+    background: color-mix(in srgb, var(--accent-soft) 26%, #ffffff);
+    color: color-mix(in srgb, var(--accent-dark) 70%, var(--ink));
+    font-size: 11px;
+    font-weight: 900;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+
+  .table-wrap tbody tr {
+    background: rgba(255, 255, 255, 0.78);
+  }
+
+  .table-wrap tbody tr:nth-child(even) {
+    background: color-mix(in srgb, var(--accent-soft) 16%, #ffffff);
+  }
+
+  .table-wrap td {
+    border-bottom: 1px solid color-mix(in srgb, var(--accent) 8%, rgba(205, 212, 214, 0.5));
+    color: var(--ink);
+  }
+
+  .table-wrap tbody tr:last-child td {
+    border-bottom: 0;
   }
 
   #timecards.active-view {

@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.05.013",
-  title: "V1.05.013 update installed",
-  body: "Tightened cloud bridge pulls so newer local records are protected and sync results are clearer."
+  version: "V1.05.014",
+  title: "V1.05.014 update installed",
+  body: "Polished shared mobile page controls and list sections for a cleaner native app feel."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
