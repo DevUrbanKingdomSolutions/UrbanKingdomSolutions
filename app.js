@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.05.015",
-  title: "V1.05.015 update installed",
-  body: "Added a native readiness check and aligned Android wrapper metadata for device testing."
+  version: "V1.05.016",
+  title: "V1.05.016 update installed",
+  body: "Refined message selectors with collapsible thread sections and admin client thread selection."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -429,6 +429,8 @@ let state = {
   messageEventPickerOpen: false,
   messageDirectScope: localStorage.getItem("productionCrewMessageDirectScope") || "event",
   messageDirectPickerOpen: false,
+  selectedPermanentMessageClientId: localStorage.getItem("productionCrewPermanentMessageClientId") || "",
+  collapsedMessageSections: JSON.parse(localStorage.getItem("productionCrewCollapsedMessageSections") || "{}"),
   collapsedNavGroups: JSON.parse(localStorage.getItem("productionCrewCollapsedNavGroups") || "{}")
 };
 resetNavGroupsForFreshLoad();
@@ -8302,17 +8304,28 @@ function mobileMessagingChatCards() {
   const directProfiles = mobileDirectMessageProfiles();
   const permanentThreads = ["adminClient", "system"].flatMap((type) => visibleMessageThreadTypes().some(([visibleType]) => visibleType === type) ? permanentMessageThreadTargets(type) : []);
   const showEventControls = messageEventControlsPinnedOpen() || state.messageEventPickerOpen;
+  const permanentCollapsed = messageSectionCollapsed("permanent");
+  const eventCollapsed = messageSectionCollapsed("event");
   return `<div class="mobile-message-sections">
     ${permanentThreads.length ? `<section class="mobile-message-section">
-      <div class="mobile-message-section-heading"><h4>Permanent Threads</h4></div>
-      <div class="mobile-message-list">${permanentThreads.map((thread) => permanentMessageCard(thread)).join("")}</div>
+      <div class="mobile-message-section-heading">
+        <button class="message-section-toggle" data-message-section-toggle="permanent" type="button" aria-expanded="${String(!permanentCollapsed)}">
+          <span>${permanentCollapsed ? ">" : "v"}</span>
+          <h4>Permanent Threads</h4>
+        </button>
+        ${adminPermanentThreadClientSelect()}
+      </div>
+      <div class="mobile-message-list" ${permanentCollapsed ? "hidden" : ""}>${permanentThreads.map((thread) => permanentMessageCard(thread)).join("")}</div>
     </section>` : ""}
     <section class="mobile-message-section">
       <div class="mobile-message-section-heading">
-        <h4>Event Threads</h4>
-        ${messageEventControlsPinnedOpen() ? "" : `<button class="tiny-button" data-message-event-options type="button">Events</button>`}
+        <button class="message-section-toggle" data-message-section-toggle="event" type="button" aria-expanded="${String(!eventCollapsed)}">
+          <span>${eventCollapsed ? ">" : "v"}</span>
+          <h4>Event Threads</h4>
+        </button>
+        ${messageEventControlsPinnedOpen() || eventCollapsed ? "" : `<button class="tiny-button" data-message-event-options type="button">Events</button>`}
       </div>
-      <div class="mobile-message-list">${showEventControls ? mobileMessageEventControls() : ""}${eventThreads || `<div class="compact-item empty">No event threads are available for this schedule view.</div>`}</div>
+      <div class="mobile-message-list" ${eventCollapsed ? "hidden" : ""}>${showEventControls ? mobileMessageEventControls() : ""}${eventThreads || `<div class="compact-item empty">No event threads are available for this schedule view.</div>`}</div>
     </section>
     <section class="mobile-message-section">
       <div class="mobile-message-section-heading">
@@ -8324,6 +8337,37 @@ function mobileMessagingChatCards() {
         : `<div class="compact-item empty">No direct message contacts are available yet.</div>`}</div>
     </section>
   </div>`;
+}
+
+function messageSectionCollapsed(section) {
+  return !!state.collapsedMessageSections?.[section];
+}
+
+function setMessageSectionCollapsed(section, collapsed) {
+  state.collapsedMessageSections = {
+    ...state.collapsedMessageSections,
+    [section]: !!collapsed
+  };
+  localStorage.setItem("productionCrewCollapsedMessageSections", JSON.stringify(state.collapsedMessageSections));
+}
+
+function selectedPermanentMessageClient() {
+  if (!state.clients.length) return null;
+  const selected = state.clients.find((client) => client.id === state.selectedPermanentMessageClientId);
+  const fallback = selected || state.clients[0];
+  if (fallback && state.selectedPermanentMessageClientId !== fallback.id) {
+    state.selectedPermanentMessageClientId = fallback.id;
+    localStorage.setItem("productionCrewPermanentMessageClientId", fallback.id);
+  }
+  return fallback;
+}
+
+function adminPermanentThreadClientSelect() {
+  if (!isAdminRole() || state.clients.length <= 1) return "";
+  const selected = selectedPermanentMessageClient();
+  return `<select class="message-section-select" data-permanent-message-client aria-label="Choose client support thread">
+    ${state.clients.map((client) => `<option value="${escapeHtml(client.id)}" ${selected?.id === client.id ? "selected" : ""}>${escapeHtml(client.name || "Client")}</option>`).join("")}
+  </select>`;
 }
 
 function messageEventControlsPinnedOpen() {
@@ -8447,7 +8491,8 @@ function permanentMessageThreadTargets(threadType) {
       meta: client.name || "Client"
     }];
   }
-  return state.clients.map((client) => ({
+  const selectedClient = selectedPermanentMessageClient();
+  return (selectedClient ? [selectedClient] : state.clients).map((client) => ({
     type: "adminClient",
     key: client.id,
     title: client.name || "Client Account",
@@ -12606,6 +12651,7 @@ function bindEvents() {
     const openEventChannelButton = event.target.closest("[data-open-event-channel]");
     const messageThreadTypeButton = event.target.closest("[data-message-thread-type]");
     const messageEventOptionsButton = event.target.closest("[data-message-event-options]");
+    const messageSectionToggleButton = event.target.closest("[data-message-section-toggle]");
     const messageEventFilter = event.target.closest("[data-message-event-filter]");
     const messageEventSelect = event.target.closest("[data-message-event-select]");
     const messageDirectScopeButton = event.target.closest("[data-message-direct-scope]");
@@ -12819,6 +12865,12 @@ function bindEvents() {
       renderMessaging();
       return;
     }
+    if (messageSectionToggleButton) {
+      const section = messageSectionToggleButton.dataset.messageSectionToggle;
+      setMessageSectionCollapsed(section, !messageSectionCollapsed(section));
+      renderMessaging();
+      return;
+    }
     if (messageEventFilter || messageEventSelect) return;
     if (messageDirectScopeButton) {
       state.messageDirectScope = messageDirectScopeButton.dataset.messageDirectScope === "all" ? "all" : "event";
@@ -13025,6 +13077,7 @@ function bindEvents() {
   document.body.addEventListener("change", (event) => {
     const messageEventFilter = event.target.closest("[data-message-event-filter]");
     const messageEventSelect = event.target.closest("[data-message-event-select]");
+    const permanentMessageClientSelect = event.target.closest("[data-permanent-message-client]");
     if (messageEventFilter) {
       state.messageEventFilter = messageEventFilter.value || "current";
       localStorage.setItem("productionCrewMessageEventFilter", state.messageEventFilter);
@@ -13036,6 +13089,12 @@ function bindEvents() {
     if (messageEventSelect) {
       state.selectedMessageEventId = messageEventSelect.value || "";
       localStorage.setItem("productionCrewSelectedMessageEventId", state.selectedMessageEventId);
+      renderMessaging();
+      return;
+    }
+    if (permanentMessageClientSelect) {
+      state.selectedPermanentMessageClientId = permanentMessageClientSelect.value || "";
+      localStorage.setItem("productionCrewPermanentMessageClientId", state.selectedPermanentMessageClientId);
       renderMessaging();
     }
   });

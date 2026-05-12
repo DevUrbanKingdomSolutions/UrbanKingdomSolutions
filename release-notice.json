@@ -1,5 +1,5 @@
 {
-  "version": "V1.05.015",
-  "title": "V1.05.015 update installed",
-  "body": "Added a native readiness check and aligned Android wrapper metadata for device testing."
+  "version": "V1.05.016",
+  "title": "V1.05.016 update installed",
+  "body": "Refined message selectors with collapsible thread sections and admin client thread selection."
 }

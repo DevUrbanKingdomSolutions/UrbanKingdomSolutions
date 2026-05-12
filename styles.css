@@ -2690,6 +2690,44 @@ td p {
     padding: 10px 14px 3px;
   }
 
+  #messages .message-section-toggle {
+    display: inline-flex;
+    min-width: 0;
+    align-items: center;
+    gap: 7px;
+    border: 0;
+    background: transparent;
+    color: var(--muted);
+    padding: 0;
+    text-align: left;
+  }
+
+  #messages .message-section-toggle span {
+    display: inline-grid;
+    width: 18px;
+    height: 18px;
+    place-items: center;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--role-color) 9%, #ffffff);
+    color: color-mix(in srgb, var(--role-color) 62%, var(--ink));
+    font-size: 11px;
+    font-weight: 900;
+    line-height: 1;
+  }
+
+  #messages .message-section-select {
+    min-width: min(42vw, 180px);
+    max-width: min(48vw, 220px);
+    min-height: 34px;
+    border: 1px solid color-mix(in srgb, var(--role-color) 18%, var(--line));
+    border-radius: 999px;
+    background-color: color-mix(in srgb, var(--role-color) 7%, #ffffff);
+    color: var(--ink);
+    font-size: 12px;
+    font-weight: 760;
+    padding: 0 30px 0 12px;
+  }
+
   #messages .mobile-message-section-heading h4 {
     margin: 0;
     color: var(--muted);
