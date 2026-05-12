@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.04.132",
-  title: "V1.04.132 update installed",
-  body: "Renamed Production Office pages and added rating confirmation for Gig Resources."
+  version: "V1.04.133",
+  title: "V1.04.133 update installed",
+  body: "Added structured Production Office staffing assignment fields."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -3177,9 +3177,10 @@ function renderEventAssignmentManager(form = $("#eventForm"), eventId = "") {
     container.innerHTML = `<div class="compact-item empty">No runners booked yet. Use Add Runner to assign crew.</div>`;
     return;
   }
-  container.innerHTML = `<table class="mini-table"><thead><tr><th>Runner</th><th>Dates</th><th>Vehicle</th><th>Status</th><th></th></tr></thead><tbody>${assignments.map((assignment) => {
+  const eventRecord = getEvent(id) || {};
+  container.innerHTML = `<table class="mini-table"><thead><tr><th>Crew</th><th>Role</th><th>Call</th><th>Location</th><th>Status</th><th></th></tr></thead><tbody>${assignments.map((assignment) => {
     const worker = getWorker(assignment.workerId);
-    return `<tr><td>${escapeHtml(worker?.name || "Runner")}</td><td>${formatDate(assignment.startDate)}<p>${formatDate(assignment.endDate)}</p></td><td>${escapeHtml(assignment.vehicleUse || "No Vehicle")}<p>${escapeHtml(assignment.vehicleType || "")}</p></td><td>${escapeHtml(assignment.status || "Confirmed")}</td><td><button class="tiny-button" data-edit="eventAssignments" data-id="${assignment.id}" data-form="eventAssignmentForm" type="button">Edit</button></td></tr>`;
+    return `<tr><td>${escapeHtml(worker?.name || "Crew Member")}</td><td>${escapeHtml(assignmentRoleLine(assignment))}</td><td>${escapeHtml(assignmentWorkDateLabel(assignment, eventRecord))}<p>${escapeHtml(formatTime(assignment.startDate || eventRecord.startDate) || "Call TBD")}${assignment.endDate ? ` / ${escapeHtml(formatTime(assignment.endDate))}` : " / wrap TBD"}</p></td><td>${escapeHtml(assignmentCallLocation(assignment, eventRecord) || "Venue not set")}</td><td>${escapeHtml(assignment.status || "Confirmed")}</td><td><button class="tiny-button" data-edit="eventAssignments" data-id="${assignment.id}" data-form="eventAssignmentForm" type="button">Edit</button></td></tr>`;
   }).join("")}</tbody></table>`;
 }
 
@@ -3319,14 +3320,23 @@ async function ensureDefaultAssignmentsForEvent(eventRecord) {
       id: crypto.randomUUID(),
       eventId: eventRecord.id,
       workerId,
+      department: "Production Office",
+      position: "Runner",
+      workDate: String(eventRecord.startDate || "").slice(0, 10),
       startDate: eventRecord.startDate || "",
       endDate: eventRecord.endDate || "",
+      callLocation: "",
+      onSiteContactName: "",
+      onSiteContactPhone: "",
+      onSiteContactEmail: "",
+      productionOfficeLinkReady: "",
       dayRate: eventRecord.dayRate || client?.defaultDayRate || worker?.defaultDayRate || worker?.defaultRate || "",
       includedHours: eventRecord.includedHours || client?.defaultIncludedHours || worker?.defaultIncludedHours || "10",
       additionalRate: eventRecord.additionalRate || client?.defaultAdditionalRate || worker?.defaultAdditionalRate || "",
       vehicleUse: "No Vehicle",
       vehicleType: "",
       status: "Confirmed",
+      crewNotes: "",
       notes: "Auto-created from event assigned runner list."
     };
     await put("eventAssignments", assignment);
@@ -5543,6 +5553,28 @@ function assignmentPayLine(assignment, event) {
   return `${currency(assignment.dayRate || event.dayRate || activeClientRecord()?.defaultDayRate || 0)}/${assignment.includedHours || event.includedHours || activeClientRecord()?.defaultIncludedHours || 10} hrs, +${currency(assignment.additionalRate || event.additionalRate || activeClientRecord()?.defaultAdditionalRate || 0)}/hr`;
 }
 
+function assignmentRoleLine(assignment = {}) {
+  return [assignment.department, assignment.position].filter(Boolean).join(" / ") || "Staffing assignment";
+}
+
+function assignmentWorkDateLabel(assignment = {}, event = {}) {
+  const value = assignment.workDate || String(assignment.startDate || event.startDate || "").slice(0, 10);
+  if (!value) return "";
+  const date = new Date(`${value}T12:00:00`);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" });
+}
+
+function assignmentCallLocation(assignment = {}, event = {}) {
+  const venue = getVenue(event?.venueId);
+  return assignment.callLocation || venue?.address || "";
+}
+
+function assignmentParkingDetails(event = {}) {
+  const venue = getVenue(event?.venueId);
+  return venue?.parking || "";
+}
+
 function assignmentTable(event) {
   const assignments = eventAssignments(event.id);
   if (!assignments.length) return `<p>No detailed runner assignments yet.</p>`;
@@ -5554,6 +5586,9 @@ function assignmentTable(event) {
     return `<div class="event-assignment-row">
       <div class="event-assignment-main">
         <button class="link-button" data-view-event-assignment="${escapeHtml(assignment.id)}" type="button"><strong>${escapeHtml(worker?.name || "Unassigned")}</strong></button>
+        <span>${escapeHtml(assignmentRoleLine(assignment))}</span>
+        <span>${escapeHtml([assignmentWorkDateLabel(assignment, event), formatTime(assignment.startDate || event.startDate), assignment.endDate ? `wrap ${formatTime(assignment.endDate)}` : "wrap TBD"].filter(Boolean).join(" - "))}</span>
+        <span>${escapeHtml(assignmentCallLocation(assignment, event) || "Venue location not set")}</span>
       </div>
       ${actions}
     </div>`;
@@ -5571,6 +5606,13 @@ function openEventAssignmentDetail(assignmentId) {
   const venue = getVenue(event?.venueId);
   const promoter = getPromoter(event?.promoterId);
   const plate = assignmentLicensePlate(assignment);
+  const contactLine = [assignment.onSiteContactName, assignment.onSiteContactPhone, assignment.onSiteContactEmail].filter(Boolean).join("\n");
+  const notePanels = [
+    ["Crew-visible Notes", noteSectionText(assignment.crewNotes, assignment.updatedAt || assignment.createdAt)]
+  ];
+  if (!isCrewRole()) {
+    notePanels.push(["Internal Notes", noteSectionText(assignment.notes, assignment.updatedAt || assignment.createdAt)]);
+  }
   const rateDetails = canViewRates()
     ? [
         ["Pay Basis", assignmentPayLine(assignment, event || {})],
@@ -5581,17 +5623,27 @@ function openEventAssignmentDetail(assignmentId) {
     : [];
   readOnlyProfileCard(worker?.name || "Assignment", event?.name || "Event Assignment", [], [
     ["Rental / Vehicle Info", [assignment.vehicleUse, assignment.vehicleType, plate ? `Plate: ${plate}` : ""].filter(Boolean).join("\n")],
-    ["Notes", noteSectionText(assignment.notes, assignment.updatedAt || assignment.createdAt)]
+    ...notePanels
   ], profileAvatarLarge(worker || { name: "Assignment" }, worker?.hideHeadshot), [
     ["Assignment", [
       ["Event", event?.name],
+      ["Department", assignment.department],
+      ["Position", assignment.position],
       ["Status", assignment.status || "Assigned"],
-      ["Start", formatDate(assignment.startDate || event?.startDate)],
-      ["End", formatDate(assignment.endDate || event?.endDate)]
+      ["Work Date", assignmentWorkDateLabel(assignment, event || {})],
+      ["Call", formatTime(assignment.startDate || event?.startDate) || "TBD"],
+      ["Scheduled Wrap", assignment.endDate ? formatTime(assignment.endDate) : "TBD"]
     ]],
     ["Location / Partner", [
       ["Venue", venue?.name],
+      ["Venue Address", venue?.address],
+      ["Venue Parking", assignmentParkingDetails(event || {})],
+      ["Call Location Override", assignment.callLocation],
       ["Promoter", promoterLabel(promoter)]
+    ]],
+    ["Production Office Contact", [
+      ["On-site Contact", contactLine || "Not set"],
+      ["Public Link Status", assignment.productionOfficeLinkReady === "yes" ? "Ready to prepare" : "Not requested"]
     ]],
     ["Vehicle", [
       ["Vehicle Use", assignment.vehicleUse || "No Vehicle"],
@@ -8654,7 +8706,9 @@ async function saveForm(event, storeName) {
     }
     merged.id = merged.id || crypto.randomUUID();
     merged.startDate = merged.startDate || eventRecord.startDate || "";
-    merged.endDate = merged.endDate || eventRecord.endDate || "";
+    merged.workDate = merged.workDate || String(merged.startDate || eventRecord.startDate || "").slice(0, 10);
+    merged.department = merged.department || "Production Office";
+    merged.position = merged.position || "Runner";
     merged.dayRate = merged.dayRate || eventRecord.dayRate || client?.defaultDayRate || worker.defaultDayRate || worker.defaultRate || "";
     merged.includedHours = merged.includedHours || eventRecord.includedHours || client?.defaultIncludedHours || worker.defaultIncludedHours || "10";
     merged.additionalRate = merged.additionalRate || eventRecord.additionalRate || client?.defaultAdditionalRate || worker.defaultAdditionalRate || "";
@@ -9008,8 +9062,16 @@ function openAssignmentForm(eventId, assignment = null) {
     id: "",
     eventId: eventRecord.id,
     workerId: "",
+    department: "Production Office",
+    position: "Runner",
+    workDate: String(eventRecord.startDate || "").slice(0, 10),
     startDate: eventRecord.startDate || "",
     endDate: eventRecord.endDate || "",
+    callLocation: "",
+    onSiteContactName: "",
+    onSiteContactPhone: "",
+    onSiteContactEmail: "",
+    productionOfficeLinkReady: "",
     dayRate: eventRecord.dayRate || activeClientRecord()?.defaultDayRate || "",
     includedHours: eventRecord.includedHours || activeClientRecord()?.defaultIncludedHours || "10",
     additionalRate: eventRecord.additionalRate || activeClientRecord()?.defaultAdditionalRate || "",
@@ -9017,6 +9079,7 @@ function openAssignmentForm(eventId, assignment = null) {
     vehicleType: "",
     personalVehicleRate: eventRecord.personalVehicleRate || activeClientRecord()?.defaultPersonalVehicleRate || "",
     status: "Confirmed",
+    crewNotes: "",
     notes: ""
   };
   fillForm("eventAssignmentForm", defaults);
@@ -9030,6 +9093,7 @@ function applyAssignmentDefaults(workerId) {
   if (!form || !eventRecord || !worker) return;
   form.elements.startDate.value = form.elements.startDate.value || eventRecord.startDate || "";
   form.elements.endDate.value = form.elements.endDate.value || eventRecord.endDate || "";
+  if (form.elements.workDate) form.elements.workDate.value = form.elements.workDate.value || String(form.elements.startDate.value || eventRecord.startDate || "").slice(0, 10);
   form.elements.dayRate.value = form.elements.dayRate.value || eventRecord.dayRate || client?.defaultDayRate || worker.defaultDayRate || worker.defaultRate || "";
   form.elements.includedHours.value = form.elements.includedHours.value || eventRecord.includedHours || client?.defaultIncludedHours || worker.defaultIncludedHours || "10";
   form.elements.additionalRate.value = form.elements.additionalRate.value || eventRecord.additionalRate || client?.defaultAdditionalRate || worker.defaultAdditionalRate || "";

@@ -1918,6 +1918,18 @@ body.pull-refresh-dragging .active-view {
   margin: 0;
 }
 
+.assignment-fieldset {
+  background: linear-gradient(135deg, color-mix(in srgb, var(--role-color) 7%, #ffffff), #ffffff);
+  border-color: color-mix(in srgb, var(--role-color) 18%, var(--line));
+}
+
+.field-helper {
+  margin: -2px 0 0;
+  color: #667077;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
 .smtp-helper {
   margin: 0;
   padding: 10px;
@@ -2195,6 +2207,12 @@ td p {
   display: grid;
   gap: 3px;
   min-width: 0;
+}
+
+.event-assignment-main span {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.35;
 }
 
 .event-assignment-main .link-button strong {
