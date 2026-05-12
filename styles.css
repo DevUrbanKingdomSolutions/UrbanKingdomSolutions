@@ -2221,6 +2221,27 @@ td p {
   line-height: 1.25;
 }
 
+.staffing-schedule-card {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+}
+
+.staffing-schedule-departments {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 12px;
+  margin-top: 4px;
+}
+
+.staffing-schedule-department {
+  display: grid;
+  gap: 8px;
+}
+
+.staffing-schedule-line {
+  border-left: 3px solid color-mix(in srgb, var(--role-color) 34%, transparent);
+}
+
 .icon-button {
   display: inline-grid;
   place-items: center;

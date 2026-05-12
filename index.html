@@ -10,7 +10,7 @@
     <title>Production Crew Database</title>
     <link rel="manifest" href="manifest.webmanifest">
     <link rel="icon" href="assets/logo/app-logo-admin.png" type="image/png">
-    <link rel="stylesheet" href="styles.css?v=V1.04.134-staffing-assignment-view">
+    <link rel="stylesheet" href="styles.css?v=V1.04.135-production-office-staffing">
   </head>
   <body>
     <div id="appLoadingOverlay" class="app-loading-overlay" aria-live="polite">
@@ -674,32 +674,34 @@
               </div>
               <input type="hidden" name="id">
               <input type="hidden" name="eventId">
-              <label>Runner / Crew<select name="workerId" required></select></label>
+              <label>Runner / Crew<select name="workerId"></select></label>
               <div class="photo-fieldset assignment-fieldset">
                 <span>Staffing Role</span>
-                <label>Department<input name="department" list="assignmentDepartmentOptions" placeholder="Production Office"></label>
+                <label>Department
+                  <select name="department" data-assignment-department></select>
+                </label>
                 <label>Position<input name="position" placeholder="Runner, lead runner, credentials"></label>
                 <label>Work date<input name="workDate" type="date"></label>
               </div>
-              <datalist id="assignmentDepartmentOptions">
-                <option value="Production Office"></option>
-                <option value="Runner"></option>
-                <option value="Crew"></option>
-                <option value="Catering"></option>
-                <option value="Security"></option>
-                <option value="Wardrobe"></option>
-                <option value="Transportation"></option>
-                <option value="Other"></option>
-              </datalist>
               <div class="photo-fieldset assignment-fieldset">
                 <span>Schedule</span>
                 <label>Call<input name="startDate" type="datetime-local"></label>
-                <label>Scheduled wrap<input name="endDate" type="datetime-local" placeholder="Can stay blank"></label>
+                <label class="check-label"><input name="hasWrapTime" type="checkbox" value="yes"> Add scheduled wrap time</label>
+                <label class="wrap-time-field">Scheduled wrap<input name="endDate" type="datetime-local" placeholder="Can stay blank"></label>
               </div>
               <div class="photo-fieldset assignment-fieldset">
                 <span>Location</span>
-                <label>Call location override<textarea name="callLocation" rows="2" placeholder="Leave blank to use the venue address and parking details"></textarea></label>
-                <p class="field-helper">Location and parking stay connected to the venue unless this assignment needs a different call spot.</p>
+                <label>Starting location
+                  <select name="locationType">
+                    <option>Venue</option>
+                    <option>Hotel</option>
+                    <option>Airport</option>
+                    <option>Production Office</option>
+                    <option>Other</option>
+                  </select>
+                </label>
+                <label>Location notes<textarea name="callLocation" rows="2" placeholder="Specific instructions, lobby, gate, pickup point"></textarea></label>
+                <p class="field-helper">Venue pulls from the event venue. Other starting locations stay open for specific instructions.</p>
               </div>
               <div class="photo-fieldset assignment-fieldset">
                 <span>Production Office Contact</span>
@@ -734,6 +736,7 @@
               <label>Status
                 <select name="status">
                   <option>Confirmed</option>
+                  <option>Open</option>
                   <option>Standby</option>
                   <option>Swapped</option>
                   <option>Cancelled</option>
@@ -861,15 +864,29 @@
                 <h3>Staffing Assignment</h3>
                 <div class="panel-tools">
                   <span id="staffingAssignmentCount" class="muted"></span>
-                  <button class="tiny-button admin-action" data-dashboard-link="events" type="button">Open Events</button>
                 </div>
               </div>
               <div class="table-wrap">
                 <table>
-                  <thead><tr><th>Event</th><th>Crew / Role</th><th>Schedule</th><th>Location</th><th>Production Office Contact</th><th>Notes</th><th></th></tr></thead>
+                  <thead id="staffingAssignmentHead"></thead>
                   <tbody id="staffingAssignmentTable"></tbody>
                 </table>
               </div>
+            </section>
+          </div>
+        </section>
+
+        <section id="staffingSchedule" class="view">
+          <div class="stack-layout">
+            <section class="panel table-panel staffing-schedule-panel">
+              <div class="panel-heading">
+                <h3>Staffing Schedule</h3>
+                <div class="panel-tools">
+                  <span id="staffingScheduleCount" class="muted"></span>
+                  <button class="tiny-button admin-action" data-dashboard-link="events" type="button">Open Events</button>
+                </div>
+              </div>
+              <div id="staffingScheduleCards" class="record-grid event-card-grid"></div>
             </section>
           </div>
         </section>
@@ -1559,6 +1576,14 @@
               <label>Category name<input name="name" placeholder="Pharmacy, coffee, weld shop"></label>
               <button class="primary-action" type="submit">Add Category</button>
             </form>
+            <form id="assignmentDepartmentForm" class="panel form-panel scoped-form">
+              <div class="panel-heading">
+                <h3>Add Department</h3>
+                <button class="ghost-button clear-form" type="button" data-form="assignmentDepartmentForm">Close</button>
+              </div>
+              <label>Department name<input name="departmentName" required placeholder="Credentials, transportation, production office"></label>
+              <button class="primary-action" type="submit">Save Department</button>
+            </form>
             <form id="runnerRatingForm" class="panel form-panel runner-rating-modal-form">
               <div class="panel-heading">
                 <h3>Rate Resource</h3>
@@ -1612,6 +1637,6 @@
     <div id="modalHost"></div>
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js?v=V1.04.134-staffing-assignment-view"></script>
+    <script src="app.js?v=V1.04.135-production-office-staffing"></script>
   </body>
 </html>

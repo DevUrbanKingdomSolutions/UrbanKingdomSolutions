@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.04.134",
-  title: "V1.04.134 update installed",
-  body: "Added a Production Office staffing assignment view."
+  version: "V1.04.135",
+  title: "V1.04.135 update installed",
+  body: "Added Production Office staffing schedule tools."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -144,7 +144,7 @@ const ACCESS_PROFILES = {
   CLIENT_ADMIN: {
     label: "CLIENT ADMIN",
     baseRole: "CLIENT",
-    views: ["dashboard", "clientCompanyProfile", "clientProfile", "workers", "promoters", "venues", "events", "productionBoard", "staffingAssignments", "timecards", "vehicles", "reports", "payroll", "directory", "runner", "messages", "dataTools", "mobileApp"],
+    views: ["dashboard", "clientCompanyProfile", "clientProfile", "workers", "promoters", "venues", "events", "productionBoard", "staffingAssignments", "staffingSchedule", "timecards", "vehicles", "reports", "payroll", "directory", "runner", "messages", "dataTools", "mobileApp"],
     canAdminEdit: true,
     canOwnerEdit: true,
     canVenueEdit: true,
@@ -156,7 +156,7 @@ const ACCESS_PROFILES = {
   CLIENT_REP: {
     label: "CLIENT REP",
     baseRole: "CLIENT",
-    views: ["dashboard", "clientProfile", "promoters", "events", "productionBoard", "staffingAssignments", "vehicles", "reports", "directory", "runner", "messages", "dataTools", "mobileApp"],
+    views: ["dashboard", "clientProfile", "promoters", "events", "productionBoard", "staffingAssignments", "staffingSchedule", "vehicles", "reports", "directory", "runner", "messages", "dataTools", "mobileApp"],
     canAdminEdit: true,
     canOwnerEdit: true,
     canVenueEdit: false,
@@ -168,7 +168,7 @@ const ACCESS_PROFILES = {
   CLIENT_REP_LEAD: {
     label: "CLIENT REP LEAD",
     baseRole: "CLIENT",
-    views: ["dashboard", "clientProfile", "workers", "promoters", "venues", "events", "productionBoard", "staffingAssignments", "vehicles", "reports", "directory", "runner", "messages", "dataTools", "mobileApp"],
+    views: ["dashboard", "clientProfile", "workers", "promoters", "venues", "events", "productionBoard", "staffingAssignments", "staffingSchedule", "vehicles", "reports", "directory", "runner", "messages", "dataTools", "mobileApp"],
     canAdminEdit: true,
     canOwnerEdit: true,
     canVenueEdit: true,
@@ -192,7 +192,7 @@ const ACCESS_PROFILES = {
   PROMOTER_ADMIN: {
     label: "PROMOTER ADMIN",
     baseRole: "PROMOTER",
-    views: ["productionBoard", "staffingAssignments", "events", "workers", "promoters", "venues", "vehicles", "reports", "directory", "runner", "messages", "dataTools", "mobileApp"],
+    views: ["productionBoard", "staffingAssignments", "staffingSchedule", "events", "workers", "promoters", "venues", "vehicles", "reports", "directory", "runner", "messages", "dataTools", "mobileApp"],
     canAdminEdit: true,
     canOwnerEdit: false,
     canVenueEdit: true,
@@ -204,7 +204,7 @@ const ACCESS_PROFILES = {
   PROMOTER_REP: {
     label: "PROMOTER REP",
     baseRole: "PROMOTER",
-    views: ["productionBoard", "staffingAssignments", "events", "workers", "promoters", "venues", "vehicles", "reports", "directory", "runner", "messages", "mobileApp"],
+    views: ["productionBoard", "staffingAssignments", "staffingSchedule", "events", "workers", "promoters", "venues", "vehicles", "reports", "directory", "runner", "messages", "mobileApp"],
     canAdminEdit: true,
     canOwnerEdit: false,
     canVenueEdit: true,
@@ -216,7 +216,7 @@ const ACCESS_PROFILES = {
   PRODUCTION: {
     label: "PRODUCTION",
     baseRole: "PRODUCTION",
-    views: ["productionBoard", "staffingAssignments", "events", "vehicles", "reports", "directory", "messages", "mobileApp"],
+    views: ["productionBoard", "staffingAssignments", "staffingSchedule", "events", "vehicles", "reports", "directory", "messages", "mobileApp"],
     canAdminEdit: false,
     canOwnerEdit: false,
     canVenueEdit: false,
@@ -228,7 +228,7 @@ const ACCESS_PROFILES = {
   PRODUCTION_TEAM_ACCESS: {
     label: "PRODUCTION TEAM ACCESS",
     baseRole: "PRODUCTION",
-    views: ["productionBoard", "staffingAssignments", "events", "vehicles", "reports", "directory", "messages", "mobileApp"],
+    views: ["productionBoard", "staffingAssignments", "staffingSchedule", "events", "vehicles", "reports", "directory", "messages", "mobileApp"],
     canAdminEdit: false,
     canOwnerEdit: false,
     canVenueEdit: false,
@@ -240,7 +240,7 @@ const ACCESS_PROFILES = {
   CREW: {
     label: "CREW / RUNNER",
     baseRole: "CREW",
-    views: ["dashboard", "workers", "clock", "productionResponse", "staffingAssignments", "events", "timecards", "vehicles", "reports", "directory", "runner", "messages", "mobileApp"],
+    views: ["dashboard", "workers", "clock", "productionResponse", "staffingAssignments", "staffingSchedule", "events", "timecards", "vehicles", "reports", "directory", "runner", "messages", "mobileApp"],
     canAdminEdit: false,
     canOwnerEdit: false,
     canVenueEdit: false,
@@ -388,6 +388,9 @@ let state = {
   runnerSortKey: localStorage.getItem("productionCrewRunnerSortKey") || "name",
   runnerSortDirection: localStorage.getItem("productionCrewRunnerSortDirection") || "asc",
   runnerColumnFilters: JSON.parse(localStorage.getItem("productionCrewRunnerColumnFilters") || "{}"),
+  staffingSortKey: localStorage.getItem("productionCrewStaffingSortKey") || "event",
+  staffingSortDirection: localStorage.getItem("productionCrewStaffingSortDirection") || "asc",
+  staffingColumnFilters: JSON.parse(localStorage.getItem("productionCrewStaffingColumnFilters") || "{}"),
   directoryTab: "crew",
   payrollView: localStorage.getItem("productionCrewPayrollView") || "worker",
   timecardEventFilter: localStorage.getItem("productionCrewTimecardEventFilter") || "all",
@@ -429,7 +432,8 @@ const NAV_GROUPS = {
     { items: [["dashboard", "Dashboard"]] },
     { items: [["clientCompanyProfile", "Client Profile"], ["clientProfile", "My Profile"]] },
     { label: "PROFILES", items: [["workers", "Crew Profiles"], ["promoters", "Promoter Profiles"], ["venues", "Venues"]] },
-    { label: "EVENTS", items: [["events", "Events"], ["productionBoard", "Production Office"], ["staffingAssignments", "Staffing Assignment"], ["timecards", "Timecards"], ["vehicles", "Vehicles"], ["reports", "Reports"]] },
+    { label: "PRODUCTION OFFICE", items: [["productionBoard", "Production Office"], ["staffingAssignments", "Staffing Assignment"], ["staffingSchedule", "Staffing Schedule"]] },
+    { label: "EVENTS", items: [["events", "Events"], ["timecards", "Timecards"], ["vehicles", "Vehicles"], ["reports", "Reports"]] },
     { label: "PAYROLL", items: [["payroll", "Payroll"]] },
     { label: "DIRECTORIES", items: [["directory", "Directory"], ["runner", "Gig Resources"], ["messages", "Messages"]] },
     { label: "SETTINGS", items: [["dataTools", "Import / Export"], ["mobileApp", "Mobile Settings"]] }
@@ -438,7 +442,8 @@ const NAV_GROUPS = {
     { items: [["dashboard", "Dashboard"]] },
     { items: [["clientProfile", "My Profile"]] },
     { label: "PROFILES", items: [["promoters", "Promoter Profiles"]] },
-    { label: "EVENTS", items: [["events", "Events"], ["productionBoard", "Production Office"], ["staffingAssignments", "Staffing Assignment"], ["vehicles", "Vehicles"], ["reports", "Reports"]] },
+    { label: "PRODUCTION OFFICE", items: [["productionBoard", "Production Office"], ["staffingAssignments", "Staffing Assignment"], ["staffingSchedule", "Staffing Schedule"]] },
+    { label: "EVENTS", items: [["events", "Events"], ["vehicles", "Vehicles"], ["reports", "Reports"]] },
     { label: "DIRECTORIES", items: [["directory", "Directory"], ["runner", "Gig Resources"], ["messages", "Messages"]] },
     { label: "SETTINGS", items: [["dataTools", "Import / Export"], ["mobileApp", "Mobile Settings"]] }
   ],
@@ -446,7 +451,8 @@ const NAV_GROUPS = {
     { items: [["dashboard", "Dashboard"]] },
     { items: [["clientProfile", "My Profile"]] },
     { label: "PROFILES", items: [["workers", "Crew Profiles"], ["promoters", "Promoter Profiles"], ["venues", "Venues"]] },
-    { label: "EVENTS", items: [["events", "Events"], ["productionBoard", "Production Office"], ["staffingAssignments", "Staffing Assignment"], ["vehicles", "Vehicles"], ["reports", "Reports"]] },
+    { label: "PRODUCTION OFFICE", items: [["productionBoard", "Production Office"], ["staffingAssignments", "Staffing Assignment"], ["staffingSchedule", "Staffing Schedule"]] },
+    { label: "EVENTS", items: [["events", "Events"], ["vehicles", "Vehicles"], ["reports", "Reports"]] },
     { label: "DIRECTORIES", items: [["directory", "Directory"], ["runner", "Gig Resources"], ["messages", "Messages"]] },
     { label: "SETTINGS", items: [["dataTools", "Import / Export"], ["mobileApp", "Mobile Settings"]] }
   ],
@@ -455,28 +461,29 @@ const NAV_GROUPS = {
     { label: "SETTINGS", items: [["mobileApp", "Mobile Settings"]] }
   ],
   PROMOTER_ADMIN: [
-    { items: [["productionBoard", "Production Office"], ["staffingAssignments", "Staffing Assignment"]] },
+    { label: "PRODUCTION OFFICE", items: [["productionBoard", "Production Office"], ["staffingAssignments", "Staffing Assignment"], ["staffingSchedule", "Staffing Schedule"]] },
     { label: "PROFILES", items: [["workers", "Crew Profiles"], ["promoters", "Promoter Profiles"], ["venues", "Venues"]] },
     { label: "EVENTS", items: [["events", "Events"], ["vehicles", "Vehicles"], ["reports", "Reports"]] },
     { label: "DIRECTORIES", items: [["directory", "Directory"], ["runner", "Gig Resources"], ["messages", "Messages"]] },
     { label: "SETTINGS", items: [["dataTools", "Import / Export"], ["mobileApp", "Mobile Settings"]] }
   ],
   PROMOTER_REP: [
-    { items: [["productionBoard", "Production Office"], ["staffingAssignments", "Staffing Assignment"]] },
+    { label: "PRODUCTION OFFICE", items: [["productionBoard", "Production Office"], ["staffingAssignments", "Staffing Assignment"], ["staffingSchedule", "Staffing Schedule"]] },
     { label: "PROFILES", items: [["workers", "Crew Profiles"], ["promoters", "Promoter Profiles"], ["venues", "Venues"]] },
     { label: "EVENTS", items: [["events", "Events"], ["vehicles", "Vehicles"], ["reports", "Reports"]] },
     { label: "DIRECTORIES", items: [["directory", "Directory"], ["runner", "Gig Resources"], ["messages", "Messages"]] },
     { label: "SETTINGS", items: [["mobileApp", "Mobile Settings"]] }
   ],
   PRODUCTION_TEAM_ACCESS: [
-    { items: [["productionBoard", "Production Office"], ["staffingAssignments", "Staffing Assignment"]] },
+    { label: "PRODUCTION OFFICE", items: [["productionBoard", "Production Office"], ["staffingAssignments", "Staffing Assignment"], ["staffingSchedule", "Staffing Schedule"]] },
     { label: "EVENTS", items: [["events", "Events"], ["vehicles", "Vehicles"], ["reports", "Reports"]] },
     { label: "DIRECTORIES", items: [["directory", "Directory"], ["messages", "Messages"]] },
     { label: "SETTINGS", items: [["mobileApp", "Mobile Settings"]] }
   ],
   CREW: [
     { items: [["dashboard", "Home"], ["workers", "My Profile"], ["clock", "Time Clock"]] },
-    { label: "EVENTS", items: [["productionResponse", "Production Office"], ["staffingAssignments", "Staffing Assignment"], ["events", "Events"], ["timecards", "Timecards"], ["vehicles", "Vehicles"], ["reports", "Reports"]] },
+    { label: "PRODUCTION OFFICE", items: [["productionResponse", "Production Office"], ["staffingAssignments", "Staffing Assignment"], ["staffingSchedule", "Staffing Schedule"]] },
+    { label: "EVENTS", items: [["events", "Events"], ["timecards", "Timecards"], ["vehicles", "Vehicles"], ["reports", "Reports"]] },
     { label: "DIRECTORIES", items: [["directory", "Directory"], ["runner", "Gig Resources"], ["messages", "Messages"]] },
     { label: "SETTINGS", items: [["mobileApp", "Mobile Settings"]] }
   ]
@@ -601,6 +608,26 @@ const SMTP_PROVIDER_SETTINGS = {
     helper: "Other SMTP: use the SMTP host, port, username, and app password/API key from your email provider. If they offer TLS/STARTTLS, keep port 587 and TLS selected."
   }
 };
+
+const DEFAULT_ASSIGNMENT_DEPARTMENTS = [
+  "Production Office",
+  "Runner",
+  "Crew",
+  "Catering",
+  "Security",
+  "Wardrobe",
+  "Transportation",
+  "Other"
+];
+const ASSIGNMENT_DEPARTMENT_KEY = "productionCrewAssignmentDepartments";
+const STAFFING_ASSIGNMENT_COLUMNS = [
+  ["event", "Event"],
+  ["crew", "Crew / Role"],
+  ["department", "Department"],
+  ["schedule", "Schedule"],
+  ["contact", "Production Office Contact"],
+  ["notes", "Notes"]
+];
 
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => Array.from(document.querySelectorAll(selector));
@@ -1367,6 +1394,7 @@ function readFileAsDataUrl(file) {
 function fillForm(formId, record) {
   const form = document.getElementById(formId);
   if (!form.querySelector("[data-package-options] input")) renderClientPackageControls(form);
+  if (formId === "eventAssignmentForm") renderAssignmentDepartmentOptions(record.department || "");
   renderAccessLevelControls(form);
   renderViewOptionControls(form);
   Object.entries(record).forEach(([key, value]) => {
@@ -1409,6 +1437,10 @@ function fillForm(formId, record) {
   if (formId === "reportForm") updateReportTypeFields(form);
   if (formId === "reportForm") delete form.dataset.vehicleDamageConfirmed;
   if (formId === "eventAssignmentForm") updateAssignmentVehicleFields(form);
+  if (formId === "eventAssignmentForm") {
+    updateAssignmentScheduleFields(form);
+    updateAssignmentLocationFields(form);
+  }
 }
 
 function clearForm(formId) {
@@ -1431,9 +1463,14 @@ function clearForm(formId) {
   if (formId === "eventForm") renderEventAssignmentManager(form, "");
   if (formId === "venueForm") renderVenueContactEditor("");
   if (formId === "eventAssignmentForm") {
+    renderAssignmentDepartmentOptions("Production Office");
     form.elements.status.value = "Confirmed";
     form.elements.vehicleUse.value = "No Vehicle";
+    form.elements.department.value = "Production Office";
+    form.elements.locationType.value = "Venue";
     updateAssignmentVehicleFields(form);
+    updateAssignmentScheduleFields(form);
+    updateAssignmentLocationFields(form);
   }
   if (formId === "reportForm") form.elements.reportedAt.value = toLocalInputValue(new Date());
   if ((formId === "vehicleForm" || formId === "reportForm") && state.activeWorkerId) {
@@ -3325,6 +3362,8 @@ async function ensureDefaultAssignmentsForEvent(eventRecord) {
       workDate: String(eventRecord.startDate || "").slice(0, 10),
       startDate: eventRecord.startDate || "",
       endDate: eventRecord.endDate || "",
+      hasWrapTime: eventRecord.endDate ? "yes" : "",
+      locationType: "Venue",
       callLocation: "",
       onSiteContactName: "",
       onSiteContactPhone: "",
@@ -3625,6 +3664,7 @@ function render() {
   renderEvents();
   renderProductionBoard();
   renderStaffingAssignments();
+  renderStaffingSchedule();
   renderProductionResponse();
   renderClock();
   renderWorkers();
@@ -5383,17 +5423,61 @@ function visibleStaffingAssignments() {
   const eventIds = new Set(events.map((event) => event.id));
   let assignments = state.eventAssignments.filter((assignment) => eventIds.has(assignment.eventId) && !["Cancelled", "Swapped"].includes(assignment.status));
   if (isCrewRole()) assignments = assignments.filter((assignment) => assignment.workerId === activeCrewWorkerId());
-  return assignments.sort((a, b) => {
-    const aDate = new Date(a.startDate || getEvent(a.eventId)?.startDate || 0).getTime() || 0;
-    const bDate = new Date(b.startDate || getEvent(b.eventId)?.startDate || 0).getTime() || 0;
-    return aDate - bDate;
-  });
+  return sortStaffingAssignments(filterStaffingAssignments(assignments));
+}
+
+function staffingColumnValue(assignment, key) {
+  const event = getEvent(assignment.eventId);
+  const worker = getWorker(assignment.workerId);
+  if (key === "event") return `${event?.name || ""} ${getVenue(event?.venueId)?.name || ""}`;
+  if (key === "crew") return `${worker?.name || ""} ${worker?.phone || ""} ${worker?.email || ""} ${assignment.position || ""}`;
+  if (key === "department") return assignment.department || "";
+  if (key === "schedule") return `${assignmentWorkDateLabel(assignment, event || {})} ${formatTime(assignment.startDate || event?.startDate)} ${assignment.endDate ? formatTime(assignment.endDate) : ""}`;
+  if (key === "contact") return `${assignment.onSiteContactName || ""} ${assignment.onSiteContactPhone || ""} ${assignment.onSiteContactEmail || ""}`;
+  if (key === "notes") return `${assignment.crewNotes || ""} ${assignment.notes || ""}`;
+  return "";
+}
+
+function filterStaffingAssignments(assignments) {
+  const filters = state.staffingColumnFilters || {};
+  return assignments.filter((assignment) => STAFFING_ASSIGNMENT_COLUMNS.every(([key]) => {
+    const filter = String(filters[key] || "").trim().toLowerCase();
+    return !filter || staffingColumnValue(assignment, key).toLowerCase().includes(filter);
+  }));
+}
+
+function sortStaffingAssignments(assignments) {
+  const key = state.staffingSortKey || "event";
+  const direction = state.staffingSortDirection === "desc" ? -1 : 1;
+  return [...assignments].sort((a, b) => direction * staffingColumnValue(a, key).localeCompare(staffingColumnValue(b, key), undefined, { numeric: true, sensitivity: "base" }));
+}
+
+function renderStaffingAssignmentHead() {
+  const head = $("#staffingAssignmentHead");
+  if (!head) return;
+  head.innerHTML = `<tr>${STAFFING_ASSIGNMENT_COLUMNS.map(([key, label]) => {
+    const activeSort = state.staffingSortKey === key;
+    const activeFilter = !!state.staffingColumnFilters?.[key];
+    const arrow = activeSort ? (state.staffingSortDirection === "desc" ? "▼" : "▲") : "▾";
+    return `<th><div class="column-filter-heading">
+      <span>${escapeHtml(label)}</span>
+      <details class="column-filter-menu ${activeSort || activeFilter ? "active" : ""}">
+        <summary aria-label="${escapeHtml(label)} sort and filter">${arrow}</summary>
+        <div class="record-options-menu">
+          <button class="tiny-button" data-staffing-sort="${escapeHtml(key)}" data-staffing-sort-direction="asc" type="button">Sort A-Z</button>
+          <button class="tiny-button" data-staffing-sort="${escapeHtml(key)}" data-staffing-sort-direction="desc" type="button">Sort Z-A</button>
+          <label>Filter<input data-staffing-column-filter="${escapeHtml(key)}" value="${escapeHtml(state.staffingColumnFilters?.[key] || "")}" placeholder="Type to filter"></label>
+        </div>
+      </details>
+    </div></th>`;
+  }).join("")}<th></th></tr>`;
 }
 
 function renderStaffingAssignments() {
   const table = $("#staffingAssignmentTable");
   const count = $("#staffingAssignmentCount");
   if (!table || !count) return;
+  renderStaffingAssignmentHead();
   const assignments = visibleStaffingAssignments();
   count.textContent = `${assignments.length} assignment${assignments.length === 1 ? "" : "s"}`;
   table.innerHTML = assignments.length
@@ -5409,15 +5493,74 @@ function renderStaffingAssignments() {
         </div>`;
         return `<tr>
           <td><strong>${escapeHtml(event?.name || "Event")}</strong><p>${escapeHtml(venue?.name || "No venue")}</p></td>
-          <td>${profileCell(worker || { name: "Crew Member" }, worker?.hideHeadshot, worker?.email)}<p>${escapeHtml(assignmentRoleLine(assignment))}</p></td>
+          <td>${profileCell(worker || { name: "Open Position" }, worker?.hideHeadshot, worker?.phone || "No crew assigned")}<p>${escapeHtml(worker?.email || "Email not set")}</p><p>${escapeHtml(assignment.position || "Staffing assignment")}</p></td>
+          <td><strong>${escapeHtml(assignment.department || "Production Office")}</strong><p>${escapeHtml(assignment.locationType || "")}</p></td>
           <td><strong>${escapeHtml(assignmentWorkDateLabel(assignment, event || {}))}</strong><p>Call: ${escapeHtml(formatTime(assignment.startDate || event?.startDate) || "TBD")}</p><p>Wrap: ${escapeHtml(assignment.endDate ? formatTime(assignment.endDate) : "TBD")}</p></td>
-          <td>${escapeHtml(assignmentCallLocation(assignment, event || {}) || "Venue location not set")}<p>${escapeHtml(assignmentParkingDetails(event || {}) || "")}</p></td>
           <td>${contact || "Not set"}<p>${assignment.productionOfficeLinkReady === "yes" ? "Production Office link ready" : ""}</p></td>
           <td>${escapeHtml(noteText || "")}</td>
           <td>${actions}</td>
         </tr>`;
       }).join("")
     : `<tr><td colspan="7" class="empty">Staffing assignments will appear here after runners are added to events.</td></tr>`;
+}
+
+function renderStaffingSchedule() {
+  const container = $("#staffingScheduleCards");
+  const count = $("#staffingScheduleCount");
+  if (!container || !count) return;
+  const events = visibleEvents().filter((event) => !isCrewRole() || eventWorkerIds(event).includes(activeCrewWorkerId()));
+  const assignments = state.eventAssignments.filter((assignment) => events.some((event) => event.id === assignment.eventId) && !["Cancelled", "Swapped"].includes(assignment.status));
+  count.textContent = `${events.length} event${events.length === 1 ? "" : "s"} / ${assignments.length} position${assignments.length === 1 ? "" : "s"}`;
+  container.innerHTML = events.length
+    ? events.map((event) => staffingScheduleCard(event)).join("")
+    : `<div class="compact-item empty">Staffing schedules will appear when events are visible to this access view.</div>`;
+}
+
+function staffingScheduleCard(event) {
+  const venue = getVenue(event.venueId);
+  const assignments = eventAssignments(event.id)
+    .filter((assignment) => !["Cancelled", "Swapped"].includes(assignment.status))
+    .filter((assignment) => !isCrewRole() || assignment.workerId === activeCrewWorkerId());
+  const departments = new Map();
+  assignments.forEach((assignment) => {
+    const department = assignment.department || "Production Office";
+    if (!departments.has(department)) departments.set(department, []);
+    departments.get(department).push(assignment);
+  });
+  const departmentRows = Array.from(departments.entries()).sort(([a], [b]) => a.localeCompare(b)).map(([department, rows]) => {
+    const filled = rows.filter((assignment) => assignment.workerId).length;
+    const lineItems = rows.map((assignment) => {
+      const worker = getWorker(assignment.workerId);
+      return `<div class="compact-item staffing-schedule-line">
+        <strong>${escapeHtml(worker?.name || "Open Position")}</strong>
+        <span>${escapeHtml(assignment.position || "Runner")} - Call ${escapeHtml(formatTime(assignment.startDate || event.startDate) || "TBD")}${assignment.endDate ? ` / Wrap ${escapeHtml(formatTime(assignment.endDate))}` : ""}</span>
+        <p>${escapeHtml(assignment.locationType || "Venue")}${assignment.callLocation ? `: ${escapeHtml(assignment.callLocation)}` : ""}</p>
+        <div class="row-actions">
+          <button class="tiny-button" data-view-event-assignment="${escapeHtml(assignment.id)}" type="button">View</button>
+          ${canAdminEdit() ? `<button class="tiny-button" data-edit="eventAssignments" data-id="${escapeHtml(assignment.id)}" data-form="eventAssignmentForm" type="button">Edit</button>` : ""}
+        </div>
+      </div>`;
+    }).join("");
+    return `<section class="staffing-schedule-department">
+      <div class="panel-heading compact-heading">
+        <h4>${escapeHtml(department)}</h4>
+        <span class="muted">${filled}/${rows.length} filled</span>
+      </div>
+      <div class="compact-list">${lineItems}</div>
+    </section>`;
+  }).join("");
+  const addButton = canAdminEdit()
+    ? `<button class="tiny-button" data-add-staffing-position="${escapeHtml(event.id)}" type="button">Add Position</button>`
+    : "";
+  return `<article class="record-card staffing-schedule-card">
+    <div class="record-card-main">
+      <span>${escapeHtml(venue?.name || "No venue")}</span>
+      <strong>${escapeHtml(event.name || "Event")}</strong>
+      <p>${escapeHtml(formatDate(event.startDate))}</p>
+    </div>
+    <div class="row-actions">${addButton}</div>
+    <div class="staffing-schedule-departments">${departmentRows || `<div class="compact-item empty">No positions yet. Add positions for each department as the schedule takes shape.</div>`}</div>
+  </article>`;
 }
 
 function renderPublicEventAccess(data) {
@@ -5616,6 +5759,72 @@ function assignmentCallLocation(assignment = {}, event = {}) {
 function assignmentParkingDetails(event = {}) {
   const venue = getVenue(event?.venueId);
   return venue?.parking || "";
+}
+
+function assignmentDepartments() {
+  const saved = JSON.parse(localStorage.getItem(ASSIGNMENT_DEPARTMENT_KEY) || "[]");
+  const fromAssignments = state.eventAssignments.map((assignment) => assignment.department).filter(Boolean);
+  return Array.from(new Set([...DEFAULT_ASSIGNMENT_DEPARTMENTS, ...saved, ...fromAssignments].map((item) => String(item || "").trim()).filter(Boolean)))
+    .sort((a, b) => a.localeCompare(b));
+}
+
+function saveAssignmentDepartment(name) {
+  const clean = String(name || "").trim();
+  if (!clean) return "";
+  const saved = JSON.parse(localStorage.getItem(ASSIGNMENT_DEPARTMENT_KEY) || "[]");
+  localStorage.setItem(ASSIGNMENT_DEPARTMENT_KEY, JSON.stringify(Array.from(new Set([...saved, clean])).sort((a, b) => a.localeCompare(b))));
+  return clean;
+}
+
+function saveAssignmentDepartmentForm(event) {
+  event.preventDefault();
+  const name = event.currentTarget.elements.departmentName.value;
+  const department = saveAssignmentDepartment(name);
+  if (!department) {
+    toast("Enter a department name.");
+    return;
+  }
+  closeForm("assignmentDepartmentForm");
+  openForm("eventAssignmentForm");
+  renderAssignmentDepartmentOptions(department);
+  const select = $("#eventAssignmentForm select[name='department']");
+  if (select) {
+    select.value = department;
+    select.focus();
+  }
+  toast("Department added.");
+}
+
+function renderAssignmentDepartmentOptions(selected = "") {
+  const select = $("#eventAssignmentForm select[name='department']");
+  if (!select) return;
+  const departments = assignmentDepartments();
+  const cleanSelected = selected || select.value || "Production Office";
+  if (cleanSelected && !departments.includes(cleanSelected)) departments.push(cleanSelected);
+  select.innerHTML = departments
+    .sort((a, b) => a.localeCompare(b))
+    .map((department) => `<option value="${escapeHtml(department)}">${escapeHtml(department)}</option>`)
+    .join("") + `<option value="__add_department__">+ Add department...</option>`;
+  select.value = departments.includes(cleanSelected) ? cleanSelected : "Production Office";
+}
+
+function updateAssignmentScheduleFields(form = $("#eventAssignmentForm")) {
+  if (!form) return;
+  const hasWrap = form.elements.hasWrapTime?.checked || !!form.elements.endDate?.value;
+  if (form.elements.hasWrapTime) form.elements.hasWrapTime.checked = hasWrap;
+  form.querySelectorAll(".wrap-time-field").forEach((field) => {
+    field.hidden = !hasWrap;
+  });
+  if (!hasWrap && form.elements.endDate) form.elements.endDate.value = "";
+}
+
+function updateAssignmentLocationFields(form = $("#eventAssignmentForm")) {
+  if (!form) return;
+  const eventRecord = getEvent(form.elements.eventId?.value || "");
+  const venue = getVenue(eventRecord?.venueId);
+  if (form.elements.locationType?.value === "Venue" && venue && !form.elements.callLocation.value) {
+    form.elements.callLocation.value = [venue.name, venue.address, venue.parking ? `Parking: ${venue.parking}` : ""].filter(Boolean).join("\n");
+  }
 }
 
 function assignmentTable(event) {
@@ -8743,20 +8952,23 @@ async function saveForm(event, storeName) {
     const eventRecord = getEvent(merged.eventId);
     const worker = getWorker(merged.workerId);
     const client = activeClientRecord();
-    if (!eventRecord || !worker) {
-      toast("Select an event and runner first.");
+    if (!eventRecord || (merged.workerId && !worker)) {
+      toast("Select an event first.");
       return;
     }
     merged.id = merged.id || crypto.randomUUID();
     merged.startDate = merged.startDate || eventRecord.startDate || "";
+    if (merged.hasWrapTime !== "yes") merged.endDate = "";
     merged.workDate = merged.workDate || String(merged.startDate || eventRecord.startDate || "").slice(0, 10);
     merged.department = merged.department || "Production Office";
     merged.position = merged.position || "Runner";
-    merged.dayRate = merged.dayRate || eventRecord.dayRate || client?.defaultDayRate || worker.defaultDayRate || worker.defaultRate || "";
-    merged.includedHours = merged.includedHours || eventRecord.includedHours || client?.defaultIncludedHours || worker.defaultIncludedHours || "10";
-    merged.additionalRate = merged.additionalRate || eventRecord.additionalRate || client?.defaultAdditionalRate || worker.defaultAdditionalRate || "";
-    if (merged.vehicleUse === "Personal Vehicle") merged.personalVehicleRate = merged.personalVehicleRate || eventRecord.personalVehicleRate || client?.defaultPersonalVehicleRate || worker.defaultPersonalVehicleRate || "";
-    merged.status = merged.status || "Confirmed";
+    merged.locationType = merged.locationType || "Venue";
+    merged.dayRate = merged.dayRate || eventRecord.dayRate || client?.defaultDayRate || worker?.defaultDayRate || worker?.defaultRate || "";
+    merged.includedHours = merged.includedHours || eventRecord.includedHours || client?.defaultIncludedHours || worker?.defaultIncludedHours || "10";
+    merged.additionalRate = merged.additionalRate || eventRecord.additionalRate || client?.defaultAdditionalRate || worker?.defaultAdditionalRate || "";
+    if (merged.vehicleUse === "Personal Vehicle") merged.personalVehicleRate = merged.personalVehicleRate || eventRecord.personalVehicleRate || client?.defaultPersonalVehicleRate || worker?.defaultPersonalVehicleRate || "";
+    if (!merged.workerId && (!merged.status || merged.status === "Confirmed")) merged.status = "Open";
+    else merged.status = merged.status || "Confirmed";
   }
   if (storeName === "vehicleLogs") {
     const assignment = getEventAssignment(merged.assignmentId) || assignmentForEventWorker(merged.eventId, merged.workerId);
@@ -9110,6 +9322,8 @@ function openAssignmentForm(eventId, assignment = null) {
     workDate: String(eventRecord.startDate || "").slice(0, 10),
     startDate: eventRecord.startDate || "",
     endDate: eventRecord.endDate || "",
+    hasWrapTime: eventRecord.endDate ? "yes" : "",
+    locationType: "Venue",
     callLocation: "",
     onSiteContactName: "",
     onSiteContactPhone: "",
@@ -11287,6 +11501,13 @@ function bindEvents() {
       localStorage.setItem("productionCrewRunnerColumnFilters", JSON.stringify(state.runnerColumnFilters));
       renderRunnerStops();
     }
+    if (event.target?.matches?.("[data-staffing-column-filter]")) {
+      const key = event.target.dataset.staffingColumnFilter;
+      state.staffingColumnFilters = { ...(state.staffingColumnFilters || {}), [key]: event.target.value };
+      if (!state.staffingColumnFilters[key]) delete state.staffingColumnFilters[key];
+      localStorage.setItem("productionCrewStaffingColumnFilters", JSON.stringify(state.staffingColumnFilters));
+      renderStaffingAssignments();
+    }
   });
   $("#dashboardCalendarPrev")?.addEventListener("click", () => {
     const month = dashboardCalendarMonthDate();
@@ -11336,6 +11557,7 @@ function bindEvents() {
   $("#eventForm").addEventListener("submit", (event) => saveForm(event, "events"));
   $("#dashboardNoteForm").addEventListener("submit", saveDashboardNote);
   $("#eventAssignmentForm").addEventListener("submit", (event) => saveForm(event, "eventAssignments"));
+  $("#assignmentDepartmentForm").addEventListener("submit", saveAssignmentDepartmentForm);
   $("#messageThreadManageForm").addEventListener("submit", saveMessageThreadAccess);
   $("#sendbirdMessageForm").addEventListener("submit", sendSendbirdMessage);
   $("#messagePhotoInput").addEventListener("change", (event) => addMessagePhotoAttachments(event.target.files).catch((error) => {
@@ -11371,6 +11593,18 @@ function bindEvents() {
     }, 1600);
   });
   $("#eventAssignmentForm select[name='workerId']").addEventListener("change", (event) => applyAssignmentDefaults(event.target.value));
+  $("#eventAssignmentForm select[name='department']").addEventListener("change", (event) => {
+    if (event.target.value !== "__add_department__") return;
+    event.target.value = assignmentDepartments()[0] || "Production Office";
+    clearForm("assignmentDepartmentForm");
+    openForm("assignmentDepartmentForm");
+  });
+  $("#eventAssignmentForm input[name='hasWrapTime']").addEventListener("change", () => updateAssignmentScheduleFields($("#eventAssignmentForm")));
+  $("#eventAssignmentForm select[name='locationType']").addEventListener("change", () => {
+    const form = $("#eventAssignmentForm");
+    if (form.elements.locationType.value !== "Venue") form.elements.callLocation.value = "";
+    updateAssignmentLocationFields(form);
+  });
   $("#eventAssignmentForm select[name='vehicleUse']").addEventListener("change", () => {
     applyAssignmentDefaults($("#eventAssignmentForm").elements.workerId.value);
     updateAssignmentVehicleFields($("#eventAssignmentForm"));
@@ -11485,6 +11719,7 @@ function bindEvents() {
     const openButton = event.target.closest("[data-open-form]");
     const runnerResourceButton = event.target.closest("[data-runner-resource-action]");
     const runnerSortButton = event.target.closest("[data-runner-sort]");
+    const staffingSortButton = event.target.closest("[data-staffing-sort]");
     const quickProfileButton = event.target.closest("[data-open-quick-profile]");
     const deleteButton = event.target.closest("[data-delete]");
     const clockButton = event.target.closest("[data-clock-out]");
@@ -11512,6 +11747,7 @@ function bindEvents() {
     const removeVenueContactButton = event.target.closest("[data-remove-venue-contact]");
     const vehiclePhaseButton = event.target.closest("[data-vehicle-phase]");
     const addAssignmentButton = event.target.closest("[data-add-assignment]");
+    const addStaffingPositionButton = event.target.closest("[data-add-staffing-position]");
     const formAddAssignmentButton = event.target.closest("[data-form-add-assignment]");
     const swapCrewButton = event.target.closest("[data-swap-crew]");
     const substituteCrewButton = event.target.closest("[data-substitute-crew]");
@@ -11757,6 +11993,13 @@ function bindEvents() {
     }
 
     if (deleteButton) await deleteRecord(deleteButton.dataset.delete, deleteButton.dataset.id);
+    if (staffingSortButton) {
+      state.staffingSortKey = staffingSortButton.dataset.staffingSort;
+      state.staffingSortDirection = staffingSortButton.dataset.staffingSortDirection || "asc";
+      localStorage.setItem("productionCrewStaffingSortKey", state.staffingSortKey);
+      localStorage.setItem("productionCrewStaffingSortDirection", state.staffingSortDirection);
+      renderStaffingAssignments();
+    }
     if (eventAccessButton) {
       const eventRecord = getEvent(eventAccessButton.dataset.eventAccess);
       if (eventRecord) await createEventAccessLink(eventRecord);
@@ -11783,6 +12026,7 @@ function bindEvents() {
     }
     if (vehiclePhaseButton) openVehiclePhaseForm(vehiclePhaseButton);
     if (addAssignmentButton) openAssignmentForm(addAssignmentButton.dataset.addAssignment);
+    if (addStaffingPositionButton) openAssignmentForm(addStaffingPositionButton.dataset.addStaffingPosition);
     if (formAddAssignmentButton?.dataset.formAddAssignment) openAssignmentForm(formAddAssignmentButton.dataset.formAddAssignment);
     if (swapCrewButton) openCrewSwapForm(swapCrewButton.dataset.swapCrew);
     if (substituteCrewButton) openSubstitutionForm(substituteCrewButton.dataset.substituteCrew);
