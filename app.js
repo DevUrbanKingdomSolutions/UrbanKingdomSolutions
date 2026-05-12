@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.04.110",
-  title: "V1.04.110 update installed",
-  body: "Fixed direct message notification titles and removed the duplicate live receive notice."
+  version: "V1.04.111",
+  title: "V1.04.111 update installed",
+  body: "Cleaned up duplicate message notification records and stabilized future message notification keys."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -6426,6 +6426,26 @@ function notificationDedupeKey(notification = {}) {
   ].join("|");
 }
 
+function notificationCleanupKey(notification = {}) {
+  if (notification.type !== "message") return "";
+  const recipient = baseSendbirdUserId(notification.recipientId || (notification.recipientIds || [])[0] || "").trim();
+  const messageKey = notification.messageId || notification.body || "";
+  return [
+    "message",
+    notification.threadKey || "",
+    messageKey,
+    recipient
+  ].join("|");
+}
+
+function preferredNotificationRecord(a = {}, b = {}) {
+  if (!a) return b;
+  if (!b) return a;
+  if (!a.readAt && b.readAt) return a;
+  if (a.readAt && !b.readAt) return b;
+  return new Date(a.createdAt || a.updatedAt || 0) >= new Date(b.createdAt || b.updatedAt || 0) ? a : b;
+}
+
 function notificationRecipientIdsForCurrentUser() {
   const values = [
     currentThreadUserId(),
@@ -6513,6 +6533,7 @@ async function refreshNotificationsFromStorage() {
   if (!authState.session) return;
   const existing = notificationSnapshot();
   await hydrateNotificationsFromSupabase();
+  await cleanupDuplicateMessageNotifications();
   let notifications = (await getAll("appNotifications")).sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
   const activeThreadType = sendbirdActiveThread?.type || "";
   const activeThreadKey = activeMessageThreadKey();
@@ -6535,6 +6556,31 @@ async function refreshNotificationsFromStorage() {
   if (existing === next) return;
   state.appNotifications = notifications;
   renderNotificationSurfaces();
+}
+
+async function cleanupDuplicateMessageNotifications() {
+  const notifications = (await getAll("appNotifications")).filter((notification) => notification.type === "message");
+  const groups = new Map();
+  notifications.forEach((notification) => {
+    const key = notificationCleanupKey(notification);
+    if (!key) return;
+    const group = groups.get(key) || [];
+    group.push(notification);
+    groups.set(key, group);
+  });
+  const removeIds = [];
+  groups.forEach((group) => {
+    if (group.length <= 1) return;
+    const keep = group.reduce((best, item) => preferredNotificationRecord(best, item), null);
+    group.forEach((item) => {
+      if (item.id !== keep?.id) removeIds.push(item.id);
+    });
+  });
+  if (!removeIds.length) return;
+  for (const id of removeIds) {
+    await remove("appNotifications", id);
+  }
+  state.appNotifications = state.appNotifications.filter((notification) => !removeIds.includes(notification.id));
 }
 
 function startNotificationAutoRefresh() {
@@ -9543,13 +9589,14 @@ async function createMessageNotifications(message, deliveredMessage = {}) {
   const messageId = sendbirdMessageKey(deliveredMessage) || String(deliveredMessage.reqId || deliveredMessage.requestId || Date.now());
   for (const recipientId of recipients) {
     const title = sendbirdActiveThread.type === "direct" ? senderName : activeMessageThreadTitle();
+    const baseRecipientId = baseSendbirdUserId(recipientId).trim();
     await createAppNotification({
-      id: `message-${meta.threadKey}-${messageId}-${recipientId}`.replace(/[^a-zA-Z0-9:_-]/g, "-"),
+      id: `message-${meta.threadKey}-${messageId}-${baseRecipientId}`.replace(/[^a-zA-Z0-9:_-]/g, "-"),
       title,
       body: `${senderName}: ${preview || "New message"}`,
       type: "message",
       messageId,
-      recipientId,
+      recipientId: baseRecipientId,
       ...meta
     });
   }
