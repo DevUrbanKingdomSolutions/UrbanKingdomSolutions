@@ -3816,7 +3816,7 @@ td p {
 }
 
 .vehicle-photo-checklist .is-missing {
-  color: color-mix(in srgb, var(--warn) 82%, var(--ink));
+  color: color-mix(in srgb, var(--accent) 24%, #ffffff);
 }
 
 .report-badge-row,

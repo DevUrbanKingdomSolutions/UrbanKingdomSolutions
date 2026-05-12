@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.04.142",
-  title: "V1.04.142 update installed",
-  body: "Polished vehicle check buttons and role-color checklist styling."
+  version: "V1.04.143",
+  title: "V1.04.143 update installed",
+  body: "Refined vehicle checklist tones and removed duplicate gas amount status."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -6547,19 +6547,19 @@ function vehicleCheckRow(group) {
 
 function vehicleChecklistStatus(group) {
   return {
-    start: vehiclePhaseChecklist(group.startLog, "start", ["Front", "Back", "Driver side", "Passenger side", "Gas gauge"], [
+    start: vehiclePhaseChecklist(group.startLog, "start", ["Gas gauge", "Front", "Back", "Driver side", "Passenger side"], [
+      "startGasGauge",
       "startFront",
       "startBack",
       "startDriverSide",
-      "startPassengerSide",
-      "startGasGauge"
+      "startPassengerSide"
     ]),
-    end: vehiclePhaseChecklist(group.endLog, "end", ["Front", "Back", "Driver side", "Passenger side", "Gas gauge"], [
+    end: vehiclePhaseChecklist(group.endLog, "end", ["Gas gauge", "Front", "Back", "Driver side", "Passenger side"], [
+      "endGasGauge",
       "endFront",
       "endBack",
       "endDriverSide",
-      "endPassengerSide",
-      "endGasGauge"
+      "endPassengerSide"
     ])
   };
 }
@@ -6569,13 +6569,11 @@ function vehiclePhaseChecklist(log, phase, labels, keys) {
   const items = keys.map((key, index) => ({ label: labels[index], done: !!photos[key] }));
   const plateRequired = phase === "start";
   const plateDone = !plateRequired || !!log?.plateNumber;
-  const gasAmountDone = !!log?.gasGauge;
   return {
     phase,
-    complete: !!log && plateDone && gasAmountDone && items.every((item) => item.done),
+    complete: !!log && plateDone && items.every((item) => item.done),
     plateRequired,
     plateDone,
-    gasAmountDone,
     items
   };
 }
@@ -6588,10 +6586,8 @@ function vehicleStatusChips(status) {
 
 function vehiclePhotoChecklist(status) {
   const plateClass = status.plateDone ? "is-done" : "is-missing";
-  const gasClass = status.gasAmountDone ? "is-done" : "is-missing";
   return `<div class="vehicle-photo-checklist">
     ${status.plateRequired ? `<span class="${plateClass}">Plate</span>` : ""}
-    <span class="${gasClass}">Gas amount</span>
     ${status.items.map((item) => `<span class="${item.done ? "is-done" : "is-missing"}">${escapeHtml(item.label)}</span>`).join("")}
   </div>`;
 }
