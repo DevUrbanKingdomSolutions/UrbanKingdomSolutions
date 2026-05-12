@@ -10,7 +10,7 @@
     <title>Production Crew Database</title>
     <link rel="manifest" href="manifest.webmanifest">
     <link rel="icon" href="assets/logo/app-logo-admin.png" type="image/png">
-    <link rel="stylesheet" href="styles.css?v=V1.04.129-soft-dropdowns">
+    <link rel="stylesheet" href="styles.css?v=V1.04.130-gig-resource-form">
   </head>
   <body>
     <div id="appLoadingOverlay" class="app-loading-overlay" aria-live="polite">
@@ -1461,28 +1461,41 @@
                 <button class="ghost-button clear-form" type="button" data-form="runnerForm">Clear</button>
               </div>
               <input type="hidden" name="id">
-              <label>Name<input name="name" required placeholder="Store, shop, service, worker tip"></label>
-              <div class="photo-fieldset">
+              <div class="runner-resource-form-intro">
+                <strong>Resource profile</strong>
+                <span>Add the places, services, and quick-reference contacts runners may need during an event.</span>
+              </div>
+              <div class="runner-resource-section">
+                <span>Basics</span>
+                <label>Name<input name="name" required placeholder="Store, shop, service, worker tip"></label>
+                <label>Category
+                  <select name="category">
+                    <option>Hardware</option>
+                    <option>Food</option>
+                    <option>Printing</option>
+                    <option>Medical</option>
+                    <option>Rental</option>
+                    <option>Transportation</option>
+                    <option>Other</option>
+                  </select>
+                </label>
+              </div>
+              <div class="runner-resource-section">
                 <span>Location</span>
                 <label>City<input name="city" placeholder="Los Angeles"></label>
                 <label>State<input name="state" placeholder="CA"></label>
+                <label>Address<textarea name="address" rows="2" placeholder="Street, city, state, zip"></textarea></label>
               </div>
-              <label>Category
-                <select name="category">
-                  <option>Hardware</option>
-                  <option>Food</option>
-                  <option>Printing</option>
-                  <option>Medical</option>
-                  <option>Rental</option>
-                  <option>Transportation</option>
-                  <option>Other</option>
-                </select>
-              </label>
-              <label>Address<textarea name="address" rows="2" placeholder="Street, city, state, zip"></textarea></label>
-              <label>Phone<input name="phone" placeholder="(555) 000-0000"></label>
-              <label>Hours<input name="hours" placeholder="Mon-Fri 8-6"></label>
-              <label>Best use<textarea name="bestUse" rows="3" placeholder="What to send runners here for"></textarea></label>
-              <label>Notes<textarea name="notes" rows="3" placeholder="Parking, entrance, account number"></textarea></label>
+              <div class="runner-resource-section">
+                <span>Contact and Use</span>
+                <label>Phone<input name="phone" placeholder="(555) 000-0000"></label>
+                <label>Hours<input name="hours" placeholder="Mon-Fri 8-6"></label>
+                <label>Best use<textarea name="bestUse" rows="3" placeholder="What to send runners here for"></textarea></label>
+              </div>
+              <div class="runner-resource-section">
+                <span>Notes</span>
+                <label>Notes<textarea name="notes" rows="3" placeholder="Parking, entrance, account number"></textarea></label>
+              </div>
               <button class="primary-action" type="submit">Save Resource</button>
             </form>
             <form id="runnerCategoryForm" class="panel form-panel runner-category-modal-form">
@@ -1532,6 +1545,6 @@
     <div id="modalHost"></div>
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js?v=V1.04.129-soft-dropdowns"></script>
+    <script src="app.js?v=V1.04.130-gig-resource-form"></script>
   </body>
 </html>

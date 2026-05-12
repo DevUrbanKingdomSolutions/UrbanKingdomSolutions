@@ -2610,7 +2610,18 @@ td p {
     linear-gradient(90deg, color-mix(in srgb, var(--accent) 22%, #ffffff), #ffffff 76%),
     #ffffff;
   padding: 16px 18px 16px 22px;
-  box-shadow: inset 4px 0 0 var(--accent), 0 14px 34px color-mix(in srgb, var(--accent) 12%, transparent);
+  box-shadow: 0 14px 34px color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+.category-limit-notice::before {
+  content: "";
+  position: absolute;
+  top: 14px;
+  bottom: 14px;
+  left: 12px;
+  width: 4px;
+  border-radius: 999px;
+  background: var(--accent);
 }
 
 .category-limit-notice span {
@@ -2624,6 +2635,74 @@ td p {
   color: #485861;
   font-size: 13px;
   line-height: 1.45;
+}
+
+#runnerForm.modal-form {
+  width: min(720px, calc(100vw - 32px));
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--accent-soft) 28%, #ffffff), #ffffff 142px),
+    #ffffff;
+}
+
+.runner-resource-form-intro {
+  display: grid;
+  gap: 4px;
+  margin: 16px 18px 2px;
+  padding: 0 0 14px;
+  border-bottom: 1px solid color-mix(in srgb, var(--accent) 12%, var(--line));
+}
+
+.runner-resource-form-intro strong {
+  color: color-mix(in srgb, var(--accent-dark) 86%, #20282c);
+  font-size: 18px;
+  font-weight: 900;
+}
+
+.runner-resource-form-intro span {
+  color: #5b6971;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.runner-resource-section {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 16px 18px 0;
+  padding: 14px 0 2px;
+  border-top: 1px solid color-mix(in srgb, var(--accent) 10%, var(--line));
+}
+
+.runner-resource-section > span {
+  grid-column: 1 / -1;
+  color: color-mix(in srgb, var(--accent-dark) 82%, #20282c);
+  font-size: 12px;
+  font-weight: 950;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.runner-resource-section label {
+  margin: 0;
+}
+
+.runner-resource-section label:has(textarea) {
+  grid-column: 1 / -1;
+}
+
+#runnerForm.modal-form input,
+#runnerForm.modal-form select,
+#runnerForm.modal-form textarea {
+  border-color: color-mix(in srgb, var(--accent) 14%, var(--line));
+  background: rgba(255, 255, 255, 0.88);
+}
+
+#runnerForm.modal-form input:focus,
+#runnerForm.modal-form select:focus,
+#runnerForm.modal-form textarea:focus {
+  border-color: color-mix(in srgb, var(--accent) 58%, var(--line));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 14%, transparent);
+  outline: none;
 }
 
 .runner-category-controls {
