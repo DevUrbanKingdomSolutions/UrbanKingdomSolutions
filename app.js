@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.04.125",
-  title: "V1.04.125 update installed",
-  body: "Updated Gig Resources actions with a premium add menu and category limit notice."
+  version: "V1.04.126",
+  title: "V1.04.126 update installed",
+  body: "Refined Gig Resources category selection and softened the add icon."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -6640,14 +6640,14 @@ function renderPromoters() {
 function renderRunnerStops() {
   if (isAdminRole()) {
     $("#runnerTableCount").textContent = "0 shown";
-    $("#runnerTabs").innerHTML = "";
+    renderRunnerCategoryControls(["All"]);
     $("#runnerTable").innerHTML = `<tr><td colspan="6" class="empty">ADMIN does not load gig directory data.</td></tr>`;
     return;
   }
   const categories = runnerCategories();
   if (!categories.includes(state.runnerCategory)) state.runnerCategory = "All";
   renderRunnerCategoryCreator();
-  $("#runnerTabs").innerHTML = categories.map((category) => `<button class="tab-button ${category === state.runnerCategory ? "active" : ""}" data-runner-category="${escapeHtml(category)}" type="button">${escapeHtml(category)}</button>`).join("");
+  renderRunnerCategoryControls(categories);
   const rows = state.runnerStops
     .filter((stop) => state.runnerCategory === "All" || (stop.category || "Other") === state.runnerCategory)
     .filter((stop) => matchesSearch(stop));
@@ -6655,6 +6655,17 @@ function renderRunnerStops() {
   $("#runnerTable").innerHTML = rows.length
     ? rows.map((stop) => runnerStopRow(stop)).join("")
     : `<tr><td colspan="6" class="empty">No resources match this search.</td></tr>`;
+}
+
+function renderRunnerCategoryControls(categories = runnerCategories()) {
+  const allButton = $("#runnerCategoryAll");
+  const select = $("#runnerCategorySelect");
+  if (!allButton || !select) return;
+  const categoryOptions = categories.filter((category) => category !== "All");
+  allButton.classList.toggle("active", state.runnerCategory === "All");
+  select.value = categoryOptions.includes(state.runnerCategory) ? state.runnerCategory : "";
+  select.innerHTML = `<option value="">Select category</option>${categoryOptions.map((category) => `<option value="${escapeHtml(category)}">${escapeHtml(category)}</option>`).join("")}`;
+  select.value = categoryOptions.includes(state.runnerCategory) ? state.runnerCategory : "";
 }
 
 function renderMessaging() {
@@ -10938,6 +10949,10 @@ function bindEvents() {
       localStorage.setItem("productionCrewDashboardPayrollEventId", state.dashboardPayrollEventId);
       renderDashboard();
     }
+    if (event.target?.id === "runnerCategorySelect") {
+      state.runnerCategory = event.target.value || "All";
+      renderRunnerStops();
+    }
   });
   $("#dashboardCalendarPrev")?.addEventListener("click", () => {
     const month = dashboardCalendarMonthDate();
@@ -11139,6 +11154,7 @@ function bindEvents() {
     const clockButton = event.target.closest("[data-clock-out]");
     const punchButton = event.target.closest("[data-time-punch]");
     const runnerTab = event.target.closest("[data-runner-category]");
+    const runnerCategoryAll = event.target.closest("[data-runner-category-all]");
     const directoryTab = event.target.closest("[data-directory-tab]");
     const payrollTab = event.target.closest("[data-payroll-view]");
     const profileNoteButton = event.target.closest("[data-save-profile-note]");
@@ -11445,6 +11461,10 @@ function bindEvents() {
     }
     if (runnerTab) {
       state.runnerCategory = runnerTab.dataset.runnerCategory;
+      renderRunnerStops();
+    }
+    if (runnerCategoryAll) {
+      state.runnerCategory = "All";
       renderRunnerStops();
     }
     if (directoryTab) {

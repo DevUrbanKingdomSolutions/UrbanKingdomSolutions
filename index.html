@@ -10,7 +10,7 @@
     <title>Production Crew Database</title>
     <link rel="manifest" href="manifest.webmanifest">
     <link rel="icon" href="assets/logo/app-logo-admin.png" type="image/png">
-    <link rel="stylesheet" href="styles.css?v=V1.04.125-gig-resource-actions">
+    <link rel="stylesheet" href="styles.css?v=V1.04.126-gig-category-select">
   </head>
   <body>
     <div id="appLoadingOverlay" class="app-loading-overlay" aria-live="polite">
@@ -1508,7 +1508,13 @@
                   </details>
                 </div>
               </div>
-              <div id="runnerTabs" class="tab-row" role="tablist" aria-label="Gig directory categories"></div>
+              <div class="runner-category-controls" aria-label="Gig Resources categories">
+                <button id="runnerCategoryAll" class="runner-category-all" data-runner-category-all type="button">All</button>
+                <label class="runner-category-select-label">
+                  <span>Category</span>
+                  <select id="runnerCategorySelect" aria-label="Select Gig Resources category"></select>
+                </label>
+              </div>
               <div class="table-wrap">
                 <table>
                   <thead><tr><th>Name</th><th>Category</th><th>Address</th><th>Hours</th><th>Best use</th><th></th></tr></thead>
@@ -1526,6 +1532,6 @@
     <div id="modalHost"></div>
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js?v=V1.04.125-gig-resource-actions"></script>
+    <script src="app.js?v=V1.04.126-gig-category-select"></script>
   </body>
 </html>
