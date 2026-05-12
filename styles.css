@@ -2518,13 +2518,15 @@ td p {
   right: 0;
   z-index: 5;
   display: grid;
-  gap: 6px;
+  gap: 2px;
   min-width: 170px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: #ffffff;
-  padding: 8px;
-  box-shadow: var(--shadow);
+  border: 0;
+  border-radius: 14px;
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--accent-soft) 48%, #ffffff), rgba(255, 255, 255, 0.96) 58%),
+    #ffffff;
+  padding: 8px 6px;
+  box-shadow: 0 18px 48px rgba(21, 30, 36, 0.14), inset 3px 0 0 color-mix(in srgb, var(--accent) 72%, #ffffff);
 }
 
 .table-wrap .record-options-menu {
@@ -2545,7 +2547,25 @@ td p {
 .event-options-menu .tiny-button,
 .record-options-menu .tiny-button {
   width: 100%;
+  min-height: 34px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: color-mix(in srgb, var(--accent-dark) 78%, #20282c);
+  font-weight: 850;
+  justify-content: flex-start;
+  padding: 8px 10px 8px 14px;
   text-align: left;
+}
+
+.event-options-menu .tiny-button:hover,
+.event-options-menu .tiny-button:focus-visible,
+.record-options-menu .tiny-button:hover,
+.record-options-menu .tiny-button:focus-visible {
+  background: color-mix(in srgb, var(--accent-soft) 64%, transparent);
+  color: var(--accent-dark);
+  outline: none;
 }
 
 .runner-resource-menu summary.icon-button {
@@ -2569,10 +2589,6 @@ td p {
 
 .runner-resource-menu .record-options-menu {
   min-width: 190px;
-  border: 0;
-  border-radius: 12px;
-  background: #ffffff;
-  box-shadow: 0 18px 46px rgba(20, 29, 35, 0.16);
 }
 
 .runner-category-modal-form {
@@ -2728,8 +2744,9 @@ td p {
 
 .column-filter-menu input {
   min-height: 34px;
-  border: 1px solid var(--line);
+  border: 1px solid color-mix(in srgb, var(--accent) 16%, var(--line));
   border-radius: 8px;
+  background: rgba(255, 255, 255, 0.78);
   color: #20282c;
   font: inherit;
   font-size: 13px;
