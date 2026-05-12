@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.04.139",
-  title: "V1.04.139 update installed",
-  body: "Polished message event dropdown behavior."
+  version: "V1.04.140",
+  title: "V1.04.140 update installed",
+  body: "Added vehicle phase photo viewers and refined wrap photo requirements."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -6470,11 +6470,12 @@ function renderVehicles() {
 
 function filterVehicleRows(rows) {
   return rows.filter((group) => {
+    const status = vehicleChecklistStatus(group);
     const plate = vehicleGroupPlate(group);
-    if (state.vehicleFilter === "missing-start") return !group.startLog;
-    if (state.vehicleFilter === "missing-end") return !group.endLog;
+    if (state.vehicleFilter === "missing-start") return !status.start.complete;
+    if (state.vehicleFilter === "missing-end") return !status.end.complete;
     if (state.vehicleFilter === "missing-plate") return !plate;
-    if (state.vehicleFilter === "complete") return !!group.startLog && !!group.endLog;
+    if (state.vehicleFilter === "complete") return status.start.complete && status.end.complete;
     return true;
   });
 }
@@ -6566,11 +6567,15 @@ function vehicleChecklistStatus(group) {
 function vehiclePhaseChecklist(log, phase, labels, keys) {
   const photos = log?.vehiclePhotos || {};
   const items = keys.map((key, index) => ({ label: labels[index], done: !!photos[key] }));
-  const plateDone = !!log?.plateNumber;
+  const plateRequired = phase === "start";
+  const plateDone = !plateRequired || !!log?.plateNumber;
+  const gasAmountDone = !!log?.gasGauge;
   return {
     phase,
-    complete: plateDone && items.every((item) => item.done),
+    complete: !!log && plateDone && gasAmountDone && items.every((item) => item.done),
+    plateRequired,
     plateDone,
+    gasAmountDone,
     items
   };
 }
@@ -6578,13 +6583,15 @@ function vehiclePhaseChecklist(log, phase, labels, keys) {
 function vehicleStatusChips(status) {
   const startClass = status.start.complete ? "" : " warn";
   const endClass = status.end.complete ? "" : " warn";
-  return `<div class="vehicle-status-row"><span class="status-pill${startClass}">Start ${status.start.complete ? "complete" : "missing"}</span><span class="status-pill${endClass}">End ${status.end.complete ? "complete" : "missing"}</span></div>`;
+  return `<div class="vehicle-status-row"><span class="status-pill${startClass}">${status.start.complete ? "Start complete" : "Start photo missing"}</span><span class="status-pill${endClass}">${status.end.complete ? "End complete" : "End photo missing"}</span></div>`;
 }
 
 function vehiclePhotoChecklist(status) {
   const plateClass = status.plateDone ? "is-done" : "is-missing";
+  const gasClass = status.gasAmountDone ? "is-done" : "is-missing";
   return `<div class="vehicle-photo-checklist">
-    <span class="${plateClass}">Plate</span>
+    ${status.plateRequired ? `<span class="${plateClass}">Plate</span>` : ""}
+    <span class="${gasClass}">Gas amount</span>
     ${status.items.map((item) => `<span class="${item.done ? "is-done" : "is-missing"}">${escapeHtml(item.label)}</span>`).join("")}
   </div>`;
 }
@@ -6594,7 +6601,7 @@ function vehiclePhaseCell(group, phase) {
   const disabled = canScopedEdit() ? "" : "disabled";
   const buttonLabel = log ? `View / Edit ${phase}` : `Add ${phase}`;
   const meta = log ? `${escapeHtml(log.gasGauge || "")}<p>${formatDate(log.scheduledDate)}</p>` : `<p class="muted">Not started</p>`;
-  return `${meta}<button class="tiny-button" data-vehicle-phase="${phase}" data-log-id="${escapeHtml(log?.id || "")}" data-event-id="${escapeHtml(group.eventId)}" data-worker-id="${escapeHtml(group.workerId)}" data-assignment-id="${escapeHtml(group.assignmentId)}" type="button" ${disabled}>${buttonLabel}</button>`;
+  return `${meta}<button class="tiny-button" data-vehicle-phase="${phase}" data-log-id="${escapeHtml(log?.id || "")}" data-event-id="${escapeHtml(group.eventId)}" data-worker-id="${escapeHtml(group.workerId)}" data-assignment-id="${escapeHtml(group.assignmentId)}" type="button" ${disabled}>${buttonLabel}</button><button class="tiny-button" data-vehicle-photos="${phase}" data-log-id="${escapeHtml(log?.id || "")}" data-event-id="${escapeHtml(group.eventId)}" data-worker-id="${escapeHtml(group.workerId)}" data-assignment-id="${escapeHtml(group.assignmentId)}" type="button">Photos</button>`;
 }
 
 function renderReports() {
@@ -6690,9 +6697,31 @@ function vehiclePhotoGallery(log) {
   return photoGallery(items.filter(([, photo]) => photo));
 }
 
+function vehiclePhasePhotoItems(log, phase) {
+  const photos = log?.vehiclePhotos || {};
+  const isEnd = String(phase || "").toLowerCase() === "end";
+  if (isEnd) {
+    return [
+      ["End front", photos.endFront],
+      ["End back", photos.endBack],
+      ["End driver side", photos.endDriverSide],
+      ["End passenger side", photos.endPassengerSide],
+      ["End gas gauge", photos.endGasGauge]
+    ];
+  }
+  return [
+    ["Start front", photos.startFront || photos.front],
+    ["Start back", photos.startBack || photos.back],
+    ["Start driver side", photos.startDriverSide || photos.driverSide],
+    ["Start passenger side", photos.startPassengerSide || photos.passengerSide],
+    ["Start gas gauge", photos.startGasGauge || photos.gasGauge],
+    ...[].concat(photos.priorDamages || []).map((photo, index) => [`Damage ${index + 1}`, photo])
+  ];
+}
+
 function vehicleEndPhotosComplete(log) {
   const photos = log?.vehiclePhotos || {};
-  return !!(log?.plateNumber && photos.endFront && photos.endBack && photos.endDriverSide && photos.endPassengerSide && photos.endGasGauge);
+  return !!(log?.gasGauge && photos.endFront && photos.endBack && photos.endDriverSide && photos.endPassengerSide && photos.endGasGauge);
 }
 
 function vehicleStartCheckStarted(log) {
@@ -6755,6 +6784,8 @@ function crewVisibleTimecardNotes(card) {
     "Urgent rental vehicle start-photo reminder was sent",
     "Rental vehicle end photos were required at Wrap",
     "A wrap attempt was made before end photos",
+    "Rental vehicle end photos and gas gauge were required at Wrap",
+    "A wrap attempt was made before end photos and gas gauge",
     "Bypassed after the 5 minute warning window"
   ];
   return String(card.notes || "")
@@ -6816,6 +6847,52 @@ function openVehiclePhaseForm(button) {
   if (form.elements.assignmentId) form.elements.assignmentId.value = button.dataset.assignmentId || "";
   applyVehicleAssignmentLock(form);
   openForm("vehicleForm");
+}
+
+function vehiclePhotoLogFromButton(button) {
+  const logId = button.dataset.logId || "";
+  const phase = button.dataset.vehiclePhotos || "";
+  if (logId) return state.vehicleLogs.find((log) => log.id === logId) || null;
+  const eventId = button.dataset.eventId || "";
+  const workerId = button.dataset.workerId || "";
+  const assignmentId = button.dataset.assignmentId || "";
+  return state.vehicleLogs.find((log) => {
+    if (assignmentId && log.assignmentId === assignmentId && String(log.phase || "").toLowerCase() === phase.toLowerCase()) return true;
+    return log.eventId === eventId && log.workerId === workerId && String(log.phase || "").toLowerCase() === phase.toLowerCase();
+  }) || null;
+}
+
+function openVehiclePhotoViewer(button) {
+  const phase = button.dataset.vehiclePhotos || "Start";
+  const log = vehiclePhotoLogFromButton(button);
+  const event = getEvent(log?.eventId || button.dataset.eventId || "");
+  const worker = getWorker(log?.workerId || button.dataset.workerId || "");
+  const gallery = photoGallery(vehiclePhasePhotoItems(log, phase));
+  const empty = `<div class="empty">No ${escapeHtml(phase.toLowerCase())} photos have been uploaded yet.</div>`;
+  $("#recordViewTitle").textContent = `${phase} Photos`;
+  $("#recordViewBody").innerHTML = `<article class="profile-page-card profile-popup-card">
+    <div class="profile-page-header">
+      <div class="profile-avatar-large placeholder">${escapeHtml(initialsFor(phase))}</div>
+      <div>
+        <h3>${escapeHtml(`${phase} Vehicle Photos`)}</h3>
+        <p>${escapeHtml(event?.name || "Vehicle check")}${worker?.name ? ` - ${escapeHtml(worker.name)}` : ""}</p>
+      </div>
+    </div>
+    <div class="premium-profile-content">
+      ${profileInfoSection("Vehicle Check", [
+        ["Phase", phase],
+        ["Vehicle", log?.vehicleType || "Vehicle"],
+        ["Plate", log?.plateNumber || "Not set"],
+        ["Gas Gauge", log?.gasGauge || "Not set"],
+        ["Scheduled Date", formatDate(log?.scheduledDate)]
+      ])}
+      <section class="profile-text-section">
+        <h4>${escapeHtml(phase)} Photos</h4>
+        ${gallery || empty}
+      </section>
+    </div>
+  </article>`;
+  openForm("recordView");
 }
 
 function updateReportTypeFields(form = $("#reportForm")) {
@@ -11294,19 +11371,19 @@ async function crewPunch(eventId, field) {
     if (!vehicleEndPhotosComplete(endLog)) {
       const nowDate = new Date();
       const bypassAt = card.rentalPhotoBypassAfter ? new Date(card.rentalPhotoBypassAfter) : null;
-      const warning = "Rental vehicle end photos were required at Wrap. A wrap attempt was made before end photos and plate number were submitted.";
+      const warning = "Rental vehicle end photos and gas gauge were required at Wrap. A wrap attempt was made before end photos and gas gauge were submitted.";
       if (!bypassAt || Number.isNaN(bypassAt.getTime())) {
         card.rentalPhotoBypassAfter = new Date(nowDate.getTime() + 5 * 60000).toISOString();
         card.adminNotes = appendTimecardAdminNote(card, warning);
         await put("timecards", card);
         await loadState();
         setView("vehicles");
-        toast("End vehicle photos are required before Wrap. You can bypass after 5 minutes, and this warning is saved on the timecard.");
+        toast("End vehicle photos and gas gauge are required before Wrap. You can bypass after 5 minutes, and this warning is saved on the timecard.");
         return;
       }
       if (nowDate < bypassAt) {
         const minutes = Math.max(1, Math.ceil((bypassAt - nowDate) / 60000));
-        toast(`End vehicle photos are still required. Bypass opens in ${minutes} minute(s).`);
+        toast(`End vehicle photos and gas gauge are still required. Bypass opens in ${minutes} minute(s).`);
         return;
       }
       card.adminNotes = appendTimecardAdminNote(card, `${warning} Bypassed after the 5 minute warning window.`);
@@ -11757,6 +11834,7 @@ function bindEvents() {
     const addVenueContactButton = event.target.closest("[data-add-venue-contact]");
     const submitVenueContactButton = event.target.closest("[data-submit-venue-contact]");
     const removeVenueContactButton = event.target.closest("[data-remove-venue-contact]");
+    const vehiclePhotosButton = event.target.closest("[data-vehicle-photos]");
     const vehiclePhaseButton = event.target.closest("[data-vehicle-phase]");
     const addAssignmentButton = event.target.closest("[data-add-assignment]");
     const addStaffingPositionButton = event.target.closest("[data-add-staffing-position]");
@@ -12023,6 +12101,7 @@ function bindEvents() {
       if (!$("#venueContactList").querySelector("[data-venue-contact-row]")) $("#venueContactList").hidden = true;
       return;
     }
+    if (vehiclePhotosButton) openVehiclePhotoViewer(vehiclePhotosButton);
     if (vehiclePhaseButton) openVehiclePhaseForm(vehiclePhaseButton);
     if (addAssignmentButton) openAssignmentForm(addAssignmentButton.dataset.addAssignment);
     if (addStaffingPositionButton) openAssignmentForm(addStaffingPositionButton.dataset.addStaffingPosition);
