@@ -3866,6 +3866,14 @@ body:not(.owner-mode) .rate-field {
     overflow: hidden;
   }
 
+  .view:not(#messages) .panel:not(.form-panel):not(.modal-form) {
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    overflow: visible;
+  }
+
   .panel-heading {
     min-height: 56px;
     border-bottom-color: var(--desktop-line);
@@ -3874,10 +3882,24 @@ body:not(.owner-mode) .rate-field {
     padding: 14px 16px;
   }
 
+  .view:not(#messages) .panel:not(.form-panel):not(.modal-form) > .panel-heading {
+    min-height: auto;
+    padding: 0 0 12px;
+    border-bottom: 1px solid color-mix(in srgb, var(--accent) 18%, var(--desktop-line));
+    background: transparent;
+  }
+
   .panel-heading h3 {
     color: var(--ink);
     font-size: 15px;
     font-weight: 900;
+  }
+
+  .view:not(#messages) .panel:not(.form-panel):not(.modal-form) > .panel-heading h3 {
+    color: color-mix(in srgb, var(--accent-dark) 62%, var(--ink));
+    font-size: 13px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
   }
 
   .panel-tools,
@@ -3926,7 +3948,7 @@ body:not(.owner-mode) .rate-field {
 
   .table-wrap {
     max-height: calc(100vh - 220px);
-    background: #ffffff;
+    background: transparent;
   }
 
   table {
@@ -3935,22 +3957,22 @@ body:not(.owner-mode) .rate-field {
   }
 
   th {
-    background: #f4f6f6;
+    background: transparent;
     color: #59656b;
     font-size: 11px;
     letter-spacing: 0.04em;
   }
 
   td {
-    background: #ffffff;
+    background: transparent;
   }
 
   tbody tr:nth-child(even) td {
-    background: #fbfcfc;
+    background: color-mix(in srgb, var(--accent-soft) 20%, transparent);
   }
 
   tbody tr:hover td {
-    background: color-mix(in srgb, var(--accent-soft) 52%, #ffffff);
+    background: color-mix(in srgb, var(--accent-soft) 58%, #ffffff);
   }
 
   .compact-item {
@@ -3963,17 +3985,22 @@ body:not(.owner-mode) .rate-field {
 
   .record-grid {
     gap: 14px;
-    padding: 16px;
+    padding: 16px 0 0;
   }
 
   .record-card {
-    padding: 16px;
-    transition: border-color 140ms ease, box-shadow 140ms ease, transform 140ms ease;
+    border-width: 0 0 1px;
+    border-color: color-mix(in srgb, var(--accent) 14%, var(--desktop-line));
+    border-radius: 0;
+    background: transparent;
+    padding: 16px 2px;
+    box-shadow: none;
+    transition: background 140ms ease, transform 140ms ease;
   }
 
   .record-card:hover {
-    border-color: color-mix(in srgb, var(--accent) 32%, var(--desktop-line));
-    box-shadow: 0 20px 48px rgba(23, 31, 35, 0.11);
+    background: color-mix(in srgb, var(--accent-soft) 28%, transparent);
+    box-shadow: none;
   }
 
   .event-card-grid {
@@ -3990,6 +4017,47 @@ body:not(.owner-mode) .rate-field {
 
   .event-assignment-row:nth-child(odd) {
     background: #fbfcfc;
+  }
+
+  .premium-profile-card {
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .premium-profile-hero {
+    min-height: 136px;
+    padding: 4px 0 20px;
+    background: transparent;
+    border-bottom: 1px solid color-mix(in srgb, var(--accent) 18%, var(--desktop-line));
+  }
+
+  .premium-profile-content {
+    padding: 20px 0 0;
+  }
+
+  .profile-info-section {
+    padding: 0 0 18px;
+    border-radius: 0;
+    background: transparent;
+    border-bottom: 1px solid color-mix(in srgb, var(--accent) 12%, var(--desktop-line));
+  }
+
+  .profile-info-section:last-child {
+    border-bottom: 0;
+  }
+
+  .profile-info-section h4 {
+    color: color-mix(in srgb, var(--accent-dark) 68%, var(--ink));
+    font-size: 13px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  .profile-logo-frame,
+  .premium-profile-hero .profile-avatar-large {
+    border-color: color-mix(in srgb, var(--accent) 24%, var(--desktop-line));
+    background: #ffffff;
+    box-shadow: 0 12px 28px rgba(23, 31, 35, 0.08);
   }
 
   .dashboard-calendar {

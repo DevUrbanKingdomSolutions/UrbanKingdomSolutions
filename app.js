@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.04.112",
-  title: "V1.04.112 update installed",
-  body: "Refined desktop profile pages with cleaner profile headers and grouped information sections."
+  version: "V1.04.113",
+  title: "V1.04.113 update installed",
+  body: "Softened desktop read-only pages so profile and data views feel native to the workspace instead of boxed in."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
