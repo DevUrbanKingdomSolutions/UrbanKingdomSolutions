@@ -1843,6 +1843,32 @@ body.modal-open {
   overflow: hidden;
 }
 
+.access-level-view-modal {
+  width: min(860px, calc(100vw - 32px));
+}
+
+.access-level-view-list {
+  display: grid;
+  gap: 12px;
+  padding: 18px;
+}
+
+.access-level-view-row {
+  display: grid;
+  grid-template-columns: minmax(190px, 1fr) minmax(220px, 1.35fr) auto;
+  gap: 16px;
+  align-items: start;
+  border: 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--accent) 14%, var(--line));
+  border-radius: 0;
+  background: transparent;
+  padding: 4px 0 14px;
+}
+
+.access-level-view-row:last-child {
+  border-bottom: 0;
+}
+
 body.pull-refresh-settling .active-view {
   transition: transform 180ms ease;
 }

@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.05.006",
-  title: "V1.05.006 update installed",
-  body: "Moved Production Office runner status sorting and filtering into column arrow menus."
+  version: "V1.05.007",
+  title: "V1.05.007 update installed",
+  body: "Added Admin Console account column controls and moved access levels into a popup view."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -414,6 +414,12 @@ let state = {
   runnerStatusSortKey: localStorage.getItem("productionCrewRunnerStatusSortKey") || "runner",
   runnerStatusSortDirection: localStorage.getItem("productionCrewRunnerStatusSortDirection") || "asc",
   runnerStatusColumnFilters: JSON.parse(localStorage.getItem("productionCrewRunnerStatusColumnFilters") || "{}"),
+  adminUserSortKey: localStorage.getItem("productionCrewAdminUserSortKey") || "user",
+  adminUserSortDirection: localStorage.getItem("productionCrewAdminUserSortDirection") || "asc",
+  adminUserColumnFilters: JSON.parse(localStorage.getItem("productionCrewAdminUserColumnFilters") || "{}"),
+  userAccessSortKey: localStorage.getItem("productionCrewUserAccessSortKey") || "user",
+  userAccessSortDirection: localStorage.getItem("productionCrewUserAccessSortDirection") || "asc",
+  userAccessColumnFilters: JSON.parse(localStorage.getItem("productionCrewUserAccessColumnFilters") || "{}"),
   messagingThreadType: localStorage.getItem("productionCrewMessagingThreadType") || "event",
   messageEventFilter: localStorage.getItem("productionCrewMessageEventFilter") || "current",
   selectedMessageEventId: localStorage.getItem("productionCrewSelectedMessageEventId") || "",
@@ -694,6 +700,12 @@ const RUNNER_STATUS_COLUMNS = [
   ["events", "Assigned Events"],
   ["status", "Status"],
   ["contact", "Contact"]
+];
+const USER_ACCESS_COLUMNS = [
+  ["user", "User"],
+  ["role", "Role"],
+  ["client", "Client"],
+  ["profile", "Profile"]
 ];
 
 const $ = (selector) => document.querySelector(selector);
@@ -3866,18 +3878,60 @@ async function saveClientPackages(event) {
 }
 
 function renderAccessLevels() {
-  const table = $("#accessLevelTable");
-  const count = $("#accessLevelTableCount");
-  if (!table || !count) return;
-  const rows = accessLevelDefinitions().filter((level) => level.id !== "ADMIN");
-  count.textContent = `${rows.length} levels`;
-  table.innerHTML = rows.length
+  if ($("#accessLevelViewModal")) renderAccessLevelsViewModal();
+}
+
+function accessLevelRowsForDisplay() {
+  return accessLevelDefinitions().filter((level) => level.id !== "ADMIN");
+}
+
+function renderAccessLevelsViewModal() {
+  const modal = $("#accessLevelViewModal");
+  if (!modal) return;
+  const rows = accessLevelRowsForDisplay();
+  modal.querySelector("[data-access-level-list]").innerHTML = rows.length
     ? rows.map((level) => {
         const pages = (level.views || []).map(viewLabel).join(", ");
-        const actions = level.builtIn ? "" : actionButtons("accessLevelDefs", level.id, "accessLevelForm", "", canSystemEdit());
-        return `<tr><td><strong>${escapeHtml(level.name)}</strong><p>Site level: ${escapeHtml(level.id)}</p><p>${escapeHtml(level.description || (level.builtIn ? "Built-in access level" : ""))}</p></td><td><strong>${escapeHtml(accessLevelLabel(level.baseRole))}</strong><p>Supabase level</p></td><td>${escapeHtml(pages)}</td><td>${actions}</td></tr>`;
+        const actions = level.builtIn ? `<span class="status-pill muted">Built-in</span>` : actionButtons("accessLevelDefs", level.id, "accessLevelForm", "", canSystemEdit());
+        return `<article class="profile-section access-level-view-row">
+          <div>
+            <strong>${escapeHtml(level.name)}</strong>
+            <p>Site level: ${escapeHtml(level.id)}</p>
+            <p>${escapeHtml(level.description || (level.builtIn ? "Built-in access level" : ""))}</p>
+          </div>
+          <div>
+            <span class="status-pill">${escapeHtml(accessLevelLabel(level.baseRole))}</span>
+            <p>${escapeHtml(pages || "No page access selected")}</p>
+          </div>
+          <div class="row-actions">${actions}</div>
+        </article>`;
       }).join("")
-    : `<tr><td colspan="4" class="empty">No access levels configured.</td></tr>`;
+    : `<div class="compact-item empty">No access levels configured.</div>`;
+}
+
+function openAccessLevelsView() {
+  $("#accessLevelViewModal")?.remove();
+  const modal = document.createElement("section");
+  modal.id = "accessLevelViewModal";
+  modal.className = "form-panel modal-form access-level-view-modal";
+  modal.innerHTML = `<div class="panel-heading">
+    <div>
+      <h3>Access Levels</h3>
+      <p>Security role definitions and the pages they can open.</p>
+    </div>
+    <button class="icon-button clean-icon-button" data-close-access-levels type="button" aria-label="Close access levels">×</button>
+  </div>
+  <div class="access-level-view-list" data-access-level-list></div>`;
+  $("#modalHost")?.appendChild(modal);
+  renderAccessLevelsViewModal();
+  $("#modalBackdrop").classList.add("show");
+  document.body.classList.add("modal-open");
+}
+
+function closeAccessLevelsView() {
+  $("#accessLevelViewModal")?.remove();
+  $("#modalBackdrop").classList.remove("show");
+  document.body.classList.remove("modal-open");
 }
 
 function userAccessRowsForView() {
@@ -3897,10 +3951,72 @@ function renderUserAccessTable(tableId, countId, rows) {
   const table = document.getElementById(tableId);
   const count = document.getElementById(countId);
   if (!table || !count) return;
-  count.textContent = `${rows.length} users`;
-  table.innerHTML = rows.length
-    ? rows.map((row) => `<tr><td><strong>${escapeHtml(row.email || "No email")}</strong><p>${escapeHtml(row.userId || "")}</p></td><td>${userAccessRoleCell(row)}</td><td>${escapeHtml(row.clientName || row.clientId || "")}</td><td>${escapeHtml(userAccessProfileLabel(row))}</td><td>${userAccessActions(row)}</td></tr>`).join("")
+  renderUserAccessHead(tableId);
+  const visibleRows = sortUserAccessRows(filterUserAccessRows(rows, tableId), tableId);
+  count.textContent = `${visibleRows.length} users`;
+  table.innerHTML = visibleRows.length
+    ? visibleRows.map((row) => `<tr><td><strong>${escapeHtml(row.email || "No email")}</strong><p>${escapeHtml(row.userId || "")}</p></td><td>${userAccessRoleCell(row)}</td><td>${escapeHtml(row.clientName || row.clientId || "")}</td><td>${escapeHtml(userAccessProfileLabel(row))}</td><td>${userAccessActions(row)}</td></tr>`).join("")
     : `<tr><td colspan="5" class="empty">Refresh to load user accounts.</td></tr>`;
+}
+
+function userAccessTableConfig(tableId) {
+  const adminTable = tableId === "adminUserTable";
+  return {
+    headId: adminTable ? "adminUserHead" : "userAccessHead",
+    storagePrefix: adminTable ? "productionCrewAdminUser" : "productionCrewUserAccess",
+    sortKey: adminTable ? "adminUserSortKey" : "userAccessSortKey",
+    sortDirection: adminTable ? "adminUserSortDirection" : "userAccessSortDirection",
+    filtersKey: adminTable ? "adminUserColumnFilters" : "userAccessColumnFilters"
+  };
+}
+
+function renderUserAccessHead(tableId) {
+  const config = userAccessTableConfig(tableId);
+  const head = document.getElementById(config.headId);
+  if (!head) return;
+  head.innerHTML = `<tr>${USER_ACCESS_COLUMNS.map(([key, label]) => {
+    const filters = state[config.filtersKey] || {};
+    const activeSort = state[config.sortKey] === key;
+    const activeFilter = !!filters[key];
+    const arrow = activeSort ? (state[config.sortDirection] === "desc" ? "▼" : "▲") : "▾";
+    return `<th><div class="column-filter-heading">
+      <span>${escapeHtml(label)}</span>
+      <details class="column-filter-menu ${activeSort || activeFilter ? "active" : ""}">
+        <summary aria-label="${escapeHtml(label)} sort and filter">${arrow}</summary>
+        <div class="record-options-menu">
+          <button class="tiny-button" data-user-access-table="${escapeHtml(tableId)}" data-user-access-sort="${escapeHtml(key)}" data-user-access-sort-direction="asc" type="button">Sort A-Z</button>
+          <button class="tiny-button" data-user-access-table="${escapeHtml(tableId)}" data-user-access-sort="${escapeHtml(key)}" data-user-access-sort-direction="desc" type="button">Sort Z-A</button>
+          <label>Filter<input data-user-access-table="${escapeHtml(tableId)}" data-user-access-column-filter="${escapeHtml(key)}" value="${escapeHtml(filters[key] || "")}" placeholder="Type to filter"></label>
+        </div>
+      </details>
+    </div></th>`;
+  }).join("")}<th></th></tr>`;
+}
+
+function filterUserAccessRows(rows, tableId) {
+  const config = userAccessTableConfig(tableId);
+  const filters = state[config.filtersKey] || {};
+  return rows.filter((row) => {
+    return USER_ACCESS_COLUMNS.every(([key]) => {
+      const filter = String(filters[key] || "").trim().toLowerCase();
+      return !filter || userAccessColumnValue(row, key).toLowerCase().includes(filter);
+    });
+  });
+}
+
+function sortUserAccessRows(rows, tableId) {
+  const config = userAccessTableConfig(tableId);
+  const key = state[config.sortKey] || "user";
+  const direction = state[config.sortDirection] === "desc" ? -1 : 1;
+  return [...rows].sort((a, b) => direction * userAccessColumnValue(a, key).localeCompare(userAccessColumnValue(b, key), undefined, { numeric: true, sensitivity: "base" }));
+}
+
+function userAccessColumnValue(row, key) {
+  if (key === "user") return listText(`${row.email || ""} ${row.userId || ""}`);
+  if (key === "role") return listText(`${ACCESS_LEVEL_LABELS[normalizeRole(row.role)] || row.role || ""} ${accessLevelsForUserAccessRow(row).map(accessLevelLabel).join(" ")}`);
+  if (key === "client") return listText(`${row.clientName || ""} ${row.clientId || ""}`);
+  if (key === "profile") return listText(userAccessProfileLabel(row));
+  return "";
 }
 
 function userAccessRoleCell(row) {
@@ -12066,6 +12182,16 @@ function bindEvents() {
       localStorage.setItem("productionCrewRunnerStatusColumnFilters", JSON.stringify(state.runnerStatusColumnFilters));
       renderProductionBoard();
     }
+    if (event.target?.matches?.("[data-user-access-column-filter]")) {
+      const tableId = event.target.dataset.userAccessTable || "userAccessTable";
+      const config = userAccessTableConfig(tableId);
+      const key = event.target.dataset.userAccessColumnFilter;
+      state[config.filtersKey] = { ...(state[config.filtersKey] || {}), [key]: event.target.value };
+      if (!state[config.filtersKey][key]) delete state[config.filtersKey][key];
+      localStorage.setItem(`${config.storagePrefix}ColumnFilters`, JSON.stringify(state[config.filtersKey]));
+      if (tableId === "adminUserTable") renderAdmin();
+      else renderUserAccessTables();
+    }
   });
   $("#dashboardCalendarPrev")?.addEventListener("click", () => {
     const month = dashboardCalendarMonthDate();
@@ -12240,6 +12366,7 @@ function bindEvents() {
     const venueSortButton = event.target.closest("[data-venue-sort]");
     const promoterSortButton = event.target.closest("[data-promoter-sort]");
     const runnerStatusSortButton = event.target.closest("[data-runner-status-sort]");
+    const userAccessSortButton = event.target.closest("[data-user-access-sort]");
     const quickProfileButton = event.target.closest("[data-open-quick-profile]");
     const deleteButton = event.target.closest("[data-delete]");
     const clockButton = event.target.closest("[data-clock-out]");
@@ -12278,6 +12405,8 @@ function bindEvents() {
     const deleteUserButton = event.target.closest("[data-delete-user-account]");
     const manageAccountAccessButton = event.target.closest("[data-manage-account-access]");
     const manageClientPackagesButton = event.target.closest("[data-manage-client-packages]");
+    const viewAccessLevelsButton = event.target.closest("[data-view-access-levels]");
+    const closeAccessLevelsButton = event.target.closest("[data-close-access-levels]");
     const connectSendbirdButton = event.target.closest("[data-connect-sendbird]");
     const openEventChannelButton = event.target.closest("[data-open-event-channel]");
     const messageThreadTypeButton = event.target.closest("[data-message-thread-type]");
@@ -12339,6 +12468,14 @@ function bindEvents() {
     if (quickProfileButton) {
       $("#globalAddMenu")?.removeAttribute("open");
       await openQuickProfileForm(quickProfileButton.dataset.openQuickProfile);
+      return;
+    }
+    if (viewAccessLevelsButton) {
+      openAccessLevelsView();
+      return;
+    }
+    if (closeAccessLevelsButton) {
+      closeAccessLevelsView();
       return;
     }
     if (runnerResourceButton) {
@@ -12422,6 +12559,18 @@ function bindEvents() {
       localStorage.setItem("productionCrewRunnerStatusSortDirection", state.runnerStatusSortDirection);
       runnerStatusSortButton.closest("details")?.removeAttribute("open");
       renderProductionBoard();
+      return;
+    }
+    if (userAccessSortButton) {
+      const tableId = userAccessSortButton.dataset.userAccessTable || "userAccessTable";
+      const config = userAccessTableConfig(tableId);
+      state[config.sortKey] = userAccessSortButton.dataset.userAccessSort || "user";
+      state[config.sortDirection] = userAccessSortButton.dataset.userAccessSortDirection || "asc";
+      localStorage.setItem(`${config.storagePrefix}SortKey`, state[config.sortKey]);
+      localStorage.setItem(`${config.storagePrefix}SortDirection`, state[config.sortDirection]);
+      userAccessSortButton.closest("details")?.removeAttribute("open");
+      if (tableId === "adminUserTable") renderAdmin();
+      else renderUserAccessTables();
       return;
     }
     if (requestMobilePermissionsButton) {
@@ -12560,6 +12709,7 @@ function bindEvents() {
       await refreshSiteAccessLevelsForForm(editButton.dataset.form);
       const collection = state[editButton.dataset.edit];
       const record = collection.find((item) => item.id === editButton.dataset.id);
+      if ($("#accessLevelViewModal")) closeAccessLevelsView();
       if (record) fillForm(editButton.dataset.form, record);
     }
 
@@ -12687,6 +12837,7 @@ function bindEvents() {
 
   $("#modalBackdrop").addEventListener("click", () => {
     if ($("#messageImagePreviewModal")) closeMessageImagePreview();
+    else if ($("#accessLevelViewModal")) closeAccessLevelsView();
     else closeActiveForm();
   });
   document.addEventListener("keydown", (event) => {
@@ -12698,6 +12849,7 @@ function bindEvents() {
     }
     if (event.key === "Escape") {
       if ($("#messageImagePreviewModal")) closeMessageImagePreview();
+      else if ($("#accessLevelViewModal")) closeAccessLevelsView();
       else closeActiveForm();
     }
   });

@@ -1,5 +1,5 @@
 {
-  "version": "V1.05.006",
-  "title": "V1.05.006 update installed",
-  "body": "Moved Production Office runner status sorting and filtering into column arrow menus."
+  "version": "V1.05.007",
+  "title": "V1.05.007 update installed",
+  "body": "Added Admin Console account column controls and moved access levels into a popup view."
 }

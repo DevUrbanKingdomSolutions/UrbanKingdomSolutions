@@ -10,7 +10,7 @@
     <title>Production Crew Database</title>
     <link rel="manifest" href="manifest.webmanifest">
     <link rel="icon" href="assets/logo/app-logo-admin.png" type="image/png">
-    <link rel="stylesheet" href="styles.css?v=V1.05.006-runner-status-column-controls">
+    <link rel="stylesheet" href="styles.css?v=V1.05.007-admin-console-column-controls">
   </head>
   <body>
     <div id="appLoadingOverlay" class="app-loading-overlay" aria-live="polite">
@@ -558,7 +558,7 @@
               </div>
               <div class="table-wrap">
                 <table>
-                  <thead><tr><th>Admin User</th><th>Role</th><th>Client</th><th>Profile</th><th></th></tr></thead>
+                  <thead id="adminUserHead"></thead>
                   <tbody id="adminUserTable"></tbody>
                 </table>
               </div>
@@ -582,15 +582,15 @@
               <div class="panel-heading">
                 <h3>Access Levels</h3>
                 <div class="panel-tools">
-                  <span id="accessLevelTableCount" class="muted"></span>
+                  <button class="tiny-button system-action" data-view-access-levels type="button">View Access Levels</button>
                   <button class="tiny-button system-action" data-open-form="accessLevelForm" type="button">Add Access Level</button>
                 </div>
               </div>
-              <div class="table-wrap">
-                <table>
-                  <thead><tr><th>Level</th><th>Security</th><th>Pages</th><th></th></tr></thead>
-                  <tbody id="accessLevelTable"></tbody>
-                </table>
+              <div class="compact-list">
+                <div class="compact-item">
+                  <strong>Site access definitions</strong>
+                  <p>Open the access level view when you need to review security levels, page access, or custom site roles.</p>
+                </div>
               </div>
             </section>
             <section class="panel table-panel">
@@ -603,7 +603,7 @@
               </div>
               <div class="table-wrap">
                 <table>
-                  <thead><tr><th>User</th><th>Role</th><th>Client</th><th>Profile</th><th></th></tr></thead>
+                  <thead id="userAccessHead"></thead>
                   <tbody id="userAccessTable"></tbody>
                 </table>
               </div>
@@ -1623,6 +1623,6 @@
     <div id="modalHost"></div>
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js?v=V1.05.006-runner-status-column-controls"></script>
+    <script src="app.js?v=V1.05.007-admin-console-column-controls"></script>
   </body>
 </html>
