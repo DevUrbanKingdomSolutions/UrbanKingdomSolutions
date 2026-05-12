@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.04.127",
-  title: "V1.04.127 update installed",
-  body: "Tightened the Gig Resources category control spacing."
+  version: "V1.04.128",
+  title: "V1.04.128 update installed",
+  body: "Aligned Gig Resources category controls and added column sort/filter menus."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -382,6 +382,9 @@ let state = {
   dashboardPayrollEventId: localStorage.getItem("productionCrewDashboardPayrollEventId") || "",
   dashboardCalendarMonth: localStorage.getItem("productionCrewDashboardCalendarMonth") || "",
   runnerCategory: "All",
+  runnerSortKey: localStorage.getItem("productionCrewRunnerSortKey") || "name",
+  runnerSortDirection: localStorage.getItem("productionCrewRunnerSortDirection") || "asc",
+  runnerColumnFilters: JSON.parse(localStorage.getItem("productionCrewRunnerColumnFilters") || "{}"),
   directoryTab: "crew",
   payrollView: localStorage.getItem("productionCrewPayrollView") || "worker",
   timecardEventFilter: localStorage.getItem("productionCrewTimecardEventFilter") || "all",
@@ -6638,6 +6641,7 @@ function renderPromoters() {
 }
 
 function renderRunnerStops() {
+  renderRunnerTableHead();
   if (isAdminRole()) {
     $("#runnerTableCount").textContent = "0 shown";
     renderRunnerCategoryControls(["All"]);
@@ -6648,9 +6652,10 @@ function renderRunnerStops() {
   if (!categories.includes(state.runnerCategory)) state.runnerCategory = "All";
   renderRunnerCategoryCreator();
   renderRunnerCategoryControls(categories);
-  const rows = state.runnerStops
+  const rows = sortRunnerStops(state.runnerStops
     .filter((stop) => state.runnerCategory === "All" || (stop.category || "Other") === state.runnerCategory)
-    .filter((stop) => matchesSearch(stop));
+    .filter((stop) => matchesSearch(stop))
+    .filter((stop) => matchesRunnerColumnFilters(stop)));
   $("#runnerTableCount").textContent = `${rows.length} shown`;
   $("#runnerTable").innerHTML = rows.length
     ? rows.map((stop) => runnerStopRow(stop)).join("")
@@ -6666,6 +6671,54 @@ function renderRunnerCategoryControls(categories = runnerCategories()) {
   select.value = categoryOptions.includes(state.runnerCategory) ? state.runnerCategory : "";
   select.innerHTML = `<option value="">Select category</option>${categoryOptions.map((category) => `<option value="${escapeHtml(category)}">${escapeHtml(category)}</option>`).join("")}`;
   select.value = categoryOptions.includes(state.runnerCategory) ? state.runnerCategory : "";
+}
+
+const RUNNER_COLUMNS = [
+  ["name", "Name"],
+  ["category", "Category"],
+  ["address", "Address"],
+  ["hours", "Hours"],
+  ["bestUse", "Best use"]
+];
+
+function runnerColumnValue(stop, key) {
+  if (key === "name") return `${stop.name || ""} ${stop.phone || ""} ${[stop.city, stop.state].filter(Boolean).join(" ")}`;
+  return String(stop[key] || "");
+}
+
+function matchesRunnerColumnFilters(stop) {
+  return Object.entries(state.runnerColumnFilters || {}).every(([key, value]) => {
+    const term = String(value || "").trim().toLowerCase();
+    if (!term) return true;
+    return runnerColumnValue(stop, key).toLowerCase().includes(term);
+  });
+}
+
+function sortRunnerStops(rows) {
+  const key = state.runnerSortKey || "name";
+  const direction = state.runnerSortDirection === "desc" ? -1 : 1;
+  return rows.sort((a, b) => direction * runnerColumnValue(a, key).localeCompare(runnerColumnValue(b, key), undefined, { numeric: true, sensitivity: "base" }));
+}
+
+function renderRunnerTableHead() {
+  const head = $("#runnerHead");
+  if (!head) return;
+  head.innerHTML = `<tr>${RUNNER_COLUMNS.map(([key, label]) => {
+    const activeSort = state.runnerSortKey === key;
+    const activeFilter = !!state.runnerColumnFilters?.[key];
+    const arrow = activeSort ? (state.runnerSortDirection === "desc" ? "▼" : "▲") : "▾";
+    return `<th><div class="column-filter-heading">
+      <span>${escapeHtml(label)}</span>
+      <details class="column-filter-menu ${activeSort || activeFilter ? "active" : ""}">
+        <summary aria-label="${escapeHtml(label)} sort and filter">${arrow}</summary>
+        <div class="record-options-menu">
+          <button class="tiny-button" data-runner-sort="${escapeHtml(key)}" data-runner-sort-direction="asc" type="button">Sort A-Z</button>
+          <button class="tiny-button" data-runner-sort="${escapeHtml(key)}" data-runner-sort-direction="desc" type="button">Sort Z-A</button>
+          <label>Filter<input data-runner-column-filter="${escapeHtml(key)}" value="${escapeHtml(state.runnerColumnFilters?.[key] || "")}" placeholder="Type to filter"></label>
+        </div>
+      </details>
+    </div></th>`;
+  }).join("")}<th></th></tr>`;
 }
 
 function renderMessaging() {
@@ -10953,6 +11006,13 @@ function bindEvents() {
       state.runnerCategory = event.target.value || "All";
       renderRunnerStops();
     }
+    if (event.target?.matches?.("[data-runner-column-filter]")) {
+      const key = event.target.dataset.runnerColumnFilter;
+      state.runnerColumnFilters = { ...(state.runnerColumnFilters || {}), [key]: event.target.value };
+      if (!state.runnerColumnFilters[key]) delete state.runnerColumnFilters[key];
+      localStorage.setItem("productionCrewRunnerColumnFilters", JSON.stringify(state.runnerColumnFilters));
+      renderRunnerStops();
+    }
   });
   $("#dashboardCalendarPrev")?.addEventListener("click", () => {
     const month = dashboardCalendarMonthDate();
@@ -11149,6 +11209,7 @@ function bindEvents() {
     const editButton = event.target.closest("[data-edit]");
     const openButton = event.target.closest("[data-open-form]");
     const runnerResourceButton = event.target.closest("[data-runner-resource-action]");
+    const runnerSortButton = event.target.closest("[data-runner-sort]");
     const quickProfileButton = event.target.closest("[data-open-quick-profile]");
     const deleteButton = event.target.closest("[data-delete]");
     const clockButton = event.target.closest("[data-clock-out]");
@@ -11255,6 +11316,15 @@ function bindEvents() {
         clearForm("runnerForm");
         openForm("runnerForm");
       }
+      return;
+    }
+    if (runnerSortButton) {
+      state.runnerSortKey = runnerSortButton.dataset.runnerSort || "name";
+      state.runnerSortDirection = runnerSortButton.dataset.runnerSortDirection || "asc";
+      localStorage.setItem("productionCrewRunnerSortKey", state.runnerSortKey);
+      localStorage.setItem("productionCrewRunnerSortDirection", state.runnerSortDirection);
+      runnerSortButton.closest("details")?.removeAttribute("open");
+      renderRunnerStops();
       return;
     }
     if (requestMobilePermissionsButton) {

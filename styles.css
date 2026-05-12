@@ -2613,10 +2613,10 @@ td p {
 .runner-category-controls {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
-  align-items: center;
+  gap: 8px;
+  align-items: flex-end;
   justify-content: flex-start;
-  padding: 10px 14px 11px;
+  padding: 8px 14px 10px;
   border-bottom: 1px solid var(--line);
   background: #fbfaf6;
 }
@@ -2627,10 +2627,11 @@ td p {
   color: var(--accent-dark);
   cursor: pointer;
   font: inherit;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 900;
-  line-height: 1;
-  padding: 7px 2px;
+  line-height: 38px;
+  min-height: 38px;
+  padding: 0 3px;
   text-transform: uppercase;
 }
 
@@ -2642,13 +2643,16 @@ td p {
 }
 
 .runner-category-select-label {
-  display: grid;
-  gap: 5px;
+  display: block;
   width: min(280px, calc(100% - 52px));
   color: #5d6970;
-  font-size: 11px;
+  font-size: 14px;
   font-weight: 900;
   text-transform: uppercase;
+}
+
+.runner-category-select-label span {
+  display: none;
 }
 
 .runner-category-select-label select {
@@ -2662,6 +2666,75 @@ td p {
   font-size: 14px;
   font-weight: 700;
   padding: 8px 10px;
+}
+
+.column-filter-heading {
+  position: relative;
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  min-width: 0;
+}
+
+.column-filter-menu {
+  position: relative;
+}
+
+.column-filter-menu[open] {
+  z-index: 12;
+}
+
+.column-filter-menu summary {
+  display: inline-grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: color-mix(in srgb, var(--accent-dark) 72%, #617079);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 1;
+  list-style: none;
+}
+
+.column-filter-menu summary::-webkit-details-marker {
+  display: none;
+}
+
+.column-filter-menu.active summary,
+.column-filter-menu summary:hover,
+.column-filter-menu summary:focus-visible {
+  background: color-mix(in srgb, var(--accent-soft) 70%, #ffffff);
+  color: var(--accent);
+  outline: none;
+}
+
+.column-filter-menu .record-options-menu {
+  min-width: 190px;
+  text-transform: none;
+}
+
+.column-filter-menu label {
+  display: grid;
+  gap: 5px;
+  color: #5d6970;
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.column-filter-menu input {
+  min-height: 34px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: #20282c;
+  font: inherit;
+  font-size: 13px;
+  padding: 7px 8px;
+  text-transform: none;
 }
 
 .clock-card {
