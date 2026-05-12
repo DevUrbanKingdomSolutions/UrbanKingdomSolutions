@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.04.143",
-  title: "V1.04.143 update installed",
-  body: "Refined vehicle checklist tones and removed duplicate gas amount status."
+  version: "V1.04.144",
+  title: "V1.04.144 update installed",
+  body: "Connected vehicle gas gauge checklist status to the selected gas level."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -6547,26 +6547,28 @@ function vehicleCheckRow(group) {
 
 function vehicleChecklistStatus(group) {
   return {
-    start: vehiclePhaseChecklist(group.startLog, "start", ["Gas gauge", "Front", "Back", "Driver side", "Passenger side"], [
-      "startGasGauge",
-      "startFront",
-      "startBack",
-      "startDriverSide",
-      "startPassengerSide"
+    start: vehiclePhaseChecklist(group.startLog, "start", [
+      { label: "Gas gauge", done: !!group.startLog?.gasGauge },
+      ["Front", "startFront"],
+      ["Back", "startBack"],
+      ["Driver side", "startDriverSide"],
+      ["Passenger side", "startPassengerSide"]
     ]),
-    end: vehiclePhaseChecklist(group.endLog, "end", ["Gas gauge", "Front", "Back", "Driver side", "Passenger side"], [
-      "endGasGauge",
-      "endFront",
-      "endBack",
-      "endDriverSide",
-      "endPassengerSide"
+    end: vehiclePhaseChecklist(group.endLog, "end", [
+      { label: "Gas gauge", done: !!group.endLog?.gasGauge },
+      ["Front", "endFront"],
+      ["Back", "endBack"],
+      ["Driver side", "endDriverSide"],
+      ["Passenger side", "endPassengerSide"]
     ])
   };
 }
 
-function vehiclePhaseChecklist(log, phase, labels, keys) {
+function vehiclePhaseChecklist(log, phase, checks) {
   const photos = log?.vehiclePhotos || {};
-  const items = keys.map((key, index) => ({ label: labels[index], done: !!photos[key] }));
+  const items = checks.map((check) => Array.isArray(check)
+    ? { label: check[0], done: !!photos[check[1]] }
+    : check);
   const plateRequired = phase === "start";
   const plateDone = !plateRequired || !!log?.plateNumber;
   return {

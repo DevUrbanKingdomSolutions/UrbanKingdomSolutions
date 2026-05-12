@@ -1,5 +1,5 @@
 {
-  "version": "V1.04.143",
-  "title": "V1.04.143 update installed",
-  "body": "Refined vehicle checklist tones and removed duplicate gas amount status."
+  "version": "V1.04.144",
+  "title": "V1.04.144 update installed",
+  "body": "Connected vehicle gas gauge checklist status to the selected gas level."
 }
