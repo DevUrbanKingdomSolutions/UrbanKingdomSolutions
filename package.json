@@ -1,11 +1,12 @@
 {
   "name": "production-crew-dashboard",
-  "version": "1.5.14",
+  "version": "1.5.15",
   "private": true,
   "type": "module",
   "description": "Entertainment production dashboard with Supabase auth and a Capacitor mobile foundation.",
   "scripts": {
     "cap:prepare": "node scripts/prepare-capacitor-web.mjs",
+    "cap:check": "node scripts/native-readiness-check.mjs",
     "cap:add:ios": "npx cap add ios",
     "cap:add:android": "npx cap add android",
     "cap:sync": "npm run cap:prepare && npx cap sync",

@@ -1,4 +1,4 @@
-package com.getcapacitor.myapp;
+package com.productioncrew.dashboard;
 
 import static org.junit.Assert.*;
 
