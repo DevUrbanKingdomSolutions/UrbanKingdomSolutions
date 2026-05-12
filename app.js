@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.04.123",
-  title: "V1.04.123 update installed",
-  body: "Standardized popup profile notes so each note line uses the date/time dash description format."
+  version: "V1.04.124",
+  title: "V1.04.124 update installed",
+  body: "Renamed the directory areas and expanded Gig Resources category access for client and promoter roles."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -190,7 +190,7 @@ const ACCESS_PROFILES = {
   PROMOTER_ADMIN: {
     label: "PROMOTER ADMIN",
     baseRole: "PROMOTER",
-    views: ["productionBoard", "events", "workers", "promoters", "venues", "vehicles", "reports", "directory", "messages", "dataTools", "mobileApp"],
+    views: ["productionBoard", "events", "workers", "promoters", "venues", "vehicles", "reports", "directory", "runner", "messages", "dataTools", "mobileApp"],
     canAdminEdit: true,
     canOwnerEdit: false,
     canVenueEdit: true,
@@ -202,7 +202,7 @@ const ACCESS_PROFILES = {
   PROMOTER_REP: {
     label: "PROMOTER REP",
     baseRole: "PROMOTER",
-    views: ["productionBoard", "events", "workers", "promoters", "venues", "vehicles", "reports", "directory", "messages", "mobileApp"],
+    views: ["productionBoard", "events", "workers", "promoters", "venues", "vehicles", "reports", "directory", "runner", "messages", "mobileApp"],
     canAdminEdit: true,
     canOwnerEdit: false,
     canVenueEdit: true,
@@ -425,7 +425,7 @@ const NAV_GROUPS = {
     { label: "PROFILES", items: [["workers", "Crew Profiles"], ["promoters", "Promoter Profiles"], ["venues", "Venues"]] },
     { label: "EVENTS", items: [["events", "Events"], ["productionBoard", "Production Board"], ["timecards", "Timecards"], ["vehicles", "Vehicles"], ["reports", "Reports"]] },
     { label: "PAYROLL", items: [["payroll", "Payroll"]] },
-    { label: "DIRECTORIES", items: [["directory", "Crew Directory"], ["runner", "Gig Directory"], ["messages", "Messages"]] },
+    { label: "DIRECTORIES", items: [["directory", "Directory"], ["runner", "Gig Resources"], ["messages", "Messages"]] },
     { label: "SETTINGS", items: [["dataTools", "Import / Export"], ["mobileApp", "Mobile Settings"]] }
   ],
   CLIENT_REP: [
@@ -433,7 +433,7 @@ const NAV_GROUPS = {
     { items: [["clientProfile", "My Profile"]] },
     { label: "PROFILES", items: [["promoters", "Promoter Profiles"]] },
     { label: "EVENTS", items: [["events", "Events"], ["productionBoard", "Production Board"], ["vehicles", "Vehicles"], ["reports", "Reports"]] },
-    { label: "DIRECTORIES", items: [["directory", "Crew Directory"], ["runner", "Gig Directory"], ["messages", "Messages"]] },
+    { label: "DIRECTORIES", items: [["directory", "Directory"], ["runner", "Gig Resources"], ["messages", "Messages"]] },
     { label: "SETTINGS", items: [["dataTools", "Import / Export"], ["mobileApp", "Mobile Settings"]] }
   ],
   CLIENT_REP_LEAD: [
@@ -441,7 +441,7 @@ const NAV_GROUPS = {
     { items: [["clientProfile", "My Profile"]] },
     { label: "PROFILES", items: [["workers", "Crew Profiles"], ["promoters", "Promoter Profiles"], ["venues", "Venues"]] },
     { label: "EVENTS", items: [["events", "Events"], ["productionBoard", "Production Board"], ["vehicles", "Vehicles"], ["reports", "Reports"]] },
-    { label: "DIRECTORIES", items: [["directory", "Crew Directory"], ["runner", "Gig Directory"], ["messages", "Messages"]] },
+    { label: "DIRECTORIES", items: [["directory", "Directory"], ["runner", "Gig Resources"], ["messages", "Messages"]] },
     { label: "SETTINGS", items: [["dataTools", "Import / Export"], ["mobileApp", "Mobile Settings"]] }
   ],
   CLIENT_ACCOUNTING: [
@@ -452,26 +452,26 @@ const NAV_GROUPS = {
     { items: [["productionBoard", "Production Board"]] },
     { label: "PROFILES", items: [["workers", "Crew Profiles"], ["promoters", "Promoter Profiles"], ["venues", "Venues"]] },
     { label: "EVENTS", items: [["events", "Events"], ["vehicles", "Vehicles"], ["reports", "Reports"]] },
-    { label: "DIRECTORIES", items: [["directory", "Crew Directory"], ["messages", "Messages"]] },
+    { label: "DIRECTORIES", items: [["directory", "Directory"], ["runner", "Gig Resources"], ["messages", "Messages"]] },
     { label: "SETTINGS", items: [["dataTools", "Import / Export"], ["mobileApp", "Mobile Settings"]] }
   ],
   PROMOTER_REP: [
     { items: [["productionBoard", "Production Board"]] },
     { label: "PROFILES", items: [["workers", "Crew Profiles"], ["promoters", "Promoter Profiles"], ["venues", "Venues"]] },
     { label: "EVENTS", items: [["events", "Events"], ["vehicles", "Vehicles"], ["reports", "Reports"]] },
-    { label: "DIRECTORIES", items: [["directory", "Crew Directory"], ["messages", "Messages"]] },
+    { label: "DIRECTORIES", items: [["directory", "Directory"], ["runner", "Gig Resources"], ["messages", "Messages"]] },
     { label: "SETTINGS", items: [["mobileApp", "Mobile Settings"]] }
   ],
   PRODUCTION_TEAM_ACCESS: [
     { items: [["productionBoard", "Production Board"]] },
     { label: "EVENTS", items: [["events", "Events"], ["vehicles", "Vehicles"], ["reports", "Reports"]] },
-    { label: "DIRECTORIES", items: [["directory", "Crew Directory"], ["messages", "Messages"]] },
+    { label: "DIRECTORIES", items: [["directory", "Directory"], ["messages", "Messages"]] },
     { label: "SETTINGS", items: [["mobileApp", "Mobile Settings"]] }
   ],
   CREW: [
     { items: [["dashboard", "Home"], ["workers", "My Profile"], ["clock", "Time Clock"]] },
     { label: "EVENTS", items: [["productionResponse", "Crew Response"], ["events", "Events"], ["timecards", "Timecards"], ["vehicles", "Vehicles"], ["reports", "Reports"]] },
-    { label: "DIRECTORIES", items: [["directory", "Crew Directory"], ["runner", "Gig Directory"], ["messages", "Messages"]] },
+    { label: "DIRECTORIES", items: [["directory", "Directory"], ["runner", "Gig Resources"], ["messages", "Messages"]] },
     { label: "SETTINGS", items: [["mobileApp", "Mobile Settings"]] }
   ]
 };
@@ -4018,7 +4018,7 @@ function openReadOnlyRecord(storeName, id) {
       ]]
     ]);
   } else if (storeName === "runnerStops") {
-    readOnlyProfileCard(record.name, record.category || "Gig Directory", [], [["Notes", noteSectionText(record.notes, record.updatedAt || record.createdAt)]], "", [
+    readOnlyProfileCard(record.name, record.category || "Gig Resources", [], [["Notes", noteSectionText(record.notes, record.updatedAt || record.createdAt)]], "", [
       ["Contact", [
         ["Phone", record.phone],
         ["Hours", record.hours]
@@ -5409,7 +5409,7 @@ function publicGigResourceCard(stop) {
   const location = [stop.city, stop.state].filter(Boolean).join(", ");
   return `<article class="compact-item">
     <strong>${escapeHtml(stop.name || "Resource")}</strong>
-    <span>${escapeHtml(stop.category || "Gig Directory")}${location ? ` - ${escapeHtml(location)}` : ""}</span>
+    <span>${escapeHtml(stop.category || "Gig Resources")}${location ? ` - ${escapeHtml(location)}` : ""}</span>
     <p>${escapeHtml(stop.address || "")}</p>
     <p>${escapeHtml(stop.phone || "")}${stop.hours ? ` | ${escapeHtml(stop.hours)}` : ""}</p>
     <p>${escapeHtml(stop.bestUse || "")}</p>
@@ -8026,7 +8026,7 @@ function runnerCategoriesAddedThisYear(workerId = state.activeWorkerId) {
 
 function hasUnlimitedRunnerCategoryAccess() {
   const roles = assignedAccessForCurrentUser();
-  return roles.includes("CLIENT_REP") || roles.includes("CLIENT_REP_LEAD");
+  return ["CLIENT_ADMIN", "CLIENT_REP", "CLIENT_REP_LEAD", "PROMOTER_ADMIN", "PROMOTER_REP"].some((role) => roles.includes(role));
 }
 
 function runnerNotesAddedThisYear(stopId, workerId = state.activeWorkerId) {
@@ -8194,7 +8194,7 @@ function shortMobileLabel(label = "") {
     .replace("Crew Profiles", "Crew")
     .replace("My Profile", "Profile")
     .replace("Production Board", "Board")
-    .replace("Gig Directory", "Gigs")
+    .replace("Gig Resources", "Gigs")
     .replace("Promoter Profiles", "Promoters")
     .replace("Client Profile", "Client")
     .replace("Admin Console", "Admin");
@@ -10542,9 +10542,12 @@ async function addRunnerCategory(event) {
     return;
   }
   const year = new Date().getFullYear();
+  const createdByWorkerId = hasUnlimitedRunnerCategoryAccess()
+    ? authState.user?.id || state.activeWorkerId || ""
+    : state.activeWorkerId || authState.user?.id || "";
   await put("runnerCategories", {
     name,
-    createdByWorkerId: state.activeWorkerId || authState.user?.id || "",
+    createdByWorkerId,
     createdYear: year
   });
   state.runnerCategory = name;

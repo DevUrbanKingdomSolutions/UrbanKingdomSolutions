@@ -10,7 +10,7 @@
     <title>Production Crew Database</title>
     <link rel="manifest" href="manifest.webmanifest">
     <link rel="icon" href="assets/logo/app-logo-admin.png" type="image/png">
-    <link rel="stylesheet" href="styles.css?v=V1.04.123-popup-note-format">
+    <link rel="stylesheet" href="styles.css?v=V1.04.124-gig-resources">
   </head>
   <body>
     <div id="appLoadingOverlay" class="app-loading-overlay" aria-live="polite">
@@ -107,7 +107,7 @@
           <button class="nav-item" data-view="reports" type="button">Reports</button>
           <button class="nav-item" data-view="venues" type="button">Venues</button>
           <button class="nav-item" data-view="promoters" type="button">Promoter Profiles</button>
-          <button class="nav-item" data-view="runner" type="button">Gig Directory</button>
+          <button class="nav-item" data-view="runner" type="button">Gig Resources</button>
         </nav>
         <div class="mobile-sidebar-actions">
           <button id="mobileSidebarLogoutButton" class="ghost-button" type="button">Log Out</button>
@@ -1036,7 +1036,7 @@
           <div class="stack-layout">
             <section class="panel">
               <div class="panel-heading">
-                <h3>Crew Directory</h3>
+                <h3>Directory</h3>
                 <span id="directoryTableCount" class="muted"></span>
               </div>
               <div id="directoryTabs" class="tab-row" role="tablist" aria-label="Directory tabs"></div>
@@ -1487,7 +1487,7 @@
             </form>
             <section class="panel table-panel">
               <div class="panel-heading">
-                <h3>Gig Directory</h3>
+                <h3>Gig Resources</h3>
                 <div class="panel-tools">
                   <span id="runnerTableCount" class="muted"></span>
                   <button class="tiny-button admin-action" data-open-form="runnerForm" type="button">Add Stop</button>
@@ -1516,6 +1516,6 @@
     <div id="modalHost"></div>
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js?v=V1.04.123-popup-note-format"></script>
+    <script src="app.js?v=V1.04.124-gig-resources"></script>
   </body>
 </html>
