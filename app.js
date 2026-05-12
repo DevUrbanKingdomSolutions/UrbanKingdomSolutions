@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.04.135",
-  title: "V1.04.135 update installed",
-  body: "Added Production Office staffing schedule tools."
+  version: "V1.04.136",
+  title: "V1.04.136 update installed",
+  body: "Updated Production Office and Messages navigation."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -432,28 +432,31 @@ const NAV_GROUPS = {
     { items: [["dashboard", "Dashboard"]] },
     { items: [["clientCompanyProfile", "Client Profile"], ["clientProfile", "My Profile"]] },
     { label: "PROFILES", items: [["workers", "Crew Profiles"], ["promoters", "Promoter Profiles"], ["venues", "Venues"]] },
-    { label: "PRODUCTION OFFICE", items: [["productionBoard", "Production Office"], ["staffingAssignments", "Staffing Assignment"], ["staffingSchedule", "Staffing Schedule"]] },
     { label: "EVENTS", items: [["events", "Events"], ["timecards", "Timecards"], ["vehicles", "Vehicles"], ["reports", "Reports"]] },
+    { label: "PRODUCTION OFFICE", items: [["productionBoard", "Production Office"], ["staffingAssignments", "Staffing Assignment"], ["staffingSchedule", "Staffing Schedule"]] },
     { label: "PAYROLL", items: [["payroll", "Payroll"]] },
-    { label: "DIRECTORIES", items: [["directory", "Directory"], ["runner", "Gig Resources"], ["messages", "Messages"]] },
+    { label: "DIRECTORIES", items: [["directory", "Directory"], ["runner", "Gig Resources"]] },
+    { items: [["messages", "Messages"]] },
     { label: "SETTINGS", items: [["dataTools", "Import / Export"], ["mobileApp", "Mobile Settings"]] }
   ],
   CLIENT_REP: [
     { items: [["dashboard", "Dashboard"]] },
     { items: [["clientProfile", "My Profile"]] },
     { label: "PROFILES", items: [["promoters", "Promoter Profiles"]] },
-    { label: "PRODUCTION OFFICE", items: [["productionBoard", "Production Office"], ["staffingAssignments", "Staffing Assignment"], ["staffingSchedule", "Staffing Schedule"]] },
     { label: "EVENTS", items: [["events", "Events"], ["vehicles", "Vehicles"], ["reports", "Reports"]] },
-    { label: "DIRECTORIES", items: [["directory", "Directory"], ["runner", "Gig Resources"], ["messages", "Messages"]] },
+    { label: "PRODUCTION OFFICE", items: [["productionBoard", "Production Office"], ["staffingAssignments", "Staffing Assignment"], ["staffingSchedule", "Staffing Schedule"]] },
+    { label: "DIRECTORIES", items: [["directory", "Directory"], ["runner", "Gig Resources"]] },
+    { items: [["messages", "Messages"]] },
     { label: "SETTINGS", items: [["dataTools", "Import / Export"], ["mobileApp", "Mobile Settings"]] }
   ],
   CLIENT_REP_LEAD: [
     { items: [["dashboard", "Dashboard"]] },
     { items: [["clientProfile", "My Profile"]] },
     { label: "PROFILES", items: [["workers", "Crew Profiles"], ["promoters", "Promoter Profiles"], ["venues", "Venues"]] },
-    { label: "PRODUCTION OFFICE", items: [["productionBoard", "Production Office"], ["staffingAssignments", "Staffing Assignment"], ["staffingSchedule", "Staffing Schedule"]] },
     { label: "EVENTS", items: [["events", "Events"], ["vehicles", "Vehicles"], ["reports", "Reports"]] },
-    { label: "DIRECTORIES", items: [["directory", "Directory"], ["runner", "Gig Resources"], ["messages", "Messages"]] },
+    { label: "PRODUCTION OFFICE", items: [["productionBoard", "Production Office"], ["staffingAssignments", "Staffing Assignment"], ["staffingSchedule", "Staffing Schedule"]] },
+    { label: "DIRECTORIES", items: [["directory", "Directory"], ["runner", "Gig Resources"]] },
+    { items: [["messages", "Messages"]] },
     { label: "SETTINGS", items: [["dataTools", "Import / Export"], ["mobileApp", "Mobile Settings"]] }
   ],
   CLIENT_ACCOUNTING: [
@@ -461,30 +464,34 @@ const NAV_GROUPS = {
     { label: "SETTINGS", items: [["mobileApp", "Mobile Settings"]] }
   ],
   PROMOTER_ADMIN: [
-    { label: "PRODUCTION OFFICE", items: [["productionBoard", "Production Office"], ["staffingAssignments", "Staffing Assignment"], ["staffingSchedule", "Staffing Schedule"]] },
     { label: "PROFILES", items: [["workers", "Crew Profiles"], ["promoters", "Promoter Profiles"], ["venues", "Venues"]] },
     { label: "EVENTS", items: [["events", "Events"], ["vehicles", "Vehicles"], ["reports", "Reports"]] },
-    { label: "DIRECTORIES", items: [["directory", "Directory"], ["runner", "Gig Resources"], ["messages", "Messages"]] },
+    { label: "PRODUCTION OFFICE", items: [["productionBoard", "Production Office"], ["staffingAssignments", "Staffing Assignment"], ["staffingSchedule", "Staffing Schedule"]] },
+    { label: "DIRECTORIES", items: [["directory", "Directory"], ["runner", "Gig Resources"]] },
+    { items: [["messages", "Messages"]] },
     { label: "SETTINGS", items: [["dataTools", "Import / Export"], ["mobileApp", "Mobile Settings"]] }
   ],
   PROMOTER_REP: [
-    { label: "PRODUCTION OFFICE", items: [["productionBoard", "Production Office"], ["staffingAssignments", "Staffing Assignment"], ["staffingSchedule", "Staffing Schedule"]] },
     { label: "PROFILES", items: [["workers", "Crew Profiles"], ["promoters", "Promoter Profiles"], ["venues", "Venues"]] },
     { label: "EVENTS", items: [["events", "Events"], ["vehicles", "Vehicles"], ["reports", "Reports"]] },
-    { label: "DIRECTORIES", items: [["directory", "Directory"], ["runner", "Gig Resources"], ["messages", "Messages"]] },
+    { label: "PRODUCTION OFFICE", items: [["productionBoard", "Production Office"], ["staffingAssignments", "Staffing Assignment"], ["staffingSchedule", "Staffing Schedule"]] },
+    { label: "DIRECTORIES", items: [["directory", "Directory"], ["runner", "Gig Resources"]] },
+    { items: [["messages", "Messages"]] },
     { label: "SETTINGS", items: [["mobileApp", "Mobile Settings"]] }
   ],
   PRODUCTION_TEAM_ACCESS: [
-    { label: "PRODUCTION OFFICE", items: [["productionBoard", "Production Office"], ["staffingAssignments", "Staffing Assignment"], ["staffingSchedule", "Staffing Schedule"]] },
     { label: "EVENTS", items: [["events", "Events"], ["vehicles", "Vehicles"], ["reports", "Reports"]] },
-    { label: "DIRECTORIES", items: [["directory", "Directory"], ["messages", "Messages"]] },
+    { label: "PRODUCTION OFFICE", items: [["productionBoard", "Production Office"], ["staffingAssignments", "Staffing Assignment"], ["staffingSchedule", "Staffing Schedule"]] },
+    { label: "DIRECTORIES", items: [["directory", "Directory"]] },
+    { items: [["messages", "Messages"]] },
     { label: "SETTINGS", items: [["mobileApp", "Mobile Settings"]] }
   ],
   CREW: [
     { items: [["dashboard", "Home"], ["workers", "My Profile"], ["clock", "Time Clock"]] },
-    { label: "PRODUCTION OFFICE", items: [["productionResponse", "Production Office"], ["staffingAssignments", "Staffing Assignment"], ["staffingSchedule", "Staffing Schedule"]] },
     { label: "EVENTS", items: [["events", "Events"], ["timecards", "Timecards"], ["vehicles", "Vehicles"], ["reports", "Reports"]] },
-    { label: "DIRECTORIES", items: [["directory", "Directory"], ["runner", "Gig Resources"], ["messages", "Messages"]] },
+    { label: "PRODUCTION OFFICE", items: [["productionResponse", "Production Office"], ["staffingAssignments", "Staffing Assignment"], ["staffingSchedule", "Staffing Schedule"]] },
+    { label: "DIRECTORIES", items: [["directory", "Directory"], ["runner", "Gig Resources"]] },
+    { items: [["messages", "Messages"]] },
     { label: "SETTINGS", items: [["mobileApp", "Mobile Settings"]] }
   ]
 };
