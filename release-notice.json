@@ -1,5 +1,5 @@
 {
-  "version": "V1.04.106",
-  "title": "V1.04.106 update installed",
-  "body": "Made message chat updates append or replace individual bubbles instead of repainting the chat list."
+  "version": "V1.04.107",
+  "title": "V1.04.107 update installed",
+  "body": "Quieted open-chat notification refreshes so received messages do not flash the page."
 }

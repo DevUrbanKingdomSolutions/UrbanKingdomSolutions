@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.04.106",
-  title: "V1.04.106 update installed",
-  body: "Made message chat updates append or replace individual bubbles instead of repainting the chat list."
+  version: "V1.04.107",
+  title: "V1.04.107 update installed",
+  body: "Quieted open-chat notification refreshes so received messages do not flash the page."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -6561,7 +6561,15 @@ async function applyRealtimeNotificationRecord(row = {}) {
     && activeThreadKey
     && notification.threadType === activeThreadType
     && notification.threadKey === activeThreadKey;
-  await put("appNotifications", isOpenMessageThread ? { ...notification, readAt: notification.readAt || new Date().toISOString() } : notification);
+  if (isOpenMessageThread) {
+    const saved = { ...notification, readAt: notification.readAt || new Date().toISOString() };
+    await put("appNotifications", saved);
+    state.appNotifications = [saved, ...state.appNotifications.filter((item) => item.id !== saved.id)]
+      .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+    renderNotifications();
+    return;
+  }
+  await put("appNotifications", notification);
   await loadState();
   renderNotificationSurfaces();
 }
@@ -9735,13 +9743,28 @@ function mergeVisibleSendbirdMessages(loadedMessages = []) {
   return merged.sort((a, b) => Number(a?.createdAt || 0) - Number(b?.createdAt || 0));
 }
 
+function messageListSignature(messages = sendbirdMessages) {
+  return messages.map((message) => [
+    messageActionKey(message),
+    sendbirdMessageKey(message),
+    message.deliveryStatus || "",
+    message.createdAt || "",
+    message.message || "",
+    message.url || message.plainUrl || message.fileUrl || message.previewUrl || ""
+  ].join("|")).join("::");
+}
+
 async function refreshActiveSendbirdMessages(options = {}) {
   if (!sendbirdActiveChannel || sendbirdMessageRefreshInFlight) return;
   const wasAtBottom = isActiveMessageScrolledToBottom();
   sendbirdMessageRefreshInFlight = true;
   try {
     const loadedMessages = await loadSendbirdMessages(sendbirdActiveChannel);
-    sendbirdMessages = options.keepLocal ? mergeVisibleSendbirdMessages(loadedMessages) : loadedMessages;
+    const previousSignature = messageListSignature();
+    const nextMessages = options.keepLocal ? mergeVisibleSendbirdMessages(loadedMessages) : loadedMessages;
+    const nextSignature = messageListSignature(nextMessages);
+    sendbirdMessages = nextMessages;
+    if (previousSignature === nextSignature && !options.scrollToBottom) return;
     if (userIsActivelyScrollingMessageThread() && !options.scrollToBottom && !wasAtBottom) {
       queueMessageThreadRenderAfterScroll();
       return;
