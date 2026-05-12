@@ -1581,6 +1581,44 @@ body.crew-mode .crew-mobile-home:not([hidden]) {
   flex: 1 1 auto;
 }
 
+.dashboard-heading-spacer {
+  display: inline-block;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 32px;
+}
+
+#recentNotes {
+  max-height: 152px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-color: transparent transparent;
+  scrollbar-width: thin;
+}
+
+#recentNotes:hover,
+#recentNotes:focus-within {
+  scrollbar-color: color-mix(in srgb, var(--accent) 34%, transparent) transparent;
+}
+
+#recentNotes::-webkit-scrollbar {
+  width: 7px;
+}
+
+#recentNotes::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+#recentNotes::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: transparent;
+}
+
+#recentNotes:hover::-webkit-scrollbar-thumb,
+#recentNotes:focus-within::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--accent) 34%, transparent);
+}
+
 .panel {
   overflow: hidden;
 }

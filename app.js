@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.04.118",
-  title: "V1.04.118 update installed",
-  body: "Refined dashboard payroll controls, recent note timestamps, note popups, and modal presentation."
+  version: "V1.04.119",
+  title: "V1.04.119 update installed",
+  body: "Aligned dashboard note and clocked-in headers and made Recent Notes scroll cleanly after two visible notes."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
