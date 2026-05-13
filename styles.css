@@ -1697,6 +1697,23 @@ body.crew-mode .crew-mobile-home:not([hidden]) {
   align-items: center;
 }
 
+.intelligence-heading > div:first-child {
+  display: grid;
+  gap: 2px;
+}
+
+.intelligence-heading span {
+  color: color-mix(in srgb, var(--accent-dark) 58%, var(--muted));
+  font-size: 10px;
+  font-weight: 950;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.intelligence-heading h3 {
+  color: color-mix(in srgb, var(--accent-dark) 78%, var(--ink));
+}
+
 #recentNotes {
   max-height: 152px;
   overflow-y: auto;

@@ -10,7 +10,7 @@
     <title>Production Crew Database</title>
     <link rel="manifest" href="manifest.webmanifest">
     <link rel="icon" href="assets/logo/app-logo-admin.png" type="image/png">
-    <link rel="stylesheet" href="styles.css?v=V1.05.028-client-profile-layout">
+    <link rel="stylesheet" href="styles.css?v=V1.05.029-stage-intelligence">
   </head>
   <body>
     <div id="appLoadingOverlay" class="app-loading-overlay" aria-live="polite">
@@ -185,11 +185,14 @@
               <div id="liveCrewList" class="compact-list"></div>
             </section>
             <section class="panel">
-              <div class="panel-heading">
-                <h3>Recent Notes</h3>
+              <div class="panel-heading intelligence-heading">
+                <div>
+                  <span>Signals & Notes</span>
+                  <h3>Stage Intelligence</h3>
+                </div>
                 <div class="dashboard-heading-actions">
-                  <button class="icon-button clean-icon-button owner-action" data-open-recent-notes type="button" aria-label="View recent notes" title="View recent notes">⌕</button>
-                  <button class="icon-button clean-icon-button owner-action" data-open-form="dashboardNoteForm" type="button" aria-label="Add note" title="Add note">+</button>
+                  <button class="icon-button clean-icon-button owner-action" data-open-recent-notes type="button" aria-label="View Stage Intelligence notes" title="View Stage Intelligence notes">⌕</button>
+                  <button class="icon-button clean-icon-button owner-action" data-open-form="dashboardNoteForm" type="button" aria-label="Add intelligence note" title="Add note">+</button>
                 </div>
               </div>
               <div id="recentNotes" class="compact-list"></div>
@@ -197,7 +200,7 @@
           </div>
           <section id="recentNotesView" class="panel form-panel owner-form">
             <div class="panel-heading">
-              <h3>Recent Notes</h3>
+              <h3>Stage Intelligence</h3>
               <button class="ghost-button clear-form" type="button" data-form="recentNotesView">Close</button>
             </div>
             <div id="recentNotesViewBody" class="compact-list"></div>
@@ -1660,6 +1663,6 @@
     <div id="modalHost"></div>
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js?v=V1.05.028-client-profile-layout"></script>
+    <script src="app.js?v=V1.05.029-stage-intelligence"></script>
   </body>
 </html>

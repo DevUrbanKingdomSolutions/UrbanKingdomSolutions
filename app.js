@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.05.028",
-  title: "V1.05.028 update installed",
-  body: "Refined client company profile sections for contact details and pay rates."
+  version: "V1.05.029",
+  title: "V1.05.029 update installed",
+  body: "Introduced Stage Intelligence framing for dashboard signals and notes."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -4977,7 +4977,7 @@ function renderDashboard() {
     renderDashboardPayrollControls([]);
     renderDashboardCalendar([]);
     $("#liveCrewList").innerHTML = `<div class="compact-item empty">ADMIN does not load production timecard data.</div>`;
-    $("#recentNotes").innerHTML = `<div class="compact-item empty">ADMIN does not load production notes.</div>`;
+    $("#recentNotes").innerHTML = `<div class="compact-item empty">ADMIN does not load production intelligence signals.</div>`;
     return;
   }
   const cards = visibleRecords(state.timecards);
@@ -4997,7 +4997,7 @@ function renderDashboard() {
 
   $("#recentNotes").innerHTML = noteItems.length
     ? noteItems.slice(0, 8).map(recentNoteItemHtml).join("")
-    : `<div class="compact-item empty">Notes will appear here as you add them.</div>`;
+    : `<div class="compact-item empty">Stage Intelligence signals and notes will appear here as they are created.</div>`;
 }
 
 function dashboardRecentNotes() {
@@ -5108,7 +5108,7 @@ function openRecentNotesView() {
   const notes = dashboardRecentNotes().slice(0, 8);
   $("#recentNotesViewBody").innerHTML = notes.length
     ? notes.map(recentNoteItemHtml).join("")
-    : `<div class="compact-item empty">Notes will appear here as you add them.</div>`;
+    : `<div class="compact-item empty">Stage Intelligence signals and notes will appear here as they are created.</div>`;
   openForm("recentNotesView");
 }
 
