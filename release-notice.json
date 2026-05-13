@@ -1,5 +1,5 @@
 {
-  "version": "V1.05.030",
-  "title": "V1.05.030 update installed",
-  "body": "Audited popup surfaces and brought message media popups into the premium format."
+  "version": "V1.05.031",
+  "title": "V1.05.031 update installed",
+  "body": "Connected the messaging GIF tool to a GIPHY search picker with fallback link support."
 }

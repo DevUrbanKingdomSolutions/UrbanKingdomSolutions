@@ -10,7 +10,7 @@
     <title>Production Crew Database</title>
     <link rel="manifest" href="manifest.webmanifest">
     <link rel="icon" href="assets/logo/app-logo-admin.png" type="image/png">
-    <link rel="stylesheet" href="styles.css?v=V1.05.030-popup-audit">
+    <link rel="stylesheet" href="styles.css?v=V1.05.031-giphy-picker">
   </head>
   <body>
     <div id="appLoadingOverlay" class="app-loading-overlay" aria-live="polite">
@@ -1344,13 +1344,20 @@
               <form id="messageGifForm" class="panel form-panel">
                 <div class="panel-heading">
                   <div>
-                    <h3>Add GIF</h3>
-                    <p>Paste a GIF image link to add it to the message.</p>
+                    <h3>GIPHY</h3>
+                    <p>Search and add a GIF to the message.</p>
                   </div>
                   <button class="ghost-button clear-form" type="button" data-form="messageGifForm">Close</button>
                 </div>
-                <label>GIF link<input name="gifUrl" type="url" placeholder="https://example.com/image.gif"></label>
-                <button class="primary-action" type="submit">Add GIF</button>
+                <div class="giphy-search-row">
+                  <label>Search GIFs<input name="giphySearch" placeholder="Search GIPHY"></label>
+                  <button class="primary-action" type="submit">Search</button>
+                </div>
+                <div id="giphyStatus" class="form-note"></div>
+                <div id="giphyResults" class="giphy-result-grid"></div>
+                <p class="giphy-attribution">Powered by GIPHY</p>
+                <label>GIF link fallback<input name="gifUrl" type="url" placeholder="https://media.giphy.com/media/.../giphy.gif"></label>
+                <button class="secondary-action" data-add-gif-url type="button">Add Link</button>
               </form>
             </section>
           </div>
@@ -1674,6 +1681,6 @@
     <div id="modalHost"></div>
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js?v=V1.05.030-popup-audit"></script>
+    <script src="app.js?v=V1.05.031-giphy-picker"></script>
   </body>
 </html>

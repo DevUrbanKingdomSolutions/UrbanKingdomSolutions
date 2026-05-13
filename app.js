@@ -12,6 +12,8 @@ const RENTAL_PHOTO_NOTIFICATION_FUNCTION = "send-rental-photo-notification";
 const NOVU_TRIGGER_FUNCTION = "trigger-novu-notification";
 const SENDBIRD_APP_ID = "2B54A2B2-CB8E-43DE-A7F8-B53059C09AB3";
 const SENDBIRD_MESSAGE_REFRESH_MS = 1200;
+const GIPHY_API_KEY = window.STAGEGRID_GIPHY_API_KEY || "";
+const GIPHY_SEARCH_ENDPOINT = "https://api.giphy.com/v1/gifs/search";
 const SENDBIRD_SDK_MODULE_SOURCES = [
   {
     chat: "https://esm.sh/@sendbird/chat@4.22.0",
@@ -36,9 +38,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.05.030",
-  title: "V1.05.030 update installed",
-  body: "Audited popup surfaces and brought message media popups into the premium format."
+  version: "V1.05.031",
+  title: "V1.05.031 update installed",
+  body: "Connected the messaging GIF tool to a GIPHY search picker with fallback link support."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -274,6 +276,7 @@ let pendingMessageAttachments = [];
 let pendingMessageReply = null;
 let messageActionTimer = null;
 let messageActionTargetKey = "";
+let giphyResults = [];
 let sendbirdGroupChannelHandlerClass = null;
 let sendbirdInboundMessageHandlerReady = false;
 let sendbirdTypingPoller = null;
@@ -9040,16 +9043,109 @@ function closeMessageImagePreview() {
   document.body.classList.remove("modal-open");
 }
 
-function saveMessageGifLink(event) {
-  event.preventDefault();
-  const input = event.currentTarget.elements.gifUrl;
+function giphyApiReady() {
+  return !!GIPHY_API_KEY && !GIPHY_API_KEY.includes("YOUR_GIPHY_API_KEY");
+}
+
+function giphyImageUrl(gif = {}, preview = false) {
+  const images = gif.images || {};
+  return (preview
+    ? images.fixed_height_small?.url || images.fixed_width_small?.url || images.preview_gif?.url
+    : images.downsized_medium?.url || images.downsized?.url || images.original?.url || images.fixed_height?.url) || "";
+}
+
+function renderGiphyResults(items = giphyResults, message = "") {
+  const status = $("#giphyStatus");
+  const results = $("#giphyResults");
+  if (!status || !results) return;
+  status.textContent = message || (giphyApiReady() ? "Search GIPHY for a reaction." : "Add a GIPHY API key to enable search, or paste a GIF link below.");
+  results.innerHTML = items.length
+    ? items.map((gif, index) => {
+        const previewUrl = giphyImageUrl(gif, true);
+        const title = gif.title || "GIPHY result";
+        return `<button class="giphy-result" data-giphy-result="${index}" type="button" aria-label="${escapeHtml(title)}"><img src="${escapeHtml(previewUrl)}" alt="${escapeHtml(title)}"><span>${escapeHtml(title)}</span></button>`;
+      }).join("")
+    : "";
+}
+
+async function searchGiphy(query) {
+  if (!giphyApiReady()) {
+    renderGiphyResults([], "GIPHY search needs an API key. You can still paste a GIF link below.");
+    return;
+  }
+  const clean = String(query || "").trim().slice(0, 50);
+  if (!clean) {
+    renderGiphyResults([], "Type a word or phrase to search GIPHY.");
+    return;
+  }
+  renderGiphyResults([], "Searching GIPHY...");
+  const url = new URL(GIPHY_SEARCH_ENDPOINT);
+  url.searchParams.set("api_key", GIPHY_API_KEY);
+  url.searchParams.set("q", clean);
+  url.searchParams.set("limit", "18");
+  url.searchParams.set("rating", "pg");
+  url.searchParams.set("lang", "en");
+  const response = await fetch(url.toString());
+  if (!response.ok) throw new Error(`GIPHY search failed: ${response.status}`);
+  const payload = await response.json();
+  giphyResults = Array.isArray(payload.data) ? payload.data : [];
+  renderGiphyResults(giphyResults, giphyResults.length ? `${giphyResults.length} GIFs found.` : "No GIFs found. Try another search.");
+}
+
+function registerGiphyAction(gif = {}, action = "onclick") {
+  const url = gif.analytics?.[action]?.url;
+  if (!url) return;
+  try {
+    const ping = new URL(url);
+    ping.searchParams.set("ts", Date.now().toString());
+    ping.searchParams.set("random_id", crypto.randomUUID());
+    fetch(ping.toString(), { mode: "no-cors" }).catch(() => {});
+  } catch (error) {
+    console.warn("GIPHY analytics skipped.", error);
+  }
+}
+
+function addGifUrlToMessage(url = "") {
+  const clean = String(url || "").trim();
+  if (!clean) {
+    toast("Choose a GIF or paste a GIF link first.");
+    return false;
+  }
+  insertIntoMessageInput(`${clean} `);
+  closeForm("messageGifForm");
+  return true;
+}
+
+function addManualMessageGifLink() {
+  const input = $("#messageGifForm")?.elements.gifUrl;
   const url = String(input?.value || "").trim();
   if (!url) {
     toast("Paste a GIF link first.");
+    return false;
+  }
+  return addGifUrlToMessage(url);
+}
+
+function selectGiphyResult(index) {
+  const gif = giphyResults[Number(index)];
+  const url = giphyImageUrl(gif, false);
+  if (!gif || !url) {
+    toast("Could not add that GIF.");
     return;
   }
-  insertIntoMessageInput(`${url} `);
-  closeForm("messageGifForm");
+  registerGiphyAction(gif, "onclick");
+  addGifUrlToMessage(url);
+}
+
+async function saveMessageGifLink(event) {
+  event.preventDefault();
+  const query = event.currentTarget.elements.giphySearch?.value || "";
+  try {
+    await searchGiphy(query);
+  } catch (error) {
+    console.error(error);
+    renderGiphyResults([], "GIPHY search could not load. Paste a GIF link below, or try again.");
+  }
 }
 
 function imageUrlFromText(text = "") {
@@ -12595,6 +12691,8 @@ function bindEvents() {
     }
     if (tool?.dataset.messageTool === "gif") {
       clearForm("messageGifForm");
+      giphyResults = [];
+      renderGiphyResults();
       openForm("messageGifForm");
       return;
     }
@@ -12603,6 +12701,12 @@ function bindEvents() {
       renderMessageAttachmentPreview();
     }
     if (clearReply) clearPendingMessageReply();
+  });
+  $("#messageGifForm").addEventListener("click", (event) => {
+    const result = event.target.closest("[data-giphy-result]");
+    const manual = event.target.closest("[data-add-gif-url]");
+    if (result) selectGiphyResult(result.dataset.giphyResult);
+    if (manual) addManualMessageGifLink();
   });
   $("#sendbirdMessageForm").elements.message.addEventListener("input", () => {
     if (!sendbirdActiveChannel) return;
