@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.05.024",
-  title: "V1.05.024 update installed",
-  body: "Added package access selection to the Admin Add Client flow."
+  version: "V1.05.025",
+  title: "V1.05.025 update installed",
+  body: "Applied a shared premium format to popup forms across the app."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",

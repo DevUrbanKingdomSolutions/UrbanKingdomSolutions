@@ -1801,15 +1801,42 @@ body.crew-mode .crew-mobile-home:not([hidden]) {
   max-height: calc(100vh - 42px);
   overflow: auto;
   border: 0;
-  border-radius: 16px;
-  background: #ffffff;
-  box-shadow: 0 26px 80px rgba(23, 31, 35, 0.2);
+  border-radius: 20px;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--accent-soft) 42%, #ffffff) 0, #ffffff 185px),
+    #ffffff;
+  box-shadow:
+    0 30px 90px rgba(23, 31, 35, 0.22),
+    inset 0 0 0 1px color-mix(in srgb, var(--accent) 10%, transparent);
   transform: translate(-50%, -50%);
 }
 
 .form-panel.modal-form .panel-heading {
-  border-bottom-color: color-mix(in srgb, var(--accent) 14%, var(--line));
-  background: linear-gradient(90deg, color-mix(in srgb, var(--accent-soft) 58%, #ffffff), #ffffff 68%);
+  align-items: flex-start;
+  border-bottom: 0;
+  background:
+    linear-gradient(90deg, #ffffff 0 8px, transparent 8px),
+    linear-gradient(135deg, color-mix(in srgb, var(--accent-soft) 78%, #ffffff), rgba(255, 255, 255, 0.94) 70%);
+  box-shadow: inset 0 -1px 0 color-mix(in srgb, var(--accent) 10%, transparent);
+}
+
+.form-panel.modal-form .panel-heading h3 {
+  color: color-mix(in srgb, var(--accent-dark) 78%, var(--ink));
+  font-size: 18px;
+  font-weight: 900;
+  letter-spacing: 0;
+}
+
+.form-panel.modal-form .panel-heading p {
+  margin: 3px 0 0;
+  color: color-mix(in srgb, var(--accent-dark) 48%, var(--muted));
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.4;
+}
+
+.form-panel.modal-form .panel-tools {
+  padding-top: 0;
 }
 
 .form-panel.modal-form .profile-page-card {
@@ -1825,6 +1852,32 @@ body.crew-mode .crew-mobile-home:not([hidden]) {
   background: transparent;
   padding-right: 0;
   padding-left: 0;
+}
+
+.form-panel.modal-form > label {
+  margin: 14px 18px 0;
+  padding: 0 0 4px;
+}
+
+.form-panel.modal-form label {
+  color: color-mix(in srgb, var(--accent-dark) 56%, #334046);
+  font-weight: 800;
+}
+
+.form-panel.modal-form input,
+.form-panel.modal-form select,
+.form-panel.modal-form textarea {
+  border-color: color-mix(in srgb, var(--accent) 13%, var(--line));
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.88);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.76);
+}
+
+.form-panel.modal-form input:focus,
+.form-panel.modal-form select:focus,
+.form-panel.modal-form textarea:focus {
+  border-color: color-mix(in srgb, var(--accent) 58%, var(--line));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 14%, transparent);
 }
 
 .modal-backdrop {
@@ -1979,15 +2032,18 @@ body.pull-refresh-dragging .active-view {
   gap: 10px;
   margin: 14px 16px 0;
   padding: 12px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: #fbfaf6;
+  border: 0;
+  border-radius: 14px;
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--accent-soft) 46%, rgba(255, 255, 255, 0.9)), rgba(255, 255, 255, 0.84)),
+    color-mix(in srgb, var(--accent) 4%, #ffffff);
+  box-shadow: inset 4px 0 0 color-mix(in srgb, var(--accent) 36%, transparent);
 }
 
 .photo-fieldset > span {
-  color: #334046;
+  color: color-mix(in srgb, var(--accent-dark) 72%, #334046);
   font-size: 13px;
-  font-weight: 800;
+  font-weight: 900;
 }
 
 .photo-fieldset label {
@@ -2121,8 +2177,11 @@ body.pull-refresh-dragging .active-view {
 }
 
 .assignment-fieldset {
-  background: linear-gradient(135deg, color-mix(in srgb, var(--role-color) 7%, #ffffff), #ffffff);
-  border-color: color-mix(in srgb, var(--role-color) 18%, var(--line));
+  border: 0;
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--role-color) 9%, #ffffff), rgba(255, 255, 255, 0.9)),
+    #ffffff;
+  box-shadow: inset 4px 0 0 color-mix(in srgb, var(--role-color) 38%, transparent);
 }
 
 .field-helper {
@@ -2151,6 +2210,30 @@ body.pull-refresh-dragging .active-view {
 .form-panel .secondary-action {
   width: calc(100% - 32px);
   margin: 14px 16px 0;
+}
+
+.form-panel.modal-form .primary-action,
+.form-panel.modal-form .secondary-action {
+  border-radius: 12px;
+}
+
+.form-panel.modal-form .primary-action {
+  border: 0;
+  background: linear-gradient(135deg, var(--accent), var(--accent-dark));
+  box-shadow: 0 12px 26px color-mix(in srgb, var(--accent) 22%, transparent);
+}
+
+.form-panel.modal-form .secondary-action {
+  border-color: color-mix(in srgb, var(--accent) 13%, var(--line));
+  background: color-mix(in srgb, var(--accent-soft) 30%, #ffffff);
+  color: color-mix(in srgb, var(--accent-dark) 72%, var(--ink));
+}
+
+.form-panel.modal-form .checkbox-grid {
+  margin: 8px 0 0;
+  padding: 10px;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--accent-soft) 34%, #ffffff);
 }
 
 .form-panel select[multiple] {
@@ -5958,7 +6041,7 @@ body:not(.owner-mode) .rate-field {
     left: 0;
     width: 100%;
     max-height: min(90dvh, 780px);
-    border-radius: 12px 12px 0 0;
+    border-radius: 18px 18px 0 0;
     padding-bottom: calc(78px + env(safe-area-inset-bottom));
     transform: none;
   }
@@ -5967,7 +6050,9 @@ body:not(.owner-mode) .rate-field {
     position: sticky;
     top: 0;
     z-index: 2;
-    background: var(--panel);
+    background:
+      linear-gradient(90deg, #ffffff 0 8px, transparent 8px),
+      linear-gradient(135deg, color-mix(in srgb, var(--accent-soft) 82%, #ffffff), rgba(255, 255, 255, 0.96) 72%);
   }
 
   .form-panel.modal-form > .primary-action:last-child,
