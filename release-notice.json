@@ -1,5 +1,5 @@
 {
-  "version": "V1.05.017",
-  "title": "V1.05.017 update installed",
-  "body": "Fixed message section collapse behavior so Permanent and Event thread groups close correctly."
+  "version": "V1.05.018",
+  "title": "V1.05.018 update installed",
+  "body": "Updated message thread sections to act as a cleaner one-open accordion with improved spacing."
 }

@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.05.017",
-  title: "V1.05.017 update installed",
-  body: "Fixed message section collapse behavior so Permanent and Event thread groups close correctly."
+  version: "V1.05.018",
+  title: "V1.05.018 update installed",
+  body: "Updated message thread sections to act as a cleaner one-open accordion with improved spacing."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -8307,17 +8307,17 @@ function mobileMessagingChatCards() {
   const permanentCollapsed = messageSectionCollapsed("permanent");
   const eventCollapsed = messageSectionCollapsed("event");
   return `<div class="mobile-message-sections">
-    ${permanentThreads.length ? `<section class="mobile-message-section">
+    ${permanentThreads.length ? `<section class="mobile-message-section ${permanentCollapsed ? "is-collapsed" : "is-open"}">
       <div class="mobile-message-section-heading">
         <button class="message-section-toggle" data-message-section-toggle="permanent" type="button" aria-expanded="${String(!permanentCollapsed)}">
           <span>${permanentCollapsed ? ">" : "v"}</span>
           <h4>Permanent Threads</h4>
         </button>
-        ${adminPermanentThreadClientSelect()}
+        ${permanentCollapsed ? "" : adminPermanentThreadClientSelect()}
       </div>
       <div class="mobile-message-list" ${permanentCollapsed ? "hidden" : ""}>${permanentThreads.map((thread) => permanentMessageCard(thread)).join("")}</div>
     </section>` : ""}
-    <section class="mobile-message-section">
+    <section class="mobile-message-section ${eventCollapsed ? "is-collapsed" : "is-open"}">
       <div class="mobile-message-section-heading">
         <button class="message-section-toggle" data-message-section-toggle="event" type="button" aria-expanded="${String(!eventCollapsed)}">
           <span>${eventCollapsed ? ">" : "v"}</span>
@@ -8340,6 +8340,7 @@ function mobileMessagingChatCards() {
 }
 
 function messageSectionCollapsed(section) {
+  if (["permanent", "event"].includes(section) && !(section in (state.collapsedMessageSections || {}))) return true;
   return !!state.collapsedMessageSections?.[section];
 }
 
@@ -8348,6 +8349,9 @@ function setMessageSectionCollapsed(section, collapsed) {
     ...state.collapsedMessageSections,
     [section]: !!collapsed
   };
+  if (!collapsed && section === "permanent") state.collapsedMessageSections.event = true;
+  if (!collapsed && section === "event") state.collapsedMessageSections.permanent = true;
+  if (collapsed && section === "event") state.messageEventPickerOpen = false;
   localStorage.setItem("productionCrewCollapsedMessageSections", JSON.stringify(state.collapsedMessageSections));
 }
 
