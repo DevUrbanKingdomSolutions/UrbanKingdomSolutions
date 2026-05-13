@@ -10,7 +10,7 @@
     <title>Production Crew Database</title>
     <link rel="manifest" href="manifest.webmanifest">
     <link rel="icon" href="assets/logo/app-logo-admin.png" type="image/png">
-    <link rel="stylesheet" href="styles.css?v=V1.05.025-popup-form-polish">
+    <link rel="stylesheet" href="styles.css?v=V1.05.026-office-suites">
   </head>
   <body>
     <div id="appLoadingOverlay" class="app-loading-overlay" aria-live="polite">
@@ -465,7 +465,7 @@
               </div>
               <input type="hidden" name="id">
               <label>Client company<input name="name" required placeholder="Company name"></label>
-              <label>Package layouts
+              <label>Office suites
                 <div class="checkbox-grid package-grid" data-package-options data-checkbox-group data-name="packageLayouts"></div>
               </label>
               <label>First client rep<input name="contactName" placeholder="Name"></label>
@@ -485,16 +485,16 @@
             </form>
             <form id="clientPackageForm" class="panel form-panel system-form">
               <div class="panel-heading">
-                <h3>Client Package Layouts</h3>
+                <h3>Client Office Suites</h3>
                 <button class="ghost-button clear-form" type="button" data-form="clientPackageForm">Close</button>
               </div>
               <input type="hidden" name="id">
               <div id="clientPackageSummary" class="compact-list"></div>
-              <label>Package layouts
+              <label>Office suites
                 <div class="checkbox-grid package-grid" data-package-options data-checkbox-group data-name="packageLayouts"></div>
               </label>
-              <p class="form-note">Planned packages are visible here for roadmap clarity, but stay disabled until their pages, data rules, and security model exist.</p>
-              <button class="primary-action" type="submit">Save Packages</button>
+              <p class="form-note">Planned office suites are visible here for roadmap clarity, but stay disabled until their pages, data rules, and security model exist.</p>
+              <button class="primary-action" type="submit">Save Office Suites</button>
             </form>
             <form id="accessLevelForm" class="panel form-panel system-form">
               <div class="panel-heading">
@@ -859,7 +859,7 @@
               <div class="compact-list">
                 <div class="compact-item empty">
                   <strong>Document workspace</strong>
-                  <p>Uploaded document packages and event document sections will be organized here.</p>
+                  <p>Uploaded document bundles and event document sections will be organized here.</p>
                 </div>
               </div>
             </section>
@@ -1041,7 +1041,7 @@
               </label>
               <section class="quick-package-field form-section">
                 <div class="repeatable-heading">
-                  <h4>Package access</h4>
+                  <h4>Office suite access</h4>
                 </div>
                 <div class="checkbox-grid package-grid" data-package-options data-checkbox-group data-name="packageLayouts"></div>
               </section>
@@ -1657,6 +1657,6 @@
     <div id="modalHost"></div>
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js?v=V1.05.025-popup-form-polish"></script>
+    <script src="app.js?v=V1.05.026-office-suites"></script>
   </body>
 </html>

@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.05.025",
-  title: "V1.05.025 update installed",
-  body: "Applied a shared premium format to popup forms across the app."
+  version: "V1.05.026",
+  title: "V1.05.026 update installed",
+  body: "Renamed client access wording to Office Suites."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -3944,7 +3944,7 @@ function renderAdmin() {
   const clients = sortClientAccounts(filterClientAccounts(state.clients));
   $("#clientTableCount").textContent = `${clients.length} clients`;
   $("#clientTable").innerHTML = clients.length
-    ? clients.map((client) => `<tr><td><button class="link-button" data-view-client-company="${client.id}" type="button"><strong>${escapeHtml(client.name)}</strong></button><p>${escapeHtml(client.email)}</p><p>${clientPackageBadges(client.packageLayouts)}</p></td><td>${escapeHtml(client.contactName)}<p>${escapeHtml(client.phone)}</p></td><td><span class="status-pill">${escapeHtml(client.status || "Active")}</span></td><td>${escapeHtml(client.notes)}${loginStatus(client)}</td><td>${actionButtons("clients", client.id, "clientForm", `<button class="tiny-button system-action" data-manage-client-packages="${client.id}" type="button">Packages</button>${loginSetupButton("clients", client)}`, canSystemEdit())}</td></tr>`).join("")
+    ? clients.map((client) => `<tr><td><button class="link-button" data-view-client-company="${client.id}" type="button"><strong>${escapeHtml(client.name)}</strong></button><p>${escapeHtml(client.email)}</p><p>${clientPackageBadges(client.packageLayouts)}</p></td><td>${escapeHtml(client.contactName)}<p>${escapeHtml(client.phone)}</p></td><td><span class="status-pill">${escapeHtml(client.status || "Active")}</span></td><td>${escapeHtml(client.notes)}${loginStatus(client)}</td><td>${actionButtons("clients", client.id, "clientForm", `<button class="tiny-button system-action" data-manage-client-packages="${client.id}" type="button">Office Suites</button>${loginSetupButton("clients", client)}`, canSystemEdit())}</td></tr>`).join("")
     : `<tr><td colspan="5" class="empty">No client accounts yet.</td></tr>`;
 }
 
@@ -4020,12 +4020,12 @@ async function saveClientPackages(event) {
     packageLayouts: normalizeClientPackages(selected)
   };
   await put("clients", updated);
-  let message = "Client packages saved.";
+  let message = "Client office suites saved.";
   try {
     message = await syncSupabaseClientAccount(updated) || message;
   } catch (error) {
     console.error(error);
-    message = "Saved locally. Supabase package sync needs attention.";
+    message = "Saved locally. Supabase office suite sync needs attention.";
   }
   await loadState();
   setView("adminClients");
@@ -4228,7 +4228,7 @@ function openClientCompanyView(clientId) {
         ["Personal Vehicle", currency(client.defaultPersonalVehicleRate || 0)]
       ]],
       ["Production Setup", [
-        ["Package Layouts", clientPackageLabels(client.packageLayouts).join(", ")]
+        ["Office Suites", clientPackageLabels(client.packageLayouts).join(", ")]
       ]]
     ],
     sections: [
@@ -4815,7 +4815,7 @@ function renderClientProfile() {
           ["Personal Vehicle", currency(client.defaultPersonalVehicleRate || 0)]
         ]],
         ["Production Setup", [
-          ["Package Layouts", clientPackageLabels(client.packageLayouts).join(", ")]
+          ["Office Suites", clientPackageLabels(client.packageLayouts).join(", ")]
         ]]
       ],
       sections: [
