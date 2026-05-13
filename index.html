@@ -10,7 +10,7 @@
     <title>Production Crew Database</title>
     <link rel="manifest" href="manifest.webmanifest">
     <link rel="icon" href="assets/logo/app-logo-admin.png" type="image/png">
-    <link rel="stylesheet" href="styles.css?v=V1.05.029-stage-intelligence">
+    <link rel="stylesheet" href="styles.css?v=V1.05.030-popup-audit">
   </head>
   <body>
     <div id="appLoadingOverlay" class="app-loading-overlay" aria-live="polite">
@@ -1341,6 +1341,17 @@
                 <p class="form-note">Owner can pass ownership to another admin. Owners and admins can add or remove members. Only the owner can change admin rights.</p>
                 <button class="primary-action" type="submit">Save Thread Access</button>
               </form>
+              <form id="messageGifForm" class="panel form-panel">
+                <div class="panel-heading">
+                  <div>
+                    <h3>Add GIF</h3>
+                    <p>Paste a GIF image link to add it to the message.</p>
+                  </div>
+                  <button class="ghost-button clear-form" type="button" data-form="messageGifForm">Close</button>
+                </div>
+                <label>GIF link<input name="gifUrl" type="url" placeholder="https://example.com/image.gif"></label>
+                <button class="primary-action" type="submit">Add GIF</button>
+              </form>
             </section>
           </div>
         </section>
@@ -1663,6 +1674,6 @@
     <div id="modalHost"></div>
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js?v=V1.05.029-stage-intelligence"></script>
+    <script src="app.js?v=V1.05.030-popup-audit"></script>
   </body>
 </html>

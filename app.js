@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.05.029",
-  title: "V1.05.029 update installed",
-  body: "Introduced Stage Intelligence framing for dashboard signals and notes."
+  version: "V1.05.030",
+  title: "V1.05.030 update installed",
+  body: "Audited popup surfaces and brought message media popups into the premium format."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -9020,8 +9020,15 @@ function openMessageImagePreview(url, label = "Message image") {
   $("#messageImagePreviewModal")?.remove();
   const modal = document.createElement("section");
   modal.id = "messageImagePreviewModal";
-  modal.className = "message-image-preview-modal";
-  modal.innerHTML = `<button class="message-image-preview-close" type="button" data-close-message-image-preview aria-label="Close image preview">×</button><img src="${escapeHtml(url)}" alt="${escapeHtml(label || "Message image")}">`;
+  modal.className = "form-panel modal-form message-image-preview-modal";
+  modal.innerHTML = `<div class="panel-heading">
+    <div>
+      <h3>${escapeHtml(label || "Message image")}</h3>
+      <p>Image preview</p>
+    </div>
+    <button class="icon-button clean-icon-button message-image-preview-close" type="button" data-close-message-image-preview aria-label="Close image preview">×</button>
+  </div>
+  <div class="message-image-preview-stage"><img src="${escapeHtml(url)}" alt="${escapeHtml(label || "Message image")}"></div>`;
   $("#modalHost")?.appendChild(modal);
   $("#modalBackdrop").classList.add("show");
   document.body.classList.add("modal-open");
@@ -9031,6 +9038,18 @@ function closeMessageImagePreview() {
   $("#messageImagePreviewModal")?.remove();
   $("#modalBackdrop").classList.remove("show");
   document.body.classList.remove("modal-open");
+}
+
+function saveMessageGifLink(event) {
+  event.preventDefault();
+  const input = event.currentTarget.elements.gifUrl;
+  const url = String(input?.value || "").trim();
+  if (!url) {
+    toast("Paste a GIF link first.");
+    return;
+  }
+  insertIntoMessageInput(`${url} `);
+  closeForm("messageGifForm");
 }
 
 function imageUrlFromText(text = "") {
@@ -12560,6 +12579,7 @@ function bindEvents() {
   $("#eventAssignmentForm").addEventListener("submit", (event) => saveForm(event, "eventAssignments"));
   $("#assignmentDepartmentForm").addEventListener("submit", saveAssignmentDepartmentForm);
   $("#messageThreadManageForm").addEventListener("submit", saveMessageThreadAccess);
+  $("#messageGifForm").addEventListener("submit", saveMessageGifLink);
   $("#sendbirdMessageForm").addEventListener("submit", sendSendbirdMessage);
   $("#messagePhotoInput").addEventListener("change", (event) => addMessagePhotoAttachments(event.target.files).catch((error) => {
     console.error(error);
@@ -12574,8 +12594,8 @@ function bindEvents() {
       return;
     }
     if (tool?.dataset.messageTool === "gif") {
-      const url = window.prompt("Paste a GIF image link");
-      if (url) insertIntoMessageInput(`${url.trim()} `);
+      clearForm("messageGifForm");
+      openForm("messageGifForm");
       return;
     }
     if (removeAttachment) {

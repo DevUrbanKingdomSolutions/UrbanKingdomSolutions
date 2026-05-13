@@ -3895,37 +3895,43 @@ td p {
   object-fit: cover;
 }
 
-.message-image-preview-modal {
-  position: fixed;
-  inset: calc(18px + env(safe-area-inset-top)) 18px calc(18px + env(safe-area-inset-bottom));
-  z-index: 70;
-  display: grid;
-  place-items: center;
-  border-radius: 18px;
-  background: rgba(16, 20, 22, 0.94);
-  padding: 42px 16px 16px;
+.message-image-preview-modal.modal-form {
+  width: min(920px, calc(100vw - 32px));
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--accent-soft) 20%, #101416), #101416 210px),
+    #101416;
 }
 
-.message-image-preview-modal img {
+.message-image-preview-modal .panel-heading {
+  color: #ffffff;
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--accent) 80%, #ffffff) 0 8px, transparent 8px),
+    linear-gradient(135deg, color-mix(in srgb, var(--accent-dark) 36%, #101416), #101416 74%);
+}
+
+.message-image-preview-modal .panel-heading h3,
+.message-image-preview-modal .panel-heading p {
+  color: #ffffff;
+}
+
+.message-image-preview-stage {
+  display: grid;
+  place-items: center;
+  min-height: min(62vh, 620px);
+  padding: 16px;
+}
+
+.message-image-preview-stage img {
   display: block;
   max-width: 100%;
-  max-height: 100%;
+  max-height: min(62vh, 620px);
   object-fit: contain;
 }
 
 .message-image-preview-close {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  display: grid;
-  width: 36px;
-  height: 36px;
-  place-items: center;
   border: 0;
-  border-radius: 50%;
   background: rgba(255, 255, 255, 0.16);
   color: #ffffff;
-  font-size: 24px;
 }
 
 #sendbirdMessageForm input {
@@ -4572,10 +4578,23 @@ td p {
 .profile-edit-form label {
   display: grid;
   gap: 6px;
+  margin: 0;
   color: var(--muted);
   font-size: 12px;
   font-weight: 800;
   text-transform: uppercase;
+}
+
+.form-panel.modal-form .profile-edit-form {
+  display: grid;
+  gap: 16px;
+  margin: 16px 18px 18px;
+  padding: 16px;
+  border-radius: 14px;
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--accent-soft) 40%, rgba(255, 255, 255, 0.92)), rgba(255, 255, 255, 0.86)),
+    #ffffff;
+  box-shadow: inset 4px 0 0 color-mix(in srgb, var(--accent) 44%, transparent);
 }
 
 .profile-edit-grid {
