@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.05.022",
-  title: "V1.05.022 update installed",
-  body: "Kept Direct Messages as an always-open section while Permanent and Event threads accordion above it."
+  version: "V1.05.023",
+  title: "V1.05.023 update installed",
+  body: "Moved Admin Dashboard out of Admin Console so Dashboard and Messages stay as top-level admin links."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -446,8 +446,8 @@ function resetNavGroupsForFreshLoad() {
 
 const NAV_GROUPS = {
   ADMIN: [
-    { label: "ADMIN CONSOLE", items: [["admin", "Dashboard"], ["adminUsers", "Admin Users"], ["adminClients", "Client Accounts"], ["adminUserAccounts", "User Accounts"], ["adminAccessLevels", "Access Levels"]] },
-    { items: [["messages", "Messages"]] },
+    { items: [["admin", "Dashboard"], ["messages", "Messages"]] },
+    { label: "ADMIN CONSOLE", items: [["adminUsers", "Admin Users"], ["adminClients", "Client Accounts"], ["adminUserAccounts", "User Accounts"], ["adminAccessLevels", "Access Levels"]] },
     { label: "SETTINGS", items: [["adminProfile", "My Profile"], ["mobileApp", "Mobile Settings"]] }
   ],
   CLIENT_ADMIN: [

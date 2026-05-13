@@ -1,5 +1,5 @@
 {
-  "version": "V1.05.022",
-  "title": "V1.05.022 update installed",
-  "body": "Kept Direct Messages as an always-open section while Permanent and Event threads accordion above it."
+  "version": "V1.05.023",
+  "title": "V1.05.023 update installed",
+  "body": "Moved Admin Dashboard out of Admin Console so Dashboard and Messages stay as top-level admin links."
 }
