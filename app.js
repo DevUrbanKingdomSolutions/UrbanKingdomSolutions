@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.05.021",
-  title: "V1.05.021 update installed",
-  body: "Made closed message thread sections stack tightly by removing record-grid spacing from the selector."
+  version: "V1.05.022",
+  title: "V1.05.022 update installed",
+  body: "Kept Direct Messages as an always-open section while Permanent and Event threads accordion above it."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -8327,7 +8327,7 @@ function mobileMessagingChatCards() {
       </div>
       <div class="mobile-message-list" ${eventCollapsed ? "hidden" : ""}>${showEventControls ? mobileMessageEventControls() : ""}${eventThreads || `<div class="compact-item empty">No event threads are available for this schedule view.</div>`}</div>
     </section>
-    <section class="mobile-message-section">
+    <section class="mobile-message-section mobile-message-direct-section is-open">
       <div class="mobile-message-section-heading">
         <h4>Direct Messages</h4>
         <button class="tiny-button" data-new-message-thread type="button">New</button>

@@ -2706,6 +2706,10 @@ td p {
     box-shadow: 0 8px 18px color-mix(in srgb, var(--role-color) 5%, transparent);
   }
 
+  #messages .mobile-message-direct-section {
+    margin-top: 2px;
+  }
+
   #messages .message-section-toggle {
     display: inline-flex;
     min-width: 0;
@@ -6193,6 +6197,10 @@ body:not(.owner-mode) .rate-field {
 
   .mobile-message-section.is-open {
     box-shadow: 0 8px 18px color-mix(in srgb, var(--role-color) 5%, transparent);
+  }
+
+  .mobile-message-direct-section {
+    margin-top: 2px;
   }
 
   .mobile-message-section-heading h4 {

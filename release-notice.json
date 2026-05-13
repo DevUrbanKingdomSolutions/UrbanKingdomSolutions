@@ -1,5 +1,5 @@
 {
-  "version": "V1.05.021",
-  "title": "V1.05.021 update installed",
-  "body": "Made closed message thread sections stack tightly by removing record-grid spacing from the selector."
+  "version": "V1.05.022",
+  "title": "V1.05.022 update installed",
+  "body": "Kept Direct Messages as an always-open section while Permanent and Event threads accordion above it."
 }
