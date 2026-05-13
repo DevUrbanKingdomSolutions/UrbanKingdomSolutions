@@ -10,7 +10,7 @@
     <title>Production Crew Database</title>
     <link rel="manifest" href="manifest.webmanifest">
     <link rel="icon" href="assets/logo/app-logo-admin.png" type="image/png">
-    <link rel="stylesheet" href="styles.css?v=V1.05.026-office-suites">
+    <link rel="stylesheet" href="styles.css?v=V1.05.027-event-office-suite">
   </head>
   <body>
     <div id="appLoadingOverlay" class="app-loading-overlay" aria-live="polite">
@@ -674,6 +674,9 @@
               <label>Production contact<input name="productionContact" placeholder="Name, phone, email"></label>
               <label>Venue<select name="venueId"></select></label>
               <label>Promoter<select name="promoterId"></select></label>
+              <label class="event-office-suite-field" hidden>Office suite
+                <select name="officeSuiteId"></select>
+              </label>
               <label class="check-label rate-field"><input name="requiresRentalPhotos" type="checkbox" value="yes"> Rented vehicle photos required for assigned runners</label>
               <div class="assignment-manager" data-event-assignment-manager>
                 <div class="panel-heading compact-heading">
@@ -1657,6 +1660,6 @@
     <div id="modalHost"></div>
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js?v=V1.05.026-office-suites"></script>
+    <script src="app.js?v=V1.05.027-event-office-suite"></script>
   </body>
 </html>

@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.05.026",
-  title: "V1.05.026 update installed",
-  body: "Renamed client access wording to Office Suites."
+  version: "V1.05.027",
+  title: "V1.05.027 update installed",
+  body: "Added event Office Suite selection for clients with multiple suites."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -1462,6 +1462,22 @@ function clientPackageBadges(value) {
   return clientPackageLabels(value).map((label) => `<span class="status-pill">${escapeHtml(label)}</span>`).join(" ");
 }
 
+function clientOfficeSuiteDefinitions(client = activeClientRecord()) {
+  const selected = normalizeClientPackages(client?.packageLayouts);
+  return selected.map((id) => clientPackageDefinitions().find((pkg) => pkg.id === id)).filter(Boolean);
+}
+
+function officeSuiteLabel(id, client = activeClientRecord()) {
+  const suite = clientOfficeSuiteDefinitions(client).find((item) => item.id === id)
+    || clientPackageDefinitions().find((item) => item.id === id);
+  return suite?.name || "";
+}
+
+function eventOfficeSuiteLabel(event = {}) {
+  const client = state.clients.find((item) => item.id === event.clientId) || activeClientRecord();
+  return officeSuiteLabel(event.officeSuiteId, client);
+}
+
 function renderClientPackageControls(form) {
   const group = form?.querySelector("[data-package-options]");
   if (!group) return;
@@ -1561,6 +1577,7 @@ function fillForm(formId, record) {
       input.checked = record.views.includes(input.value);
     });
   }
+  if (formId === "eventForm") updateEventOfficeSuiteField(record);
   openForm(formId);
   updateSmtpForm(form);
   if (formId === "vehicleForm") applyVehicleAssignmentLock(form);
@@ -1590,7 +1607,10 @@ function clearForm(formId) {
     form.elements.breakMinutes.value = "0";
     form.elements.clockIn.value = toLocalInputValue(new Date());
   }
-  if (formId === "eventForm") renderEventAssignmentManager(form, "");
+  if (formId === "eventForm") {
+    renderEventAssignmentManager(form, "");
+    updateEventOfficeSuiteField({});
+  }
   if (formId === "venueForm") renderVenueContactEditor("");
   if (formId === "eventAssignmentForm") {
     renderAssignmentDepartmentOptions("Production Office");
@@ -4505,7 +4525,8 @@ function renderEventProfile(event) {
     ["Event Details", [
       ["Start", formatDate(event.startDate)],
       ["End", formatDate(event.endDate)],
-      ["Type", event.type]
+      ["Type", event.type],
+      ["Office Suite", eventOfficeSuiteLabel(event)]
     ]],
     ["Production", [
       ["Promoter", promoterLabel(promoter)],
@@ -4891,6 +4912,7 @@ function renderSelects() {
 
   $("#eventForm select[name='venueId']").innerHTML = venueOptions;
   $("#eventForm select[name='promoterId']").innerHTML = promoterOptions;
+  updateEventOfficeSuiteField();
   renderEventAssignmentManager($("#eventForm"));
   $("#eventAssignmentForm select[name='workerId']").innerHTML = workerOptions;
   $("#substitutionSwapForm select[name='replacementWorkerId']").innerHTML = workerOptions;
@@ -4905,6 +4927,21 @@ function renderSelects() {
   $("#reportForm select[name='eventId']").innerHTML = eventOptions;
   $("#reportForm select[name='workerId']").innerHTML = workerOptions;
   $("#runnerForm select[name='category']").innerHTML = runnerCategories().filter((category) => category !== "All").map((category) => `<option>${escapeHtml(category)}</option>`).join("");
+}
+
+function updateEventOfficeSuiteField(record = null) {
+  const form = $("#eventForm");
+  if (!form) return;
+  const field = form.querySelector(".event-office-suite-field");
+  const select = form.elements.officeSuiteId;
+  if (!field || !select) return;
+  const client = state.clients.find((item) => item.id === record?.clientId) || activeClientRecord();
+  const suites = clientOfficeSuiteDefinitions(client);
+  const current = record?.officeSuiteId || select.value || suites[0]?.id || "";
+  field.hidden = suites.length <= 1;
+  select.required = suites.length > 1;
+  select.innerHTML = suites.map((suite) => `<option value="${escapeHtml(suite.id)}">${escapeHtml(suite.name)}</option>`).join("");
+  select.value = suites.some((suite) => suite.id === current) ? current : suites[0]?.id || "";
 }
 
 function renderDashboard() {
@@ -6332,6 +6369,7 @@ function assignmentLicensePlate(assignment) {
 function eventCard(event) {
   const venue = getVenue(event.venueId);
   const promoter = getPromoter(event.promoterId);
+  const suiteLabel = eventOfficeSuiteLabel(event);
   const crew = eventWorkerIds(event).map((id) => getWorker(id)?.name).filter(Boolean);
   const crewLine = isCrewRole() ? "Assigned to you" : (crew.join(", ") || "No crew assigned");
   const bucket = eventScheduleBucket(event);
@@ -6352,6 +6390,7 @@ function eventCard(event) {
         <div class="event-card-kicker">
           <span class="status-pill">${escapeHtml(bucket === "current" ? "Current" : bucket === "past" ? "Past" : "Future")}</span>
           <span>${escapeHtml(event.type || "Event")}</span>
+          ${suiteLabel ? `<span>${escapeHtml(suiteLabel)}</span>` : ""}
         </div>
         <strong>${recordLink("events", event.id, event.name)}</strong>
       </div>
@@ -9793,7 +9832,15 @@ async function saveForm(event, storeName) {
     merged.packageLayouts = normalizeClientPackages(merged.packageLayouts);
   }
   if (storeName === "events") {
+    const client = activeClientRecord() || state.clients.find((item) => item.id === merged.clientId);
+    const suites = clientOfficeSuiteDefinitions(client);
     merged.id = merged.id || crypto.randomUUID();
+    merged.clientId = merged.clientId || client?.id || authState.roleRecord?.client_id || "";
+    merged.officeSuiteId = suites.some((suite) => suite.id === merged.officeSuiteId) ? merged.officeSuiteId : suites[0]?.id || "";
+    if (suites.length > 1 && !merged.officeSuiteId) {
+      toast("Select the Office Suite for this event.");
+      return;
+    }
     merged.workerIds = Array.isArray(merged.workerIds) ? merged.workerIds : eventWorkerIds(merged);
     delete merged.showAllCrew;
   }

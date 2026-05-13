@@ -1,5 +1,5 @@
 {
-  "version": "V1.05.026",
-  "title": "V1.05.026 update installed",
-  "body": "Renamed client access wording to Office Suites."
+  "version": "V1.05.027",
+  "title": "V1.05.027 update installed",
+  "body": "Added event Office Suite selection for clients with multiple suites."
 }
