@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.05.020",
-  title: "V1.05.020 update installed",
-  body: "Removed extra message selector shell spacing so thread sections stack more like the side nav."
+  version: "V1.05.021",
+  title: "V1.05.021 update installed",
+  body: "Made closed message thread sections stack tightly by removing record-grid spacing from the selector."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
