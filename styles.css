@@ -2673,8 +2673,8 @@ td p {
 
   #messages .mobile-message-sections {
     display: grid;
-    gap: 4px;
-    padding: 2px 14px 4px;
+    gap: 3px;
+    padding: 0 14px 2px;
   }
 
   #messages .mobile-message-section {
@@ -6073,7 +6073,7 @@ body:not(.owner-mode) .rate-field {
   }
 
   #messages .stack-layout {
-    gap: 10px;
+    gap: 2px;
     margin: 0 -2px;
   }
 
@@ -6095,8 +6095,17 @@ body:not(.owner-mode) .rate-field {
     padding: 0;
   }
 
-  #messages .stack-layout > .panel:first-child .record-grid {
-    padding: 6px 0 0;
+  #messages .messaging-status-header {
+    padding: 2px 2px 4px;
+  }
+
+  #messages .messaging-error-line {
+    margin: 0;
+  }
+
+  #messages #messagingChannelList {
+    gap: 0;
+    padding: 0;
   }
 
   #messages .stack-layout > .panel:first-child .tab-row {
@@ -6153,8 +6162,8 @@ body:not(.owner-mode) .rate-field {
 
   .mobile-message-sections {
     display: grid;
-    gap: 4px;
-    padding: 2px 2px 4px;
+    gap: 3px;
+    padding: 0 2px 2px;
   }
 
   .mobile-message-section {

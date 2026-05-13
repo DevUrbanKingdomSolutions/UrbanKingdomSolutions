@@ -1,5 +1,5 @@
 {
-  "version": "V1.05.019",
-  "title": "V1.05.019 update installed",
-  "body": "Tightened message accordion spacing so thread sections sit closer and expand more naturally."
+  "version": "V1.05.020",
+  "title": "V1.05.020 update installed",
+  "body": "Removed extra message selector shell spacing so thread sections stack more like the side nav."
 }
