@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.05.027",
-  title: "V1.05.027 update installed",
-  body: "Added event Office Suite selection for clients with multiple suites."
+  version: "V1.05.028",
+  title: "V1.05.028 update installed",
+  body: "Refined client company profile sections for contact details and pay rates."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -4233,24 +4233,7 @@ function openClientCompanyView(clientId) {
     meta: "Client Account",
     imageHtml: profileLogoHtml(client, client.name || "Company"),
     actions: `<button class="tiny-button system-action" data-edit="clients" data-id="${client.id}" data-form="clientForm" type="button">Edit Information</button>`,
-    groups: [
-      ["Company Details", [
-        ["Main Contact", client.contactName || ""],
-        ["Email", client.email || ""],
-        ["Phone", client.phone || ""],
-        ["Status", client.status || "Active"]
-      ]],
-      ["Default Pay Rates", [
-        ["Day Rate", currency(client.defaultDayRate || 0)],
-        ["Included Hours", client.defaultIncludedHours || 10],
-        ["Additional Hourly", currency(client.defaultAdditionalRate || 0)],
-        ["Rented Vehicle", currency(client.defaultRentedVehicleRate || 0)],
-        ["Personal Vehicle", currency(client.defaultPersonalVehicleRate || 0)]
-      ]],
-      ["Production Setup", [
-        ["Office Suites", clientPackageLabels(client.packageLayouts).join(", ")]
-      ]]
-    ],
+    groups: clientCompanyProfileGroups(client),
     sections: [
       ["System Notes", client.notes || ""]
     ]
@@ -4263,8 +4246,64 @@ function detailItem(label, value) {
   return `<div><span>${escapeHtml(label)}</span><strong>${escapeHtml(value || "")}</strong></div>`;
 }
 
+function profileInfoCell(cell = {}) {
+  const items = Array.isArray(cell.items) ? cell.items : [];
+  if (!items.some(([, value]) => value !== undefined && value !== null && String(value).trim() !== "")) return "";
+  const className = cell.className ? ` ${escapeHtml(cell.className)}` : "";
+  return `<div class="profile-info-cell${className}">${cell.title ? `<span class="profile-info-cell-title">${escapeHtml(cell.title)}</span>` : ""}${items.map(([label, value]) => detailItem(label, value)).join("")}</div>`;
+}
+
+function profileInfoSectionContent(details = []) {
+  const hasCells = details.some((detail) => detail && typeof detail === "object" && !Array.isArray(detail) && Array.isArray(detail.items));
+  if (hasCells) {
+    const cells = details.map((detail) => profileInfoCell(detail)).filter(Boolean).join("");
+    return cells ? `<div class="profile-info-grid profile-info-split-grid">${cells}</div>` : "";
+  }
+  const visibleDetails = details.filter(([, value]) => value !== undefined && value !== null && String(value).trim() !== "");
+  return visibleDetails.length ? `<div class="profile-info-grid">${visibleDetails.map(([label, value]) => detailItem(label, value)).join("")}</div>` : "";
+}
+
 function profileSection(label, value) {
   return value ? `<div class="profile-section"><span>${escapeHtml(label)}</span><p>${escapeHtml(value)}</p></div>` : "";
+}
+
+function clientCompanyProfileGroups(client = {}) {
+  return [
+    ["Company Details", [
+      {
+        className: "profile-info-cell-wide",
+        items: [
+          ["Main Contact", client.contactName || ""],
+          ["Email", client.email || ""],
+          ["Phone", client.phone || ""]
+        ]
+      },
+      {
+        className: "profile-info-cell-status",
+        items: [
+          ["Status", client.status || "Active"]
+        ]
+      }
+    ]],
+    ["Default Pay Rates", [
+      {
+        items: [
+          ["Included Hours", client.defaultIncludedHours || 10],
+          ["Day Rate", currency(client.defaultDayRate || 0)],
+          ["Additional Hourly", currency(client.defaultAdditionalRate || 0)]
+        ]
+      },
+      {
+        items: [
+          ["Personal Vehicle", currency(client.defaultPersonalVehicleRate || 0)],
+          ["Rented Vehicle", currency(client.defaultRentedVehicleRate || 0)]
+        ]
+      }
+    ]],
+    ["Production Setup", [
+      ["Office Suites", clientPackageLabels(client.packageLayouts).join(", ")]
+    ]]
+  ];
 }
 
 function noteDescription(text = "", timestamp = "") {
@@ -4278,11 +4317,11 @@ function noteDescription(text = "", timestamp = "") {
 }
 
 function profileInfoSection(title, details = []) {
-  const visibleDetails = details.filter(([, value]) => value !== undefined && value !== null && String(value).trim() !== "");
-  if (!visibleDetails.length) return "";
+  const content = profileInfoSectionContent(details);
+  if (!content) return "";
   return `<section class="profile-info-section">
     <h4>${escapeHtml(title)}</h4>
-    <div class="profile-info-grid">${visibleDetails.map(([label, value]) => detailItem(label, value)).join("")}</div>
+    ${content}
   </section>`;
 }
 
@@ -4821,24 +4860,7 @@ function renderClientProfile() {
       meta: "Client Profile",
       imageHtml: profileLogoHtml(client, client.name || "Company"),
       actions: `<button class="tiny-button owner-action" data-open-form="clientCompanyProfileForm" type="button">Edit Company</button>`,
-      groups: [
-        ["Company Details", [
-          ["Main Contact", client.contactName || ""],
-          ["Email", client.email || ""],
-          ["Phone", client.phone || ""],
-          ["Status", client.status || "Active"]
-        ]],
-        ["Default Pay Rates", [
-          ["Day Rate", currency(client.defaultDayRate || 0)],
-          ["Included Hours", client.defaultIncludedHours || 10],
-          ["Additional Hourly", currency(client.defaultAdditionalRate || 0)],
-          ["Rented Vehicle", currency(client.defaultRentedVehicleRate || 0)],
-          ["Personal Vehicle", currency(client.defaultPersonalVehicleRate || 0)]
-        ]],
-        ["Production Setup", [
-          ["Office Suites", clientPackageLabels(client.packageLayouts).join(", ")]
-        ]]
-      ],
+      groups: clientCompanyProfileGroups(client),
       sections: [
         ["Company Notes", client.notes || ""]
       ]
