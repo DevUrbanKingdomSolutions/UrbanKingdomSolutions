@@ -1,5 +1,5 @@
 {
-  "version": "V1.05.023",
-  "title": "V1.05.023 update installed",
-  "body": "Moved Admin Dashboard out of Admin Console so Dashboard and Messages stay as top-level admin links."
+  "version": "V1.05.024",
+  "title": "V1.05.024 update installed",
+  "body": "Added package access selection to the Admin Add Client flow."
 }

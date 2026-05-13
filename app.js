@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.05.023",
-  title: "V1.05.023 update installed",
-  body: "Moved Admin Dashboard out of Admin Console so Dashboard and Messages stay as top-level admin links."
+  version: "V1.05.024",
+  title: "V1.05.024 update installed",
+  body: "Added package access selection to the Admin Add Client flow."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -2388,7 +2388,8 @@ async function openQuickProfileForm(targetStore) {
     targetStore: normalizedStore,
     profileMode,
     clientId,
-    accessLevels: quickProfileDefaultAccess(profileMode)
+    accessLevels: quickProfileDefaultAccess(profileMode),
+    packageLayouts: normalizedStore === "clients" ? ["LOCAL_PRODUCTION_SERVICES"] : []
   });
   $("#quickProfileTitle").textContent = quickProfileTitle(profileMode);
   $("#quickProfileNote").textContent = quickProfileNote(profileMode);
@@ -2404,12 +2405,16 @@ function updateQuickProfileCompanyFields() {
   const contractorField = form.querySelector(".quick-contractor-field");
   const companyField = form.querySelector(".quick-company-field");
   const existingPromoterField = form.querySelector(".quick-existing-promoter-field");
+  const packageField = form.querySelector(".quick-package-field");
   const isCrew = targetStore === "workers";
+  const isClient = targetStore === "clients";
   const isPromoterRep = profileMode === "promoterRep";
   const showCompany = !isCrew || form.elements.paidThroughCompany?.checked;
   if (contractorField) contractorField.hidden = !isCrew;
   if (companyField) companyField.hidden = !showCompany || isPromoterRep;
   if (existingPromoterField) existingPromoterField.hidden = !isPromoterRep;
+  if (packageField) packageField.hidden = !isClient;
+  if (isClient && !form.querySelector("[data-package-options] input")) renderClientPackageControls(form);
   if (isPromoterRep && form.elements.existingPromoterCompany) {
     const companies = promoterCompanyOptions();
     form.elements.existingPromoterCompany.innerHTML = companies.length
@@ -2462,7 +2467,7 @@ async function saveQuickProfile(event) {
       email,
       loginEmail: email,
       status: "Setup Needed",
-      packageLayouts: ["LOCAL_PRODUCTION_SERVICES"],
+      packageLayouts: normalizeClientPackages(record.packageLayouts),
       accessLevels,
       notes: "Created from quick add."
     };
