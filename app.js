@@ -36,9 +36,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.05.018",
-  title: "V1.05.018 update installed",
-  body: "Updated message thread sections to act as a cleaner one-open accordion with improved spacing."
+  version: "V1.05.019",
+  title: "V1.05.019 update installed",
+  body: "Tightened message accordion spacing so thread sections sit closer and expand more naturally."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",

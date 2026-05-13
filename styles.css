@@ -2673,8 +2673,8 @@ td p {
 
   #messages .mobile-message-sections {
     display: grid;
-    gap: 12px;
-    padding: 8px 14px 4px;
+    gap: 4px;
+    padding: 2px 14px 4px;
   }
 
   #messages .mobile-message-section {
@@ -2692,16 +2692,16 @@ td p {
     align-items: center;
     justify-content: space-between;
     gap: 8px;
-    min-height: 48px;
-    padding: 12px 14px;
+    min-height: 42px;
+    padding: 9px 14px;
   }
 
   #messages .mobile-message-section.is-collapsed .mobile-message-section-heading {
-    min-height: 54px;
+    min-height: 44px;
   }
 
   #messages .mobile-message-section.is-open {
-    box-shadow: 0 12px 24px color-mix(in srgb, var(--role-color) 7%, transparent);
+    box-shadow: 0 8px 18px color-mix(in srgb, var(--role-color) 5%, transparent);
   }
 
   #messages .message-section-toggle {
@@ -2753,8 +2753,8 @@ td p {
   #messages .mobile-message-event-controls {
     display: grid;
     grid-template-columns: 0.82fr 1.18fr;
-    gap: 10px;
-    padding: 3px 14px 12px;
+    gap: 8px;
+    padding: 2px 14px 8px;
     border-bottom: 0;
     background: linear-gradient(135deg, color-mix(in srgb, var(--role-color) 9%, #ffffff), #ffffff);
   }
@@ -6153,8 +6153,8 @@ body:not(.owner-mode) .rate-field {
 
   .mobile-message-sections {
     display: grid;
-    gap: 14px;
-    padding: 8px 2px 4px;
+    gap: 4px;
+    padding: 2px 2px 4px;
   }
 
   .mobile-message-section {
@@ -6172,16 +6172,16 @@ body:not(.owner-mode) .rate-field {
     gap: 8px;
     align-items: center;
     justify-content: space-between;
-    min-height: 50px;
-    padding: 12px 14px;
+    min-height: 42px;
+    padding: 9px 14px;
   }
 
   .mobile-message-section.is-collapsed .mobile-message-section-heading {
-    min-height: 56px;
+    min-height: 44px;
   }
 
   .mobile-message-section.is-open {
-    box-shadow: 0 12px 24px color-mix(in srgb, var(--role-color) 7%, transparent);
+    box-shadow: 0 8px 18px color-mix(in srgb, var(--role-color) 5%, transparent);
   }
 
   .mobile-message-section-heading h4 {
@@ -6198,7 +6198,7 @@ body:not(.owner-mode) .rate-field {
     display: grid;
     grid-template-columns: 0.8fr 1.2fr;
     gap: 8px;
-    padding: 4px 14px 12px;
+    padding: 2px 14px 8px;
     border-bottom: 0;
     background: linear-gradient(135deg, color-mix(in srgb, var(--role-color) 8%, #ffffff), #ffffff);
   }
