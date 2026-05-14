@@ -10,7 +10,7 @@
     <title>Production Crew Database</title>
     <link rel="manifest" href="manifest.webmanifest">
     <link rel="icon" href="assets/logo/app-logo-admin.png" type="image/png">
-    <link rel="stylesheet" href="styles.css?v=V1.07.002-awards-records">
+    <link rel="stylesheet" href="styles.css?v=V1.07.003-awards-grid">
   </head>
   <body>
     <div id="appLoadingOverlay" class="app-loading-overlay" aria-live="polite">
@@ -1061,6 +1061,8 @@
                 <h3>Broadcast Documents</h3>
                 <div class="panel-tools">
                   <span id="awardsDocumentsCount" class="muted"></span>
+                  <button class="tiny-button owner-action" data-tour-grid="awardsDocuments" type="button">Grid Edit</button>
+                  <button class="tiny-button owner-action" data-tour-grid-save="awardsDocuments" type="button" hidden>Save Grid</button>
                   <button class="tiny-button owner-action" data-open-form="awardsShowForm" type="button">Add Show</button>
                   <button class="tiny-button owner-action" data-open-form="awardsDocumentForm" type="button">Add Document</button>
                 </div>
@@ -1077,6 +1079,8 @@
                 <h3>Rundown</h3>
                 <div class="panel-tools">
                   <span id="awardsRundownCount" class="muted"></span>
+                  <button class="tiny-button owner-action" data-tour-grid="awardsRundown" type="button">Grid Edit</button>
+                  <button class="tiny-button owner-action" data-tour-grid-save="awardsRundown" type="button" hidden>Save Grid</button>
                   <button class="tiny-button owner-action" data-open-form="awardsScheduleForm" type="button">Add Schedule</button>
                 </div>
               </div>
@@ -1093,6 +1097,8 @@
                 <h3>Broadcast Staffing</h3>
                 <div class="panel-tools">
                   <span id="awardsStaffingCount" class="muted"></span>
+                  <button class="tiny-button owner-action" data-tour-grid="awardsStaffing" type="button">Grid Edit</button>
+                  <button class="tiny-button owner-action" data-tour-grid-save="awardsStaffing" type="button" hidden>Save Grid</button>
                   <button class="tiny-button owner-action" data-open-form="awardsStaffForm" type="button">Add Staff</button>
                 </div>
               </div>
@@ -2137,6 +2143,6 @@
     <div id="modalHost"></div>
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js?v=V1.07.002-awards-records"></script>
+    <script src="app.js?v=V1.07.003-awards-grid"></script>
   </body>
 </html>

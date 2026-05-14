@@ -38,9 +38,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.07.002",
-  title: "V1.07.002 update installed",
-  body: "Awards / Live Broadcast Suite now supports working show, staffing, and schedule records alongside broadcast documents."
+  version: "V1.07.003",
+  title: "V1.07.003 update installed",
+  body: "Awards / Live Broadcast Suite now has sortable, filterable, bulk-edit list views for documents, rundown, and staffing."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -6800,7 +6800,10 @@ const TOURING_COLUMNS = {
   tourAdvancing: [["city", "City / Venue"], ["dates", "Dates"], ["status", "Advance Status"], ["missing", "Missing Info"], ["owner", "Owner"], ["documents", "Rider"]],
   tourCrewPersonnel: [["name", "Name"], ["department", "Department"], ["contact", "Contact"], ["formStatus", "Info Form"], ["travelStatus", "Travel"], ["oneSheet", "One-Sheet"]],
   tourTravel: [["name", "Traveler"], ["flight", "Flight"], ["hotel", "Hotel"], ["overall", "Overall"], ["missing", "Missing Info"], ["packet", "Packet"]],
-  tourDocuments: [["name", "Document"], ["type", "Type / Status"], ["link", "Link"], ["notes", "Notes"], ["actions", ""]]
+  tourDocuments: [["name", "Document"], ["type", "Type / Status"], ["link", "Link"], ["notes", "Notes"], ["actions", ""]],
+  awardsDocuments: [["record", "Show / Record"], ["type", "Type"], ["status", "Status"], ["owner", "Department / Lead"], ["notes", "Notes"], ["actions", ""]],
+  awardsRundown: [["item", "Item"], ["date", "Date / Time"], ["status", "Status"], ["department", "Department"], ["notes", "Notes"], ["actions", ""]],
+  awardsStaffing: [["name", "Name"], ["department", "Department"], ["contact", "Contact"], ["status", "Status"], ["notes", "Notes"], ["actions", ""]]
 };
 
 function touringColumnValue(row = {}, key, viewId) {
@@ -6832,6 +6835,27 @@ function touringColumnValue(row = {}, key, viewId) {
     if (key === "name") return row.name || "";
     if (key === "type") return `${row.type || ""} ${row.status || ""}`;
     if (key === "link") return row.link || row.url || row.pdfLink || row.docLink || "";
+    if (key === "notes") return row.notes || "";
+  }
+  if (viewId === "awardsDocuments") {
+    if (key === "record") return `${row.name || ""} ${row.showName || ""} ${row.venue || ""}`;
+    if (key === "type") return `${row.kind || ""} ${row.type || ""}`;
+    if (key === "status") return row.status || "";
+    if (key === "owner") return `${row.department || ""} ${row.productionLead || ""}`;
+    if (key === "notes") return row.notes || "";
+  }
+  if (viewId === "awardsRundown") {
+    if (key === "item") return `${row.name || ""} ${row.showName || ""} ${row.type || ""}`;
+    if (key === "date") return `${row.callDate || ""} ${row.callTime || ""}`;
+    if (key === "status") return row.status || "";
+    if (key === "department") return row.department || "";
+    if (key === "notes") return row.notes || "";
+  }
+  if (viewId === "awardsStaffing") {
+    if (key === "name") return `${row.name || ""} ${row.title || ""}`;
+    if (key === "department") return row.department || "";
+    if (key === "contact") return `${row.phone || ""} ${row.email || ""}`;
+    if (key === "status") return row.status || "";
     if (key === "notes") return row.notes || "";
   }
   return "";
@@ -7185,64 +7209,74 @@ function renderAwardsDashboard(shows, documents, staffing, schedules, attention)
 }
 
 function renderAwardsDocuments(shows, documents) {
+  const editing = touringGridEditing("awardsDocuments");
+  touringGridToolbar("awardsDocuments");
+  const rows = sortTouringRows("awardsDocuments", filterTouringRows("awardsDocuments", [
+    ...shows.map((show) => ({ ...show, kind: "Show" })),
+    ...documents.map((doc) => ({ ...doc, kind: "Document" }))
+  ]));
   $("#awardsDocumentsCount").textContent = `${shows.length} shows / ${documents.length} docs`;
-  $("#awardsDocumentsList").innerHTML = [
-    ...shows.map((show) => `<article class="touring-card">
-      <span class="suite-kicker">${escapeHtml(show.status)}</span>
-      <h4>${show.source ? recordLink("awardsShows", show.id, show.name) : escapeHtml(show.name)}</h4>
-      <p>${escapeHtml([formatDate(show.showDate), show.venue].filter(Boolean).join(" - ") || "Show details pending.")}</p>
-      <div class="profile-meta-row">
-        <span>${escapeHtml(show.productionLead || "Production lead TBD")}</span>
-        <span>Show record</span>
-      </div>
-      ${show.source ? actionButtons("awardsShows", show.id, "awardsShowForm", "", canAdminEdit()) : ""}
-    </article>`),
-    ...documents.map((doc) => `<article class="touring-card">
-    <span class="suite-kicker">${escapeHtml(doc.status)}</span>
-    <h4>${doc.source ? recordLink("awardsDocuments", doc.id, doc.name) : escapeHtml(doc.name)}</h4>
-    <p>${escapeHtml(doc.notes || "Broadcast document lane.")}</p>
-    <div class="profile-meta-row">
-      <span>${escapeHtml(doc.type)}</span>
-      <span>${escapeHtml(doc.department)}</span>
-    </div>
-    ${doc.link ? `<p><a href="${escapeHtml(doc.link)}" target="_blank" rel="noopener">Open document</a></p>` : ""}
-    ${doc.source ? actionButtons("awardsDocuments", doc.id, "awardsDocumentForm", "", canAdminEdit()) : ""}
-  </article>`)
-  ].join("");
+  $("#awardsDocumentsList").innerHTML = `<div class="table-wrap premium-grid-wrap touring-document-grid"><table>
+    <thead><tr>${TOURING_COLUMNS.awardsDocuments.map(([key, label]) => touringColumnHead("awardsDocuments", key, label)).join("")}</tr></thead>
+    <tbody>${rows.map((row) => {
+      const isShow = row.kind === "Show";
+      const storeName = isShow ? "awardsShows" : "awardsDocuments";
+      const formId = isShow ? "awardsShowForm" : "awardsDocumentForm";
+      return `<tr>
+        <td>${editing && row.source ? touringGridInput(storeName, row.id, "name", row.source.name || row.name) : `<strong>${row.source ? recordLink(storeName, row.id, row.name) : escapeHtml(row.name)}</strong><p>${escapeHtml(isShow ? ([formatDate(row.showDate), row.venue].filter(Boolean).join(" - ") || "Show details pending.") : (row.showName || "Show TBD"))}</p>`}</td>
+        <td>${editing && row.source ? (isShow ? touringGridSelect(storeName, row.id, "status", row.status, ["Pre-Production", "Rehearsal", "Show Day", "Wrapped"]) : touringGridSelect(storeName, row.id, "type", row.type, ["Rundown", "Quickie", "Schedule", "Staff List", "Plot", "Script", "Health & Safety", "Start Paperwork", "Other"])) : `<span class="suite-kicker">${escapeHtml(isShow ? "Show" : row.type)}</span>`}</td>
+        <td>${editing && row.source ? (isShow ? touringGridInput(storeName, row.id, "showDate", row.showDate || "", "date") : touringGridSelect(storeName, row.id, "status", row.status, ["Draft", "Received", "In Review", "Ready", "Distributed", "Final"])) : `<span class="status-pill ${["Final", "Distributed", "Ready", "Template Ready"].includes(row.status) ? "" : "warn"}">${escapeHtml(row.status)}</span>`}</td>
+        <td>${editing && row.source ? (isShow ? touringGridInput(storeName, row.id, "productionLead", row.productionLead || "") : touringGridInput(storeName, row.id, "department", row.department || "")) : escapeHtml(row.productionLead || row.department || "Production")}</td>
+        <td>${editing && row.source ? touringGridTextarea(storeName, row.id, "notes", row.notes || "") : escapeHtml(row.notes || (isShow ? "Show record." : "Broadcast document lane."))}</td>
+        <td>${row.source && !editing ? actionButtons(storeName, row.id, formId, "", canAdminEdit()) : ""}</td>
+      </tr>`;
+    }).join("")}</tbody>
+  </table></div>`;
 }
 
 function renderAwardsRundown(documents, schedules) {
+  const editing = touringGridEditing("awardsRundown");
+  touringGridToolbar("awardsRundown");
   const rows = documents.filter((doc) => ["Rundown", "Quickie", "Schedule", "Script", "Plot", "Plots"].includes(doc.type));
   $("#awardsRundownCount").textContent = `${rows.length} docs / ${schedules.length} schedule`;
-  $("#awardsRundownList").innerHTML = [
-    ...schedules.map((item) => `<article class="touring-card">
-      <span class="suite-kicker">${escapeHtml(item.status)}</span>
-      <h4>${item.source ? recordLink("awardsSchedules", item.id, item.name) : escapeHtml(item.name)}</h4>
-      <p>${escapeHtml([formatDate(item.callDate), item.callTime].filter(Boolean).join(" at ") || "Timing TBD")}</p>
-      <p>${escapeHtml(`${item.department || "Production"} - ${item.notes || "Schedule readiness item."}`)}</p>
-      ${item.source ? actionButtons("awardsSchedules", item.id, "awardsScheduleForm", "", canAdminEdit()) : ""}
-    </article>`),
-    ...rows.map((doc) => `<article class="touring-card">
-    <span class="suite-kicker">${escapeHtml(doc.type)}</span>
-    <h4>${doc.source ? recordLink("awardsDocuments", doc.id, doc.name) : escapeHtml(doc.name)}</h4>
-    <p>${escapeHtml(doc.showName)} - ${escapeHtml(doc.status)}</p>
-    <p>${escapeHtml(doc.notes || "Track version, distro, and approval state here.")}</p>
-  </article>`)
-  ].join("");
+  const displayRows = sortTouringRows("awardsRundown", filterTouringRows("awardsRundown", [
+    ...schedules.map((item) => ({ ...item, kind: "Schedule" })),
+    ...rows.map((doc) => ({ ...doc, kind: "Document" }))
+  ]));
+  $("#awardsRundownList").innerHTML = `<div class="table-wrap premium-grid-wrap touring-document-grid"><table>
+    <thead><tr>${TOURING_COLUMNS.awardsRundown.map(([key, label]) => touringColumnHead("awardsRundown", key, label)).join("")}</tr></thead>
+    <tbody>${displayRows.map((row) => {
+      const isSchedule = row.kind === "Schedule";
+      const storeName = isSchedule ? "awardsSchedules" : "awardsDocuments";
+      const formId = isSchedule ? "awardsScheduleForm" : "awardsDocumentForm";
+      return `<tr>
+        <td>${editing && row.source ? touringGridInput(storeName, row.id, "name", row.name || "") : `<strong>${row.source ? recordLink(storeName, row.id, row.name) : escapeHtml(row.name)}</strong><p>${escapeHtml(row.showName || row.type || "Broadcast")}</p>`}</td>
+        <td>${editing && row.source && isSchedule ? `${touringGridInput(storeName, row.id, "callDate", row.callDate || "", "date")}${touringGridInput(storeName, row.id, "callTime", row.callTime || "", "time")}` : escapeHtml(isSchedule ? ([formatDate(row.callDate), row.callTime].filter(Boolean).join(" at ") || "Timing TBD") : row.type)}</td>
+        <td>${editing && row.source ? (isSchedule ? touringGridSelect(storeName, row.id, "status", row.status, ["Draft", "Needs Review", "Ready", "Final"]) : touringGridSelect(storeName, row.id, "status", row.status, ["Draft", "Received", "In Review", "Ready", "Distributed", "Final"])) : `<span class="status-pill ${["Final", "Ready", "Distributed"].includes(row.status) ? "" : "warn"}">${escapeHtml(row.status)}</span>`}</td>
+        <td>${editing && row.source ? touringGridInput(storeName, row.id, "department", row.department || "") : escapeHtml(row.department || "Production")}</td>
+        <td>${editing && row.source ? touringGridTextarea(storeName, row.id, "notes", row.notes || "") : escapeHtml(row.notes || "Track version, distro, and approval state here.")}</td>
+        <td>${row.source && !editing ? actionButtons(storeName, row.id, formId, "", canAdminEdit()) : ""}</td>
+      </tr>`;
+    }).join("")}</tbody>
+  </table></div>`;
 }
 
 function renderAwardsStaffing(staffing) {
+  const editing = touringGridEditing("awardsStaffing");
+  touringGridToolbar("awardsStaffing");
+  const rows = sortTouringRows("awardsStaffing", filterTouringRows("awardsStaffing", [...staffing]));
   $("#awardsStaffingCount").textContent = `${staffing.length} people`;
-  $("#awardsStaffingList").innerHTML = staffing.map((person) => `<article class="touring-card">
-    <span class="suite-kicker">${escapeHtml(person.status || "Needs Review")}</span>
-    <h4>${escapeHtml(person.name || "Staff Member")}</h4>
-    <p>${escapeHtml(person.department || "Production")}</p>
-    <div class="profile-meta-row">
-      <span>${escapeHtml(person.phone || "Phone missing")}</span>
-      <span>${escapeHtml(person.email || "Email missing")}</span>
-    </div>
-    ${person.source ? actionButtons("awardsStaff", person.id, "awardsStaffForm", "", canAdminEdit()) : ""}
-  </article>`).join("");
+  $("#awardsStaffingList").innerHTML = `<div class="table-wrap premium-grid-wrap touring-document-grid"><table>
+    <thead><tr>${TOURING_COLUMNS.awardsStaffing.map(([key, label]) => touringColumnHead("awardsStaffing", key, label)).join("")}</tr></thead>
+    <tbody>${rows.map((person) => `<tr>
+      <td>${editing && person.source ? touringGridInput("awardsStaff", person.id, "name", person.name || "") : `<strong>${person.source ? recordLink("awardsStaff", person.id, person.name) : escapeHtml(person.name || "Staff Member")}</strong><p>${escapeHtml(person.title || "Broadcast staff")}</p>`}</td>
+      <td>${editing && person.source ? `${touringGridInput("awardsStaff", person.id, "department", person.department || "")}${touringGridInput("awardsStaff", person.id, "title", person.title || "")}` : escapeHtml(person.department || "Production")}</td>
+      <td>${editing && person.source ? `${touringGridInput("awardsStaff", person.id, "phone", person.phone || "", "tel")}${touringGridInput("awardsStaff", person.id, "email", person.email || "", "email")}` : `${escapeHtml(person.phone || "Phone missing")}<p>${escapeHtml(person.email || "Email missing")}</p>`}</td>
+      <td>${editing && person.source ? touringGridSelect("awardsStaff", person.id, "status", person.status || "Needs Contact", ["Needs Contact", "Invited", "Confirmed", "Ready"]) : `<span class="status-pill ${person.status === "Ready" ? "" : "warn"}">${escapeHtml(person.status || "Needs Review")}</span>`}</td>
+      <td>${editing && person.source ? touringGridTextarea("awardsStaff", person.id, "notes", person.notes || "") : escapeHtml(person.notes || "Staff readiness record.")}</td>
+      <td>${person.source && !editing ? actionButtons("awardsStaff", person.id, "awardsStaffForm", "", canAdminEdit()) : ""}</td>
+    </tr>`).join("")}</tbody>
+  </table></div>`;
 }
 
 function renderAwardsSettings() {
