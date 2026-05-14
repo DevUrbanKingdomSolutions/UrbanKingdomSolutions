@@ -10,7 +10,7 @@
     <title>Production Crew Database</title>
     <link rel="manifest" href="manifest.webmanifest">
     <link rel="icon" href="assets/logo/app-logo-admin.png" type="image/png">
-    <link rel="stylesheet" href="styles.css?v=V1.06.002-touring-suite-access">
+    <link rel="stylesheet" href="styles.css?v=V1.06.003-touring-data-stores">
   </head>
   <body>
     <div id="appLoadingOverlay" class="app-loading-overlay" aria-live="polite">
@@ -924,7 +924,10 @@
             <section class="panel touring-panel table-panel">
               <div class="panel-heading">
                 <h3>Tour Advancing</h3>
-                <span id="tourAdvancingCount" class="muted"></span>
+                <div class="panel-tools">
+                  <span id="tourAdvancingCount" class="muted"></span>
+                  <button class="tiny-button owner-action" data-open-form="touringStopForm" type="button">Add Tour Stop</button>
+                </div>
               </div>
               <div class="touring-section-note">Tour stops, advance tracker, and city rider workspaces live here. Each city is treated like its own sub-database under the tour.</div>
               <div class="table-wrap premium-grid-wrap">
@@ -949,7 +952,10 @@
             <section class="panel touring-panel table-panel">
               <div class="panel-heading">
                 <h3>Crew Personnel</h3>
-                <span id="tourCrewCount" class="muted"></span>
+                <div class="panel-tools">
+                  <span id="tourCrewCount" class="muted"></span>
+                  <button class="tiny-button owner-action" data-open-form="touringCrewForm" type="button">Add Team Member</button>
+                </div>
               </div>
               <div class="touring-section-note">Team members, team info forms, one-sheets, and personnel readiness are nested here.</div>
               <div class="table-wrap premium-grid-wrap">
@@ -967,7 +973,10 @@
             <section class="panel touring-panel table-panel">
               <div class="panel-heading">
                 <h3>Travel & Accommodations</h3>
-                <span id="tourTravelCount" class="muted"></span>
+                <div class="panel-tools">
+                  <span id="tourTravelCount" class="muted"></span>
+                  <button class="tiny-button owner-action" data-open-form="touringTravelForm" type="button">Add Travel</button>
+                </div>
               </div>
               <div class="touring-section-note">Hotel options, flights, hotel confirmations, master itinerary, and travel packet status are connected to the team member record.</div>
               <div class="table-wrap premium-grid-wrap">
@@ -985,7 +994,10 @@
             <section class="panel touring-panel">
               <div class="panel-heading">
                 <h3>Tour Documents</h3>
-                <span id="tourDocumentsCount" class="muted"></span>
+                <div class="panel-tools">
+                  <span id="tourDocumentsCount" class="muted"></span>
+                  <button class="tiny-button owner-action" data-open-form="touringDocumentForm" type="button">Add Document</button>
+                </div>
               </div>
               <div id="tourDocumentsList" class="touring-card-grid"></div>
             </section>
@@ -1003,6 +1015,115 @@
             </section>
           </div>
         </section>
+
+        <form id="touringStopForm" class="panel form-panel owner-form">
+          <div class="panel-heading">
+            <h3>Tour Stop</h3>
+            <button class="ghost-button clear-form" type="button" data-form="touringStopForm">Clear</button>
+          </div>
+          <input type="hidden" name="id">
+          <label>City / State<input name="city" required placeholder="Denver, CO"></label>
+          <label>Venue<input name="venue" placeholder="Stadium or venue"></label>
+          <div class="form-grid">
+            <label>Load-in<input name="loadInDate" type="date"></label>
+            <label>Show date<input name="showDate" type="date"></label>
+            <label>Load-out<input name="loadOutDate" type="date"></label>
+          </div>
+          <label>Advance status
+            <select name="status">
+              <option>Not Sent</option>
+              <option>Sent</option>
+              <option>Awaiting Response</option>
+              <option>Partial Response</option>
+              <option>Follow Up Required</option>
+              <option>Confirmed</option>
+              <option>Finalized</option>
+            </select>
+          </label>
+          <label>Owner<input name="owner" placeholder="Advance Team"></label>
+          <label>Missing info<textarea name="missingInfo" rows="3" placeholder="Parking notes, runner plan, promoter email"></textarea></label>
+          <button class="primary-action" type="submit">Save Tour Stop</button>
+        </form>
+
+        <form id="touringCrewForm" class="panel form-panel owner-form">
+          <div class="panel-heading">
+            <h3>Tour Team Member</h3>
+            <button class="ghost-button clear-form" type="button" data-form="touringCrewForm">Clear</button>
+          </div>
+          <input type="hidden" name="id">
+          <label>Name<input name="name" required placeholder="Full name"></label>
+          <label>Department / Company<input name="department" placeholder="Production, Runners, Wardrobe"></label>
+          <label>Title / Role<input name="title" placeholder="Site Co, Runner Lead"></label>
+          <div class="form-grid">
+            <label>Phone<input name="phone" type="tel"></label>
+            <label>Email<input name="email" type="email"></label>
+          </div>
+          <label>Info form status
+            <select name="formStatus">
+              <option>Needed</option>
+              <option>Sent</option>
+              <option>Submitted</option>
+              <option>Needs Review</option>
+            </select>
+          </label>
+          <label>Notes<textarea name="notes" rows="3" placeholder="Personnel notes"></textarea></label>
+          <button class="primary-action" type="submit">Save Team Member</button>
+        </form>
+
+        <form id="touringTravelForm" class="panel form-panel owner-form">
+          <div class="panel-heading">
+            <h3>Travel & Accommodations</h3>
+            <button class="ghost-button clear-form" type="button" data-form="touringTravelForm">Clear</button>
+          </div>
+          <input type="hidden" name="id">
+          <label>Traveler<input name="name" required placeholder="Full name"></label>
+          <label>Email<input name="email" type="email"></label>
+          <div class="form-grid">
+            <label>Flight date<input name="flightDate" type="date"></label>
+            <label>Departing airport<input name="depart" placeholder="BUR"></label>
+            <label>Arriving airport<input name="arrive" placeholder="STL"></label>
+            <label>Airline<input name="airline" placeholder="American"></label>
+          </div>
+          <label>Flight confirmation<input name="flightConfirmation"></label>
+          <label>Hotel<input name="hotel"></label>
+          <div class="form-grid">
+            <label>Check-in<input name="checkIn" type="date"></label>
+            <label>Check-out<input name="checkOut" type="date"></label>
+          </div>
+          <label>Hotel confirmation<input name="hotelConfirmation"></label>
+          <label>Travel notes<textarea name="notes" rows="3"></textarea></label>
+          <button class="primary-action" type="submit">Save Travel</button>
+        </form>
+
+        <form id="touringDocumentForm" class="panel form-panel owner-form">
+          <div class="panel-heading">
+            <h3>Tour Document</h3>
+            <button class="ghost-button clear-form" type="button" data-form="touringDocumentForm">Clear</button>
+          </div>
+          <input type="hidden" name="id">
+          <label>Document name<input name="name" required placeholder="Denver Advance Rider"></label>
+          <label>Document type
+            <select name="type">
+              <option>Advance Rider</option>
+              <option>Team One-Sheet</option>
+              <option>Hotel Manifest</option>
+              <option>Flight Manifest</option>
+              <option>Travel Itinerary</option>
+              <option>Tour Book</option>
+            </select>
+          </label>
+          <label>Status
+            <select name="status">
+              <option>Draft</option>
+              <option>Ready</option>
+              <option>Generated</option>
+              <option>Sent</option>
+            </select>
+          </label>
+          <label>Link<input name="link" type="url" placeholder="https://"></label>
+          <label>Notes<textarea name="notes" rows="3"></textarea></label>
+          <button class="primary-action" type="submit">Save Document</button>
+        </form>
 
         <section id="productionResponse" class="view">
           <div class="stack-layout">
@@ -1796,6 +1917,6 @@
     <div id="modalHost"></div>
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js?v=V1.06.002-touring-suite-access"></script>
+    <script src="app.js?v=V1.06.003-touring-data-stores"></script>
   </body>
 </html>

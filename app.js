@@ -1,5 +1,5 @@
 const DB_NAME = "productionCrewDatabase";
-const DB_VERSION = 14;
+const DB_VERSION = 15;
 const SUPABASE_URL = "https://nnhqrhaltkmymnwxydwr.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5uaHFyaGFsdGtteW1ud3h5ZHdyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgwMjMxNDgsImV4cCI6MjA5MzU5OTE0OH0.X9iGhE61WehM57133LKCWMfXXDHmcb2rhw-ZPCKAJos";
 const LOGIN_SETUP_FUNCTION = "send-login-setup";
@@ -38,9 +38,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.06.002",
-  title: "V1.06.002 update installed",
-  body: "Connected the Touring Office Suite workspace to client Office Suite access status and added clearer enablement guidance."
+  version: "V1.06.003",
+  title: "V1.06.003 update installed",
+  body: "Added the first local Touring Office Suite data stores and quick-entry forms for stops, crew personnel, travel, and documents."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -62,6 +62,10 @@ const STORES = [
   "promoters",
   "profileNotes",
   "events",
+  "touringStops",
+  "touringCrew",
+  "touringTravel",
+  "touringDocuments",
   "eventAssignments",
   "eventSwaps",
   "timecards",
@@ -84,6 +88,10 @@ const CLOUD_SYNC_STORES = new Set([
   "promoters",
   "profileNotes",
   "events",
+  "touringStops",
+  "touringCrew",
+  "touringTravel",
+  "touringDocuments",
   "eventAssignments",
   "eventSwaps",
   "timecards",
@@ -357,6 +365,10 @@ let state = {
   promoters: [],
   profileNotes: [],
   events: [],
+  touringStops: [],
+  touringCrew: [],
+  touringTravel: [],
+  touringDocuments: [],
   eventAssignments: [],
   eventSwaps: [],
   timecards: [],
@@ -1369,7 +1381,7 @@ async function cloudRecordCount() {
 }
 
 async function loadState() {
-  const [clients, clientReps, accessLevelDefs, eventAccessLinks, workers, venues, promoters, profileNotes, events, eventAssignments, eventSwaps, timecards, runnerStops, runnerCategories, runnerNotes, runnerRatings, systemProfiles, venueContacts, productionCompanies, productionContacts, vehicleLogs, accidentReports, messageThreadSettings, appNotifications] = await Promise.all(STORES.map(getAll));
+  const [clients, clientReps, accessLevelDefs, eventAccessLinks, workers, venues, promoters, profileNotes, events, touringStops, touringCrew, touringTravel, touringDocuments, eventAssignments, eventSwaps, timecards, runnerStops, runnerCategories, runnerNotes, runnerRatings, systemProfiles, venueContacts, productionCompanies, productionContacts, vehicleLogs, accidentReports, messageThreadSettings, appNotifications] = await Promise.all(STORES.map(getAll));
   state = {
     ...state,
     clients: sortByName(clients),
@@ -1381,6 +1393,10 @@ async function loadState() {
     promoters: sortByName(promoters),
     profileNotes,
     events: events.sort((a, b) => new Date(b.startDate || b.createdAt || 0) - new Date(a.startDate || a.createdAt || 0)),
+    touringStops: touringStops.sort((a, b) => new Date(a.loadInDate || a.showDate || 0) - new Date(b.loadInDate || b.showDate || 0)),
+    touringCrew: sortByName(touringCrew),
+    touringTravel: sortByName(touringTravel),
+    touringDocuments: touringDocuments.sort((a, b) => new Date(b.updatedAt || b.createdAt || 0) - new Date(a.updatedAt || a.createdAt || 0)),
     eventAssignments: eventAssignments.sort((a, b) => new Date(a.startDate || 0) - new Date(b.startDate || 0)),
     eventSwaps: eventSwaps.sort((a, b) => new Date(b.swapDate || b.createdAt || 0) - new Date(a.swapDate || a.createdAt || 0)),
     timecards: timecards.sort((a, b) => new Date(b.clockIn || b.createdAt || 0) - new Date(a.clockIn || a.createdAt || 0)),
@@ -6307,6 +6323,22 @@ function touringEvents() {
 }
 
 function touringStops() {
+  if (state.touringStops.length) {
+    return state.touringStops.map((stop) => ({
+      id: stop.id,
+      city: stop.city || "Tour Stop",
+      venue: stop.venue || "Venue TBD",
+      loadIn: stop.loadInDate || "",
+      showDate: stop.showDate || "",
+      loadOut: stop.loadOutDate || "",
+      status: stop.status || "Not Sent",
+      priority: stop.priority || (touringMissingList(stop).length > 2 ? "High" : "Normal"),
+      owner: stop.owner || "Advance Team",
+      missing: touringMissingList(stop),
+      documents: touringDocumentsForStop(stop).length ? "Generated" : "Not Generated",
+      source: stop
+    }));
+  }
   const events = touringEvents();
   if (!events.length) return touringDemoStops();
   return events.map((event, index) => {
@@ -6334,6 +6366,20 @@ function touringStops() {
       event
     };
   });
+}
+
+function touringMissingList(record = {}) {
+  if (Array.isArray(record.missing)) return record.missing.filter(Boolean);
+  return String(record.missingInfo || "")
+    .split(/[\n,]+/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function touringDocumentsForStop(stop = {}) {
+  const city = normalizedMatchValue(stop.city || "");
+  if (!city) return [];
+  return state.touringDocuments.filter((doc) => normalizedMatchValue(`${doc.city || ""} ${doc.name || ""} ${doc.notes || ""}`).includes(city));
 }
 
 function touringDemoStops() {
@@ -6381,6 +6427,19 @@ function touringDemoStops() {
 }
 
 function touringCrewRows(stops = touringStops()) {
+  if (state.touringCrew.length) {
+    return state.touringCrew.map((person) => ({
+      id: person.id,
+      name: person.name || "Tour Team Member",
+      department: person.department || person.title || "Tour Team",
+      phone: person.phone || "Missing",
+      email: person.email || "Missing",
+      formStatus: person.formStatus || "Needed",
+      travelStatus: touringTravelForPerson(person)?.overall || "Not Started",
+      oneSheet: state.touringDocuments.some((doc) => doc.type === "Team One-Sheet" && normalizedMatchValue(doc.name).includes(normalizedMatchValue(person.name))) ? "Ready" : "Not Generated",
+      assignedStops: []
+    }));
+  }
   const workers = visibleRecords(state.workers).slice(0, 12);
   if (!workers.length) {
     return [
@@ -6405,6 +6464,20 @@ function touringCrewRows(stops = touringStops()) {
 }
 
 function touringTravelRows(crew = touringCrewRows()) {
+  if (state.touringTravel.length) {
+    return state.touringTravel.map((record) => {
+      const missing = [
+        !record.email ? "Email" : "",
+        !record.flightConfirmation ? "Flight confirmation" : "",
+        !record.hotelConfirmation ? "Hotel confirmation" : ""
+      ].filter(Boolean);
+      return {
+        ...record,
+        overall: missing.length ? "Needs Review" : "Ready",
+        missing: missing.length ? missing : ["None"]
+      };
+    });
+  }
   return crew.map((person, index) => {
     const missing = [person.email === "Missing" ? "Email" : "", index % 3 === 0 ? "Flight confirmation" : "", index % 2 === 0 ? "Hotel confirmation" : ""].filter(Boolean);
     return {
@@ -6420,6 +6493,15 @@ function touringTravelRows(crew = touringCrewRows()) {
       missing: missing.length ? missing : ["None"]
     };
   });
+}
+
+function touringTravelForPerson(person = {}) {
+  const name = normalizedMatchValue(person.name || "");
+  const email = normalizedMatchValue(person.email || "");
+  const record = state.touringTravel.find((item) => (name && normalizedMatchValue(item.name) === name) || (email && normalizedMatchValue(item.email) === email));
+  if (!record) return null;
+  const missing = [!record.email ? "Email" : "", !record.flightConfirmation ? "Flight confirmation" : "", !record.hotelConfirmation ? "Hotel confirmation" : ""].filter(Boolean);
+  return { ...record, overall: missing.length ? "Needs Review" : "Ready", missing };
 }
 
 function touringAttentionRows(stops, crew, travel) {
@@ -6475,7 +6557,7 @@ function renderTourAdvancing(stops) {
     <td><span class="status-pill ${stop.status === "Ready" ? "" : "warn"}">${escapeHtml(stop.status)}</span><p>${escapeHtml(stop.priority)} priority</p></td>
     <td>${stop.missing.length ? stop.missing.map((item) => `<span class="touring-chip">${escapeHtml(item)}</span>`).join("") : `<span class="status-pill">Complete</span>`}</td>
     <td>${escapeHtml(stop.owner)}</td>
-    <td><strong>${escapeHtml(stop.documents)}</strong><p>City rider workspace</p></td>
+    <td><strong>${escapeHtml(stop.documents)}</strong><p>City rider workspace</p>${stop.source ? actionButtons("touringStops", stop.id, "touringStopForm", "", canAdminEdit()) : ""}</td>
   </tr>`).join("");
   $("#cityRiderWorkspace").innerHTML = stops.slice(0, 4).map((stop) => `<article class="touring-card">
     <span class="suite-kicker">${escapeHtml(stop.city)}</span>
@@ -6520,7 +6602,8 @@ function renderTourTravel(travel) {
 }
 
 function renderTourDocuments(stops, crew, travel) {
-  const docs = [
+  const savedDocs = state.touringDocuments.map((doc) => [doc.name || "Tour Document", doc.status || "Draft", doc.notes || doc.type || "Saved touring document."]);
+  const docs = savedDocs.length ? savedDocs : [
     ["Advance Riders", `${stops.filter((stop) => stop.documents === "Generated").length}/${stops.length} generated`, "City rider PDFs and version history."],
     ["Team One-Sheets", `${crew.filter((person) => person.oneSheet === "Ready").length}/${crew.length} ready`, "Individual tour team one-sheet packets."],
     ["Hotel Manifest", "Template ready", "Hotel accommodations manifest from travel records."],
@@ -10265,7 +10348,7 @@ async function saveForm(event, storeName) {
     toast("This access view cannot save promoter profiles.");
     return;
   }
-  if (["events", "eventAssignments", "eventSwaps", "runnerStops", "timecards"].includes(storeName) && !canAdminEdit()) {
+  if (["events", "eventAssignments", "eventSwaps", "runnerStops", "timecards", "touringStops", "touringCrew", "touringTravel", "touringDocuments"].includes(storeName) && !canAdminEdit()) {
     toast("Switch to CLIENT or PROMOTER to save this.");
     return;
   }
@@ -10328,6 +10411,10 @@ async function saveForm(event, storeName) {
     }
     merged.workerIds = Array.isArray(merged.workerIds) ? merged.workerIds : eventWorkerIds(merged);
     delete merged.showAllCrew;
+  }
+  if (["touringStops", "touringCrew", "touringTravel", "touringDocuments"].includes(storeName)) {
+    merged.id = merged.id || crypto.randomUUID();
+    merged.clientId = merged.clientId || authState.roleRecord?.client_id || activeClientRecord()?.id || "";
   }
   if (storeName === "eventAssignments") {
     const eventRecord = getEvent(merged.eventId);
@@ -13019,6 +13106,10 @@ function bindEvents() {
   $("#timecardForm select[name='vehicleUse']").addEventListener("change", () => applyWorkerPayDefaultsToTimecard($("#timecardForm").elements.workerId.value));
 
   $("#eventForm").addEventListener("submit", (event) => saveForm(event, "events"));
+  $("#touringStopForm").addEventListener("submit", (event) => saveForm(event, "touringStops"));
+  $("#touringCrewForm").addEventListener("submit", (event) => saveForm(event, "touringCrew"));
+  $("#touringTravelForm").addEventListener("submit", (event) => saveForm(event, "touringTravel"));
+  $("#touringDocumentForm").addEventListener("submit", (event) => saveForm(event, "touringDocuments"));
   $("#dashboardNoteForm").addEventListener("submit", saveDashboardNote);
   $("#eventAssignmentForm").addEventListener("submit", (event) => saveForm(event, "eventAssignments"));
   $("#assignmentDepartmentForm").addEventListener("submit", saveAssignmentDepartmentForm);
