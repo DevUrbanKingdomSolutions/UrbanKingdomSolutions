@@ -38,9 +38,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.05.031",
-  title: "V1.05.031 update installed",
-  body: "Connected the messaging GIF tool to a GIPHY search picker with fallback link support."
+  version: "V1.05.032",
+  title: "V1.05.032 update installed",
+  body: "Limited rental vehicle end-photo requirements to the runner's final scheduled rental day."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -3540,6 +3540,38 @@ async function syncEventWorkerIdsFromAssignments(eventId) {
   await put("events", { ...eventRecord, workerIds });
 }
 
+function dateKeyFromValue(value = "") {
+  return String(value || "").slice(0, 10);
+}
+
+function rentalVehicleAssignmentsForWorker(eventId, workerId) {
+  return eventAssignments(eventId).filter((assignment) => {
+    if (assignment.workerId !== workerId) return false;
+    return assignment.vehicleUse === "Rented Vehicle" || assignment.vehicleType === "Rented Vehicle";
+  });
+}
+
+function assignmentEndDateKey(assignment = {}, event = {}) {
+  return dateKeyFromValue(assignment.endDate || assignment.workDate || assignment.startDate || event.endDate || event.startDate);
+}
+
+function rentalVehicleFinalDateKey(event = {}, workerId = "") {
+  if (!event?.id || !workerId) return "";
+  const assignmentEndKeys = rentalVehicleAssignmentsForWorker(event.id, workerId)
+    .map((assignment) => assignmentEndDateKey(assignment, event))
+    .filter(Boolean)
+    .sort();
+  return assignmentEndKeys.at(-1) || dateKeyFromValue(event.endDate || event.startDate);
+}
+
+function shouldRequireRentalEndPhotos(event = {}, card = {}, dateKey = "") {
+  if (!rentalVehicleRequired(event, card)) return false;
+  const workerId = card.workerId || activeCrewWorkerId();
+  const workDate = dateKey || timecardWorkDate(card);
+  const finalDate = rentalVehicleFinalDateKey(event, workerId);
+  return !!finalDate && !!workDate && workDate >= finalDate;
+}
+
 async function ensureVehicleChecksForAssignment(assignment) {
   const eventRecord = getEvent(assignment.eventId);
   const worker = getWorker(assignment.workerId);
@@ -3553,7 +3585,7 @@ async function ensureVehicleChecksForAssignment(assignment) {
       vehicleType: assignment.vehicleType || "Rented Vehicle",
       plateNumber: "",
       gasGauge: "Full",
-      scheduledDate: phase === "Start" ? assignment.startDate || eventRecord?.startDate || "" : assignment.endDate || eventRecord?.endDate || "",
+      scheduledDate: phase === "Start" ? assignment.startDate || eventRecord?.startDate || "" : assignmentEndDateKey(assignment, eventRecord),
       notes: `Auto-created for ${worker?.name || "runner"} rental vehicle assignment.`
     });
   }
@@ -5814,7 +5846,7 @@ function crewRentalTask(event, card) {
   if (!needsRental) return null;
   const startLog = vehicleLogForEventWorker(event.id, workerId, "Start");
   const endLog = vehicleLogForEventWorker(event.id, workerId, "End");
-  if (card?.clockOut && !vehicleEndPhotosComplete(endLog)) return ["Missing End Vehicle Photos", `Upload the end vehicle photos and plate number for ${event.name}.`, "vehicles"];
+  if (card?.clockOut && shouldRequireRentalEndPhotos(event, card) && !vehicleEndPhotosComplete(endLog)) return ["Missing End Vehicle Photos", `Upload the end vehicle photos and gas gauge for ${event.name}.`, "vehicles"];
   if (card?.clockIn && !vehicleStartCheckStarted(startLog)) return ["Missing Start Vehicle Photos", `Upload the start vehicle photos and plate number for ${event.name}.`, "vehicles"];
   return null;
 }
@@ -12323,7 +12355,7 @@ async function crewPunch(eventId, field) {
   }
   card.id = card.id || crypto.randomUUID();
   card.workDate = field === "clockOut" && timecardWorkDate(card) !== todayKey ? timecardWorkDate(card) : todayKey;
-  if (field === "clockOut" && rentalVehicleRequired(event, card)) {
+  if (field === "clockOut" && shouldRequireRentalEndPhotos(event, card, timecardWorkDate(card))) {
     const endLog = vehicleLogForEventWorker(eventId, workerId, "End");
     if (!vehicleEndPhotosComplete(endLog)) {
       const nowDate = new Date();
