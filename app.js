@@ -38,9 +38,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.07.011",
-  title: "V1.07.011 update installed",
-  body: "Awards / Live Broadcast dashboard now includes access readiness for restricted, redacted, department, and staff-facing documents."
+  version: "V1.07.012",
+  title: "V1.07.012 update installed",
+  body: "Awards / Live Broadcast dashboard now includes show-day readiness for schedule timing, locations, owners, and lock status."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -7017,9 +7017,10 @@ function renderAwardsSuite() {
   const departments = awardsDepartmentRows(documents, staffing, schedules);
   const distribution = awardsDistributionRows(documents);
   const access = awardsAccessRows(documents);
+  const showDay = awardsShowDayRows(shows, schedules);
   const packets = awardsPacketRows(shows, documents, staffing, schedules);
-  const attention = awardsAttentionRows(shows, documents, staffing, schedules, packets, departments, distribution, access);
-  renderAwardsDashboard(shows, documents, staffing, schedules, attention, packets, departments, distribution, access);
+  const attention = awardsAttentionRows(shows, documents, staffing, schedules, packets, departments, distribution, access, showDay);
+  renderAwardsDashboard(shows, documents, staffing, schedules, attention, packets, departments, distribution, access, showDay);
   renderAwardsDocuments(shows, documents);
   renderAwardsRundown(documents, schedules);
   renderAwardsStaffing(staffing);
@@ -7283,6 +7284,39 @@ function awardsAccessRows(documents) {
   });
 }
 
+function awardsShowDayRows(shows, schedules) {
+  return shows.map((show) => {
+    const showName = normalizedMatchValue(show.name || "");
+    const showSchedules = schedules.filter((item) => {
+      const itemShow = normalizedMatchValue(item.showName || "");
+      return !itemShow || !showName || itemShow.includes(showName) || showName.includes(itemShow) || itemShow.includes("broadcast");
+    });
+    const liveItems = showSchedules.filter((item) => ["Show", "Camera / Broadcast", "Talent", "Rehearsal"].includes(item.callType));
+    const timingReady = showSchedules.length > 0 && showSchedules.every((item) => item.callDate && item.callTime);
+    const locationReady = showSchedules.length > 0 && showSchedules.every((item) => item.location);
+    const ownerReady = showSchedules.length > 0 && showSchedules.every((item) => item.owner);
+    const finalReady = showSchedules.length > 0 && showSchedules.every((item) => ["Ready", "Final"].includes(item.status));
+    const lockedReady = showSchedules.length > 0 && showSchedules.every((item) => ["Locked", "Final Locked"].includes(item.lockStatus) || item.status !== "Final");
+    const checks = [timingReady, locationReady, ownerReady, finalReady, lockedReady];
+    const readyCount = checks.filter(Boolean).length;
+    return {
+      id: show.id,
+      name: show.name || "Broadcast Show",
+      status: readyCount === checks.length ? "Ready" : readyCount >= 3 ? "Close" : "Needs Work",
+      readyCount,
+      totalCount: checks.length,
+      scheduleCount: showSchedules.length,
+      liveCount: liveItems.length,
+      timingReady,
+      locationReady,
+      ownerReady,
+      finalReady,
+      lockedReady,
+      nextItems: showSchedules.slice(0, 3).map((item) => item.name || item.callType)
+    };
+  });
+}
+
 function awardsPacketRows(shows, documents, staffing, schedules) {
   return shows.map((show) => {
     const showName = normalizedMatchValue(show.name || "");
@@ -7329,7 +7363,7 @@ function awardsPacketRows(shows, documents, staffing, schedules) {
   });
 }
 
-function awardsAttentionRows(shows, documents, staffing, schedules, packets = [], departments = [], distribution = [], access = []) {
+function awardsAttentionRows(shows, documents, staffing, schedules, packets = [], departments = [], distribution = [], access = [], showDay = []) {
   return [
     ...shows.filter((show) => !show.showDate || !show.venue || show.venue === "Venue TBD").map((show) => ({
       title: `${show.name} show details needed`,
@@ -7391,6 +7425,11 @@ function awardsAttentionRows(shows, documents, staffing, schedules, packets = []
       detail: `${scope.docCount} documents in this access lane.`,
       view: "awardsDashboard"
     })),
+    ...showDay.filter((show) => show.status !== "Ready").slice(0, 3).map((show) => ({
+      title: `${show.name} show-day readiness`,
+      detail: `${show.readyCount}/${show.totalCount} show-day checks complete.`,
+      view: "awardsDashboard"
+    })),
     ...staffing.filter((person) => person.status !== "Ready").slice(0, 4).map((person) => ({
       title: `${person.name} contact info needed`,
       detail: `${person.department || "Production"} - ${person.status || "Needs Review"}`,
@@ -7404,7 +7443,7 @@ function awardsAttentionRows(shows, documents, staffing, schedules, packets = []
   ].slice(0, 8);
 }
 
-function renderAwardsDashboard(shows, documents, staffing, schedules, attention, packets = [], departments = [], distribution = [], access = []) {
+function renderAwardsDashboard(shows, documents, staffing, schedules, attention, packets = [], departments = [], distribution = [], access = [], showDay = []) {
   const client = activeClientRecord();
   const enabled = awardsSuiteEnabled(client);
   $("#awardsHeroTitle").textContent = client?.name ? `${client.name} Broadcast` : "Broadcast Operations";
@@ -7501,6 +7540,25 @@ function renderAwardsDashboard(shows, documents, staffing, schedules, attention,
       <p>${scope.examples.length ? `Examples: ${escapeHtml(scope.examples.join(", "))}` : "No documents in this lane yet."}</p>
     </article>`).join("")
     : `<div class="compact-item empty"><strong>No access lanes yet</strong><p>Add broadcast documents to track sensitive and public access readiness.</p></div>`;
+  const readyShowDays = showDay.filter((show) => show.status === "Ready").length;
+  $("#awardsShowDayCount").textContent = `${readyShowDays}/${showDay.length} ready`;
+  $("#awardsShowDayList").innerHTML = showDay.length
+    ? showDay.map((show) => `<article class="touring-card">
+      <span class="suite-kicker">${escapeHtml(show.status)}</span>
+      <h4>${escapeHtml(show.name)}</h4>
+      <p>${escapeHtml(`${show.readyCount}/${show.totalCount} show-day checks complete`)}</p>
+      <div class="touring-card-sections">
+        ${[
+          ["Timing", show.timingReady],
+          ["Location", show.locationReady],
+          ["Owner", show.ownerReady],
+          ["Final", show.finalReady],
+          ["Locked", show.lockedReady]
+        ].map(([label, ready]) => `<span class="${ready ? "is-ready" : ""}">${escapeHtml(label)}</span>`).join("")}
+      </div>
+      <p>${show.nextItems.length ? `Schedule: ${escapeHtml(show.nextItems.join(", "))}` : "No show-day schedule items yet."}</p>
+    </article>`).join("")
+    : `<div class="compact-item empty"><strong>No show-day records yet</strong><p>Add schedule items to track live-day readiness.</p></div>`;
 }
 
 function renderAwardsDocuments(shows, documents) {
@@ -7587,6 +7645,7 @@ function renderAwardsSettings() {
     ["Department Readiness", "Stage Intelligence checks each department across documents, distro, staffing, credentials, and schedule."],
     ["Distribution Readiness", "Distro groups can be checked for delivery status, sent dates, and restricted/redacted access paths."],
     ["Access Readiness", "Restricted, redacted, department, all-staff, and production-only documents are checked as separate access lanes."],
+    ["Show-Day Readiness", "Live-day checks track timing, locations, owners, final schedule status, and locked show calls."],
     ["Bulk Editing", "Awards teams will need spreadsheet-fast updates for staff lists, schedules, document statuses, and show grids."]
   ].map(([title, detail]) => `<article class="touring-card"><h4>${escapeHtml(title)}</h4><p>${escapeHtml(detail)}</p></article>`).join("");
 }
