@@ -38,9 +38,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.05.032",
-  title: "V1.05.032 update installed",
-  body: "Limited rental vehicle end-photo requirements to the runner's final scheduled rental day."
+  version: "V1.05.033",
+  title: "V1.05.033 update installed",
+  body: "Added live date and time with seconds to the mobile Time Clock timeline."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -295,6 +295,7 @@ let appInstallState = window.matchMedia?.("(display-mode: standalone)").matches 
 let notificationRefreshPoller = null;
 let notificationRealtimeChannel = null;
 let releaseNoticePoller = null;
+let mobileClockSecondTimer = null;
 let pendingActivationSession = null;
 let pendingActivationType = "";
 let sendbirdConnectionState = {
@@ -3781,6 +3782,20 @@ function formatTime(value) {
   });
 }
 
+function formatLiveClock(value = new Date()) {
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleString([], {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    second: "2-digit"
+  });
+}
+
 function toLocalInputValue(date) {
   const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
   return local.toISOString().slice(0, 16);
@@ -6521,8 +6536,23 @@ function renderClock() {
   });
   const card = currentDayCrewTimecard();
   const event = card?.eventId ? getEvent(card.eventId) : events[0] || null;
-  $("#clockEventCount").textContent = event ? "Today / scheduled" : "Today";
+  $("#clockEventCount").textContent = event ? "Scheduled today" : "No scheduled event today";
   $("#clockCards").innerHTML = todayClockTimelineCard(event, card);
+  updateMobileClockNow();
+}
+
+function updateMobileClockNow() {
+  $$("[data-live-clock-now]").forEach((element) => {
+    element.textContent = formatLiveClock(new Date());
+  });
+}
+
+function startMobileClockSecondTimer() {
+  if (mobileClockSecondTimer) return;
+  updateMobileClockNow();
+  mobileClockSecondTimer = window.setInterval(() => {
+    if (state.activeView === "clock" || state.activeView === "dashboard") updateMobileClockNow();
+  }, 1000);
 }
 
 function todayClockTimelineCard(event = null, card = currentDayCrewTimecard()) {
@@ -6543,7 +6573,7 @@ function todayClockTimelineCard(event = null, card = currentDayCrewTimecard()) {
       : "No assigned event is available for this worker today.";
   return `<article class="record-card clock-card clock-day-card">
     <div class="record-card-main">
-      <strong>Today</strong>
+      <strong data-live-clock-now>${escapeHtml(formatLiveClock(new Date()))}</strong>
       <span>${escapeHtml(formatDate(`${today}T12:00`) || today)}</span>
       <p>${escapeHtml(line)}</p>
       <div class="punch-summary">
@@ -13372,6 +13402,7 @@ async function init() {
   initEdgeSwipeNavigation();
   initMiddleSwipeBackNavigation();
   initPushRegistrationListeners();
+  startMobileClockSecondTimer();
   await registerAppShellServiceWorker();
   await clearPersistedLoginForFreshOpen();
   clearForm("timecardForm");
