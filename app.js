@@ -38,9 +38,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.06.011",
-  title: "V1.06.011 update installed",
-  body: "Office Suite access now controls which Touring and Awards suite pages appear for each client account."
+  version: "V1.07.022",
+  title: "V1.07.022 update installed",
+  body: "Awards dashboard readiness cards now open the matching Broadcast Documents, Rundown, or Staffing workspace."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -8234,7 +8234,7 @@ function renderAwardsDashboard(shows, documents, staffing, schedules, attention,
   ].map(([title, detail], index) => `<div class="touring-flow-step"><span>${index + 1}</span><strong>${escapeHtml(title)}</strong><p>${escapeHtml(detail)}</p></div>`).join("");
   $("#awardsPacketCount").textContent = `${packets.filter((packet) => packet.status === "Ready").length}/${packets.length} ready`;
   $("#awardsPacketList").innerHTML = packets.length
-    ? packets.map((packet) => `<article class="touring-card">
+    ? packets.map((packet) => `<button class="touring-card touring-readiness-card" data-dashboard-link="awardsDocuments" type="button">
       <span class="suite-kicker">${escapeHtml(packet.status)}</span>
       <h4>${escapeHtml(packet.name || "Broadcast Show")}</h4>
       <p>${escapeHtml(`${packet.readyCount}/${packet.totalCount} readiness checks complete`)}</p>
@@ -8250,12 +8250,12 @@ function renderAwardsDashboard(shows, documents, staffing, schedules, attention,
         ].map(([label, ready]) => `<span class="${ready ? "is-ready" : ""}">${escapeHtml(label)}</span>`).join("")}
       </div>
       <p>${packet.missingDocs.length ? `Missing docs: ${escapeHtml(packet.missingDocs.join(", "))}` : `Locked schedule items: ${escapeHtml(packet.lockedItems)}`}</p>
-    </article>`).join("")
+    </button>`).join("")
     : `<div class="compact-item empty"><strong>No show packet yet</strong><p>Add a broadcast show to track packet readiness.</p></div>`;
   const readyDepartments = departments.filter((department) => department.status === "Ready").length;
   $("#awardsDepartmentCount").textContent = `${readyDepartments}/${departments.length} ready`;
   $("#awardsDepartmentList").innerHTML = departments.length
-    ? departments.map((department) => `<article class="touring-card">
+    ? departments.map((department) => `<button class="touring-card touring-readiness-card" data-dashboard-link="awardsStaffing" type="button">
       <span class="suite-kicker">${escapeHtml(department.status)}</span>
       <h4>${escapeHtml(department.name)}</h4>
       <p>${escapeHtml(`${department.readyCount}/${department.totalCount} readiness checks complete`)}</p>
@@ -8269,12 +8269,12 @@ function renderAwardsDashboard(shows, documents, staffing, schedules, attention,
         ].map(([label, ready]) => `<span class="${ready ? "is-ready" : ""}">${escapeHtml(label)}</span>`).join("")}
       </div>
       <p>${escapeHtml(`${department.docCount} docs / ${department.staffCount} staff / ${department.scheduleCount} schedule items`)}</p>
-    </article>`).join("")
+    </button>`).join("")
     : `<div class="compact-item empty"><strong>No departments yet</strong><p>Add documents, staff, or schedule items to build department readiness.</p></div>`;
   const readyDistribution = distribution.filter((group) => group.status === "Ready").length;
   $("#awardsDistributionCount").textContent = `${readyDistribution}/${distribution.length} ready`;
   $("#awardsDistributionList").innerHTML = distribution.length
-    ? distribution.map((group) => `<article class="touring-card">
+    ? distribution.map((group) => `<button class="touring-card touring-readiness-card" data-dashboard-link="awardsDocuments" type="button">
       <span class="suite-kicker">${escapeHtml(group.status)}</span>
       <h4>${escapeHtml(group.name)}</h4>
       <p>${escapeHtml(`${group.sentCount}/${group.docCount} documents ready or distributed`)}</p>
@@ -8286,13 +8286,13 @@ function renderAwardsDashboard(shows, documents, staffing, schedules, attention,
         ].map(([label, ready]) => `<span class="${ready ? "is-ready" : ""}">${escapeHtml(label)}</span>`).join("")}
       </div>
       <p>${group.pendingDocs.length ? `Pending: ${escapeHtml(group.pendingDocs.join(", "))}` : `Restricted docs: ${escapeHtml(group.restrictedCount)}`}</p>
-    </article>`).join("")
+    </button>`).join("")
     : `<div class="compact-item empty"><strong>No distro groups yet</strong><p>Add broadcast documents to track distribution readiness.</p></div>`;
   const activeAccess = access.filter((scope) => scope.docCount > 0);
   const readyAccess = activeAccess.filter((scope) => scope.status === "Ready").length;
   $("#awardsAccessCount").textContent = `${readyAccess}/${activeAccess.length} active ready`;
   $("#awardsAccessList").innerHTML = access.length
-    ? access.map((scope) => `<article class="touring-card">
+    ? access.map((scope) => `<button class="touring-card touring-readiness-card" data-dashboard-link="awardsDocuments" type="button">
       <span class="suite-kicker">${escapeHtml(scope.status)}</span>
       <h4>${escapeHtml(scope.scope)}</h4>
       <p>${escapeHtml(`${scope.docCount} documents / ${scope.restrictedCount} restricted`)}</p>
@@ -8303,12 +8303,12 @@ function renderAwardsDashboard(shows, documents, staffing, schedules, attention,
         ].map(([label, ready]) => `<span class="${ready ? "is-ready" : ""}">${escapeHtml(label)}</span>`).join("")}
       </div>
       <p>${scope.examples.length ? `Examples: ${escapeHtml(scope.examples.join(", "))}` : "No documents in this lane yet."}</p>
-    </article>`).join("")
+    </button>`).join("")
     : `<div class="compact-item empty"><strong>No access lanes yet</strong><p>Add broadcast documents to track sensitive and public access readiness.</p></div>`;
   const readyShowDays = showDay.filter((show) => show.status === "Ready").length;
   $("#awardsShowDayCount").textContent = `${readyShowDays}/${showDay.length} ready`;
   $("#awardsShowDayList").innerHTML = showDay.length
-    ? showDay.map((show) => `<article class="touring-card">
+    ? showDay.map((show) => `<button class="touring-card touring-readiness-card" data-dashboard-link="awardsRundown" type="button">
       <span class="suite-kicker">${escapeHtml(show.status)}</span>
       <h4>${escapeHtml(show.name)}</h4>
       <p>${escapeHtml(`${show.readyCount}/${show.totalCount} show-day checks complete`)}</p>
@@ -8322,12 +8322,12 @@ function renderAwardsDashboard(shows, documents, staffing, schedules, attention,
         ].map(([label, ready]) => `<span class="${ready ? "is-ready" : ""}">${escapeHtml(label)}</span>`).join("")}
       </div>
       <p>${show.nextItems.length ? `Schedule: ${escapeHtml(show.nextItems.join(", "))}` : "No show-day schedule items yet."}</p>
-    </article>`).join("")
+    </button>`).join("")
     : `<div class="compact-item empty"><strong>No show-day records yet</strong><p>Add schedule items to track live-day readiness.</p></div>`;
   const readyContacts = contacts.filter((person) => person.status === "Ready").length;
   $("#awardsContactCount").textContent = `${readyContacts}/${contacts.length} ready`;
   $("#awardsContactList").innerHTML = contacts.length
-    ? contacts.map((person) => `<article class="touring-card">
+    ? contacts.map((person) => `<button class="touring-card touring-readiness-card" data-dashboard-link="awardsStaffing" type="button">
       <span class="suite-kicker">${escapeHtml(person.status)}</span>
       <h4>${escapeHtml(person.name)}</h4>
       <p>${escapeHtml([person.department, person.title].filter(Boolean).join(" / ") || "Production Office")}</p>
@@ -8341,12 +8341,12 @@ function renderAwardsDashboard(shows, documents, staffing, schedules, attention,
         ].map(([label, ready]) => `<span class="${ready ? "is-ready" : ""}">${escapeHtml(label)}</span>`).join("")}
       </div>
       <p>${escapeHtml(`${person.credentialZone} / ${person.checkInLocation}`)}</p>
-    </article>`).join("")
+    </button>`).join("")
     : `<div class="compact-item empty"><strong>No production contacts yet</strong><p>Add broadcast staffing records to track production office contact readiness.</p></div>`;
   const readyCompliance = compliance.filter((lane) => lane.status === "Ready").length;
   $("#awardsComplianceCount").textContent = `${readyCompliance}/${compliance.length} ready`;
   $("#awardsComplianceList").innerHTML = compliance.length
-    ? compliance.map((lane) => `<article class="touring-card">
+    ? compliance.map((lane) => `<button class="touring-card touring-readiness-card" data-dashboard-link="awardsDocuments" type="button">
       <span class="suite-kicker">${escapeHtml(lane.status)}</span>
       <h4>${escapeHtml(lane.name)}</h4>
       <p>${escapeHtml(`${lane.readyDocCount}/${lane.docCount} documents ready`)}</p>
@@ -8360,12 +8360,12 @@ function renderAwardsDashboard(shows, documents, staffing, schedules, attention,
         ].map(([label, ready]) => `<span class="${ready ? "is-ready" : ""}">${escapeHtml(label)}</span>`).join("")}
       </div>
       <p>${lane.examples.length ? `Documents: ${escapeHtml(lane.examples.join(", "))}` : "No documents in this lane yet."}</p>
-    </article>`).join("")
+    </button>`).join("")
     : `<div class="compact-item empty"><strong>No compliance lanes yet</strong><p>Add start paperwork and safety documents to track readiness.</p></div>`;
   const readyVersions = versions.filter((lane) => lane.status === "Ready").length;
   $("#awardsVersionCount").textContent = `${readyVersions}/${versions.length} ready`;
   $("#awardsVersionList").innerHTML = versions.length
-    ? versions.map((lane) => `<article class="touring-card">
+    ? versions.map((lane) => `<button class="touring-card touring-readiness-card" data-dashboard-link="awardsDocuments" type="button">
       <span class="suite-kicker">${escapeHtml(lane.status)}</span>
       <h4>${escapeHtml(lane.type)}</h4>
       <p>${escapeHtml(`${lane.currentCount}/${lane.docCount} current documents`)}</p>
@@ -8379,12 +8379,12 @@ function renderAwardsDashboard(shows, documents, staffing, schedules, attention,
         ].map(([label, ready]) => `<span class="${ready ? "is-ready" : ""}">${escapeHtml(label)}</span>`).join("")}
       </div>
       <p>${lane.examples.length ? `Versions: ${escapeHtml(lane.examples.join(", "))}` : "No documents in this lane yet."}</p>
-    </article>`).join("")
+    </button>`).join("")
     : `<div class="compact-item empty"><strong>No version lanes yet</strong><p>Add rundowns, scripts, schedules, quickies, and plots to track versions.</p></div>`;
   const readyTechnical = technical.filter((lane) => lane.status === "Ready").length;
   $("#awardsTechnicalCount").textContent = `${readyTechnical}/${technical.length} ready`;
   $("#awardsTechnicalList").innerHTML = technical.length
-    ? technical.map((lane) => `<article class="touring-card">
+    ? technical.map((lane) => `<button class="touring-card touring-readiness-card" data-dashboard-link="awardsDocuments" type="button">
       <span class="suite-kicker">${escapeHtml(lane.status)}</span>
       <h4>${escapeHtml(lane.name)}</h4>
       <p>${escapeHtml(`${lane.currentCount}/${lane.docCount} current documents`)}</p>
@@ -8398,12 +8398,12 @@ function renderAwardsDashboard(shows, documents, staffing, schedules, attention,
         ].map(([label, ready]) => `<span class="${ready ? "is-ready" : ""}">${escapeHtml(label)}</span>`).join("")}
       </div>
       <p>${lane.examples.length ? `Packets: ${escapeHtml(lane.examples.join(", "))}` : "No technical documents in this lane yet."}</p>
-    </article>`).join("")
+    </button>`).join("")
     : `<div class="compact-item empty"><strong>No technical lanes yet</strong><p>Add stage, venue, broadcast, camera, and power docs to track technical readiness.</p></div>`;
   const readyTalent = talent.filter((lane) => lane.status === "Ready").length;
   $("#awardsTalentCount").textContent = `${readyTalent}/${talent.length} ready`;
   $("#awardsTalentList").innerHTML = talent.length
-    ? talent.map((lane) => `<article class="touring-card">
+    ? talent.map((lane) => `<button class="touring-card touring-readiness-card" data-dashboard-link="awardsDocuments" type="button">
       <span class="suite-kicker">${escapeHtml(lane.status)}</span>
       <h4>${escapeHtml(lane.name)}</h4>
       <p>${escapeHtml(`${lane.docCount} docs / ${lane.staffCount} contacts / ${lane.scheduleCount} calls`)}</p>
@@ -8417,7 +8417,7 @@ function renderAwardsDashboard(shows, documents, staffing, schedules, attention,
         ].map(([label, ready]) => `<span class="${ready ? "is-ready" : ""}">${escapeHtml(label)}</span>`).join("")}
       </div>
       <p>${lane.examples.length ? `Items: ${escapeHtml(lane.examples.join(", "))}` : "No talent or VIP records detected yet."}</p>
-    </article>`).join("")
+    </button>`).join("")
     : `<div class="compact-item empty"><strong>No talent lanes yet</strong><p>Add talent, presenter, VIP, or script records to track readiness.</p></div>`;
 }
 
