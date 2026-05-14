@@ -38,9 +38,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.06.001",
-  title: "V1.06.001 update installed",
-  body: "Opened the Touring Office Suite first pass with tour advancing, crew personnel, travel, documents, and settings workspaces."
+  version: "V1.06.002",
+  title: "V1.06.002 update installed",
+  body: "Connected the Touring Office Suite workspace to client Office Suite access status and added clearer enablement guidance."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -613,6 +613,7 @@ const CLIENT_PACKAGE_DEFINITIONS = [
     description: "Corporate event crews, venues, production offices, schedules, vendors, and client-facing operations."
   }
 ];
+const TOURING_SUITE_ID = "TOUR_DATA_SERVICES";
 
 const SMTP_PROVIDER_SETTINGS = {
   google: {
@@ -1472,6 +1473,14 @@ function clientPackageBadges(value) {
 function clientOfficeSuiteDefinitions(client = activeClientRecord()) {
   const selected = normalizeClientPackages(client?.packageLayouts);
   return selected.map((id) => clientPackageDefinitions().find((pkg) => pkg.id === id)).filter(Boolean);
+}
+
+function clientHasOfficeSuite(suiteId, client = activeClientRecord()) {
+  return normalizeClientPackages(client?.packageLayouts).includes(suiteId);
+}
+
+function touringSuiteEnabled(client = activeClientRecord()) {
+  return clientHasOfficeSuite(TOURING_SUITE_ID, client);
 }
 
 function officeSuiteLabel(id, client = activeClientRecord()) {
@@ -6263,6 +6272,7 @@ function sortEventCards(events) {
 
 function renderTouringSuite() {
   if (!$("#touringHeroStats")) return;
+  renderTouringSuiteAccessNotice();
   const stops = touringStops();
   const crew = touringCrewRows(stops);
   const travel = touringTravelRows(crew);
@@ -6275,9 +6285,21 @@ function renderTouringSuite() {
   renderTourSettings();
 }
 
+function renderTouringSuiteAccessNotice() {
+  const notice = $("#touringSuiteAccessNotice");
+  if (!notice) return;
+  const client = activeClientRecord();
+  const enabled = touringSuiteEnabled(client);
+  notice.hidden = false;
+  notice.classList.toggle("enabled", enabled);
+  notice.innerHTML = enabled
+    ? `<div><strong>Touring Office Suite enabled</strong><p>${escapeHtml(client?.name || "This client")} can now organize tour stops, city riders, crew personnel, travel, and generated tour documents.</p></div><span class="status-pill">Active</span>`
+    : `<div><strong>Preview mode</strong><p>Enable Touring Office Suite under this client account's Office Suites to use this as a live production workspace.</p></div>${canSystemEdit() ? `<button class="tiny-button system-action" data-dashboard-link="adminClients" type="button">Open Client Accounts</button>` : `<span class="status-pill warn">Not enabled</span>`}`;
+}
+
 function touringEvents() {
   const events = visibleEvents().filter((event) => {
-    if (event.officeSuiteId === "TOUR_DATA_SERVICES") return true;
+    if (event.officeSuiteId === TOURING_SUITE_ID) return true;
     const typeText = listText(`${event.type || ""} ${event.name || ""}`);
     return typeText.includes("tour") || typeText.includes("stadium");
   });
@@ -6421,7 +6443,12 @@ function touringAttentionRows(stops, crew, travel) {
 }
 
 function renderTouringDashboard(stops, crew, travel, attention) {
-  $("#touringHeroTitle").textContent = activeClientRecord()?.name ? `${activeClientRecord().name} Touring` : "Tour Operations";
+  const client = activeClientRecord();
+  const enabled = touringSuiteEnabled(client);
+  $("#touringHeroTitle").textContent = client?.name ? `${client.name} Touring` : "Tour Operations";
+  $("#touringHeroCopy").textContent = enabled
+    ? "Touring is active for this client. Manage tour stops, advance tracker, city riders, crew personnel, travel, and generated documents here."
+    : "Touring is ready to enable. Preview the suite structure here, then turn it on from the client's Office Suites when this account is ready.";
   $("#touringHeroStats").innerHTML = [
     ["Tour Stops", stops.length, "tourAdvancing"],
     ["Crew Personnel", crew.length, "tourCrewPersonnel"],

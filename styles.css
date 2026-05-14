@@ -87,6 +87,33 @@
   gap: 1rem;
 }
 
+.touring-access-notice {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.95rem 1rem;
+  border-radius: 16px;
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--role-color, #2563eb) 11%, white), rgba(255, 255, 255, 0.88));
+  box-shadow: inset 3px 0 0 color-mix(in srgb, var(--role-color, #2563eb) 50%, white), 0 12px 28px rgba(15, 23, 42, 0.06);
+}
+
+.touring-access-notice.enabled {
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--role-color, #2563eb) 15%, white), rgba(255, 255, 255, 0.94));
+}
+
+.touring-access-notice strong {
+  display: block;
+  color: #111827;
+}
+
+.touring-access-notice p {
+  margin: 0.2rem 0 0;
+  color: #5b6575;
+}
+
 .touring-panel {
   border: 0;
   border-radius: 18px;
