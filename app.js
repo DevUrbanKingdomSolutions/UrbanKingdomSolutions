@@ -38,9 +38,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.07.010",
-  title: "V1.07.010 update installed",
-  body: "Awards / Live Broadcast dashboard now includes distribution readiness by distro group, delivery status, and restricted access review."
+  version: "V1.07.011",
+  title: "V1.07.011 update installed",
+  body: "Awards / Live Broadcast dashboard now includes access readiness for restricted, redacted, department, and staff-facing documents."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -7016,9 +7016,10 @@ function renderAwardsSuite() {
   const schedules = awardsScheduleRows(shows);
   const departments = awardsDepartmentRows(documents, staffing, schedules);
   const distribution = awardsDistributionRows(documents);
+  const access = awardsAccessRows(documents);
   const packets = awardsPacketRows(shows, documents, staffing, schedules);
-  const attention = awardsAttentionRows(shows, documents, staffing, schedules, packets, departments, distribution);
-  renderAwardsDashboard(shows, documents, staffing, schedules, attention, packets, departments, distribution);
+  const attention = awardsAttentionRows(shows, documents, staffing, schedules, packets, departments, distribution, access);
+  renderAwardsDashboard(shows, documents, staffing, schedules, attention, packets, departments, distribution, access);
   renderAwardsDocuments(shows, documents);
   renderAwardsRundown(documents, schedules);
   renderAwardsStaffing(staffing);
@@ -7256,6 +7257,32 @@ function awardsDistributionRows(documents) {
   });
 }
 
+function awardsAccessRows(documents) {
+  const scopes = ["Restricted", "Public / Redacted", "Department Heads", "All Staff", "Production Only"];
+  return scopes.map((scope) => {
+    const scopeDocs = documents.filter((doc) => (doc.accessScope || (doc.restrictedAccess === "yes" ? "Restricted" : "Production Only")) === scope);
+    const restrictedDocs = scopeDocs.filter((doc) => doc.restrictedAccess === "yes");
+    const hasSensitivePublicDocs = scope === "All Staff" && scopeDocs.some((doc) => ["Script", "Start Paperwork"].includes(doc.type));
+    const redactedReady = scope !== "Public / Redacted" || scopeDocs.every((doc) => doc.restrictedAccess !== "yes" || doc.accessScope === "Public / Redacted");
+    const restrictedReady = scope !== "Restricted" || restrictedDocs.every((doc) => doc.restrictedAccess === "yes");
+    const deliveryReady = !scopeDocs.length || scopeDocs.every((doc) => ["Ready to Send", "Distributed"].includes(doc.deliveryStatus) || ["Ready", "Distributed", "Final", "Template Ready"].includes(doc.status));
+    const accessClean = !hasSensitivePublicDocs && redactedReady && restrictedReady;
+    const checks = [deliveryReady, accessClean];
+    const readyCount = checks.filter(Boolean).length;
+    return {
+      scope,
+      status: !scopeDocs.length ? "No Docs" : readyCount === checks.length ? "Ready" : "Needs Review",
+      readyCount,
+      totalCount: checks.length,
+      docCount: scopeDocs.length,
+      restrictedCount: restrictedDocs.length,
+      deliveryReady,
+      accessClean,
+      examples: scopeDocs.map((doc) => doc.name || doc.type).slice(0, 3)
+    };
+  });
+}
+
 function awardsPacketRows(shows, documents, staffing, schedules) {
   return shows.map((show) => {
     const showName = normalizedMatchValue(show.name || "");
@@ -7302,7 +7329,7 @@ function awardsPacketRows(shows, documents, staffing, schedules) {
   });
 }
 
-function awardsAttentionRows(shows, documents, staffing, schedules, packets = [], departments = [], distribution = []) {
+function awardsAttentionRows(shows, documents, staffing, schedules, packets = [], departments = [], distribution = [], access = []) {
   return [
     ...shows.filter((show) => !show.showDate || !show.venue || show.venue === "Venue TBD").map((show) => ({
       title: `${show.name} show details needed`,
@@ -7359,6 +7386,11 @@ function awardsAttentionRows(shows, documents, staffing, schedules, packets = []
       detail: `${group.sentCount}/${group.docCount} documents ready to send or distributed.`,
       view: "awardsDashboard"
     })),
+    ...access.filter((scope) => scope.status === "Needs Review").slice(0, 3).map((scope) => ({
+      title: `${scope.scope} access needs review`,
+      detail: `${scope.docCount} documents in this access lane.`,
+      view: "awardsDashboard"
+    })),
     ...staffing.filter((person) => person.status !== "Ready").slice(0, 4).map((person) => ({
       title: `${person.name} contact info needed`,
       detail: `${person.department || "Production"} - ${person.status || "Needs Review"}`,
@@ -7372,7 +7404,7 @@ function awardsAttentionRows(shows, documents, staffing, schedules, packets = []
   ].slice(0, 8);
 }
 
-function renderAwardsDashboard(shows, documents, staffing, schedules, attention, packets = [], departments = [], distribution = []) {
+function renderAwardsDashboard(shows, documents, staffing, schedules, attention, packets = [], departments = [], distribution = [], access = []) {
   const client = activeClientRecord();
   const enabled = awardsSuiteEnabled(client);
   $("#awardsHeroTitle").textContent = client?.name ? `${client.name} Broadcast` : "Broadcast Operations";
@@ -7452,6 +7484,23 @@ function renderAwardsDashboard(shows, documents, staffing, schedules, attention,
       <p>${group.pendingDocs.length ? `Pending: ${escapeHtml(group.pendingDocs.join(", "))}` : `Restricted docs: ${escapeHtml(group.restrictedCount)}`}</p>
     </article>`).join("")
     : `<div class="compact-item empty"><strong>No distro groups yet</strong><p>Add broadcast documents to track distribution readiness.</p></div>`;
+  const activeAccess = access.filter((scope) => scope.docCount > 0);
+  const readyAccess = activeAccess.filter((scope) => scope.status === "Ready").length;
+  $("#awardsAccessCount").textContent = `${readyAccess}/${activeAccess.length} active ready`;
+  $("#awardsAccessList").innerHTML = access.length
+    ? access.map((scope) => `<article class="touring-card">
+      <span class="suite-kicker">${escapeHtml(scope.status)}</span>
+      <h4>${escapeHtml(scope.scope)}</h4>
+      <p>${escapeHtml(`${scope.docCount} documents / ${scope.restrictedCount} restricted`)}</p>
+      <div class="touring-card-sections">
+        ${[
+          ["Delivery", scope.deliveryReady],
+          ["Access", scope.accessClean]
+        ].map(([label, ready]) => `<span class="${ready ? "is-ready" : ""}">${escapeHtml(label)}</span>`).join("")}
+      </div>
+      <p>${scope.examples.length ? `Examples: ${escapeHtml(scope.examples.join(", "))}` : "No documents in this lane yet."}</p>
+    </article>`).join("")
+    : `<div class="compact-item empty"><strong>No access lanes yet</strong><p>Add broadcast documents to track sensitive and public access readiness.</p></div>`;
 }
 
 function renderAwardsDocuments(shows, documents) {
@@ -7537,6 +7586,7 @@ function renderAwardsSettings() {
     ["Sensitive Access", "Credentials, start paperwork, payroll details, and restricted broadcast documents need tight access controls."],
     ["Department Readiness", "Stage Intelligence checks each department across documents, distro, staffing, credentials, and schedule."],
     ["Distribution Readiness", "Distro groups can be checked for delivery status, sent dates, and restricted/redacted access paths."],
+    ["Access Readiness", "Restricted, redacted, department, all-staff, and production-only documents are checked as separate access lanes."],
     ["Bulk Editing", "Awards teams will need spreadsheet-fast updates for staff lists, schedules, document statuses, and show grids."]
   ].map(([title, detail]) => `<article class="touring-card"><h4>${escapeHtml(title)}</h4><p>${escapeHtml(detail)}</p></article>`).join("");
 }
