@@ -10,7 +10,7 @@
     <title>Production Crew Database</title>
     <link rel="manifest" href="manifest.webmanifest">
     <link rel="icon" href="assets/logo/app-logo-admin.png" type="image/png">
-    <link rel="stylesheet" href="styles.css?v=V1.06.009-touring-bulk">
+    <link rel="stylesheet" href="styles.css?v=V1.06.010-touring-readiness">
   </head>
   <body>
     <div id="appLoadingOverlay" class="app-loading-overlay" aria-live="polite">
@@ -916,6 +916,48 @@
                 <div id="touringFlowList" class="touring-flow-list"></div>
               </article>
             </section>
+            <div class="awards-readiness-groups">
+              <details class="awards-readiness-group" open>
+                <summary>
+                  <span>Advance Readiness</span>
+                  <strong>City riders, stop details, and tour advance packets</strong>
+                </summary>
+                <section class="panel touring-panel">
+                  <div class="panel-heading">
+                    <h3>City Rider Readiness</h3>
+                    <span id="tourRiderReadinessCount" class="muted"></span>
+                  </div>
+                  <div id="tourRiderReadinessList" class="touring-card-grid"></div>
+                </section>
+                <section class="panel touring-panel">
+                  <div class="panel-heading">
+                    <h3>Tour Document Readiness</h3>
+                    <span id="tourDocumentReadinessCount" class="muted"></span>
+                  </div>
+                  <div id="tourDocumentReadinessList" class="touring-card-grid"></div>
+                </section>
+              </details>
+              <details class="awards-readiness-group">
+                <summary>
+                  <span>People & Travel</span>
+                  <strong>Team info, one-sheets, flights, hotels, and travel packets</strong>
+                </summary>
+                <section class="panel touring-panel">
+                  <div class="panel-heading">
+                    <h3>Crew Personnel Readiness</h3>
+                    <span id="tourCrewReadinessCount" class="muted"></span>
+                  </div>
+                  <div id="tourCrewReadinessList" class="touring-card-grid"></div>
+                </section>
+                <section class="panel touring-panel">
+                  <div class="panel-heading">
+                    <h3>Travel Packet Readiness</h3>
+                    <span id="tourTravelReadinessCount" class="muted"></span>
+                  </div>
+                  <div id="tourTravelReadinessList" class="touring-card-grid"></div>
+                </section>
+              </details>
+            </div>
           </div>
         </section>
 
@@ -2312,6 +2354,6 @@
     <div id="modalHost"></div>
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js?v=V1.06.009-touring-bulk"></script>
+    <script src="app.js?v=V1.06.010-touring-readiness"></script>
   </body>
 </html>

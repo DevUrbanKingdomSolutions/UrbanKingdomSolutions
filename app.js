@@ -38,9 +38,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.06.009",
-  title: "V1.06.009 update installed",
-  body: "Touring Office now includes bulk operations for tour advancing, crew personnel, travel, and tour documents."
+  version: "V1.06.010",
+  title: "V1.06.010 update installed",
+  body: "Touring Office now has deeper Stage Intelligence readiness views for city riders, crew personnel, travel packets, and document exports."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -6464,7 +6464,11 @@ function renderTouringSuite() {
   const crew = touringCrewRows(stops);
   const travel = touringTravelRows(crew);
   const attention = touringAttentionRows(stops, crew, travel);
-  renderTouringDashboard(stops, crew, travel, attention);
+  const riderReadiness = touringRiderReadinessRows(stops);
+  const crewReadiness = touringCrewReadinessRows(crew);
+  const travelReadiness = touringTravelReadinessRows(travel);
+  const documentReadiness = touringDocumentReadinessRows(stops, crew, travel);
+  renderTouringDashboard(stops, crew, travel, attention, riderReadiness, crewReadiness, travelReadiness, documentReadiness);
   renderTourAdvancing(stops);
   renderTourCrewPersonnel(crew);
   renderTourTravel(travel);
@@ -6735,7 +6739,163 @@ function touringAttentionRows(stops, crew, travel) {
   ].slice(0, 8);
 }
 
-function renderTouringDashboard(stops, crew, travel, attention) {
+function touringRiderReadinessRows(stops = []) {
+  return stops.map((stop) => {
+    const record = stop.source || stop;
+    const sections = [
+      ["Location", "locationParking"],
+      ["Labor", "laborCalls"],
+      ["Runners", "runnerPlan"],
+      ["Trucks", "trucksBuses"],
+      ["Equipment", "heavyEquipment"],
+      ["Power", "power"],
+      ["FX", "fireGasesFx"],
+      ["Carts", "golfCarts"]
+    ];
+    const readySections = sections.filter(([, field]) => touringRiderSectionStatus(record, field) === "Ready");
+    const missingSections = sections.filter(([, field]) => touringRiderSectionStatus(record, field) !== "Ready").map(([label]) => label);
+    const advanceReady = !stop.missing.length && ["Confirmed", "Finalized", "Ready"].includes(stop.status);
+    const riderReady = !missingSections.length;
+    return {
+      name: stop.city || "Tour Stop",
+      detail: stop.venue || "Venue TBD",
+      status: advanceReady && riderReady ? "Ready" : readySections.length >= 5 ? "Close" : "Needs Work",
+      readyCount: readySections.length,
+      totalCount: sections.length,
+      sections,
+      readySections,
+      missingSections,
+      advanceReady,
+      riderReady,
+      view: "tourAdvancing"
+    };
+  });
+}
+
+function touringCrewReadinessRows(crew = []) {
+  return crew.map((person) => {
+    const contactReady = Boolean(person.phone && !["Missing", "Pending"].includes(person.phone) && person.email && !["Missing", "Pending"].includes(person.email));
+    const formReady = person.formStatus === "Submitted";
+    const travelReady = person.travelStatus === "Ready";
+    const oneSheetReady = person.oneSheet === "Ready";
+    const assignedReady = !person.assignedStops || person.assignedStops.length > 0 || state.touringStops.length > 0;
+    const checks = [
+      ["Contact", contactReady],
+      ["Info Form", formReady],
+      ["Travel", travelReady],
+      ["One-Sheet", oneSheetReady],
+      ["Assignment", assignedReady]
+    ];
+    const readyCount = checks.filter(([, ready]) => ready).length;
+    return {
+      name: person.name || "Tour Team Member",
+      detail: person.department || "Tour Team",
+      status: readyCount === checks.length ? "Ready" : readyCount >= 3 ? "Close" : "Needs Work",
+      readyCount,
+      totalCount: checks.length,
+      checks,
+      view: "tourCrewPersonnel"
+    };
+  });
+}
+
+function touringTravelReadinessRows(travel = []) {
+  return travel.map((person) => {
+    const flightReady = Boolean(person.flightConfirmation || person.flightStatus === "Booked");
+    const hotelReady = Boolean(person.hotelConfirmation || person.hotelStatus === "Confirmed");
+    const emailReady = Boolean(person.email && person.email !== "Missing");
+    const packetReady = person.overall === "Ready";
+    const checks = [
+      ["Email", emailReady],
+      ["Flight", flightReady],
+      ["Hotel", hotelReady],
+      ["Packet", packetReady]
+    ];
+    const readyCount = checks.filter(([, ready]) => ready).length;
+    return {
+      name: person.name || "Traveler",
+      detail: person.missing?.length ? `Missing: ${person.missing.join(", ")}` : "Travel packet ready",
+      status: readyCount === checks.length ? "Ready" : readyCount >= 2 ? "Needs Review" : "Needs Work",
+      readyCount,
+      totalCount: checks.length,
+      checks,
+      view: "tourTravel"
+    };
+  });
+}
+
+function touringDocumentReadinessRows(stops = [], crew = [], travel = []) {
+  const docs = state.touringDocuments;
+  const docTypeCount = (type) => docs.filter((doc) => normalizedMatchValue(doc.type || doc.name).includes(normalizedMatchValue(type))).length;
+  const advanceGenerated = stops.filter((stop) => stop.documents === "Generated").length;
+  const oneSheetsReady = crew.filter((person) => person.oneSheet === "Ready").length;
+  const travelReady = travel.filter((person) => person.overall === "Ready").length;
+  return [
+    {
+      name: "Advance Riders",
+      detail: `${advanceGenerated}/${stops.length} stop riders generated`,
+      status: stops.length && advanceGenerated === stops.length ? "Ready" : advanceGenerated ? "Close" : "Needs Work",
+      readyCount: advanceGenerated,
+      totalCount: Math.max(stops.length, 1),
+      checks: stops.slice(0, 5).map((stop) => [stop.city || "Stop", stop.documents === "Generated"]),
+      view: "tourDocuments"
+    },
+    {
+      name: "Team One-Sheets",
+      detail: `${oneSheetsReady}/${crew.length} one-sheets ready`,
+      status: crew.length && oneSheetsReady === crew.length ? "Ready" : oneSheetsReady ? "Close" : "Needs Work",
+      readyCount: oneSheetsReady,
+      totalCount: Math.max(crew.length, 1),
+      checks: crew.slice(0, 5).map((person) => [person.name || "Crew", person.oneSheet === "Ready"]),
+      view: "tourDocuments"
+    },
+    {
+      name: "Travel Itineraries",
+      detail: `${travelReady}/${travel.length} ready to generate`,
+      status: travel.length && travelReady === travel.length ? "Ready" : travelReady ? "Close" : "Needs Work",
+      readyCount: travelReady,
+      totalCount: Math.max(travel.length, 1),
+      checks: travel.slice(0, 5).map((person) => [person.name || "Traveler", person.overall === "Ready"]),
+      view: "tourTravel"
+    },
+    {
+      name: "Tour Book",
+      detail: docTypeCount("Tour Book") ? "Tour book record started" : "Future export lane",
+      status: docTypeCount("Tour Book") ? "Close" : "Planned",
+      readyCount: docTypeCount("Tour Book") ? 1 : 0,
+      totalCount: 1,
+      checks: [["Tour Book", docTypeCount("Tour Book") > 0]],
+      view: "tourDocuments"
+    }
+  ];
+}
+
+function touringReadinessCard(item = {}) {
+  const checks = item.checks || item.sections?.map(([label, field]) => [label, item.readySections?.some((ready) => ready[1] === field)]) || [];
+  const statusClass = item.status === "Ready" ? "" : "warn";
+  return `<button class="touring-card touring-readiness-card" data-dashboard-link="${escapeHtml(item.view || "touringDashboard")}" type="button">
+    <span class="suite-kicker">${escapeHtml(item.status || "Needs Review")}</span>
+    <h4>${escapeHtml(item.name || "Readiness Item")}</h4>
+    <p>${escapeHtml(item.detail || `${item.readyCount || 0}/${item.totalCount || 0} ready`)}</p>
+    <div class="touring-card-sections">
+      ${checks.map(([label, ready]) => `<span class="${ready ? "is-ready" : ""}">${escapeHtml(label)}</span>`).join("")}
+    </div>
+    <p><span class="status-pill ${statusClass}">${escapeHtml(`${item.readyCount || 0}/${item.totalCount || 0} ready`)}</span></p>
+  </button>`;
+}
+
+function renderTouringReadinessSection(countSelector, listSelector, rows = [], emptyTitle, emptyDetail) {
+  const ready = rows.filter((row) => row.status === "Ready").length;
+  const count = $(countSelector);
+  const list = $(listSelector);
+  if (count) count.textContent = `${ready}/${rows.length} ready`;
+  if (!list) return;
+  list.innerHTML = rows.length
+    ? rows.map(touringReadinessCard).join("")
+    : `<div class="compact-item empty"><strong>${escapeHtml(emptyTitle)}</strong><p>${escapeHtml(emptyDetail)}</p></div>`;
+}
+
+function renderTouringDashboard(stops, crew, travel, attention, riderReadiness = [], crewReadiness = [], travelReadiness = [], documentReadiness = []) {
   const client = activeClientRecord();
   const enabled = touringSuiteEnabled(client);
   $("#touringHeroTitle").textContent = client?.name ? `${client.name} Touring` : "Tour Operations";
@@ -6757,6 +6917,10 @@ function renderTouringDashboard(stops, crew, travel, attention) {
     ["Travel & Accommodations", "Flights, hotels, master itinerary, travel packets."],
     ["Documents", "Advance riders, manifests, one-sheets, and tour book exports."]
   ].map(([title, detail], index) => `<div class="touring-flow-step"><span>${index + 1}</span><strong>${escapeHtml(title)}</strong><p>${escapeHtml(detail)}</p></div>`).join("");
+  renderTouringReadinessSection("#tourRiderReadinessCount", "#tourRiderReadinessList", riderReadiness, "No tour stops yet", "Add tour stops to start city rider readiness.");
+  renderTouringReadinessSection("#tourCrewReadinessCount", "#tourCrewReadinessList", crewReadiness, "No crew personnel yet", "Add team members to track forms, one-sheets, and travel.");
+  renderTouringReadinessSection("#tourTravelReadinessCount", "#tourTravelReadinessList", travelReadiness, "No travel records yet", "Add travelers to track flight, hotel, and itinerary readiness.");
+  renderTouringReadinessSection("#tourDocumentReadinessCount", "#tourDocumentReadinessList", documentReadiness, "No document lanes yet", "Add touring documents to track rider, one-sheet, itinerary, and tour book readiness.");
 }
 
 function touringGridEditing(viewId) {

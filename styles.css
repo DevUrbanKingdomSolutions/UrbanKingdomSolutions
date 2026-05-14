@@ -179,6 +179,26 @@
   box-shadow: inset 3px 0 0 color-mix(in srgb, var(--role-color, #2563eb) 46%, white), 0 12px 30px rgba(15, 23, 42, 0.06);
 }
 
+.touring-readiness-card {
+  width: 100%;
+  border: 0;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.touring-readiness-card:hover,
+.touring-readiness-card:focus-visible {
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.98), rgba(255, 255, 255, 0.84)),
+    linear-gradient(90deg, color-mix(in srgb, var(--role-color, #2563eb) 17%, transparent), transparent 74%);
+  outline: none;
+  box-shadow:
+    inset 3px 0 0 color-mix(in srgb, var(--role-color, #2563eb) 58%, white),
+    0 14px 32px rgba(15, 23, 42, 0.08);
+}
+
 .touring-card-sections {
   display: flex;
   flex-wrap: wrap;
