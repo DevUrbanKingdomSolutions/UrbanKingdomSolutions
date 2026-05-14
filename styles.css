@@ -199,6 +199,11 @@
   font-weight: 700;
 }
 
+.touring-card-sections span.is-ready {
+  background: color-mix(in srgb, var(--role-color, #2563eb) 22%, white);
+  color: color-mix(in srgb, var(--role-color, #2563eb) 86%, #111827);
+}
+
 .touring-grid-input {
   width: 100%;
   min-width: 8rem;

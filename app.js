@@ -38,9 +38,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.06.006",
-  title: "V1.06.006 update installed",
-  body: "Touring Office Suite grids now include column sort and filter controls for tour stops, crew personnel, travel, and document records."
+  version: "V1.06.007",
+  title: "V1.06.007 update installed",
+  body: "Touring Office Suite tour stops now include city rider workspace sections for location, labor, runner plans, transport, power, FX, and golf carts."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -4493,9 +4493,10 @@ function readOnlyProfileCard(title, subtitle, details = [], sections = [], avata
 function openTouringStopProfile(record) {
   const missing = touringMissingList(record);
   const documents = touringDocumentsForStop(record);
+  const riderSections = touringRiderSections(record);
   readOnlyProfileCard(record.city || "Tour Stop", record.venue || "City Rider Workspace", [], [
     ["Advance Notes", noteSectionText(record.notes || record.missingInfo, record.updatedAt || record.createdAt)],
-    ["City Rider Sub-Database", "Labor calls, runner plan, trucks / buses, power, heavy equipment, fire / FX, and golf carts stay connected to this city stop."]
+    ...riderSections.map(([label, value]) => [label, value])
   ], "", [
     ["Schedule", [
       ["Load-In", formatDate(record.loadInDate)],
@@ -4512,6 +4513,10 @@ function openTouringStopProfile(record) {
       ["Document Count", documents.length],
       ["Latest", documents[0]?.name || "Not generated"],
       ["Status", documents[0]?.status || "Pending"]
+    ]],
+    ["City Rider Readiness", [
+      ["Sections Started", `${riderSections.length}/8`],
+      ["Workspace", "Labor, runner, transport, power, FX, and cart details stay tied to this city."]
     ]]
   ]);
 }
@@ -6485,6 +6490,23 @@ function touringMissingList(record = {}) {
     .filter(Boolean);
 }
 
+function touringRiderSections(record = {}) {
+  return [
+    ["Location / Parking", record.locationParking],
+    ["Labor Calls", record.laborCalls],
+    ["Runner Plan", record.runnerPlan],
+    ["Trucks / Buses", record.trucksBuses],
+    ["Heavy Equipment", record.heavyEquipment],
+    ["Power", record.power],
+    ["Fire / Gases / FX", record.fireGasesFx],
+    ["Golf Carts", record.golfCarts]
+  ].filter(([, value]) => String(value || "").trim());
+}
+
+function touringRiderSectionStatus(record = {}, field) {
+  return String(record[field] || "").trim() ? "Ready" : "Pending";
+}
+
 function touringDocumentsForStop(stop = {}) {
   const city = normalizedMatchValue(stop.city || "");
   if (!city) return [];
@@ -6821,13 +6843,16 @@ function renderTourAdvancing(stops) {
     <span class="suite-kicker">${escapeHtml(stop.city)}</span>
     <h4>${escapeHtml(stop.venue)}</h4>
     <div class="touring-card-sections">
-      <span>Labor Calls</span>
-      <span>Runner Plan</span>
-      <span>Trucks / Buses</span>
-      <span>Power</span>
-      <span>Heavy Equipment</span>
-      <span>Fire / FX</span>
-      <span>Golf Carts</span>
+      ${[
+        ["Location", "locationParking"],
+        ["Labor Calls", "laborCalls"],
+        ["Runner Plan", "runnerPlan"],
+        ["Trucks / Buses", "trucksBuses"],
+        ["Power", "power"],
+        ["Heavy Equipment", "heavyEquipment"],
+        ["Fire / FX", "fireGasesFx"],
+        ["Golf Carts", "golfCarts"]
+      ].map(([label, field]) => `<span class="${touringRiderSectionStatus(stop.source || stop, field) === "Ready" ? "is-ready" : ""}">${escapeHtml(label)}</span>`).join("")}
     </div>
     <p>${stop.missing.length ? `Needs: ${escapeHtml(stop.missing.join(", "))}` : "Ready to generate rider when approved."}</p>
   </article>`).join("");

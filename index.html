@@ -10,7 +10,7 @@
     <title>Production Crew Database</title>
     <link rel="manifest" href="manifest.webmanifest">
     <link rel="icon" href="assets/logo/app-logo-admin.png" type="image/png">
-    <link rel="stylesheet" href="styles.css?v=V1.06.006-touring-grid-controls">
+    <link rel="stylesheet" href="styles.css?v=V1.06.007-city-rider-workspace">
   </head>
   <body>
     <div id="appLoadingOverlay" class="app-loading-overlay" aria-live="polite">
@@ -1050,6 +1050,17 @@
           </label>
           <label>Owner<input name="owner" placeholder="Advance Team"></label>
           <label>Missing info<textarea name="missingInfo" rows="3" placeholder="Parking notes, runner plan, promoter email"></textarea></label>
+          <div class="photo-fieldset touring-rider-fields">
+            <span>City Rider Workspace</span>
+            <label>Location / parking<textarea name="locationParking" rows="2" placeholder="Venue address, parking, dock, credentials, local notes"></textarea></label>
+            <label>Labor calls<textarea name="laborCalls" rows="2" placeholder="Local crew counts, departments, call notes"></textarea></label>
+            <label>Runner plan<textarea name="runnerPlan" rows="2" placeholder="Runner counts, departments, priority runs"></textarea></label>
+            <label>Trucks / buses<textarea name="trucksBuses" rows="2" placeholder="Truck/bus parking, shore power, driver notes"></textarea></label>
+            <label>Heavy equipment<textarea name="heavyEquipment" rows="2" placeholder="Forks, lifts, operators, delivery timing"></textarea></label>
+            <label>Power<textarea name="power" rows="2" placeholder="Generator, distro, venue power, shore power"></textarea></label>
+            <label>Fire / gases / FX<textarea name="fireGasesFx" rows="2" placeholder="Permits, pyro, haze, gases, fire marshal"></textarea></label>
+            <label>Golf carts<textarea name="golfCarts" rows="2" placeholder="Cart counts, charger location, delivery notes"></textarea></label>
+          </div>
           <button class="primary-action" type="submit">Save Tour Stop</button>
         </form>
 
@@ -1925,6 +1936,6 @@
     <div id="modalHost"></div>
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js?v=V1.06.006-touring-grid-controls"></script>
+    <script src="app.js?v=V1.06.007-city-rider-workspace"></script>
   </body>
 </html>
