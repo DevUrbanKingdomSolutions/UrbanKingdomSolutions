@@ -38,9 +38,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.06.003",
-  title: "V1.06.003 update installed",
-  body: "Added the first local Touring Office Suite data stores and quick-entry forms for stops, crew personnel, travel, and documents."
+  version: "V1.06.004",
+  title: "V1.06.004 update installed",
+  body: "Touring Office Suite records now open profile views for tour stops, crew personnel, travel, and documents, with edit actions connected where access allows."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -4487,12 +4487,118 @@ function readOnlyProfileCard(title, subtitle, details = [], sections = [], avata
   </article>`;
 }
 
+function openTouringStopProfile(record) {
+  const missing = touringMissingList(record);
+  const documents = touringDocumentsForStop(record);
+  readOnlyProfileCard(record.city || "Tour Stop", record.venue || "City Rider Workspace", [], [
+    ["Advance Notes", noteSectionText(record.notes || record.missingInfo, record.updatedAt || record.createdAt)],
+    ["City Rider Sub-Database", "Labor calls, runner plan, trucks / buses, power, heavy equipment, fire / FX, and golf carts stay connected to this city stop."]
+  ], "", [
+    ["Schedule", [
+      ["Load-In", formatDate(record.loadInDate)],
+      ["Show Date", formatDate(record.showDate)],
+      ["Load-Out", formatDate(record.loadOutDate)]
+    ]],
+    ["Advance", [
+      ["Status", record.status || (missing.length ? "Needs Review" : "Ready")],
+      ["Priority", record.priority || (missing.length > 2 ? "High" : "Normal")],
+      ["Owner", record.owner || "Advance Team"],
+      ["Missing Info", missing.length ? missing.join(", ") : "Complete"]
+    ]],
+    ["Generated Documents", [
+      ["Document Count", documents.length],
+      ["Latest", documents[0]?.name || "Not generated"],
+      ["Status", documents[0]?.status || "Pending"]
+    ]]
+  ]);
+}
+
+function openTouringCrewProfile(record) {
+  const travel = touringTravelForPerson(record);
+  const oneSheet = state.touringDocuments.find((doc) => doc.type === "Team One-Sheet" && normalizedMatchValue(doc.name).includes(normalizedMatchValue(record.name)));
+  readOnlyProfileCard(record.name || "Tour Team Member", record.title || record.department || "Crew Personnel", [], [
+    ["Team Notes", noteSectionText(record.notes, record.updatedAt || record.createdAt)]
+  ], profileAvatarLarge(record, record.hideHeadshot), [
+    ["Team Member", [
+      ["Department", record.department],
+      ["Title / Role", record.title || record.role],
+      ["Info Form", record.formStatus || "Needed"],
+      ["Company", record.company || activeClientRecord()?.name]
+    ]],
+    ["Contact", [
+      ["Phone", record.phone],
+      ["Email", record.email]
+    ]],
+    ["Documents", [
+      ["One-Sheet", oneSheet ? oneSheet.status || "Ready" : "Not generated"],
+      ["Document", oneSheet?.name || ""]
+    ]],
+    ["Travel", [
+      ["Overall", travel?.overall || "Not started"],
+      ["Missing Info", travel?.missing?.join(", ") || ""]
+    ]]
+  ]);
+}
+
+function openTouringTravelProfile(record) {
+  const missing = [!record.email ? "Email" : "", !record.flightConfirmation ? "Flight confirmation" : "", !record.hotelConfirmation ? "Hotel confirmation" : ""].filter(Boolean);
+  readOnlyProfileCard(record.name || "Traveler", record.overall || (missing.length ? "Needs Review" : "Ready"), [], [
+    ["Travel Notes", noteSectionText(record.notes, record.updatedAt || record.createdAt)]
+  ], profileAvatarLarge(record, record.hideHeadshot), [
+    ["Traveler", [
+      ["Name", record.name],
+      ["Email", record.email],
+      ["Overall Status", missing.length ? "Needs Review" : "Ready"],
+      ["Missing Info", missing.length ? missing.join(", ") : "Complete"]
+    ]],
+    ["Flight", [
+      ["Date", formatDate(record.flightDate)],
+      ["Airline", record.airline],
+      ["Depart", record.depart || record.departAirport],
+      ["Arrive", record.arrive || record.arriveAirport],
+      ["Confirmation", record.flightConfirmation]
+    ]],
+    ["Hotel", [
+      ["Hotel", record.hotel || record.hotelName],
+      ["Check-In", formatDate(record.checkIn)],
+      ["Check-Out", formatDate(record.checkOut)],
+      ["Confirmation", record.hotelConfirmation]
+    ]]
+  ]);
+}
+
+function openTouringDocumentProfile(record) {
+  readOnlyProfileCard(record.name || "Tour Document", record.type || "Documents", [], [
+    ["Document Notes", noteSectionText(record.notes, record.updatedAt || record.createdAt)]
+  ], "", [
+    ["Document", [
+      ["Type", record.type],
+      ["Status", record.status || "Draft"],
+      ["City / Stop", record.city],
+      ["Link", record.link || record.url || record.pdfLink || record.docLink]
+    ]],
+    ["Workflow", [
+      ["Created", formatDateWithYear(record.createdAt)],
+      ["Updated", formatDateWithYear(record.updatedAt)]
+    ]]
+  ]);
+}
+
 function openReadOnlyRecord(storeName, id) {
   const record = state[storeName]?.find((item) => item.id === id);
   if (!record) {
     toast("Record not found.");
     return;
   }
+  if (storeName === "touringStops") {
+    openTouringStopProfile(record);
+  } else if (storeName === "touringCrew") {
+    openTouringCrewProfile(record);
+  } else if (storeName === "touringTravel") {
+    openTouringTravelProfile(record);
+  } else if (storeName === "touringDocuments") {
+    openTouringDocumentProfile(record);
+  } else
   if (storeName === "workers") {
     readOnlyProfileCard(record.name, record.role || "Crew / Runner", [], [
       ["Skills", record.skills],
@@ -6437,7 +6543,8 @@ function touringCrewRows(stops = touringStops()) {
       formStatus: person.formStatus || "Needed",
       travelStatus: touringTravelForPerson(person)?.overall || "Not Started",
       oneSheet: state.touringDocuments.some((doc) => doc.type === "Team One-Sheet" && normalizedMatchValue(doc.name).includes(normalizedMatchValue(person.name))) ? "Ready" : "Not Generated",
-      assignedStops: []
+      assignedStops: [],
+      source: person
     }));
   }
   const workers = visibleRecords(state.workers).slice(0, 12);
@@ -6552,7 +6659,7 @@ function renderTourAdvancing(stops) {
   $("#tourAdvancingCount").textContent = `${stops.length} stops`;
   $("#tourAdvancingHead").innerHTML = `<tr><th>City / Venue</th><th>Dates</th><th>Advance Status</th><th>Missing Info</th><th>Owner</th><th>Rider</th></tr>`;
   $("#tourAdvancingTable").innerHTML = stops.map((stop) => `<tr>
-    <td><strong>${escapeHtml(stop.city)}</strong><p>${escapeHtml(stop.venue)}</p></td>
+    <td><strong>${stop.source ? recordLink("touringStops", stop.id, stop.city) : escapeHtml(stop.city)}</strong><p>${escapeHtml(stop.venue)}</p></td>
     <td>${escapeHtml(formatDate(stop.loadIn) || "Load-in TBD")}<p>${escapeHtml(formatDate(stop.showDate) || "Show TBD")} - ${escapeHtml(formatDate(stop.loadOut) || "Load-out TBD")}</p></td>
     <td><span class="status-pill ${stop.status === "Ready" ? "" : "warn"}">${escapeHtml(stop.status)}</span><p>${escapeHtml(stop.priority)} priority</p></td>
     <td>${stop.missing.length ? stop.missing.map((item) => `<span class="touring-chip">${escapeHtml(item)}</span>`).join("") : `<span class="status-pill">Complete</span>`}</td>
@@ -6579,7 +6686,7 @@ function renderTourCrewPersonnel(crew) {
   $("#tourCrewCount").textContent = `${crew.length} people`;
   $("#tourCrewHead").innerHTML = `<tr><th>Name</th><th>Department</th><th>Contact</th><th>Info Form</th><th>Travel</th><th>One-Sheet</th></tr>`;
   $("#tourCrewTable").innerHTML = crew.map((person) => `<tr>
-    <td><strong>${escapeHtml(person.name)}</strong><p>${escapeHtml(person.assignedStops?.map((stop) => stop.city).join(", ") || "Tour team")}</p></td>
+    <td><strong>${person.source ? recordLink("touringCrew", person.id, person.name) : escapeHtml(person.name)}</strong><p>${escapeHtml(person.assignedStops?.map((stop) => stop.city).join(", ") || "Tour team")}</p>${person.source ? actionButtons("touringCrew", person.id, "touringCrewForm", "", canAdminEdit()) : ""}</td>
     <td>${escapeHtml(person.department)}</td>
     <td>${escapeHtml(person.phone)}<p>${escapeHtml(person.email)}</p></td>
     <td><span class="status-pill ${person.formStatus === "Submitted" ? "" : "warn"}">${escapeHtml(person.formStatus)}</span></td>
@@ -6592,7 +6699,7 @@ function renderTourTravel(travel) {
   $("#tourTravelCount").textContent = `${travel.length} travelers`;
   $("#tourTravelHead").innerHTML = `<tr><th>Traveler</th><th>Flight</th><th>Hotel</th><th>Overall</th><th>Missing Info</th><th>Packet</th></tr>`;
   $("#tourTravelTable").innerHTML = travel.map((person) => `<tr>
-    <td><strong>${escapeHtml(person.name)}</strong><p>${escapeHtml(person.email)}</p></td>
+    <td><strong>${state.touringTravel.some((record) => record.id === person.id) ? recordLink("touringTravel", person.id, person.name) : escapeHtml(person.name)}</strong><p>${escapeHtml(person.email)}</p>${state.touringTravel.some((record) => record.id === person.id) ? actionButtons("touringTravel", person.id, "touringTravelForm", "", canAdminEdit()) : ""}</td>
     <td>${escapeHtml(person.airline || "Not booked")}<p>${escapeHtml([person.depart, person.arrive].filter(Boolean).join(" to ") || "Route TBD")}</p></td>
     <td>${escapeHtml(person.hotel || "Not booked")}<p>${escapeHtml([person.checkIn, person.checkOut].filter(Boolean).join(" - ") || "Dates TBD")}</p></td>
     <td><span class="status-pill ${person.overall === "Ready" ? "" : "warn"}">${escapeHtml(person.overall)}</span></td>
@@ -6602,8 +6709,7 @@ function renderTourTravel(travel) {
 }
 
 function renderTourDocuments(stops, crew, travel) {
-  const savedDocs = state.touringDocuments.map((doc) => [doc.name || "Tour Document", doc.status || "Draft", doc.notes || doc.type || "Saved touring document."]);
-  const docs = savedDocs.length ? savedDocs : [
+  const fallbackDocs = [
     ["Advance Riders", `${stops.filter((stop) => stop.documents === "Generated").length}/${stops.length} generated`, "City rider PDFs and version history."],
     ["Team One-Sheets", `${crew.filter((person) => person.oneSheet === "Ready").length}/${crew.length} ready`, "Individual tour team one-sheet packets."],
     ["Hotel Manifest", "Template ready", "Hotel accommodations manifest from travel records."],
@@ -6611,8 +6717,11 @@ function renderTourDocuments(stops, crew, travel) {
     ["Travel Itineraries", `${travel.filter((person) => person.overall === "Ready").length} ready`, "Person-by-person travel itinerary packets."],
     ["Tour Book", "Future module", "Polished book output with internal and redacted versions."]
   ];
+  const docs = state.touringDocuments.length ? state.touringDocuments : fallbackDocs;
   $("#tourDocumentsCount").textContent = `${docs.length} document lanes`;
-  $("#tourDocumentsList").innerHTML = docs.map(([title, status, detail]) => `<article class="touring-card"><span class="suite-kicker">${escapeHtml(status)}</span><h4>${escapeHtml(title)}</h4><p>${escapeHtml(detail)}</p></article>`).join("");
+  $("#tourDocumentsList").innerHTML = state.touringDocuments.length
+    ? docs.map((doc) => `<article class="touring-card"><span class="suite-kicker">${escapeHtml(doc.status || "Draft")}</span><h4>${recordLink("touringDocuments", doc.id, doc.name || "Tour Document")}</h4><p>${escapeHtml(doc.notes || doc.type || "Saved touring document.")}</p>${actionButtons("touringDocuments", doc.id, "touringDocumentForm", "", canAdminEdit())}</article>`).join("")
+    : docs.map(([title, status, detail]) => `<article class="touring-card"><span class="suite-kicker">${escapeHtml(status)}</span><h4>${escapeHtml(title)}</h4><p>${escapeHtml(detail)}</p></article>`).join("");
 }
 
 function renderTourSettings() {
@@ -10585,7 +10694,7 @@ async function deleteRecord(storeName, id) {
   if (storeName === "clients" && !canSystemEdit()) return;
   if (storeName === "accessLevelDefs" && !canSystemEdit()) return;
   if (storeName === "venues" && !canVenueEdit()) return;
-  const adminStores = ["events", "eventAssignments", "eventSwaps", "workers", "promoters", "runnerStops", "timecards"];
+  const adminStores = ["events", "eventAssignments", "eventSwaps", "workers", "promoters", "runnerStops", "timecards", "touringStops", "touringCrew", "touringTravel", "touringDocuments"];
   if (adminStores.includes(storeName) && !canAdminEdit()) return;
   if (["vehicleLogs", "accidentReports"].includes(storeName) && !canScopedEdit()) return;
   const confirmed = confirm("Delete this record?");
