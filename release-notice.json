@@ -1,5 +1,5 @@
 {
-  "version": "V1.07.006",
-  "title": "V1.07.006 update installed",
-  "body": "Awards / Live Broadcast staffing now tracks credential status, access zone, and check-in location."
+  "version": "V1.07.007",
+  "title": "V1.07.007 update installed",
+  "body": "Awards / Live Broadcast schedules now track call type, location, owner, and lock status for show-day control."
 }

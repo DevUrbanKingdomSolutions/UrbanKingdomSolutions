@@ -10,7 +10,7 @@
     <title>Production Crew Database</title>
     <link rel="manifest" href="manifest.webmanifest">
     <link rel="icon" href="assets/logo/app-logo-admin.png" type="image/png">
-    <link rel="stylesheet" href="styles.css?v=V1.07.006-awards-credentials">
+    <link rel="stylesheet" href="styles.css?v=V1.07.007-awards-showday">
   </head>
   <body>
     <div id="appLoadingOverlay" class="app-loading-overlay" aria-live="polite">
@@ -1390,13 +1390,34 @@
             <label>Date<input name="callDate" type="date"></label>
             <label>Call time<input name="callTime" type="time"></label>
           </div>
+          <div class="form-grid">
+            <label>Call type
+              <select name="callType">
+                <option>Production</option>
+                <option>Rehearsal</option>
+                <option>Talent</option>
+                <option>Camera / Broadcast</option>
+                <option>Show</option>
+                <option>Wrap</option>
+              </select>
+            </label>
+            <label>Location<input name="location" placeholder="Stage, production office, red carpet, control room"></label>
+          </div>
           <label>Department<input name="department" placeholder="Production, Talent, Stage, Broadcast"></label>
+          <label>Owner<input name="owner" placeholder="Production office, stage manager, department lead"></label>
           <label>Status
             <select name="status">
               <option>Draft</option>
               <option>Needs Review</option>
               <option>Ready</option>
               <option>Final</option>
+            </select>
+          </label>
+          <label>Lock status
+            <select name="lockStatus">
+              <option>Open</option>
+              <option>Locked</option>
+              <option>Final Locked</option>
             </select>
           </label>
           <label>Notes<textarea name="notes" rows="3" placeholder="Location, distro, department, or timing notes"></textarea></label>
@@ -2195,6 +2216,6 @@
     <div id="modalHost"></div>
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js?v=V1.07.006-awards-credentials"></script>
+    <script src="app.js?v=V1.07.007-awards-showday"></script>
   </body>
 </html>

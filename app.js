@@ -38,9 +38,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.07.006",
-  title: "V1.07.006 update installed",
-  body: "Awards / Live Broadcast staffing now tracks credential status, access zone, and check-in location."
+  version: "V1.07.007",
+  title: "V1.07.007 update installed",
+  body: "Awards / Live Broadcast schedules now track call type, location, owner, and lock status for show-day control."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -6802,7 +6802,7 @@ const TOURING_COLUMNS = {
   tourTravel: [["name", "Traveler"], ["flight", "Flight"], ["hotel", "Hotel"], ["overall", "Overall"], ["missing", "Missing Info"], ["packet", "Packet"]],
   tourDocuments: [["name", "Document"], ["type", "Type / Status"], ["link", "Link"], ["notes", "Notes"], ["actions", ""]],
   awardsDocuments: [["record", "Show / Record"], ["type", "Type"], ["status", "Version / Status"], ["owner", "Department / Lead"], ["distro", "Distro"], ["delivery", "Delivery"], ["notes", "Notes"], ["actions", ""]],
-  awardsRundown: [["item", "Item"], ["date", "Date / Time"], ["status", "Status"], ["department", "Department"], ["notes", "Notes"], ["actions", ""]],
+  awardsRundown: [["item", "Item"], ["date", "Date / Time"], ["status", "Status"], ["department", "Department / Owner"], ["location", "Location"], ["notes", "Notes"], ["actions", ""]],
   awardsStaffing: [["name", "Name"], ["department", "Department"], ["contact", "Contact"], ["status", "Status"], ["credential", "Credential"], ["notes", "Notes"], ["actions", ""]]
 };
 
@@ -6847,10 +6847,11 @@ function touringColumnValue(row = {}, key, viewId) {
     if (key === "notes") return row.notes || "";
   }
   if (viewId === "awardsRundown") {
-    if (key === "item") return `${row.name || ""} ${row.showName || ""} ${row.type || ""}`;
+    if (key === "item") return `${row.name || ""} ${row.showName || ""} ${row.type || ""} ${row.callType || ""}`;
     if (key === "date") return `${row.callDate || ""} ${row.callTime || ""}`;
-    if (key === "status") return row.status || "";
-    if (key === "department") return row.department || "";
+    if (key === "status") return `${row.status || ""} ${row.lockStatus || ""}`;
+    if (key === "department") return `${row.department || ""} ${row.owner || ""}`;
+    if (key === "location") return row.location || "";
     if (key === "notes") return row.notes || "";
   }
   if (viewId === "awardsStaffing") {
@@ -7168,16 +7169,20 @@ function awardsScheduleRows(shows = awardsShowRows()) {
       showName: item.showName || shows[0]?.name || "Show TBD",
       callDate: item.callDate || "",
       callTime: item.callTime || "",
+      callType: item.callType || "Production",
+      location: item.location || "",
       department: item.department || "Production",
+      owner: item.owner || "",
       status: item.status || "Draft",
+      lockStatus: item.lockStatus || "Open",
       notes: item.notes || "",
       source: item
     }));
   }
   return [
-    { id: "awards-schedule-demo-1", name: "Production load-in", showName: shows[0]?.name || "Awards Broadcast", callDate: shows[0]?.showDate || "", callTime: "", department: "Production", status: "Draft", notes: "Build from schedule PDFs and daily rundown timing.", source: null },
-    { id: "awards-schedule-demo-2", name: "Rehearsals", showName: shows[0]?.name || "Awards Broadcast", callDate: shows[0]?.showDate || "", callTime: "", department: "Stage Management", status: "Needs Review", notes: "Connect rehearsal timing to talent, stage, and broadcast notes.", source: null },
-    { id: "awards-schedule-demo-3", name: "Live show", showName: shows[0]?.name || "Awards Broadcast", callDate: shows[0]?.showDate || "", callTime: "", department: "Broadcast", status: "Draft", notes: "Show-day schedule item for final rundown and script alignment.", source: null }
+    { id: "awards-schedule-demo-1", name: "Production load-in", showName: shows[0]?.name || "Awards Broadcast", callDate: shows[0]?.showDate || "", callTime: "", callType: "Production", location: "Venue", department: "Production", owner: "Production Office", status: "Draft", lockStatus: "Open", notes: "Build from schedule PDFs and daily rundown timing.", source: null },
+    { id: "awards-schedule-demo-2", name: "Rehearsals", showName: shows[0]?.name || "Awards Broadcast", callDate: shows[0]?.showDate || "", callTime: "", callType: "Rehearsal", location: "Stage", department: "Stage Management", owner: "Stage Manager", status: "Needs Review", lockStatus: "Open", notes: "Connect rehearsal timing to talent, stage, and broadcast notes.", source: null },
+    { id: "awards-schedule-demo-3", name: "Live show", showName: shows[0]?.name || "Awards Broadcast", callDate: shows[0]?.showDate || "", callTime: "", callType: "Show", location: "Control Room / Stage", department: "Broadcast", owner: "Show Caller", status: "Draft", lockStatus: "Open", notes: "Show-day schedule item for final rundown and script alignment.", source: null }
   ];
 }
 
@@ -7211,6 +7216,16 @@ function awardsAttentionRows(shows, documents, staffing, schedules) {
     ...schedules.filter((item) => !["Ready", "Final"].includes(item.status)).slice(0, 4).map((item) => ({
       title: `${item.name} schedule needs review`,
       detail: `${item.showName || "Show"} - ${item.status || "Draft"}`,
+      view: "awardsRundown"
+    })),
+    ...schedules.filter((item) => item.source && !item.location).slice(0, 4).map((item) => ({
+      title: `${item.name} location needed`,
+      detail: `${item.callType || "Schedule"} needs a show-day location.`,
+      view: "awardsRundown"
+    })),
+    ...schedules.filter((item) => item.source && item.status === "Final" && item.lockStatus !== "Final Locked").slice(0, 4).map((item) => ({
+      title: `${item.name} lock status needed`,
+      detail: "Final schedule items should be final locked.",
       view: "awardsRundown"
     })),
     ...staffing.filter((person) => person.status !== "Ready").slice(0, 4).map((person) => ({
@@ -7295,10 +7310,11 @@ function renderAwardsRundown(documents, schedules) {
       const storeName = isSchedule ? "awardsSchedules" : "awardsDocuments";
       const formId = isSchedule ? "awardsScheduleForm" : "awardsDocumentForm";
       return `<tr>
-        <td>${editing && row.source ? touringGridInput(storeName, row.id, "name", row.name || "") : `<strong>${row.source ? recordLink(storeName, row.id, row.name) : escapeHtml(row.name)}</strong><p>${escapeHtml(row.showName || row.type || "Broadcast")}</p>`}</td>
+        <td>${editing && row.source ? `${touringGridInput(storeName, row.id, "name", row.name || "")}${isSchedule ? touringGridSelect(storeName, row.id, "callType", row.callType || "Production", ["Production", "Rehearsal", "Talent", "Camera / Broadcast", "Show", "Wrap"]) : ""}` : `<strong>${row.source ? recordLink(storeName, row.id, row.name) : escapeHtml(row.name)}</strong><p>${escapeHtml(isSchedule ? `${row.callType || "Schedule"} - ${row.showName || "Broadcast"}` : (row.showName || row.type || "Broadcast"))}</p>`}</td>
         <td>${editing && row.source && isSchedule ? `${touringGridInput(storeName, row.id, "callDate", row.callDate || "", "date")}${touringGridInput(storeName, row.id, "callTime", row.callTime || "", "time")}` : escapeHtml(isSchedule ? ([formatDate(row.callDate), row.callTime].filter(Boolean).join(" at ") || "Timing TBD") : row.type)}</td>
-        <td>${editing && row.source ? (isSchedule ? touringGridSelect(storeName, row.id, "status", row.status, ["Draft", "Needs Review", "Ready", "Final"]) : `${touringGridInput(storeName, row.id, "versionLabel", row.versionLabel || "")}${touringGridSelect(storeName, row.id, "status", row.status, ["Draft", "Received", "In Review", "Ready", "Distributed", "Final"])}${touringGridSelect(storeName, row.id, "currentVersion", row.currentVersion || "", ["", "yes", "no"])}`) : `<span class="status-pill ${["Final", "Ready", "Distributed"].includes(row.status) ? "" : "warn"}">${escapeHtml([row.versionLabel, row.status].filter(Boolean).join(" / ") || row.status)}</span>`}</td>
-        <td>${editing && row.source ? touringGridInput(storeName, row.id, "department", row.department || "") : escapeHtml(row.department || "Production")}</td>
+        <td>${editing && row.source ? (isSchedule ? `${touringGridSelect(storeName, row.id, "status", row.status, ["Draft", "Needs Review", "Ready", "Final"])}${touringGridSelect(storeName, row.id, "lockStatus", row.lockStatus || "Open", ["Open", "Locked", "Final Locked"])}` : `${touringGridInput(storeName, row.id, "versionLabel", row.versionLabel || "")}${touringGridSelect(storeName, row.id, "status", row.status, ["Draft", "Received", "In Review", "Ready", "Distributed", "Final"])}${touringGridSelect(storeName, row.id, "currentVersion", row.currentVersion || "", ["", "yes", "no"])}`) : `<span class="status-pill ${["Final", "Ready", "Distributed"].includes(row.status) ? "" : "warn"}">${escapeHtml(isSchedule ? [row.status, row.lockStatus].filter(Boolean).join(" / ") : ([row.versionLabel, row.status].filter(Boolean).join(" / ") || row.status))}</span>`}</td>
+        <td>${editing && row.source ? `${touringGridInput(storeName, row.id, "department", row.department || "")}${isSchedule ? touringGridInput(storeName, row.id, "owner", row.owner || "") : ""}` : escapeHtml(isSchedule ? [row.department, row.owner].filter(Boolean).join(" / ") || "Production" : row.department || "Production")}</td>
+        <td>${editing && row.source && isSchedule ? touringGridInput(storeName, row.id, "location", row.location || "") : escapeHtml(isSchedule ? row.location || "Location TBD" : "")}</td>
         <td>${editing && row.source ? touringGridTextarea(storeName, row.id, "notes", row.notes || "") : escapeHtml(row.notes || "Track version, distro, and approval state here.")}</td>
         <td>${row.source && !editing ? actionButtons(storeName, row.id, formId, "", canAdminEdit()) : ""}</td>
       </tr>`;
@@ -7408,8 +7424,12 @@ function openAwardsScheduleProfile(record) {
       ["Show / Event", record.showName],
       ["Date", formatDate(record.callDate)],
       ["Call Time", record.callTime],
+      ["Call Type", record.callType],
+      ["Location", record.location],
       ["Department", record.department],
-      ["Status", record.status]
+      ["Owner", record.owner],
+      ["Status", record.status],
+      ["Lock Status", record.lockStatus]
     ]]
   ]);
 }
