@@ -38,9 +38,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.07.004",
-  title: "V1.07.004 update installed",
-  body: "Awards / Live Broadcast documents now track version, distro, current/superseded status, and restricted-access notes."
+  version: "V1.07.005",
+  title: "V1.07.005 update installed",
+  body: "Awards / Live Broadcast documents now track delivery status, distro date, and access scope for production distribution."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -6801,7 +6801,7 @@ const TOURING_COLUMNS = {
   tourCrewPersonnel: [["name", "Name"], ["department", "Department"], ["contact", "Contact"], ["formStatus", "Info Form"], ["travelStatus", "Travel"], ["oneSheet", "One-Sheet"]],
   tourTravel: [["name", "Traveler"], ["flight", "Flight"], ["hotel", "Hotel"], ["overall", "Overall"], ["missing", "Missing Info"], ["packet", "Packet"]],
   tourDocuments: [["name", "Document"], ["type", "Type / Status"], ["link", "Link"], ["notes", "Notes"], ["actions", ""]],
-  awardsDocuments: [["record", "Show / Record"], ["type", "Type"], ["status", "Version / Status"], ["owner", "Department / Lead"], ["distro", "Distro"], ["notes", "Notes"], ["actions", ""]],
+  awardsDocuments: [["record", "Show / Record"], ["type", "Type"], ["status", "Version / Status"], ["owner", "Department / Lead"], ["distro", "Distro"], ["delivery", "Delivery"], ["notes", "Notes"], ["actions", ""]],
   awardsRundown: [["item", "Item"], ["date", "Date / Time"], ["status", "Status"], ["department", "Department"], ["notes", "Notes"], ["actions", ""]],
   awardsStaffing: [["name", "Name"], ["department", "Department"], ["contact", "Contact"], ["status", "Status"], ["notes", "Notes"], ["actions", ""]]
 };
@@ -6843,6 +6843,7 @@ function touringColumnValue(row = {}, key, viewId) {
     if (key === "status") return `${row.status || ""} ${row.versionLabel || ""} ${row.currentVersion || ""} ${row.restrictedAccess || ""}`;
     if (key === "owner") return `${row.department || ""} ${row.productionLead || ""}`;
     if (key === "distro") return row.distributionGroup || "";
+    if (key === "delivery") return `${row.deliveryStatus || ""} ${row.distributionDate || ""} ${row.accessScope || ""}`;
     if (key === "notes") return row.notes || "";
   }
   if (viewId === "awardsRundown") {
@@ -7082,6 +7083,9 @@ function awardsDocumentsRows() {
       distributionGroup: doc.distributionGroup || "Production",
       currentVersion: doc.currentVersion || "",
       restrictedAccess: doc.restrictedAccess || "",
+      deliveryStatus: doc.deliveryStatus || "Not Sent",
+      distributionDate: doc.distributionDate || "",
+      accessScope: doc.accessScope || (doc.restrictedAccess === "yes" ? "Restricted" : "Production Only"),
       link: doc.link || "",
       notes: doc.notes || "",
       source: doc
@@ -7107,6 +7111,9 @@ function awardsDocumentsRows() {
     distributionGroup: index === 2 ? "Production Office" : "Mimeo",
     currentVersion: index < 3 ? "yes" : "",
     restrictedAccess: ["Script", "Start Paperwork"].includes(type) ? "yes" : "",
+    deliveryStatus: index < 3 ? "Ready to Send" : "Not Sent",
+    distributionDate: "",
+    accessScope: ["Script", "Start Paperwork"].includes(type) ? "Restricted" : "Production Only",
     link: "",
     notes,
     source: null
@@ -7184,6 +7191,16 @@ function awardsAttentionRows(shows, documents, staffing, schedules) {
       detail: "Mark whether this is the current or superseded version.",
       view: "awardsDocuments"
     })),
+    ...documents.filter((doc) => doc.source && doc.deliveryStatus === "Distributed" && !doc.distributionDate).map((doc) => ({
+      title: `${doc.name} distro date needed`,
+      detail: "Distributed documents need the distribution date.",
+      view: "awardsDocuments"
+    })),
+    ...documents.filter((doc) => doc.source && doc.restrictedAccess === "yes" && doc.accessScope !== "Restricted").map((doc) => ({
+      title: `${doc.name} access scope needs review`,
+      detail: "Restricted documents should use the restricted access scope or a redacted path.",
+      view: "awardsDocuments"
+    })),
     ...schedules.filter((item) => !["Ready", "Final"].includes(item.status)).slice(0, 4).map((item) => ({
       title: `${item.name} schedule needs review`,
       detail: `${item.showName || "Show"} - ${item.status || "Draft"}`,
@@ -7242,6 +7259,7 @@ function renderAwardsDocuments(shows, documents) {
         <td>${editing && row.source ? (isShow ? touringGridInput(storeName, row.id, "showDate", row.showDate || "", "date") : `${touringGridInput(storeName, row.id, "versionLabel", row.versionLabel || "")}${touringGridSelect(storeName, row.id, "status", row.status, ["Draft", "Received", "In Review", "Ready", "Distributed", "Final"])}${touringGridSelect(storeName, row.id, "currentVersion", row.currentVersion || "", ["", "yes", "no"])}`) : `<span class="status-pill ${["Final", "Distributed", "Ready", "Template Ready"].includes(row.status) ? "" : "warn"}">${escapeHtml([row.versionLabel, row.status].filter(Boolean).join(" / ") || row.status)}</span><p>${escapeHtml(row.currentVersion === "yes" ? "Current" : row.currentVersion === "no" ? "Superseded" : "")}</p>`}</td>
         <td>${editing && row.source ? (isShow ? touringGridInput(storeName, row.id, "productionLead", row.productionLead || "") : touringGridInput(storeName, row.id, "department", row.department || "")) : escapeHtml(row.productionLead || row.department || "Production")}</td>
         <td>${editing && row.source && !isShow ? `${touringGridInput(storeName, row.id, "distributionGroup", row.distributionGroup || "")}${touringGridSelect(storeName, row.id, "restrictedAccess", row.restrictedAccess || "", ["", "yes", "no"])}` : escapeHtml(isShow ? "Show record" : [row.distributionGroup, row.restrictedAccess === "yes" ? "Restricted" : ""].filter(Boolean).join(" / ") || "Production")}</td>
+        <td>${editing && row.source && !isShow ? `${touringGridSelect(storeName, row.id, "deliveryStatus", row.deliveryStatus || "Not Sent", ["Not Sent", "Ready to Send", "Distributed", "Redacted Copy Needed"])}${touringGridInput(storeName, row.id, "distributionDate", row.distributionDate || "", "date")}${touringGridSelect(storeName, row.id, "accessScope", row.accessScope || "Production Only", ["Production Only", "Department Heads", "All Staff", "Public / Redacted", "Restricted"])}` : escapeHtml(isShow ? "Show record" : [row.deliveryStatus, formatDate(row.distributionDate), row.accessScope].filter(Boolean).join(" / ") || "Not Sent")}</td>
         <td>${editing && row.source ? touringGridTextarea(storeName, row.id, "notes", row.notes || "") : escapeHtml(row.notes || (isShow ? "Show record." : "Broadcast document lane."))}</td>
         <td>${row.source && !editing ? actionButtons(storeName, row.id, formId, "", canAdminEdit()) : ""}</td>
       </tr>`;
@@ -7317,6 +7335,11 @@ function openAwardsDocumentProfile(record) {
       ["Department", record.department],
       ["Distro Group", record.distributionGroup],
       ["Access", record.restrictedAccess === "yes" ? "Restricted" : "Standard"]
+    ]],
+    ["Distribution", [
+      ["Delivery Status", record.deliveryStatus],
+      ["Distribution Date", formatDate(record.distributionDate)],
+      ["Access Scope", record.accessScope]
     ]],
     ["Delivery", [
       ["Link", record.link],
