@@ -38,9 +38,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.07.021",
-  title: "V1.07.021 update installed",
-  body: "Awards / Live Broadcast readiness items now create clean in-app notifications for client-side action items."
+  version: "V1.06.009",
+  title: "V1.06.009 update installed",
+  body: "Touring Office now includes bulk operations for tour advancing, crew personnel, travel, and tour documents."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -402,6 +402,7 @@ let state = {
   userAccessRows: [],
   eventAccessLinks: [],
   touringGridEdit: {},
+  touringBulkSelection: {},
   awardsBulkSelection: {},
   awardsAttentionNotificationSignature: "",
   touringSort: JSON.parse(localStorage.getItem("productionCrewTouringSort") || "{}"),
@@ -6785,6 +6786,143 @@ function touringGridSelect(storeName, id, field, value = "", options = []) {
   </select>`;
 }
 
+function touringBulkOptions(viewId) {
+  const options = {
+    tourAdvancing: [
+      ["status:Sent", "Advance sent"],
+      ["status:Awaiting Response", "Awaiting response"],
+      ["status:Follow Up Required", "Follow-up required"],
+      ["status:Confirmed", "Advance confirmed"],
+      ["status:Finalized", "Advance finalized"],
+      ["priority:High", "Priority high"],
+      ["priority:Normal", "Priority normal"],
+      ["priority:Low", "Priority low"]
+    ],
+    tourCrewPersonnel: [
+      ["formStatus:Sent", "Info form sent"],
+      ["formStatus:Submitted", "Info form submitted"],
+      ["formStatus:Needs Review", "Info form needs review"],
+      ["travelStatus:Needs Review", "Travel needs review"],
+      ["travelStatus:Ready", "Travel ready"],
+      ["oneSheet:Ready", "One-sheet ready"]
+    ],
+    tourTravel: [
+      ["flightStatus:Booked", "Flight booked"],
+      ["flightStatus:Missing Info", "Flight missing info"],
+      ["hotelStatus:Confirmed", "Hotel confirmed"],
+      ["hotelStatus:Missing Info", "Hotel missing info"],
+      ["overall:Ready", "Travel ready"],
+      ["overall:Needs Review", "Needs review"]
+    ],
+    tourDocuments: [
+      ["status:Draft", "Mark draft"],
+      ["status:Ready", "Mark ready"],
+      ["status:Generated", "Mark generated"],
+      ["status:Sent", "Mark sent"],
+      ["type:Advance Rider", "Type: advance rider"],
+      ["type:Team One-Sheet", "Type: team one-sheet"],
+      ["type:Travel Itinerary", "Type: travel itinerary"],
+      ["type:Tour Book", "Type: tour book"]
+    ]
+  };
+  return options[viewId] || [];
+}
+
+function touringBulkStoreName(viewId, row = {}) {
+  if (viewId === "tourAdvancing") return row.source ? "touringStops" : "";
+  if (viewId === "tourCrewPersonnel") return row.source ? "touringCrew" : "";
+  if (viewId === "tourTravel") return state.touringTravel.some((record) => record.id === row.id) ? "touringTravel" : "";
+  if (viewId === "tourDocuments") return row.id ? "touringDocuments" : "";
+  return "";
+}
+
+function touringBulkKey(viewId, row = {}) {
+  const storeName = touringBulkStoreName(viewId, row);
+  return storeName && row.id ? `${viewId}:${storeName}:${row.id}` : "";
+}
+
+function touringBulkSelectedKeys(viewId) {
+  return state.touringBulkSelection?.[viewId] || [];
+}
+
+function touringBulkSelectionSet(viewId) {
+  return new Set(touringBulkSelectedKeys(viewId));
+}
+
+function touringBulkSelectableRows(viewId, rows = []) {
+  return rows.filter((row) => touringBulkStoreName(viewId, row));
+}
+
+function touringBulkToolbar(viewId, rows = []) {
+  if (!canAdminEdit()) return "";
+  const selectable = touringBulkSelectableRows(viewId, rows);
+  const selected = touringBulkSelectedKeys(viewId).filter((key) => selectable.some((row) => touringBulkKey(viewId, row) === key));
+  const options = touringBulkOptions(viewId);
+  return `<div class="suite-bulk-bar" data-suite-bulk-view="${escapeHtml(viewId)}">
+    <div>
+      <strong>Bulk Operations</strong>
+      <p>${escapeHtml(selected.length ? `${selected.length} selected` : "Select rows to update multiple touring records at once.")}</p>
+    </div>
+    <div class="suite-bulk-actions">
+      <button class="icon-text-button" data-tour-bulk-select="${escapeHtml(viewId)}" type="button">Select Visible</button>
+      <button class="icon-text-button" data-tour-bulk-clear="${escapeHtml(viewId)}" type="button">Clear</button>
+      <select class="touring-grid-input suite-bulk-select" data-tour-bulk-action="${escapeHtml(viewId)}" aria-label="Bulk action">
+        <option value="">Choose action</option>
+        ${options.map(([value, label]) => `<option value="${escapeHtml(value)}">${escapeHtml(label)}</option>`).join("")}
+      </select>
+      <button class="tiny-button" data-tour-bulk-apply="${escapeHtml(viewId)}" type="button">Apply</button>
+    </div>
+  </div>`;
+}
+
+function touringBulkCell(viewId, row = {}) {
+  const key = touringBulkKey(viewId, row);
+  if (!canAdminEdit()) return "";
+  if (!key) return `<td class="suite-bulk-cell"></td>`;
+  const checked = touringBulkSelectionSet(viewId).has(key) ? " checked" : "";
+  return `<td class="suite-bulk-cell"><input data-tour-bulk-row="${escapeHtml(viewId)}" data-tour-bulk-key="${escapeHtml(key)}" type="checkbox" aria-label="Select ${escapeHtml(row.city || row.name || "record")}"${checked}></td>`;
+}
+
+function touringBulkHead(viewId, columns) {
+  return `${canAdminEdit() ? `<th class="suite-bulk-cell"></th>` : ""}${columns.map(([key, label]) => touringColumnHead(viewId, key, label)).join("")}`;
+}
+
+function setTouringBulkSelection(viewId, keys = []) {
+  state.touringBulkSelection = {
+    ...(state.touringBulkSelection || {}),
+    [viewId]: [...new Set(keys)]
+  };
+}
+
+async function applyTouringBulkAction(viewId) {
+  if (!canAdminEdit()) return;
+  const select = document.querySelector(`[data-tour-bulk-action="${viewId}"]`);
+  const action = select?.value || "";
+  const selected = touringBulkSelectedKeys(viewId);
+  if (!selected.length) {
+    toast("Select at least one row first.");
+    return;
+  }
+  if (!action) {
+    toast("Choose a bulk action first.");
+    return;
+  }
+  const [field, ...valueParts] = action.split(":");
+  const value = valueParts.join(":");
+  let updated = 0;
+  for (const key of selected) {
+    const [, storeName, id] = key.split(":");
+    const existing = state[storeName]?.find((item) => item.id === id);
+    if (!existing) continue;
+    await put(storeName, { ...existing, [field]: value, updatedAt: new Date().toISOString() });
+    updated++;
+  }
+  setTouringBulkSelection(viewId, []);
+  await loadState();
+  setView(viewId);
+  toast(updated ? `Updated ${updated} touring records.` : "No matching records could use that action.");
+}
+
 function awardsBulkOptions(viewId) {
   const options = {
     awardsDocuments: [
@@ -7062,7 +7200,14 @@ function touringColumnHead(viewId, key, label) {
 }
 
 function renderTouringHead(viewId, selector) {
-  $(selector).innerHTML = `<tr>${(TOURING_COLUMNS[viewId] || []).map(([key, label]) => touringColumnHead(viewId, key, label)).join("")}</tr>`;
+  $(selector).innerHTML = `<tr>${touringBulkHead(viewId, TOURING_COLUMNS[viewId] || [])}</tr>`;
+}
+
+function renderTouringBulkToolbarBefore(tableSelector, viewId, rows = []) {
+  const wrap = $(tableSelector)?.closest(".table-wrap");
+  if (!wrap) return;
+  wrap.parentElement?.querySelector(`.suite-bulk-bar[data-suite-bulk-view="${viewId}"]`)?.remove();
+  wrap.insertAdjacentHTML("beforebegin", touringBulkToolbar(viewId, rows));
 }
 
 function renderTourAdvancing(stops) {
@@ -7071,7 +7216,9 @@ function renderTourAdvancing(stops) {
   const rows = sortTouringRows("tourAdvancing", filterTouringRows("tourAdvancing", [...stops]));
   $("#tourAdvancingCount").textContent = `${rows.length}/${stops.length} stops`;
   renderTouringHead("tourAdvancing", "#tourAdvancingHead");
+  renderTouringBulkToolbarBefore("#tourAdvancingTable", "tourAdvancing", rows);
   $("#tourAdvancingTable").innerHTML = rows.map((stop) => `<tr>
+    ${touringBulkCell("tourAdvancing", stop)}
     <td>${editing && stop.source ? `${touringGridInput("touringStops", stop.id, "city", stop.source.city || stop.city)}${touringGridInput("touringStops", stop.id, "venue", stop.source.venue || stop.venue)}` : `<strong>${stop.source ? recordLink("touringStops", stop.id, stop.city) : escapeHtml(stop.city)}</strong><p>${escapeHtml(stop.venue)}</p>`}</td>
     <td>${editing && stop.source ? `${touringGridInput("touringStops", stop.id, "loadInDate", stop.source.loadInDate || "", "date")}${touringGridInput("touringStops", stop.id, "showDate", stop.source.showDate || "", "date")}${touringGridInput("touringStops", stop.id, "loadOutDate", stop.source.loadOutDate || "", "date")}` : `${escapeHtml(formatDate(stop.loadIn) || "Load-in TBD")}<p>${escapeHtml(formatDate(stop.showDate) || "Show TBD")} - ${escapeHtml(formatDate(stop.loadOut) || "Load-out TBD")}</p>`}</td>
     <td>${editing && stop.source ? `${touringGridSelect("touringStops", stop.id, "status", stop.source.status || stop.status, ["Not Sent", "Sent", "Awaiting Response", "Partial Response", "Follow Up Required", "Confirmed", "Finalized"])}${touringGridInput("touringStops", stop.id, "priority", stop.source.priority || stop.priority)}` : `<span class="status-pill ${stop.status === "Ready" ? "" : "warn"}">${escapeHtml(stop.status)}</span><p>${escapeHtml(stop.priority)} priority</p>`}</td>
@@ -7104,7 +7251,9 @@ function renderTourCrewPersonnel(crew) {
   const rows = sortTouringRows("tourCrewPersonnel", filterTouringRows("tourCrewPersonnel", [...crew]));
   $("#tourCrewCount").textContent = `${rows.length}/${crew.length} people`;
   renderTouringHead("tourCrewPersonnel", "#tourCrewHead");
+  renderTouringBulkToolbarBefore("#tourCrewTable", "tourCrewPersonnel", rows);
   $("#tourCrewTable").innerHTML = rows.map((person) => `<tr>
+    ${touringBulkCell("tourCrewPersonnel", person)}
     <td>${editing && person.source ? touringGridInput("touringCrew", person.id, "name", person.source.name || person.name) : `<strong>${person.source ? recordLink("touringCrew", person.id, person.name) : escapeHtml(person.name)}</strong><p>${escapeHtml(person.assignedStops?.map((stop) => stop.city).join(", ") || "Tour team")}</p>`}${person.source && !editing ? actionButtons("touringCrew", person.id, "touringCrewForm", "", canAdminEdit()) : ""}</td>
     <td>${editing && person.source ? `${touringGridInput("touringCrew", person.id, "department", person.source.department || person.department)}${touringGridInput("touringCrew", person.id, "title", person.source.title || person.title || "")}` : escapeHtml(person.department)}</td>
     <td>${editing && person.source ? `${touringGridInput("touringCrew", person.id, "phone", person.source.phone || "", "tel")}${touringGridInput("touringCrew", person.id, "email", person.source.email || "", "email")}` : `${escapeHtml(person.phone)}<p>${escapeHtml(person.email)}</p>`}</td>
@@ -7120,7 +7269,9 @@ function renderTourTravel(travel) {
   const rows = sortTouringRows("tourTravel", filterTouringRows("tourTravel", [...travel]));
   $("#tourTravelCount").textContent = `${rows.length}/${travel.length} travelers`;
   renderTouringHead("tourTravel", "#tourTravelHead");
+  renderTouringBulkToolbarBefore("#tourTravelTable", "tourTravel", rows);
   $("#tourTravelTable").innerHTML = rows.map((person) => `<tr>
+    ${touringBulkCell("tourTravel", person)}
     <td>${editing && state.touringTravel.some((record) => record.id === person.id) ? `${touringGridInput("touringTravel", person.id, "name", person.name)}${touringGridInput("touringTravel", person.id, "email", person.email, "email")}` : `<strong>${state.touringTravel.some((record) => record.id === person.id) ? recordLink("touringTravel", person.id, person.name) : escapeHtml(person.name)}</strong><p>${escapeHtml(person.email)}</p>`}${state.touringTravel.some((record) => record.id === person.id) && !editing ? actionButtons("touringTravel", person.id, "touringTravelForm", "", canAdminEdit()) : ""}</td>
     <td>${editing && state.touringTravel.some((record) => record.id === person.id) ? `${touringGridInput("touringTravel", person.id, "flightDate", person.flightDate || "", "date")}${touringGridInput("touringTravel", person.id, "airline", person.airline || "")}${touringGridInput("touringTravel", person.id, "depart", person.depart || "")}${touringGridInput("touringTravel", person.id, "arrive", person.arrive || "")}${touringGridInput("touringTravel", person.id, "flightConfirmation", person.flightConfirmation || "")}` : `${escapeHtml(person.airline || "Not booked")}<p>${escapeHtml([person.depart, person.arrive].filter(Boolean).join(" to ") || "Route TBD")}</p>`}</td>
     <td>${editing && state.touringTravel.some((record) => record.id === person.id) ? `${touringGridInput("touringTravel", person.id, "hotel", person.hotel || "")}${touringGridInput("touringTravel", person.id, "checkIn", person.checkIn || "", "date")}${touringGridInput("touringTravel", person.id, "checkOut", person.checkOut || "", "date")}${touringGridInput("touringTravel", person.id, "hotelConfirmation", person.hotelConfirmation || "")}` : `${escapeHtml(person.hotel || "Not booked")}<p>${escapeHtml([person.checkIn, person.checkOut].filter(Boolean).join(" - ") || "Dates TBD")}</p>`}</td>
@@ -7144,7 +7295,8 @@ function renderTourDocuments(stops, crew, travel) {
   const docs = state.touringDocuments.length ? sortTouringRows("tourDocuments", filterTouringRows("tourDocuments", [...state.touringDocuments])) : fallbackDocs;
   $("#tourDocumentsCount").textContent = `${docs.length} document lanes`;
   $("#tourDocumentsList").innerHTML = state.touringDocuments.length
-    ? `<div class="table-wrap premium-grid-wrap touring-document-grid"><table><thead><tr>${TOURING_COLUMNS.tourDocuments.map(([key, label]) => touringColumnHead("tourDocuments", key, label)).join("")}</tr></thead><tbody>${docs.map((doc) => `<tr>
+    ? `${touringBulkToolbar("tourDocuments", docs)}<div class="table-wrap premium-grid-wrap touring-document-grid"><table><thead><tr>${touringBulkHead("tourDocuments", TOURING_COLUMNS.tourDocuments)}</tr></thead><tbody>${docs.map((doc) => `<tr>
+      ${touringBulkCell("tourDocuments", doc)}
       <td>${editing ? touringGridInput("touringDocuments", doc.id, "name", doc.name || "Tour Document") : recordLink("touringDocuments", doc.id, doc.name || "Tour Document")}</td>
       <td>${editing ? `${touringGridSelect("touringDocuments", doc.id, "type", doc.type || "Advance Rider", ["Advance Rider", "Team One-Sheet", "Hotel Manifest", "Flight Manifest", "Travel Itinerary", "Tour Book"])}${touringGridSelect("touringDocuments", doc.id, "status", doc.status || "Draft", ["Draft", "Ready", "Generated", "Sent"])}` : `<span class="suite-kicker">${escapeHtml(doc.type || "Document")}</span><p>${escapeHtml(doc.status || "Draft")}</p>`}</td>
       <td>${editing ? touringGridInput("touringDocuments", doc.id, "link", doc.link || "", "url") : (doc.link ? `<a href="${escapeHtml(doc.link)}" target="_blank" rel="noopener">Open</a>` : "No link")}</td>
@@ -14951,6 +15103,9 @@ function bindEvents() {
     const touringGridButton = event.target.closest("[data-tour-grid]");
     const touringGridSaveButton = event.target.closest("[data-tour-grid-save]");
     const touringSortButton = event.target.closest("[data-tour-sort]");
+    const touringBulkSelectButton = event.target.closest("[data-tour-bulk-select]");
+    const touringBulkClearButton = event.target.closest("[data-tour-bulk-clear]");
+    const touringBulkApplyButton = event.target.closest("[data-tour-bulk-apply]");
     const awardsBulkSelectButton = event.target.closest("[data-awards-bulk-select]");
     const awardsBulkClearButton = event.target.closest("[data-awards-bulk-clear]");
     const awardsBulkApplyButton = event.target.closest("[data-awards-bulk-apply]");
@@ -15032,6 +15187,22 @@ function bindEvents() {
     }
     if (touringGridSaveButton) {
       await saveTouringGrid(touringGridSaveButton.dataset.tourGridSave);
+      return;
+    }
+    if (touringBulkSelectButton) {
+      const viewId = touringBulkSelectButton.dataset.tourBulkSelect;
+      const keys = $$(`[data-tour-bulk-row="${viewId}"]`).map((input) => input.dataset.tourBulkKey).filter(Boolean);
+      setTouringBulkSelection(viewId, keys);
+      renderTouringSuite();
+      return;
+    }
+    if (touringBulkClearButton) {
+      setTouringBulkSelection(touringBulkClearButton.dataset.tourBulkClear, []);
+      renderTouringSuite();
+      return;
+    }
+    if (touringBulkApplyButton) {
+      await applyTouringBulkAction(touringBulkApplyButton.dataset.tourBulkApply);
       return;
     }
     if (awardsBulkSelectButton) {
@@ -15424,6 +15595,20 @@ function bindEvents() {
     const messageEventFilter = event.target.closest("[data-message-event-filter]");
     const messageEventSelect = event.target.closest("[data-message-event-select]");
     const permanentMessageClientSelect = event.target.closest("[data-permanent-message-client]");
+    const touringBulkRow = event.target.closest("[data-tour-bulk-row]");
+    if (touringBulkRow) {
+      const viewId = touringBulkRow.dataset.tourBulkRow;
+      const keys = touringBulkSelectionSet(viewId);
+      if (touringBulkRow.checked) keys.add(touringBulkRow.dataset.tourBulkKey);
+      else keys.delete(touringBulkRow.dataset.tourBulkKey);
+      setTouringBulkSelection(viewId, [...keys].filter(Boolean));
+      const toolbarText = touringBulkRow.closest(".touring-suite, .touring-card-grid")?.querySelector(`.suite-bulk-bar[data-suite-bulk-view="${viewId}"] p`);
+      if (toolbarText) {
+        const selectedCount = touringBulkSelectedKeys(viewId).length;
+        toolbarText.textContent = selectedCount ? `${selectedCount} selected` : "Select rows to update multiple touring records at once.";
+      }
+      return;
+    }
     const awardsBulkRow = event.target.closest("[data-awards-bulk-row]");
     if (awardsBulkRow) {
       const viewId = awardsBulkRow.dataset.awardsBulkRow;

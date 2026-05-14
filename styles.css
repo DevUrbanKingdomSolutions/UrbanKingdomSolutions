@@ -228,7 +228,8 @@
   resize: vertical;
 }
 
-.awards-bulk-bar {
+.awards-bulk-bar,
+.suite-bulk-bar {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -239,18 +240,21 @@
   background: linear-gradient(135deg, color-mix(in srgb, var(--role-color, #2563eb) 10%, white), rgba(255, 255, 255, 0.72));
 }
 
-.awards-bulk-bar strong {
+.awards-bulk-bar strong,
+.suite-bulk-bar strong {
   display: block;
   color: #111827;
 }
 
-.awards-bulk-bar p {
+.awards-bulk-bar p,
+.suite-bulk-bar p {
   margin: 0.1rem 0 0;
   color: #5b6575;
   font-size: 0.84rem;
 }
 
-.awards-bulk-actions {
+.awards-bulk-actions,
+.suite-bulk-actions {
   display: flex;
   align-items: center;
   justify-content: flex-end;
@@ -258,19 +262,22 @@
   flex-wrap: wrap;
 }
 
-.awards-bulk-select {
+.awards-bulk-select,
+.suite-bulk-select {
   width: auto;
   min-width: 14rem;
   margin: 0;
 }
 
-.awards-bulk-cell {
+.awards-bulk-cell,
+.suite-bulk-cell {
   width: 2.7rem;
   min-width: 2.7rem;
   text-align: center;
 }
 
-.awards-bulk-cell input {
+.awards-bulk-cell input,
+.suite-bulk-cell input {
   width: 1.05rem;
   height: 1.05rem;
   accent-color: var(--role-color, #2563eb);
@@ -373,27 +380,32 @@
   border-radius: 0 12px 12px 0;
 }
 
-.premium-grid-wrap tr td.awards-bulk-cell:first-child {
+.premium-grid-wrap tr td.awards-bulk-cell:first-child,
+.premium-grid-wrap tr td.suite-bulk-cell:first-child {
   border-left: 3px solid color-mix(in srgb, var(--role-color, #2563eb) 36%, white);
   border-radius: 12px 0 0 12px;
 }
 
-.premium-grid-wrap tr td.awards-bulk-cell + td {
+.premium-grid-wrap tr td.awards-bulk-cell + td,
+.premium-grid-wrap tr td.suite-bulk-cell + td {
   border-left: 0;
   border-radius: 0;
 }
 
 @media (max-width: 760px) {
-  .awards-bulk-bar {
+  .awards-bulk-bar,
+  .suite-bulk-bar {
     align-items: stretch;
     flex-direction: column;
   }
 
-  .awards-bulk-actions {
+  .awards-bulk-actions,
+  .suite-bulk-actions {
     justify-content: flex-start;
   }
 
-  .awards-bulk-select {
+  .awards-bulk-select,
+  .suite-bulk-select {
     width: 100%;
   }
 
