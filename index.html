@@ -10,7 +10,7 @@
     <title>Production Crew Database</title>
     <link rel="manifest" href="manifest.webmanifest">
     <link rel="icon" href="assets/logo/app-logo-admin.png" type="image/png">
-    <link rel="stylesheet" href="styles.css?v=V1.06.012-touring-notices">
+    <link rel="stylesheet" href="styles.css?v=V1.06.013-suite-forms">
   </head>
   <body>
     <div id="appLoadingOverlay" class="app-loading-overlay" aria-live="polite">
@@ -1258,57 +1258,69 @@
           </div>
         </section>
 
-        <form id="awardsShowForm" class="panel form-panel owner-form">
+        <form id="awardsShowForm" class="panel form-panel owner-form suite-form">
           <div class="panel-heading">
             <h3>Broadcast Show</h3>
             <button class="ghost-button clear-form" type="button" data-form="awardsShowForm">Clear</button>
           </div>
           <input type="hidden" name="id">
-          <label>Show name<input name="name" required placeholder="Awards show or live broadcast"></label>
-          <div class="form-grid">
-            <label>Show date<input name="showDate" type="date"></label>
-            <label>Venue<input name="venue"></label>
+          <div class="suite-form-section">
+            <span>Show Details</span>
+            <label>Show name<input name="name" required placeholder="Awards show or live broadcast"></label>
+            <div class="form-grid">
+              <label>Show date<input name="showDate" type="date"></label>
+              <label>Venue<input name="venue"></label>
+            </div>
           </div>
-          <label>Status
-            <select name="status">
-              <option>Pre-Production</option>
-              <option>Rehearsal</option>
-              <option>Show Day</option>
-              <option>Wrapped</option>
-            </select>
-          </label>
-          <label>Production lead<input name="productionLead" placeholder="Lead producer, site coordinator, or show caller"></label>
-          <label>Notes<textarea name="notes" rows="3" placeholder="Show-level notes, production office details, distro notes"></textarea></label>
+          <div class="suite-form-section">
+            <span>Production Control</span>
+            <label>Status
+              <select name="status">
+                <option>Pre-Production</option>
+                <option>Rehearsal</option>
+                <option>Show Day</option>
+                <option>Wrapped</option>
+              </select>
+            </label>
+            <label>Production lead<input name="productionLead" placeholder="Lead producer, site coordinator, or show caller"></label>
+            <label>Notes<textarea name="notes" rows="3" placeholder="Show-level notes, production office details, distro notes"></textarea></label>
+          </div>
           <button class="primary-action" type="submit">Save Broadcast Show</button>
         </form>
 
-        <form id="touringStopForm" class="panel form-panel owner-form">
+        <form id="touringStopForm" class="panel form-panel owner-form suite-form">
           <div class="panel-heading">
             <h3>Tour Stop</h3>
             <button class="ghost-button clear-form" type="button" data-form="touringStopForm">Clear</button>
           </div>
           <input type="hidden" name="id">
-          <label>City / State<input name="city" required placeholder="Denver, CO"></label>
-          <label>Venue<input name="venue" placeholder="Stadium or venue"></label>
-          <div class="form-grid">
-            <label>Load-in<input name="loadInDate" type="date"></label>
-            <label>Show date<input name="showDate" type="date"></label>
-            <label>Load-out<input name="loadOutDate" type="date"></label>
+          <div class="suite-form-section">
+            <span>Stop Details</span>
+            <label>City / State<input name="city" required placeholder="Denver, CO"></label>
+            <label>Venue<input name="venue" placeholder="Stadium or venue"></label>
+            <div class="form-grid">
+              <label>Load-in<input name="loadInDate" type="date"></label>
+              <label>Show date<input name="showDate" type="date"></label>
+              <label>Load-out<input name="loadOutDate" type="date"></label>
+            </div>
           </div>
-          <label>Advance status
-            <select name="status">
-              <option>Not Sent</option>
-              <option>Sent</option>
-              <option>Awaiting Response</option>
-              <option>Partial Response</option>
-              <option>Follow Up Required</option>
-              <option>Confirmed</option>
-              <option>Finalized</option>
-            </select>
-          </label>
-          <label>Owner<input name="owner" placeholder="Advance Team"></label>
-          <label>Missing info<textarea name="missingInfo" rows="3" placeholder="Parking notes, runner plan, promoter email"></textarea></label>
-          <div class="photo-fieldset touring-rider-fields">
+          <div class="suite-form-section">
+            <span>Advance Status</span>
+            <label>Advance status
+              <select name="status">
+                <option>Not Sent</option>
+                <option>Sent</option>
+                <option>Awaiting Response</option>
+                <option>Partial Response</option>
+                <option>Follow Up Required</option>
+                <option>Confirmed</option>
+                <option>Finalized</option>
+              </select>
+            </label>
+            <label>Owner<input name="owner" placeholder="Advance Team"></label>
+            <label>Missing info<textarea name="missingInfo" rows="3" placeholder="Parking notes, runner plan, promoter email"></textarea></label>
+          </div>
+          <div class="suite-form-section touring-rider-fields">
             <span>City Rider Workspace</span>
             <label>Location / parking<textarea name="locationParking" rows="2" placeholder="Venue address, parking, dock, credentials, local notes"></textarea></label>
             <label>Labor calls<textarea name="laborCalls" rows="2" placeholder="Local crew counts, departments, call notes"></textarea></label>
@@ -1322,243 +1334,288 @@
           <button class="primary-action" type="submit">Save Tour Stop</button>
         </form>
 
-        <form id="touringCrewForm" class="panel form-panel owner-form">
+        <form id="touringCrewForm" class="panel form-panel owner-form suite-form">
           <div class="panel-heading">
             <h3>Tour Team Member</h3>
             <button class="ghost-button clear-form" type="button" data-form="touringCrewForm">Clear</button>
           </div>
           <input type="hidden" name="id">
-          <label>Name<input name="name" required placeholder="Full name"></label>
-          <label>Department / Company<input name="department" placeholder="Production, Runners, Wardrobe"></label>
-          <label>Title / Role<input name="title" placeholder="Site Co, Runner Lead"></label>
-          <div class="form-grid">
-            <label>Phone<input name="phone" type="tel"></label>
-            <label>Email<input name="email" type="email"></label>
+          <div class="suite-form-section">
+            <span>Person</span>
+            <label>Name<input name="name" required placeholder="Full name"></label>
+            <label>Department / Company<input name="department" placeholder="Production, Runners, Wardrobe"></label>
+            <label>Title / Role<input name="title" placeholder="Site Co, Runner Lead"></label>
+            <div class="form-grid">
+              <label>Phone<input name="phone" type="tel"></label>
+              <label>Email<input name="email" type="email"></label>
+            </div>
           </div>
-          <label>Info form status
-            <select name="formStatus">
-              <option>Needed</option>
-              <option>Sent</option>
-              <option>Submitted</option>
-              <option>Needs Review</option>
-            </select>
-          </label>
-          <label>Notes<textarea name="notes" rows="3" placeholder="Personnel notes"></textarea></label>
+          <div class="suite-form-section">
+            <span>Readiness</span>
+            <label>Info form status
+              <select name="formStatus">
+                <option>Needed</option>
+                <option>Sent</option>
+                <option>Submitted</option>
+                <option>Needs Review</option>
+              </select>
+            </label>
+            <label>Notes<textarea name="notes" rows="3" placeholder="Personnel notes"></textarea></label>
+          </div>
           <button class="primary-action" type="submit">Save Team Member</button>
         </form>
 
-        <form id="touringTravelForm" class="panel form-panel owner-form">
+        <form id="touringTravelForm" class="panel form-panel owner-form suite-form">
           <div class="panel-heading">
             <h3>Travel & Accommodations</h3>
             <button class="ghost-button clear-form" type="button" data-form="touringTravelForm">Clear</button>
           </div>
           <input type="hidden" name="id">
-          <label>Traveler<input name="name" required placeholder="Full name"></label>
-          <label>Email<input name="email" type="email"></label>
-          <div class="form-grid">
-            <label>Flight date<input name="flightDate" type="date"></label>
-            <label>Departing airport<input name="depart" placeholder="BUR"></label>
-            <label>Arriving airport<input name="arrive" placeholder="STL"></label>
-            <label>Airline<input name="airline" placeholder="American"></label>
+          <div class="suite-form-section">
+            <span>Traveler</span>
+            <label>Traveler<input name="name" required placeholder="Full name"></label>
+            <label>Email<input name="email" type="email"></label>
           </div>
-          <label>Flight confirmation<input name="flightConfirmation"></label>
-          <label>Hotel<input name="hotel"></label>
-          <div class="form-grid">
-            <label>Check-in<input name="checkIn" type="date"></label>
-            <label>Check-out<input name="checkOut" type="date"></label>
+          <div class="suite-form-section">
+            <span>Flight</span>
+            <div class="form-grid">
+              <label>Flight date<input name="flightDate" type="date"></label>
+              <label>Departing airport<input name="depart" placeholder="BUR"></label>
+              <label>Arriving airport<input name="arrive" placeholder="STL"></label>
+              <label>Airline<input name="airline" placeholder="American"></label>
+            </div>
+            <label>Flight confirmation<input name="flightConfirmation"></label>
           </div>
-          <label>Hotel confirmation<input name="hotelConfirmation"></label>
-          <label>Travel notes<textarea name="notes" rows="3"></textarea></label>
+          <div class="suite-form-section">
+            <span>Hotel</span>
+            <label>Hotel<input name="hotel"></label>
+            <div class="form-grid">
+              <label>Check-in<input name="checkIn" type="date"></label>
+              <label>Check-out<input name="checkOut" type="date"></label>
+            </div>
+            <label>Hotel confirmation<input name="hotelConfirmation"></label>
+            <label>Travel notes<textarea name="notes" rows="3"></textarea></label>
+          </div>
           <button class="primary-action" type="submit">Save Travel</button>
         </form>
 
-        <form id="touringDocumentForm" class="panel form-panel owner-form">
+        <form id="touringDocumentForm" class="panel form-panel owner-form suite-form">
           <div class="panel-heading">
             <h3>Tour Document</h3>
             <button class="ghost-button clear-form" type="button" data-form="touringDocumentForm">Clear</button>
           </div>
           <input type="hidden" name="id">
-          <label>Document name<input name="name" required placeholder="Denver Advance Rider"></label>
-          <label>Document type
-            <select name="type">
-              <option>Advance Rider</option>
-              <option>Team One-Sheet</option>
-              <option>Hotel Manifest</option>
-              <option>Flight Manifest</option>
-              <option>Travel Itinerary</option>
-              <option>Tour Book</option>
-            </select>
-          </label>
-          <label>Status
-            <select name="status">
-              <option>Draft</option>
-              <option>Ready</option>
-              <option>Generated</option>
-              <option>Sent</option>
-            </select>
-          </label>
-          <label>Link<input name="link" type="url" placeholder="https://"></label>
-          <label>Notes<textarea name="notes" rows="3"></textarea></label>
+          <div class="suite-form-section">
+            <span>Document</span>
+            <label>Document name<input name="name" required placeholder="Denver Advance Rider"></label>
+            <label>Document type
+              <select name="type">
+                <option>Advance Rider</option>
+                <option>Team One-Sheet</option>
+                <option>Hotel Manifest</option>
+                <option>Flight Manifest</option>
+                <option>Travel Itinerary</option>
+                <option>Tour Book</option>
+              </select>
+            </label>
+            <label>Status
+              <select name="status">
+                <option>Draft</option>
+                <option>Ready</option>
+                <option>Generated</option>
+                <option>Sent</option>
+              </select>
+            </label>
+          </div>
+          <div class="suite-form-section">
+            <span>File & Notes</span>
+            <label>Link<input name="link" type="url" placeholder="https://"></label>
+            <label>Notes<textarea name="notes" rows="3"></textarea></label>
+          </div>
           <button class="primary-action" type="submit">Save Document</button>
         </form>
 
-        <form id="awardsDocumentForm" class="panel form-panel owner-form">
+        <form id="awardsDocumentForm" class="panel form-panel owner-form suite-form">
           <div class="panel-heading">
             <h3>Broadcast Document</h3>
             <button class="ghost-button clear-form" type="button" data-form="awardsDocumentForm">Clear</button>
           </div>
           <input type="hidden" name="id">
-          <label>Document name<input name="name" required placeholder="Final Rundown"></label>
-          <label>Show / Event<input name="showName" placeholder="Awards show or live broadcast"></label>
-          <label>Document type
-            <select name="type">
-              <option>Rundown</option>
-              <option>Quickie</option>
-              <option>Schedule</option>
-              <option>Staff List</option>
-              <option>Plot</option>
-              <option>Script</option>
-              <option>Health & Safety</option>
-              <option>Start Paperwork</option>
-              <option>Other</option>
-            </select>
-          </label>
-          <label>Status
-            <select name="status">
-              <option>Draft</option>
-              <option>Received</option>
-              <option>In Review</option>
-              <option>Ready</option>
-              <option>Distributed</option>
-              <option>Final</option>
-            </select>
-          </label>
-          <label>Department<input name="department" placeholder="Production, Mimeo, Stage Management"></label>
-          <div class="form-grid">
-            <label>Version / revision<input name="versionLabel" placeholder="V8, 1116b, Final, Rev 2"></label>
-            <label>Distro group<input name="distributionGroup" placeholder="Mimeo, Production, Department Heads"></label>
-          </div>
-          <div class="form-grid">
-            <label>Current version
-              <select name="currentVersion">
-                <option value="">Needs Review</option>
-                <option value="yes">Current</option>
-                <option value="no">Superseded</option>
+          <div class="suite-form-section">
+            <span>Document</span>
+            <label>Document name<input name="name" required placeholder="Final Rundown"></label>
+            <label>Show / Event<input name="showName" placeholder="Awards show or live broadcast"></label>
+            <label>Document type
+              <select name="type">
+                <option>Rundown</option>
+                <option>Quickie</option>
+                <option>Schedule</option>
+                <option>Staff List</option>
+                <option>Plot</option>
+                <option>Script</option>
+                <option>Health & Safety</option>
+                <option>Start Paperwork</option>
+                <option>Other</option>
               </select>
             </label>
-            <label>Restricted access
-              <select name="restrictedAccess">
-                <option value="">Standard</option>
-                <option value="yes">Restricted</option>
-                <option value="no">Standard</option>
-              </select>
-            </label>
-          </div>
-          <div class="form-grid">
-            <label>Delivery status
-              <select name="deliveryStatus">
-                <option>Not Sent</option>
-                <option>Ready to Send</option>
+            <label>Status
+              <select name="status">
+                <option>Draft</option>
+                <option>Received</option>
+                <option>In Review</option>
+                <option>Ready</option>
                 <option>Distributed</option>
-                <option>Redacted Copy Needed</option>
+                <option>Final</option>
               </select>
             </label>
-            <label>Distribution date<input name="distributionDate" type="date"></label>
+            <label>Department<input name="department" placeholder="Production, Mimeo, Stage Management"></label>
           </div>
-          <label>Access scope
-            <select name="accessScope">
-              <option>Production Only</option>
-              <option>Department Heads</option>
-              <option>All Staff</option>
-              <option>Public / Redacted</option>
-              <option>Restricted</option>
-            </select>
-          </label>
-          <label>Link<input name="link" type="url" placeholder="https://"></label>
-          <label>Notes<textarea name="notes" rows="3" placeholder="Version notes, distro notes, missing approvals"></textarea></label>
+          <div class="suite-form-section">
+            <span>Version & Access</span>
+            <div class="form-grid">
+              <label>Version / revision<input name="versionLabel" placeholder="V8, 1116b, Final, Rev 2"></label>
+              <label>Distro group<input name="distributionGroup" placeholder="Mimeo, Production, Department Heads"></label>
+            </div>
+            <div class="form-grid">
+              <label>Current version
+                <select name="currentVersion">
+                  <option value="">Needs Review</option>
+                  <option value="yes">Current</option>
+                  <option value="no">Superseded</option>
+                </select>
+              </label>
+              <label>Restricted access
+                <select name="restrictedAccess">
+                  <option value="">Standard</option>
+                  <option value="yes">Restricted</option>
+                  <option value="no">Standard</option>
+                </select>
+              </label>
+            </div>
+          </div>
+          <div class="suite-form-section">
+            <span>Delivery</span>
+            <div class="form-grid">
+              <label>Delivery status
+                <select name="deliveryStatus">
+                  <option>Not Sent</option>
+                  <option>Ready to Send</option>
+                  <option>Distributed</option>
+                  <option>Redacted Copy Needed</option>
+                </select>
+              </label>
+              <label>Distribution date<input name="distributionDate" type="date"></label>
+            </div>
+            <label>Access scope
+              <select name="accessScope">
+                <option>Production Only</option>
+                <option>Department Heads</option>
+                <option>All Staff</option>
+                <option>Public / Redacted</option>
+                <option>Restricted</option>
+              </select>
+            </label>
+            <label>Link<input name="link" type="url" placeholder="https://"></label>
+            <label>Notes<textarea name="notes" rows="3" placeholder="Version notes, distro notes, missing approvals"></textarea></label>
+          </div>
           <button class="primary-action" type="submit">Save Broadcast Document</button>
         </form>
 
-        <form id="awardsStaffForm" class="panel form-panel owner-form">
+        <form id="awardsStaffForm" class="panel form-panel owner-form suite-form">
           <div class="panel-heading">
             <h3>Broadcast Staff</h3>
             <button class="ghost-button clear-form" type="button" data-form="awardsStaffForm">Clear</button>
           </div>
           <input type="hidden" name="id">
-          <label>Name<input name="name" required placeholder="Full name"></label>
-          <label>Department<input name="department" placeholder="Production, Mimeo, Stage Management"></label>
-          <label>Title / Role<input name="title" placeholder="Producer, Stage Manager, Mimeo Lead"></label>
-          <div class="form-grid">
-            <label>Phone<input name="phone" type="tel"></label>
-            <label>Email<input name="email" type="email"></label>
+          <div class="suite-form-section">
+            <span>Person</span>
+            <label>Name<input name="name" required placeholder="Full name"></label>
+            <label>Department<input name="department" placeholder="Production, Mimeo, Stage Management"></label>
+            <label>Title / Role<input name="title" placeholder="Producer, Stage Manager, Mimeo Lead"></label>
+            <div class="form-grid">
+              <label>Phone<input name="phone" type="tel"></label>
+              <label>Email<input name="email" type="email"></label>
+            </div>
           </div>
-          <label>Status
-            <select name="status">
-              <option>Needs Contact</option>
-              <option>Invited</option>
-              <option>Confirmed</option>
-              <option>Ready</option>
-            </select>
-          </label>
-          <div class="form-grid">
-            <label>Credential status
-              <select name="credentialStatus">
-                <option>Not Started</option>
-                <option>Requested</option>
-                <option>Approved</option>
-                <option>Issued</option>
+          <div class="suite-form-section">
+            <span>Readiness & Credentials</span>
+            <label>Status
+              <select name="status">
+                <option>Needs Contact</option>
+                <option>Invited</option>
+                <option>Confirmed</option>
+                <option>Ready</option>
               </select>
             </label>
-            <label>Credential zone<input name="credentialZone" placeholder="All Access, Backstage, Production Office"></label>
+            <div class="form-grid">
+              <label>Credential status
+                <select name="credentialStatus">
+                  <option>Not Started</option>
+                  <option>Requested</option>
+                  <option>Approved</option>
+                  <option>Issued</option>
+                </select>
+              </label>
+              <label>Credential zone<input name="credentialZone" placeholder="All Access, Backstage, Production Office"></label>
+            </div>
+            <label>Check-in / badge location<input name="checkInLocation" placeholder="Credential desk, production office, security gate"></label>
+            <label>Notes<textarea name="notes" rows="3" placeholder="Credential, distro, or production notes"></textarea></label>
           </div>
-          <label>Check-in / badge location<input name="checkInLocation" placeholder="Credential desk, production office, security gate"></label>
-          <label>Notes<textarea name="notes" rows="3" placeholder="Credential, distro, or production notes"></textarea></label>
           <button class="primary-action" type="submit">Save Broadcast Staff</button>
         </form>
 
-        <form id="awardsScheduleForm" class="panel form-panel owner-form">
+        <form id="awardsScheduleForm" class="panel form-panel owner-form suite-form">
           <div class="panel-heading">
             <h3>Broadcast Schedule Item</h3>
             <button class="ghost-button clear-form" type="button" data-form="awardsScheduleForm">Clear</button>
           </div>
           <input type="hidden" name="id">
-          <label>Item<input name="name" required placeholder="Rehearsal, camera blocking, doors, live show"></label>
-          <label>Show / Event<input name="showName" placeholder="Awards show or live broadcast"></label>
-          <div class="form-grid">
-            <label>Date<input name="callDate" type="date"></label>
-            <label>Call time<input name="callTime" type="time"></label>
+          <div class="suite-form-section">
+            <span>Schedule Item</span>
+            <label>Item<input name="name" required placeholder="Rehearsal, camera blocking, doors, live show"></label>
+            <label>Show / Event<input name="showName" placeholder="Awards show or live broadcast"></label>
+            <div class="form-grid">
+              <label>Date<input name="callDate" type="date"></label>
+              <label>Call time<input name="callTime" type="time"></label>
+            </div>
           </div>
-          <div class="form-grid">
-            <label>Call type
-              <select name="callType">
-                <option>Production</option>
-                <option>Rehearsal</option>
-                <option>Talent</option>
-                <option>Camera / Broadcast</option>
-                <option>Show</option>
-                <option>Wrap</option>
+          <div class="suite-form-section">
+            <span>Location & Owner</span>
+            <div class="form-grid">
+              <label>Call type
+                <select name="callType">
+                  <option>Production</option>
+                  <option>Rehearsal</option>
+                  <option>Talent</option>
+                  <option>Camera / Broadcast</option>
+                  <option>Show</option>
+                  <option>Wrap</option>
+                </select>
+              </label>
+              <label>Location<input name="location" placeholder="Stage, production office, red carpet, control room"></label>
+            </div>
+            <label>Department<input name="department" placeholder="Production, Talent, Stage, Broadcast"></label>
+            <label>Owner<input name="owner" placeholder="Production office, stage manager, department lead"></label>
+          </div>
+          <div class="suite-form-section">
+            <span>Status</span>
+            <label>Status
+              <select name="status">
+                <option>Draft</option>
+                <option>Needs Review</option>
+                <option>Ready</option>
+                <option>Final</option>
               </select>
             </label>
-            <label>Location<input name="location" placeholder="Stage, production office, red carpet, control room"></label>
+            <label>Lock status
+              <select name="lockStatus">
+                <option>Open</option>
+                <option>Locked</option>
+                <option>Final Locked</option>
+              </select>
+            </label>
+            <label>Notes<textarea name="notes" rows="3" placeholder="Location, distro, department, or timing notes"></textarea></label>
           </div>
-          <label>Department<input name="department" placeholder="Production, Talent, Stage, Broadcast"></label>
-          <label>Owner<input name="owner" placeholder="Production office, stage manager, department lead"></label>
-          <label>Status
-            <select name="status">
-              <option>Draft</option>
-              <option>Needs Review</option>
-              <option>Ready</option>
-              <option>Final</option>
-            </select>
-          </label>
-          <label>Lock status
-            <select name="lockStatus">
-              <option>Open</option>
-              <option>Locked</option>
-              <option>Final Locked</option>
-            </select>
-          </label>
-          <label>Notes<textarea name="notes" rows="3" placeholder="Location, distro, department, or timing notes"></textarea></label>
           <button class="primary-action" type="submit">Save Schedule Item</button>
         </form>
 
@@ -2354,6 +2411,6 @@
     <div id="modalHost"></div>
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js?v=V1.06.012-touring-notices"></script>
+    <script src="app.js?v=V1.06.013-suite-forms"></script>
   </body>
 </html>

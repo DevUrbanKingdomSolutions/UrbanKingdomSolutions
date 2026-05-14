@@ -38,9 +38,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.06.012",
-  title: "V1.06.012 update installed",
-  body: "Touring readiness items now create persistent notifications for client admins and leads until the issue is resolved."
+  version: "V1.06.013",
+  title: "V1.06.013 update installed",
+  body: "Touring and Awards suite forms now use cleaner premium sections for faster setup and editing."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",

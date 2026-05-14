@@ -1,6 +1,6 @@
 {
   "name": "production-crew-dashboard",
-  "version": "1.7.26",
+  "version": "1.7.27",
   "private": true,
   "type": "module",
   "description": "Entertainment production dashboard with Supabase auth and a Capacitor mobile foundation.",

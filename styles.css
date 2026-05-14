@@ -2509,6 +2509,43 @@ body.pull-refresh-dragging .active-view {
   margin: 0;
 }
 
+.suite-form.modal-form {
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--role-color, #2563eb) 9%, #ffffff) 0, #ffffff 210px),
+    #ffffff;
+}
+
+.suite-form .panel-heading {
+  margin-bottom: 0.2rem;
+}
+
+.suite-form-section {
+  display: grid;
+  gap: 10px;
+  margin: 14px 16px 0;
+  padding: 13px;
+  border-radius: 16px;
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--role-color, #2563eb) 8%, white), rgba(255, 255, 255, 0.88));
+  box-shadow: inset 3px 0 0 color-mix(in srgb, var(--role-color, #2563eb) 42%, white);
+}
+
+.suite-form-section > span {
+  color: color-mix(in srgb, var(--role-color, #2563eb) 74%, #111827);
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.suite-form-section label {
+  margin: 0;
+}
+
+.suite-form-section .form-grid {
+  margin: 0;
+}
+
 .vehicle-rental-details {
   display: grid;
   gap: 10px;
