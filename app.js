@@ -38,9 +38,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.07.023",
-  title: "V1.07.023 update installed",
-  body: "Awards readiness notifications now open the exact Broadcast workspace where the item can be fixed."
+  version: "V1.06.014",
+  title: "V1.06.014 update installed",
+  body: "Existing client accounts now default into active Office Suites so Touring and Awards are ready for playtesting."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -649,6 +649,7 @@ const CLIENT_PACKAGE_DEFINITIONS = [
 ];
 const TOURING_SUITE_ID = "TOUR_DATA_SERVICES";
 const AWARDS_SUITE_ID = "AWARDS_SHOWS";
+const DEFAULT_ACTIVE_OFFICE_SUITE_IDS = ["LOCAL_PRODUCTION_SERVICES", TOURING_SUITE_ID, AWARDS_SUITE_ID];
 const TOURING_SUITE_VIEWS = ["touringDashboard", "tourAdvancing", "tourCrewPersonnel", "tourTravel", "tourDocuments", "tourSettings"];
 const AWARDS_SUITE_VIEWS = ["awardsDashboard", "awardsDocuments", "awardsRundown", "awardsStaffing", "awardsSettings"];
 
@@ -1503,7 +1504,7 @@ function normalizeClientPackages(value) {
   const values = Array.isArray(value) ? value : String(value || "").split(",");
   const allowed = new Set(clientPackageDefinitions().map((pkg) => pkg.id));
   const packages = values.map((item) => String(item || "").trim()).filter((item) => allowed.has(item));
-  return packages.length ? Array.from(new Set(packages)) : ["LOCAL_PRODUCTION_SERVICES"];
+  return packages.length ? Array.from(new Set(packages)) : DEFAULT_ACTIVE_OFFICE_SUITE_IDS;
 }
 
 function clientPackageLabels(value) {
