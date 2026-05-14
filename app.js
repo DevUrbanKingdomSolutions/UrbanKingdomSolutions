@@ -38,9 +38,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.06.013",
-  title: "V1.06.013 update installed",
-  body: "Touring and Awards suite forms now use cleaner premium sections for faster setup and editing."
+  version: "V1.07.023",
+  title: "V1.07.023 update installed",
+  body: "Awards readiness notifications now open the exact Broadcast workspace where the item can be fixed."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -8155,27 +8155,27 @@ function awardsAttentionRows(shows, documents, staffing, schedules, packets = []
     ...packets.filter((packet) => packet.status !== "Ready").slice(0, 4).map((packet) => ({
       title: `${packet.name} packet not ready`,
       detail: `${packet.readyCount}/${packet.totalCount} readiness checks complete.`,
-      view: "awardsDashboard"
+      view: "awardsDocuments"
     })),
     ...departments.filter((department) => department.status !== "Ready").slice(0, 4).map((department) => ({
       title: `${department.name} department readiness`,
       detail: `${department.readyCount}/${department.totalCount} checks complete across docs, distro, staffing, credentials, and schedule.`,
-      view: "awardsDashboard"
+      view: "awardsStaffing"
     })),
     ...distribution.filter((group) => group.status !== "Ready").slice(0, 4).map((group) => ({
       title: `${group.name} distro needs review`,
       detail: `${group.sentCount}/${group.docCount} documents ready to send or distributed.`,
-      view: "awardsDashboard"
+      view: "awardsDocuments"
     })),
     ...access.filter((scope) => scope.status === "Needs Review").slice(0, 3).map((scope) => ({
       title: `${scope.scope} access needs review`,
       detail: `${scope.docCount} documents in this access lane.`,
-      view: "awardsDashboard"
+      view: "awardsDocuments"
     })),
     ...showDay.filter((show) => show.status !== "Ready").slice(0, 3).map((show) => ({
       title: `${show.name} show-day readiness`,
       detail: `${show.readyCount}/${show.totalCount} show-day checks complete.`,
-      view: "awardsDashboard"
+      view: "awardsRundown"
     })),
     ...contacts.filter((person) => person.status !== "Ready").slice(0, 3).map((person) => ({
       title: `${person.name} contact readiness`,
@@ -8190,17 +8190,17 @@ function awardsAttentionRows(shows, documents, staffing, schedules, packets = []
     ...versions.filter((lane) => lane.status !== "Ready").slice(0, 3).map((lane) => ({
       title: `${lane.type} version control`,
       detail: `${lane.readyCount}/${lane.totalCount} version checks complete.`,
-      view: "awardsRundown"
+      view: "awardsDocuments"
     })),
     ...technical.filter((lane) => lane.status !== "Ready").slice(0, 3).map((lane) => ({
       title: `${lane.name} technical packet`,
       detail: `${lane.readyCount}/${lane.totalCount} technical checks complete.`,
-      view: "awardsRundown"
+      view: "awardsDocuments"
     })),
     ...talent.filter((lane) => lane.status !== "Ready").slice(0, 2).map((lane) => ({
       title: `${lane.name} readiness`,
       detail: `${lane.readyCount}/${lane.totalCount} talent/VIP checks complete.`,
-      view: "awardsStaffing"
+      view: "awardsDocuments"
     })),
     ...staffing.filter((person) => person.status !== "Ready").slice(0, 4).map((person) => ({
       title: `${person.name} contact info needed`,
