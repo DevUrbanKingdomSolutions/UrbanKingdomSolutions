@@ -38,9 +38,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.06.007",
-  title: "V1.06.007 update installed",
-  body: "Touring Office Suite tour stops now include city rider workspace sections for location, labor, runner plans, transport, power, FX, and golf carts."
+  version: "V1.06.008",
+  title: "V1.06.008 update installed",
+  body: "Touring dashboard now surfaces missing city rider workspace sections in Needs Attention so incomplete rider data is easier to spot."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -6507,6 +6507,19 @@ function touringRiderSectionStatus(record = {}, field) {
   return String(record[field] || "").trim() ? "Ready" : "Pending";
 }
 
+function touringRiderMissingSections(record = {}) {
+  return [
+    ["Location / parking", "locationParking"],
+    ["Labor calls", "laborCalls"],
+    ["Runner plan", "runnerPlan"],
+    ["Trucks / buses", "trucksBuses"],
+    ["Heavy equipment", "heavyEquipment"],
+    ["Power", "power"],
+    ["Fire / gases / FX", "fireGasesFx"],
+    ["Golf carts", "golfCarts"]
+  ].filter(([, field]) => touringRiderSectionStatus(record, field) !== "Ready").map(([label]) => label);
+}
+
 function touringDocumentsForStop(stop = {}) {
   const city = normalizedMatchValue(stop.city || "");
   if (!city) return [];
@@ -6643,6 +6656,15 @@ function touringAttentionRows(stops, crew, travel) {
       detail: stop.missing.join(", "),
       view: "tourAdvancing"
     })),
+    ...stops.map((stop) => {
+      const missing = touringRiderMissingSections(stop.source || stop);
+      return {
+        title: `${stop.city} city rider sections needed`,
+        detail: missing.slice(0, 4).join(", ") + (missing.length > 4 ? ` +${missing.length - 4} more` : ""),
+        view: "tourAdvancing",
+        count: missing.length
+      };
+    }).filter((item) => item.count),
     ...crew.filter((person) => person.formStatus !== "Submitted").slice(0, 3).map((person) => ({
       title: `${person.name} team info needed`,
       detail: "Team info form has not been completed.",

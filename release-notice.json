@@ -1,5 +1,5 @@
 {
-  "version": "V1.06.007",
-  "title": "V1.06.007 update installed",
-  "body": "Touring Office Suite tour stops now include city rider workspace sections for location, labor, runner plans, transport, power, FX, and golf carts."
+  "version": "V1.06.008",
+  "title": "V1.06.008 update installed",
+  "body": "Touring dashboard now surfaces missing city rider workspace sections in Needs Attention so incomplete rider data is easier to spot."
 }
