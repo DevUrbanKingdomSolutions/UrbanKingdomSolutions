@@ -38,9 +38,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.07.007",
-  title: "V1.07.007 update installed",
-  body: "Awards / Live Broadcast schedules now track call type, location, owner, and lock status for show-day control."
+  version: "V1.07.008",
+  title: "V1.07.008 update installed",
+  body: "Awards / Live Broadcast dashboard now includes show packet readiness for core docs, staffing, schedule, distro, and restricted paths."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -7014,8 +7014,9 @@ function renderAwardsSuite() {
   const documents = awardsDocumentsRows();
   const staffing = awardsStaffRows();
   const schedules = awardsScheduleRows(shows);
-  const attention = awardsAttentionRows(shows, documents, staffing, schedules);
-  renderAwardsDashboard(shows, documents, staffing, schedules, attention);
+  const packets = awardsPacketRows(shows, documents, staffing, schedules);
+  const attention = awardsAttentionRows(shows, documents, staffing, schedules, packets);
+  renderAwardsDashboard(shows, documents, staffing, schedules, attention, packets);
   renderAwardsDocuments(shows, documents);
   renderAwardsRundown(documents, schedules);
   renderAwardsStaffing(staffing);
@@ -7186,7 +7187,53 @@ function awardsScheduleRows(shows = awardsShowRows()) {
   ];
 }
 
-function awardsAttentionRows(shows, documents, staffing, schedules) {
+function awardsPacketRows(shows, documents, staffing, schedules) {
+  return shows.map((show) => {
+    const showName = normalizedMatchValue(show.name || "");
+    const showDocs = documents.filter((doc) => {
+      const docShow = normalizedMatchValue(doc.showName || "");
+      return !docShow || !showName || docShow.includes(showName) || showName.includes(docShow) || docShow.includes("broadcast");
+    });
+    const requiredTypes = ["Rundown", "Schedule", "Staff List", "Plot", "Script"];
+    const missingDocs = requiredTypes.filter((type) => !showDocs.some((doc) => normalizedMatchValue(doc.type).includes(normalizedMatchValue(type))));
+    const currentDocs = showDocs.filter((doc) => doc.currentVersion === "yes" || ["Final", "Distributed", "Template Ready"].includes(doc.status));
+    const deliveredDocs = showDocs.filter((doc) => ["Distributed", "Ready to Send"].includes(doc.deliveryStatus) || ["Distributed", "Final", "Template Ready"].includes(doc.status));
+    const restrictedDocs = showDocs.filter((doc) => doc.restrictedAccess === "yes");
+    const redactedReady = restrictedDocs.length === 0 || restrictedDocs.every((doc) => ["Restricted", "Public / Redacted"].includes(doc.accessScope));
+    const staffReady = staffing.length > 0 && staffing.every((person) => ["Confirmed", "Ready"].includes(person.status));
+    const credentialsReady = staffing.length > 0 && staffing.every((person) => ["Approved", "Issued"].includes(person.credentialStatus) || !person.source);
+    const scheduleReady = schedules.length > 0 && schedules.every((item) => ["Ready", "Final"].includes(item.status) && item.location);
+    const lockedItems = schedules.filter((item) => ["Locked", "Final Locked"].includes(item.lockStatus)).length;
+    const checks = [
+      missingDocs.length === 0,
+      currentDocs.length >= Math.min(requiredTypes.length, showDocs.length || requiredTypes.length),
+      deliveredDocs.length >= Math.min(3, showDocs.length || 3),
+      staffReady,
+      credentialsReady,
+      scheduleReady,
+      redactedReady
+    ];
+    const readyCount = checks.filter(Boolean).length;
+    const status = readyCount === checks.length ? "Ready" : readyCount >= 5 ? "Close" : "Needs Work";
+    return {
+      id: show.id,
+      name: show.name,
+      status,
+      readyCount,
+      totalCount: checks.length,
+      missingDocs,
+      docsReady: `${currentDocs.length}/${requiredTypes.length}`,
+      distroReady: `${deliveredDocs.length}/${Math.max(showDocs.length, requiredTypes.length)}`,
+      staffing: staffReady ? "Confirmed" : "Needs Review",
+      credentials: credentialsReady ? "Ready" : "Needs Review",
+      schedule: scheduleReady ? "Ready" : "Needs Review",
+      lockedItems,
+      redacted: redactedReady ? "Ready" : "Needs Review"
+    };
+  });
+}
+
+function awardsAttentionRows(shows, documents, staffing, schedules, packets = []) {
   return [
     ...shows.filter((show) => !show.showDate || !show.venue || show.venue === "Venue TBD").map((show) => ({
       title: `${show.name} show details needed`,
@@ -7228,6 +7275,11 @@ function awardsAttentionRows(shows, documents, staffing, schedules) {
       detail: "Final schedule items should be final locked.",
       view: "awardsRundown"
     })),
+    ...packets.filter((packet) => packet.status !== "Ready").slice(0, 4).map((packet) => ({
+      title: `${packet.name} packet not ready`,
+      detail: `${packet.readyCount}/${packet.totalCount} readiness checks complete.`,
+      view: "awardsDashboard"
+    })),
     ...staffing.filter((person) => person.status !== "Ready").slice(0, 4).map((person) => ({
       title: `${person.name} contact info needed`,
       detail: `${person.department || "Production"} - ${person.status || "Needs Review"}`,
@@ -7241,7 +7293,7 @@ function awardsAttentionRows(shows, documents, staffing, schedules) {
   ].slice(0, 8);
 }
 
-function renderAwardsDashboard(shows, documents, staffing, schedules, attention) {
+function renderAwardsDashboard(shows, documents, staffing, schedules, attention, packets = []) {
   const client = activeClientRecord();
   const enabled = awardsSuiteEnabled(client);
   $("#awardsHeroTitle").textContent = client?.name ? `${client.name} Broadcast` : "Broadcast Operations";
@@ -7252,7 +7304,8 @@ function renderAwardsDashboard(shows, documents, staffing, schedules, attention)
     ["Shows", shows.length, "awardsDocuments"],
     ["Documents", documents.length, "awardsDocuments"],
     ["Schedule", schedules.length, "awardsRundown"],
-    ["Staffing", staffing.length, "awardsStaffing"]
+    ["Staffing", staffing.length, "awardsStaffing"],
+    ["Ready Packets", packets.filter((packet) => packet.status === "Ready").length, "awardsDashboard"]
   ].map(([label, value, view]) => `<button class="touring-stat" data-dashboard-link="${escapeHtml(view)}" type="button"><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></button>`).join("");
   $("#awardsAttentionCount").textContent = `${attention.length} open`;
   $("#awardsAttentionList").innerHTML = attention.length
@@ -7264,6 +7317,26 @@ function renderAwardsDashboard(shows, documents, staffing, schedules, attention)
     ["Staffing", "Staff lists, departments, contact readiness, credentials, and production office contacts."],
     ["Settings", "Broadcast defaults, distro rules, restricted files, and notification rules."]
   ].map(([title, detail], index) => `<div class="touring-flow-step"><span>${index + 1}</span><strong>${escapeHtml(title)}</strong><p>${escapeHtml(detail)}</p></div>`).join("");
+  $("#awardsPacketCount").textContent = `${packets.filter((packet) => packet.status === "Ready").length}/${packets.length} ready`;
+  $("#awardsPacketList").innerHTML = packets.length
+    ? packets.map((packet) => `<article class="touring-card">
+      <span class="suite-kicker">${escapeHtml(packet.status)}</span>
+      <h4>${escapeHtml(packet.name || "Broadcast Show")}</h4>
+      <p>${escapeHtml(`${packet.readyCount}/${packet.totalCount} readiness checks complete`)}</p>
+      <div class="touring-card-sections">
+        ${[
+          ["Core Docs", !packet.missingDocs.length],
+          ["Current", packet.docsReady.split("/")[0] === packet.docsReady.split("/")[1]],
+          ["Distro", packet.distroReady.split("/")[0] === packet.distroReady.split("/")[1]],
+          ["Staff", packet.staffing === "Confirmed"],
+          ["Credentials", packet.credentials === "Ready"],
+          ["Schedule", packet.schedule === "Ready"],
+          ["Restricted", packet.redacted === "Ready"]
+        ].map(([label, ready]) => `<span class="${ready ? "is-ready" : ""}">${escapeHtml(label)}</span>`).join("")}
+      </div>
+      <p>${packet.missingDocs.length ? `Missing docs: ${escapeHtml(packet.missingDocs.join(", "))}` : `Locked schedule items: ${escapeHtml(packet.lockedItems)}`}</p>
+    </article>`).join("")
+    : `<div class="compact-item empty"><strong>No show packet yet</strong><p>Add a broadcast show to track packet readiness.</p></div>`;
 }
 
 function renderAwardsDocuments(shows, documents) {
