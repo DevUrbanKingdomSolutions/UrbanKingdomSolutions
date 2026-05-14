@@ -1,5 +1,5 @@
 {
-  "version": "V1.05.033",
-  "title": "V1.05.033 update installed",
-  "body": "Added live date and time with seconds to the mobile Time Clock timeline."
+  "version": "V1.05.034",
+  "title": "V1.05.034 update installed",
+  "body": "Added the device timezone to the live mobile Time Clock timestamp."
 }

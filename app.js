@@ -38,9 +38,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.05.033",
-  title: "V1.05.033 update installed",
-  body: "Added live date and time with seconds to the mobile Time Clock timeline."
+  version: "V1.05.034",
+  title: "V1.05.034 update installed",
+  body: "Added the device timezone to the live mobile Time Clock timestamp."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -3785,6 +3785,7 @@ function formatTime(value) {
 function formatLiveClock(value = new Date()) {
   const date = value instanceof Date ? value : new Date(value);
   if (Number.isNaN(date.getTime())) return "";
+  const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || "";
   return date.toLocaleString([], {
     weekday: "short",
     month: "short",
@@ -3793,7 +3794,7 @@ function formatLiveClock(value = new Date()) {
     hour: "numeric",
     minute: "2-digit",
     second: "2-digit"
-  });
+  }) + (timezone ? ` ${timezone}` : "");
 }
 
 function toLocalInputValue(date) {
