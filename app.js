@@ -38,9 +38,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.07.008",
-  title: "V1.07.008 update installed",
-  body: "Awards / Live Broadcast dashboard now includes show packet readiness for core docs, staffing, schedule, distro, and restricted paths."
+  version: "V1.07.009",
+  title: "V1.07.009 update installed",
+  body: "Awards / Live Broadcast dashboard now includes department readiness for documents, distro, staffing, credentials, and schedule."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -7014,9 +7014,10 @@ function renderAwardsSuite() {
   const documents = awardsDocumentsRows();
   const staffing = awardsStaffRows();
   const schedules = awardsScheduleRows(shows);
+  const departments = awardsDepartmentRows(documents, staffing, schedules);
   const packets = awardsPacketRows(shows, documents, staffing, schedules);
-  const attention = awardsAttentionRows(shows, documents, staffing, schedules, packets);
-  renderAwardsDashboard(shows, documents, staffing, schedules, attention, packets);
+  const attention = awardsAttentionRows(shows, documents, staffing, schedules, packets, departments);
+  renderAwardsDashboard(shows, documents, staffing, schedules, attention, packets, departments);
   renderAwardsDocuments(shows, documents);
   renderAwardsRundown(documents, schedules);
   renderAwardsStaffing(staffing);
@@ -7187,6 +7188,43 @@ function awardsScheduleRows(shows = awardsShowRows()) {
   ];
 }
 
+function awardsDepartmentRows(documents, staffing, schedules) {
+  const departmentNames = new Set([
+    ...documents.map((doc) => doc.department || "Production"),
+    ...staffing.map((person) => person.department || "Production"),
+    ...schedules.map((item) => item.department || "Production")
+  ].filter(Boolean));
+  if (!departmentNames.size) {
+    ["Production", "Stage Management", "Broadcast", "Production Office"].forEach((name) => departmentNames.add(name));
+  }
+  return [...departmentNames].sort((a, b) => a.localeCompare(b)).map((name) => {
+    const departmentDocs = documents.filter((doc) => (doc.department || "Production") === name);
+    const departmentStaff = staffing.filter((person) => (person.department || "Production") === name);
+    const departmentSchedule = schedules.filter((item) => (item.department || "Production") === name);
+    const docsReady = !departmentDocs.length || departmentDocs.some((doc) => ["Distributed", "Final", "Ready", "Template Ready"].includes(doc.status) || doc.currentVersion === "yes");
+    const distroReady = !departmentDocs.length || departmentDocs.every((doc) => ["Distributed", "Ready to Send"].includes(doc.deliveryStatus) || ["Distributed", "Final", "Template Ready"].includes(doc.status));
+    const staffReady = !departmentStaff.length || departmentStaff.every((person) => ["Confirmed", "Ready"].includes(person.status));
+    const credentialsReady = !departmentStaff.length || departmentStaff.every((person) => ["Approved", "Issued"].includes(person.credentialStatus) || !person.source);
+    const scheduleReady = !departmentSchedule.length || departmentSchedule.every((item) => ["Ready", "Final"].includes(item.status) && item.location);
+    const checks = [docsReady, distroReady, staffReady, credentialsReady, scheduleReady];
+    const readyCount = checks.filter(Boolean).length;
+    return {
+      name,
+      status: readyCount === checks.length ? "Ready" : readyCount >= 3 ? "Close" : "Needs Work",
+      readyCount,
+      totalCount: checks.length,
+      docCount: departmentDocs.length,
+      staffCount: departmentStaff.length,
+      scheduleCount: departmentSchedule.length,
+      docsReady,
+      distroReady,
+      staffReady,
+      credentialsReady,
+      scheduleReady
+    };
+  });
+}
+
 function awardsPacketRows(shows, documents, staffing, schedules) {
   return shows.map((show) => {
     const showName = normalizedMatchValue(show.name || "");
@@ -7233,7 +7271,7 @@ function awardsPacketRows(shows, documents, staffing, schedules) {
   });
 }
 
-function awardsAttentionRows(shows, documents, staffing, schedules, packets = []) {
+function awardsAttentionRows(shows, documents, staffing, schedules, packets = [], departments = []) {
   return [
     ...shows.filter((show) => !show.showDate || !show.venue || show.venue === "Venue TBD").map((show) => ({
       title: `${show.name} show details needed`,
@@ -7280,6 +7318,11 @@ function awardsAttentionRows(shows, documents, staffing, schedules, packets = []
       detail: `${packet.readyCount}/${packet.totalCount} readiness checks complete.`,
       view: "awardsDashboard"
     })),
+    ...departments.filter((department) => department.status !== "Ready").slice(0, 4).map((department) => ({
+      title: `${department.name} department readiness`,
+      detail: `${department.readyCount}/${department.totalCount} checks complete across docs, distro, staffing, credentials, and schedule.`,
+      view: "awardsDashboard"
+    })),
     ...staffing.filter((person) => person.status !== "Ready").slice(0, 4).map((person) => ({
       title: `${person.name} contact info needed`,
       detail: `${person.department || "Production"} - ${person.status || "Needs Review"}`,
@@ -7293,7 +7336,7 @@ function awardsAttentionRows(shows, documents, staffing, schedules, packets = []
   ].slice(0, 8);
 }
 
-function renderAwardsDashboard(shows, documents, staffing, schedules, attention, packets = []) {
+function renderAwardsDashboard(shows, documents, staffing, schedules, attention, packets = [], departments = []) {
   const client = activeClientRecord();
   const enabled = awardsSuiteEnabled(client);
   $("#awardsHeroTitle").textContent = client?.name ? `${client.name} Broadcast` : "Broadcast Operations";
@@ -7337,6 +7380,25 @@ function renderAwardsDashboard(shows, documents, staffing, schedules, attention,
       <p>${packet.missingDocs.length ? `Missing docs: ${escapeHtml(packet.missingDocs.join(", "))}` : `Locked schedule items: ${escapeHtml(packet.lockedItems)}`}</p>
     </article>`).join("")
     : `<div class="compact-item empty"><strong>No show packet yet</strong><p>Add a broadcast show to track packet readiness.</p></div>`;
+  const readyDepartments = departments.filter((department) => department.status === "Ready").length;
+  $("#awardsDepartmentCount").textContent = `${readyDepartments}/${departments.length} ready`;
+  $("#awardsDepartmentList").innerHTML = departments.length
+    ? departments.map((department) => `<article class="touring-card">
+      <span class="suite-kicker">${escapeHtml(department.status)}</span>
+      <h4>${escapeHtml(department.name)}</h4>
+      <p>${escapeHtml(`${department.readyCount}/${department.totalCount} readiness checks complete`)}</p>
+      <div class="touring-card-sections">
+        ${[
+          ["Docs", department.docsReady],
+          ["Distro", department.distroReady],
+          ["Staff", department.staffReady],
+          ["Credentials", department.credentialsReady],
+          ["Schedule", department.scheduleReady]
+        ].map(([label, ready]) => `<span class="${ready ? "is-ready" : ""}">${escapeHtml(label)}</span>`).join("")}
+      </div>
+      <p>${escapeHtml(`${department.docCount} docs / ${department.staffCount} staff / ${department.scheduleCount} schedule items`)}</p>
+    </article>`).join("")
+    : `<div class="compact-item empty"><strong>No departments yet</strong><p>Add documents, staff, or schedule items to build department readiness.</p></div>`;
 }
 
 function renderAwardsDocuments(shows, documents) {
@@ -7420,6 +7482,7 @@ function renderAwardsSettings() {
     ["Version Control", "Stage Intelligence should identify current, draft, final, distributed, and superseded files."],
     ["Distro Rules", "Future rules can decide who receives mimeo, staff lists, plots, scripts, or redacted views."],
     ["Sensitive Access", "Credentials, start paperwork, payroll details, and restricted broadcast documents need tight access controls."],
+    ["Department Readiness", "Stage Intelligence checks each department across documents, distro, staffing, credentials, and schedule."],
     ["Bulk Editing", "Awards teams will need spreadsheet-fast updates for staff lists, schedules, document statuses, and show grids."]
   ].map(([title, detail]) => `<article class="touring-card"><h4>${escapeHtml(title)}</h4><p>${escapeHtml(detail)}</p></article>`).join("");
 }
