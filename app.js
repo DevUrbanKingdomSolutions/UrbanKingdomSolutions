@@ -38,9 +38,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.07.001",
-  title: "V1.07.001 update installed",
-  body: "Awards / Live Broadcast Suite now has its first dashboard, document lanes, rundown, staffing, and settings foundation."
+  version: "V1.07.002",
+  title: "V1.07.002 update installed",
+  body: "Awards / Live Broadcast Suite now supports working show, staffing, and schedule records alongside broadcast documents."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -4631,8 +4631,14 @@ function openReadOnlyRecord(storeName, id) {
     openTouringTravelProfile(record);
   } else if (storeName === "touringDocuments") {
     openTouringDocumentProfile(record);
+  } else if (storeName === "awardsShows") {
+    openAwardsShowProfile(record);
   } else if (storeName === "awardsDocuments") {
     openAwardsDocumentProfile(record);
+  } else if (storeName === "awardsStaff") {
+    openAwardsStaffProfile(record);
+  } else if (storeName === "awardsSchedules") {
+    openAwardsScheduleProfile(record);
   } else
   if (storeName === "workers") {
     readOnlyProfileCard(record.name, record.role || "Crew / Runner", [], [
@@ -6976,12 +6982,14 @@ function renderTourSettings() {
 function renderAwardsSuite() {
   if (!$("#awardsHeroStats")) return;
   renderAwardsSuiteAccessNotice();
+  const shows = awardsShowRows();
   const documents = awardsDocumentsRows();
   const staffing = awardsStaffRows();
-  const attention = awardsAttentionRows(documents, staffing);
-  renderAwardsDashboard(documents, staffing, attention);
-  renderAwardsDocuments(documents);
-  renderAwardsRundown(documents);
+  const schedules = awardsScheduleRows(shows);
+  const attention = awardsAttentionRows(shows, documents, staffing, schedules);
+  renderAwardsDashboard(shows, documents, staffing, schedules, attention);
+  renderAwardsDocuments(shows, documents);
+  renderAwardsRundown(documents, schedules);
   renderAwardsStaffing(staffing);
   renderAwardsSettings();
 }
@@ -6996,6 +7004,44 @@ function renderAwardsSuiteAccessNotice() {
   notice.innerHTML = enabled
     ? `<div><strong>Awards / Live Broadcast Suite enabled</strong><p>${escapeHtml(client?.name || "This client")} can now organize broadcast documents, rundowns, staff lists, plots, scripts, and show-day readiness.</p></div><span class="status-pill">Active</span>`
     : `<div><strong>Preview mode</strong><p>Enable Awards / Live Broadcast Suite under this client account's Office Suites to use this as a live production workspace.</p></div>${canSystemEdit() ? `<button class="tiny-button system-action" data-dashboard-link="adminClients" type="button">Open Client Accounts</button>` : `<span class="status-pill warn">Not enabled</span>`}`;
+}
+
+function awardsShowRows() {
+  if (state.awardsShows.length) {
+    return state.awardsShows.map((show) => ({
+      id: show.id,
+      name: show.name || "Broadcast Show",
+      showDate: show.showDate || "",
+      venue: show.venue || "Venue TBD",
+      status: show.status || "Pre-Production",
+      productionLead: show.productionLead || "",
+      notes: show.notes || "",
+      source: show
+    }));
+  }
+  const events = visibleEvents().filter((event) => {
+    if (event.officeSuiteId === AWARDS_SUITE_ID) return true;
+    const text = listText(`${event.type || ""} ${event.name || ""}`);
+    return text.includes("award") || text.includes("broadcast") || text.includes("live tv") || text.includes("show");
+  });
+  if (events.length) {
+    return events.slice(0, 6).map((event) => {
+      const venue = getVenue(event.venueId);
+      return {
+        id: event.id,
+        name: event.name || "Broadcast Show",
+        showDate: event.startDate || "",
+        venue: venue?.name || event.location || "Venue TBD",
+        status: event.status || "Pre-Production",
+        productionLead: event.productionContact || "",
+        notes: event.notes || "",
+        event
+      };
+    });
+  }
+  return [
+    { id: "awards-show-demo-1", name: "Awards Broadcast", showDate: "", venue: "Venue TBD", status: "Pre-Production", productionLead: "Production Office", notes: "Starter show record for rundowns, plots, scripts, staff lists, and distro.", source: null }
+  ];
 }
 
 function awardsDocumentsRows() {
@@ -7035,7 +7081,19 @@ function awardsDocumentsRows() {
 }
 
 function awardsStaffRows() {
-  if (state.awardsStaff.length) return state.awardsStaff;
+  if (state.awardsStaff.length) {
+    return state.awardsStaff.map((person) => ({
+      id: person.id,
+      name: person.name || "Staff Member",
+      department: person.department || person.title || "Production",
+      title: person.title || "",
+      phone: person.phone || "Missing",
+      email: person.email || "Missing",
+      status: person.status || "Needs Contact",
+      notes: person.notes || "",
+      source: person
+    }));
+  }
   const workers = visibleRecords(state.workers).slice(0, 8);
   if (workers.length) {
     return workers.map((worker) => ({
@@ -7044,7 +7102,8 @@ function awardsStaffRows() {
       department: worker.role || "Crew / Runner",
       phone: worker.phone || "Missing",
       email: worker.email || "Missing",
-      status: worker.phone && worker.email ? "Ready" : "Needs Contact"
+      status: worker.phone && worker.email ? "Ready" : "Needs Contact",
+      source: null
     }));
   }
   return [
@@ -7054,12 +7113,43 @@ function awardsStaffRows() {
   ];
 }
 
-function awardsAttentionRows(documents, staffing) {
+function awardsScheduleRows(shows = awardsShowRows()) {
+  if (state.awardsSchedules.length) {
+    return state.awardsSchedules.map((item) => ({
+      id: item.id,
+      name: item.name || "Schedule Item",
+      showName: item.showName || shows[0]?.name || "Show TBD",
+      callDate: item.callDate || "",
+      callTime: item.callTime || "",
+      department: item.department || "Production",
+      status: item.status || "Draft",
+      notes: item.notes || "",
+      source: item
+    }));
+  }
   return [
+    { id: "awards-schedule-demo-1", name: "Production load-in", showName: shows[0]?.name || "Awards Broadcast", callDate: shows[0]?.showDate || "", callTime: "", department: "Production", status: "Draft", notes: "Build from schedule PDFs and daily rundown timing.", source: null },
+    { id: "awards-schedule-demo-2", name: "Rehearsals", showName: shows[0]?.name || "Awards Broadcast", callDate: shows[0]?.showDate || "", callTime: "", department: "Stage Management", status: "Needs Review", notes: "Connect rehearsal timing to talent, stage, and broadcast notes.", source: null },
+    { id: "awards-schedule-demo-3", name: "Live show", showName: shows[0]?.name || "Awards Broadcast", callDate: shows[0]?.showDate || "", callTime: "", department: "Broadcast", status: "Draft", notes: "Show-day schedule item for final rundown and script alignment.", source: null }
+  ];
+}
+
+function awardsAttentionRows(shows, documents, staffing, schedules) {
+  return [
+    ...shows.filter((show) => !show.showDate || !show.venue || show.venue === "Venue TBD").map((show) => ({
+      title: `${show.name} show details needed`,
+      detail: [!show.showDate ? "Show date" : "", !show.venue || show.venue === "Venue TBD" ? "Venue" : ""].filter(Boolean).join(", "),
+      view: "awardsDocuments"
+    })),
     ...documents.filter((doc) => !["Distributed", "Final", "Template Ready"].includes(doc.status)).map((doc) => ({
       title: `${doc.type} needs review`,
       detail: `${doc.showName || "Show"} - ${doc.status || "Draft"}`,
       view: "awardsDocuments"
+    })),
+    ...schedules.filter((item) => !["Ready", "Final"].includes(item.status)).slice(0, 4).map((item) => ({
+      title: `${item.name} schedule needs review`,
+      detail: `${item.showName || "Show"} - ${item.status || "Draft"}`,
+      view: "awardsRundown"
     })),
     ...staffing.filter((person) => person.status !== "Ready").slice(0, 4).map((person) => ({
       title: `${person.name} contact info needed`,
@@ -7069,7 +7159,7 @@ function awardsAttentionRows(documents, staffing) {
   ].slice(0, 8);
 }
 
-function renderAwardsDashboard(documents, staffing, attention) {
+function renderAwardsDashboard(shows, documents, staffing, schedules, attention) {
   const client = activeClientRecord();
   const enabled = awardsSuiteEnabled(client);
   $("#awardsHeroTitle").textContent = client?.name ? `${client.name} Broadcast` : "Broadcast Operations";
@@ -7077,8 +7167,9 @@ function renderAwardsDashboard(documents, staffing, attention) {
     ? "Awards / Broadcast is active for this client. Manage show documents, rundowns, staff lists, plots, scripts, and production readiness here."
     : "Awards / Broadcast is ready to enable. Preview the suite structure here, then turn it on from the client's Office Suites when this account is ready.";
   $("#awardsHeroStats").innerHTML = [
+    ["Shows", shows.length, "awardsDocuments"],
     ["Documents", documents.length, "awardsDocuments"],
-    ["Rundown Items", documents.filter((doc) => ["Rundown", "Quickie", "Schedule", "Script"].includes(doc.type)).length, "awardsRundown"],
+    ["Schedule", schedules.length, "awardsRundown"],
     ["Staffing", staffing.length, "awardsStaffing"]
   ].map(([label, value, view]) => `<button class="touring-stat" data-dashboard-link="${escapeHtml(view)}" type="button"><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></button>`).join("");
   $("#awardsAttentionCount").textContent = `${attention.length} open`;
@@ -7093,9 +7184,20 @@ function renderAwardsDashboard(documents, staffing, attention) {
   ].map(([title, detail], index) => `<div class="touring-flow-step"><span>${index + 1}</span><strong>${escapeHtml(title)}</strong><p>${escapeHtml(detail)}</p></div>`).join("");
 }
 
-function renderAwardsDocuments(documents) {
-  $("#awardsDocumentsCount").textContent = `${documents.length} lanes`;
-  $("#awardsDocumentsList").innerHTML = documents.map((doc) => `<article class="touring-card">
+function renderAwardsDocuments(shows, documents) {
+  $("#awardsDocumentsCount").textContent = `${shows.length} shows / ${documents.length} docs`;
+  $("#awardsDocumentsList").innerHTML = [
+    ...shows.map((show) => `<article class="touring-card">
+      <span class="suite-kicker">${escapeHtml(show.status)}</span>
+      <h4>${show.source ? recordLink("awardsShows", show.id, show.name) : escapeHtml(show.name)}</h4>
+      <p>${escapeHtml([formatDate(show.showDate), show.venue].filter(Boolean).join(" - ") || "Show details pending.")}</p>
+      <div class="profile-meta-row">
+        <span>${escapeHtml(show.productionLead || "Production lead TBD")}</span>
+        <span>Show record</span>
+      </div>
+      ${show.source ? actionButtons("awardsShows", show.id, "awardsShowForm", "", canAdminEdit()) : ""}
+    </article>`),
+    ...documents.map((doc) => `<article class="touring-card">
     <span class="suite-kicker">${escapeHtml(doc.status)}</span>
     <h4>${doc.source ? recordLink("awardsDocuments", doc.id, doc.name) : escapeHtml(doc.name)}</h4>
     <p>${escapeHtml(doc.notes || "Broadcast document lane.")}</p>
@@ -7105,18 +7207,28 @@ function renderAwardsDocuments(documents) {
     </div>
     ${doc.link ? `<p><a href="${escapeHtml(doc.link)}" target="_blank" rel="noopener">Open document</a></p>` : ""}
     ${doc.source ? actionButtons("awardsDocuments", doc.id, "awardsDocumentForm", "", canAdminEdit()) : ""}
-  </article>`).join("");
+  </article>`)
+  ].join("");
 }
 
-function renderAwardsRundown(documents) {
+function renderAwardsRundown(documents, schedules) {
   const rows = documents.filter((doc) => ["Rundown", "Quickie", "Schedule", "Script", "Plot", "Plots"].includes(doc.type));
-  $("#awardsRundownCount").textContent = `${rows.length} records`;
-  $("#awardsRundownList").innerHTML = rows.map((doc) => `<article class="touring-card">
+  $("#awardsRundownCount").textContent = `${rows.length} docs / ${schedules.length} schedule`;
+  $("#awardsRundownList").innerHTML = [
+    ...schedules.map((item) => `<article class="touring-card">
+      <span class="suite-kicker">${escapeHtml(item.status)}</span>
+      <h4>${item.source ? recordLink("awardsSchedules", item.id, item.name) : escapeHtml(item.name)}</h4>
+      <p>${escapeHtml([formatDate(item.callDate), item.callTime].filter(Boolean).join(" at ") || "Timing TBD")}</p>
+      <p>${escapeHtml(`${item.department || "Production"} - ${item.notes || "Schedule readiness item."}`)}</p>
+      ${item.source ? actionButtons("awardsSchedules", item.id, "awardsScheduleForm", "", canAdminEdit()) : ""}
+    </article>`),
+    ...rows.map((doc) => `<article class="touring-card">
     <span class="suite-kicker">${escapeHtml(doc.type)}</span>
     <h4>${doc.source ? recordLink("awardsDocuments", doc.id, doc.name) : escapeHtml(doc.name)}</h4>
     <p>${escapeHtml(doc.showName)} - ${escapeHtml(doc.status)}</p>
     <p>${escapeHtml(doc.notes || "Track version, distro, and approval state here.")}</p>
-  </article>`).join("");
+  </article>`)
+  ].join("");
 }
 
 function renderAwardsStaffing(staffing) {
@@ -7129,6 +7241,7 @@ function renderAwardsStaffing(staffing) {
       <span>${escapeHtml(person.phone || "Phone missing")}</span>
       <span>${escapeHtml(person.email || "Email missing")}</span>
     </div>
+    ${person.source ? actionButtons("awardsStaff", person.id, "awardsStaffForm", "", canAdminEdit()) : ""}
   </article>`).join("");
 }
 
@@ -7156,6 +7269,53 @@ function openAwardsDocumentProfile(record) {
       ["Link", record.link],
       ["Created", formatDateWithYear(record.createdAt)],
       ["Updated", formatDateWithYear(record.updatedAt)]
+    ]]
+  ]);
+}
+
+function openAwardsShowProfile(record) {
+  readOnlyProfileCard(record.name || "Broadcast Show", record.status || "Show", [], [
+    ["Notes", noteSectionText(record.notes, record.updatedAt || record.createdAt)]
+  ], "", [
+    ["Show", [
+      ["Show Date", formatDate(record.showDate)],
+      ["Venue", record.venue],
+      ["Status", record.status]
+    ]],
+    ["Production", [
+      ["Production Lead", record.productionLead],
+      ["Created", formatDateWithYear(record.createdAt)],
+      ["Updated", formatDateWithYear(record.updatedAt)]
+    ]]
+  ]);
+}
+
+function openAwardsStaffProfile(record) {
+  readOnlyProfileCard(record.name || "Broadcast Staff", record.title || record.department || "Production", [], [
+    ["Notes", noteSectionText(record.notes, record.updatedAt || record.createdAt)]
+  ], "", [
+    ["Staff", [
+      ["Department", record.department],
+      ["Title / Role", record.title],
+      ["Status", record.status]
+    ]],
+    ["Contact", [
+      ["Phone", record.phone],
+      ["Email", record.email]
+    ]]
+  ]);
+}
+
+function openAwardsScheduleProfile(record) {
+  readOnlyProfileCard(record.name || "Schedule Item", record.showName || "Broadcast Schedule", [], [
+    ["Notes", noteSectionText(record.notes, record.updatedAt || record.createdAt)]
+  ], "", [
+    ["Schedule", [
+      ["Show / Event", record.showName],
+      ["Date", formatDate(record.callDate)],
+      ["Call Time", record.callTime],
+      ["Department", record.department],
+      ["Status", record.status]
     ]]
   ]);
 }
@@ -13656,7 +13816,10 @@ function bindEvents() {
   $("#touringCrewForm").addEventListener("submit", (event) => saveForm(event, "touringCrew"));
   $("#touringTravelForm").addEventListener("submit", (event) => saveForm(event, "touringTravel"));
   $("#touringDocumentForm").addEventListener("submit", (event) => saveForm(event, "touringDocuments"));
+  $("#awardsShowForm").addEventListener("submit", (event) => saveForm(event, "awardsShows"));
   $("#awardsDocumentForm").addEventListener("submit", (event) => saveForm(event, "awardsDocuments"));
+  $("#awardsStaffForm").addEventListener("submit", (event) => saveForm(event, "awardsStaff"));
+  $("#awardsScheduleForm").addEventListener("submit", (event) => saveForm(event, "awardsSchedules"));
   $("#dashboardNoteForm").addEventListener("submit", saveDashboardNote);
   $("#eventAssignmentForm").addEventListener("submit", (event) => saveForm(event, "eventAssignments"));
   $("#assignmentDepartmentForm").addEventListener("submit", saveAssignmentDepartmentForm);

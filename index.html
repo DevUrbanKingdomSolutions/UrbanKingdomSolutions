@@ -10,7 +10,7 @@
     <title>Production Crew Database</title>
     <link rel="manifest" href="manifest.webmanifest">
     <link rel="icon" href="assets/logo/app-logo-admin.png" type="image/png">
-    <link rel="stylesheet" href="styles.css?v=V1.07.001-awards-foundation">
+    <link rel="stylesheet" href="styles.css?v=V1.07.002-awards-records">
   </head>
   <body>
     <div id="appLoadingOverlay" class="app-loading-overlay" aria-live="polite">
@@ -1061,6 +1061,7 @@
                 <h3>Broadcast Documents</h3>
                 <div class="panel-tools">
                   <span id="awardsDocumentsCount" class="muted"></span>
+                  <button class="tiny-button owner-action" data-open-form="awardsShowForm" type="button">Add Show</button>
                   <button class="tiny-button owner-action" data-open-form="awardsDocumentForm" type="button">Add Document</button>
                 </div>
               </div>
@@ -1074,7 +1075,10 @@
             <section class="panel touring-panel table-panel">
               <div class="panel-heading">
                 <h3>Rundown</h3>
-                <span id="awardsRundownCount" class="muted"></span>
+                <div class="panel-tools">
+                  <span id="awardsRundownCount" class="muted"></span>
+                  <button class="tiny-button owner-action" data-open-form="awardsScheduleForm" type="button">Add Schedule</button>
+                </div>
               </div>
               <div class="touring-section-note">Rundowns, quickies, scripts, schedules, plots, and distro versions live together here so production can track what is current.</div>
               <div id="awardsRundownList" class="touring-card-grid"></div>
@@ -1087,7 +1091,10 @@
             <section class="panel touring-panel table-panel">
               <div class="panel-heading">
                 <h3>Broadcast Staffing</h3>
-                <span id="awardsStaffingCount" class="muted"></span>
+                <div class="panel-tools">
+                  <span id="awardsStaffingCount" class="muted"></span>
+                  <button class="tiny-button owner-action" data-open-form="awardsStaffForm" type="button">Add Staff</button>
+                </div>
               </div>
               <div class="touring-section-note">Staff lists, departments, production office contacts, credentials, and show-day readiness will connect here.</div>
               <div id="awardsStaffingList" class="touring-card-grid"></div>
@@ -1106,6 +1113,30 @@
             </section>
           </div>
         </section>
+
+        <form id="awardsShowForm" class="panel form-panel owner-form">
+          <div class="panel-heading">
+            <h3>Broadcast Show</h3>
+            <button class="ghost-button clear-form" type="button" data-form="awardsShowForm">Clear</button>
+          </div>
+          <input type="hidden" name="id">
+          <label>Show name<input name="name" required placeholder="Awards show or live broadcast"></label>
+          <div class="form-grid">
+            <label>Show date<input name="showDate" type="date"></label>
+            <label>Venue<input name="venue"></label>
+          </div>
+          <label>Status
+            <select name="status">
+              <option>Pre-Production</option>
+              <option>Rehearsal</option>
+              <option>Show Day</option>
+              <option>Wrapped</option>
+            </select>
+          </label>
+          <label>Production lead<input name="productionLead" placeholder="Lead producer, site coordinator, or show caller"></label>
+          <label>Notes<textarea name="notes" rows="3" placeholder="Show-level notes, production office details, distro notes"></textarea></label>
+          <button class="primary-action" type="submit">Save Broadcast Show</button>
+        </form>
 
         <form id="touringStopForm" class="panel form-panel owner-form">
           <div class="panel-heading">
@@ -1262,6 +1293,56 @@
           <label>Link<input name="link" type="url" placeholder="https://"></label>
           <label>Notes<textarea name="notes" rows="3" placeholder="Version notes, distro notes, missing approvals"></textarea></label>
           <button class="primary-action" type="submit">Save Broadcast Document</button>
+        </form>
+
+        <form id="awardsStaffForm" class="panel form-panel owner-form">
+          <div class="panel-heading">
+            <h3>Broadcast Staff</h3>
+            <button class="ghost-button clear-form" type="button" data-form="awardsStaffForm">Clear</button>
+          </div>
+          <input type="hidden" name="id">
+          <label>Name<input name="name" required placeholder="Full name"></label>
+          <label>Department<input name="department" placeholder="Production, Mimeo, Stage Management"></label>
+          <label>Title / Role<input name="title" placeholder="Producer, Stage Manager, Mimeo Lead"></label>
+          <div class="form-grid">
+            <label>Phone<input name="phone" type="tel"></label>
+            <label>Email<input name="email" type="email"></label>
+          </div>
+          <label>Status
+            <select name="status">
+              <option>Needs Contact</option>
+              <option>Invited</option>
+              <option>Confirmed</option>
+              <option>Ready</option>
+            </select>
+          </label>
+          <label>Notes<textarea name="notes" rows="3" placeholder="Credential, distro, or production notes"></textarea></label>
+          <button class="primary-action" type="submit">Save Broadcast Staff</button>
+        </form>
+
+        <form id="awardsScheduleForm" class="panel form-panel owner-form">
+          <div class="panel-heading">
+            <h3>Broadcast Schedule Item</h3>
+            <button class="ghost-button clear-form" type="button" data-form="awardsScheduleForm">Clear</button>
+          </div>
+          <input type="hidden" name="id">
+          <label>Item<input name="name" required placeholder="Rehearsal, camera blocking, doors, live show"></label>
+          <label>Show / Event<input name="showName" placeholder="Awards show or live broadcast"></label>
+          <div class="form-grid">
+            <label>Date<input name="callDate" type="date"></label>
+            <label>Call time<input name="callTime" type="time"></label>
+          </div>
+          <label>Department<input name="department" placeholder="Production, Talent, Stage, Broadcast"></label>
+          <label>Status
+            <select name="status">
+              <option>Draft</option>
+              <option>Needs Review</option>
+              <option>Ready</option>
+              <option>Final</option>
+            </select>
+          </label>
+          <label>Notes<textarea name="notes" rows="3" placeholder="Location, distro, department, or timing notes"></textarea></label>
+          <button class="primary-action" type="submit">Save Schedule Item</button>
         </form>
 
         <section id="productionResponse" class="view">
@@ -2056,6 +2137,6 @@
     <div id="modalHost"></div>
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js?v=V1.07.001-awards-foundation"></script>
+    <script src="app.js?v=V1.07.002-awards-records"></script>
   </body>
 </html>
