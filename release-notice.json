@@ -1,5 +1,5 @@
 {
-  "version": "V1.07.019",
-  "title": "V1.07.019 update installed",
-  "body": "Awards / Live Broadcast dashboard readiness checks are now grouped into cleaner command, access, document, and people sections."
+  "version": "V1.07.020",
+  "title": "V1.07.020 update installed",
+  "body": "Awards / Live Broadcast access is now tightened for promoter and production views while keeping restricted broadcast records client-side."
 }

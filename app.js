@@ -38,9 +38,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.07.019",
-  title: "V1.07.019 update installed",
-  body: "Awards / Live Broadcast dashboard readiness checks are now grouped into cleaner command, access, document, and people sections."
+  version: "V1.07.020",
+  title: "V1.07.020 update installed",
+  body: "Awards / Live Broadcast access is now tightened for promoter and production views while keeping restricted broadcast records client-side."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -210,7 +210,7 @@ const ACCESS_PROFILES = {
   PROMOTER_ADMIN: {
     label: "PROMOTER ADMIN",
     baseRole: "PROMOTER",
-    views: ["productionBoard", "staffingAssignments", "staffingSchedule", "events", "workers", "promoters", "venues", "vehicles", "reports", "directory", "runner", "messages", "dataTools", "mobileApp"],
+    views: ["productionBoard", "staffingAssignments", "staffingSchedule", "events", "workers", "promoters", "venues", "awardsDashboard", "awardsDocuments", "awardsRundown", "awardsStaffing", "vehicles", "reports", "directory", "runner", "messages", "dataTools", "mobileApp"],
     canAdminEdit: true,
     canOwnerEdit: false,
     canVenueEdit: true,
@@ -222,7 +222,7 @@ const ACCESS_PROFILES = {
   PROMOTER_REP: {
     label: "PROMOTER REP",
     baseRole: "PROMOTER",
-    views: ["productionBoard", "staffingAssignments", "staffingSchedule", "events", "workers", "promoters", "venues", "vehicles", "reports", "directory", "runner", "messages", "mobileApp"],
+    views: ["productionBoard", "staffingAssignments", "staffingSchedule", "events", "workers", "promoters", "venues", "awardsDashboard", "awardsDocuments", "awardsRundown", "awardsStaffing", "vehicles", "reports", "directory", "runner", "messages", "mobileApp"],
     canAdminEdit: true,
     canOwnerEdit: false,
     canVenueEdit: true,
@@ -234,7 +234,7 @@ const ACCESS_PROFILES = {
   PRODUCTION: {
     label: "PRODUCTION",
     baseRole: "PRODUCTION",
-    views: ["productionBoard", "staffingAssignments", "staffingSchedule", "events", "vehicles", "reports", "directory", "messages", "mobileApp"],
+    views: ["productionBoard", "staffingAssignments", "staffingSchedule", "events", "awardsDashboard", "awardsDocuments", "awardsRundown", "awardsStaffing", "vehicles", "reports", "directory", "messages", "mobileApp"],
     canAdminEdit: false,
     canOwnerEdit: false,
     canVenueEdit: false,
@@ -246,7 +246,7 @@ const ACCESS_PROFILES = {
   PRODUCTION_TEAM_ACCESS: {
     label: "PRODUCTION TEAM ACCESS",
     baseRole: "PRODUCTION",
-    views: ["productionBoard", "staffingAssignments", "staffingSchedule", "events", "vehicles", "reports", "directory", "messages", "mobileApp"],
+    views: ["productionBoard", "staffingAssignments", "staffingSchedule", "events", "awardsDashboard", "awardsDocuments", "awardsRundown", "awardsStaffing", "vehicles", "reports", "directory", "messages", "mobileApp"],
     canAdminEdit: false,
     canOwnerEdit: false,
     canVenueEdit: false,
@@ -3388,6 +3388,27 @@ function crewCanViewRates() {
 
 function canViewRates() {
   return canEditRates() || crewCanViewRates();
+}
+
+function isAwardsView(viewId = state.activeView) {
+  return ["awardsDashboard", "awardsDocuments", "awardsRundown", "awardsStaffing", "awardsSettings"].includes(viewId);
+}
+
+function canEditAwardsRecords() {
+  return canOwnerEdit() && !isAdminRole();
+}
+
+function canViewRestrictedAwardsRecords() {
+  return canOwnerEdit() || hasAssignedAccess("CLIENT_ACCOUNTING");
+}
+
+function awardsRecordVisible(record = {}) {
+  if (canViewRestrictedAwardsRecords()) return true;
+  const scope = record.accessScope || (record.restrictedAccess === "yes" ? "Restricted" : "Production Only");
+  if (record.restrictedAccess === "yes" || scope === "Restricted") return false;
+  if (hasDataScope("PROMOTER")) return ["Public / Redacted", "All Staff", "Department Heads"].includes(scope);
+  if (hasDataScope("PRODUCTION")) return ["Public / Redacted", "All Staff", "Department Heads", "Production Only"].includes(scope);
+  return scope === "All Staff" || scope === "Public / Redacted";
 }
 
 function getWorker(id) {
@@ -6737,7 +6758,8 @@ function renderTouringDashboard(stops, crew, travel, attention) {
 }
 
 function touringGridEditing(viewId) {
-  return !!state.touringGridEdit?.[viewId] && canAdminEdit();
+  const allowed = viewId?.startsWith("awards") ? canEditAwardsRecords() : canAdminEdit();
+  return !!state.touringGridEdit?.[viewId] && allowed;
 }
 
 function touringGridToolbar(viewId) {
@@ -6823,7 +6845,7 @@ function awardsBulkSelectableRows(viewId, rows = []) {
 }
 
 function awardsBulkToolbar(viewId, rows = []) {
-  if (!canAdminEdit()) return "";
+  if (!canEditAwardsRecords()) return "";
   const selectable = awardsBulkSelectableRows(viewId, rows);
   const selected = awardsBulkSelectedKeys(viewId).filter((key) => selectable.some((row) => awardsBulkKey(viewId, row) === key));
   const options = awardsBulkOptions(viewId);
@@ -6833,27 +6855,27 @@ function awardsBulkToolbar(viewId, rows = []) {
       <p>${escapeHtml(selected.length ? `${selected.length} selected` : "Select rows to update multiple records at once.")}</p>
     </div>
     <div class="awards-bulk-actions">
-      <button class="icon-text-button owner-action" data-awards-bulk-select="${escapeHtml(viewId)}" type="button">Select Visible</button>
-      <button class="icon-text-button owner-action" data-awards-bulk-clear="${escapeHtml(viewId)}" type="button">Clear</button>
+      <button class="icon-text-button" data-awards-bulk-select="${escapeHtml(viewId)}" type="button">Select Visible</button>
+      <button class="icon-text-button" data-awards-bulk-clear="${escapeHtml(viewId)}" type="button">Clear</button>
       <select class="touring-grid-input awards-bulk-select" data-awards-bulk-action="${escapeHtml(viewId)}" aria-label="Bulk action">
         <option value="">Choose action</option>
         ${options.map(([value, label]) => `<option value="${escapeHtml(value)}">${escapeHtml(label)}</option>`).join("")}
       </select>
-      <button class="tiny-button owner-action" data-awards-bulk-apply="${escapeHtml(viewId)}" type="button">Apply</button>
+      <button class="tiny-button" data-awards-bulk-apply="${escapeHtml(viewId)}" type="button">Apply</button>
     </div>
   </div>`;
 }
 
 function awardsBulkCell(viewId, row = {}) {
   const key = awardsBulkKey(viewId, row);
-  if (!canAdminEdit()) return "";
+  if (!canEditAwardsRecords()) return "";
   if (!key) return `<td class="awards-bulk-cell"></td>`;
   const checked = awardsBulkSelectionSet(viewId).has(key) ? " checked" : "";
   return `<td class="awards-bulk-cell"><input data-awards-bulk-row="${escapeHtml(viewId)}" data-awards-bulk-key="${escapeHtml(key)}" type="checkbox" aria-label="Select ${escapeHtml(row.name || "record")}"${checked}></td>`;
 }
 
 function awardsBulkHead(viewId, columns) {
-  return `${canAdminEdit() ? `<th class="awards-bulk-cell"></th>` : ""}${columns.map(([key, label]) => touringColumnHead(viewId, key, label)).join("")}`;
+  return `${canEditAwardsRecords() ? `<th class="awards-bulk-cell"></th>` : ""}${columns.map(([key, label]) => touringColumnHead(viewId, key, label)).join("")}`;
 }
 
 function setAwardsBulkSelection(viewId, keys = []) {
@@ -6864,7 +6886,7 @@ function setAwardsBulkSelection(viewId, keys = []) {
 }
 
 async function applyAwardsBulkAction(viewId) {
-  if (!canAdminEdit()) return;
+  if (!canEditAwardsRecords()) return;
   const select = document.querySelector(`[data-awards-bulk-action="${viewId}"]`);
   const action = select?.value || "";
   const selected = awardsBulkSelectedKeys(viewId);
@@ -6895,8 +6917,9 @@ async function applyAwardsBulkAction(viewId) {
 }
 
 function toggleTouringGrid(viewId) {
-  if (!canAdminEdit()) {
-    toast("This access view cannot edit Touring grids.");
+  const allowed = viewId?.startsWith("awards") ? canEditAwardsRecords() : canAdminEdit();
+  if (!allowed) {
+    toast(viewId?.startsWith("awards") ? "This access view cannot edit Awards grids." : "This access view cannot edit Touring grids.");
     return;
   }
   state.touringGridEdit = { [viewId]: !touringGridEditing(viewId) };
@@ -7172,8 +7195,11 @@ function renderAwardsSuiteAccessNotice() {
   const enabled = awardsSuiteEnabled(client);
   notice.hidden = false;
   notice.classList.toggle("enabled", enabled);
+  const accessText = canEditAwardsRecords()
+    ? "Full client-side controls are available for broadcast records, restricted files, and readiness updates."
+    : "Scoped view is active. Restricted broadcast files remain hidden unless they are marked for broader access.";
   notice.innerHTML = enabled
-    ? `<div><strong>Awards / Live Broadcast Suite enabled</strong><p>${escapeHtml(client?.name || "This client")} can now organize broadcast documents, rundowns, staff lists, plots, scripts, and show-day readiness.</p></div><span class="status-pill">Active</span>`
+    ? `<div><strong>Awards / Live Broadcast Suite enabled</strong><p>${escapeHtml(client?.name || "This client")} can now organize broadcast documents, rundowns, staff lists, plots, scripts, and show-day readiness. ${escapeHtml(accessText)}</p></div><span class="status-pill">Active</span>`
     : `<div><strong>Preview mode</strong><p>Enable Awards / Live Broadcast Suite under this client account's Office Suites to use this as a live production workspace.</p></div>${canSystemEdit() ? `<button class="tiny-button system-action" data-dashboard-link="adminClients" type="button">Open Client Accounts</button>` : `<span class="status-pill warn">Not enabled</span>`}`;
 }
 
@@ -7217,7 +7243,7 @@ function awardsShowRows() {
 
 function awardsDocumentsRows() {
   if (state.awardsDocuments.length) {
-    return state.awardsDocuments.map((doc) => ({
+    return state.awardsDocuments.filter(awardsRecordVisible).map((doc) => ({
       id: doc.id,
       name: doc.name || "Broadcast Document",
       showName: doc.showName || "Show TBD",
@@ -7262,7 +7288,7 @@ function awardsDocumentsRows() {
     link: "",
     notes,
     source: null
-  }));
+  })).filter(awardsRecordVisible);
 }
 
 function awardsStaffRows() {
@@ -8019,7 +8045,7 @@ function renderAwardsDocuments(shows, documents) {
         <td>${editing && row.source && !isShow ? `${touringGridInput(storeName, row.id, "distributionGroup", row.distributionGroup || "")}${touringGridSelect(storeName, row.id, "restrictedAccess", row.restrictedAccess || "", ["", "yes", "no"])}` : escapeHtml(isShow ? "Show record" : [row.distributionGroup, row.restrictedAccess === "yes" ? "Restricted" : ""].filter(Boolean).join(" / ") || "Production")}</td>
         <td>${editing && row.source && !isShow ? `${touringGridSelect(storeName, row.id, "deliveryStatus", row.deliveryStatus || "Not Sent", ["Not Sent", "Ready to Send", "Distributed", "Redacted Copy Needed"])}${touringGridInput(storeName, row.id, "distributionDate", row.distributionDate || "", "date")}${touringGridSelect(storeName, row.id, "accessScope", row.accessScope || "Production Only", ["Production Only", "Department Heads", "All Staff", "Public / Redacted", "Restricted"])}` : escapeHtml(isShow ? "Show record" : [row.deliveryStatus, formatDate(row.distributionDate), row.accessScope].filter(Boolean).join(" / ") || "Not Sent")}</td>
         <td>${editing && row.source ? touringGridTextarea(storeName, row.id, "notes", row.notes || "") : escapeHtml(row.notes || (isShow ? "Show record." : "Broadcast document lane."))}</td>
-        <td>${row.source && !editing ? actionButtons(storeName, row.id, formId, "", canAdminEdit()) : ""}</td>
+        <td>${row.source && !editing ? actionButtons(storeName, row.id, formId, "", canEditAwardsRecords()) : ""}</td>
       </tr>`;
     }).join("")}</tbody>
   </table></div>`;
@@ -8048,7 +8074,7 @@ function renderAwardsRundown(documents, schedules) {
         <td>${editing && row.source ? `${touringGridInput(storeName, row.id, "department", row.department || "")}${isSchedule ? touringGridInput(storeName, row.id, "owner", row.owner || "") : ""}` : escapeHtml(isSchedule ? [row.department, row.owner].filter(Boolean).join(" / ") || "Production" : row.department || "Production")}</td>
         <td>${editing && row.source && isSchedule ? touringGridInput(storeName, row.id, "location", row.location || "") : escapeHtml(isSchedule ? row.location || "Location TBD" : "")}</td>
         <td>${editing && row.source ? touringGridTextarea(storeName, row.id, "notes", row.notes || "") : escapeHtml(row.notes || "Track version, distro, and approval state here.")}</td>
-        <td>${row.source && !editing ? actionButtons(storeName, row.id, formId, "", canAdminEdit()) : ""}</td>
+        <td>${row.source && !editing ? actionButtons(storeName, row.id, formId, "", canEditAwardsRecords()) : ""}</td>
       </tr>`;
     }).join("")}</tbody>
   </table></div>`;
@@ -8069,7 +8095,7 @@ function renderAwardsStaffing(staffing) {
       <td>${editing && person.source ? touringGridSelect("awardsStaff", person.id, "status", person.status || "Needs Contact", ["Needs Contact", "Invited", "Confirmed", "Ready"]) : `<span class="status-pill ${person.status === "Ready" ? "" : "warn"}">${escapeHtml(person.status || "Needs Review")}</span>`}</td>
       <td>${editing && person.source ? `${touringGridSelect("awardsStaff", person.id, "credentialStatus", person.credentialStatus || "Not Started", ["Not Started", "Requested", "Approved", "Issued"])}${touringGridInput("awardsStaff", person.id, "credentialZone", person.credentialZone || "")}${touringGridInput("awardsStaff", person.id, "checkInLocation", person.checkInLocation || "")}` : `${escapeHtml(person.credentialStatus || "Not Started")}<p>${escapeHtml([person.credentialZone, person.checkInLocation].filter(Boolean).join(" / ") || "Credential details TBD")}</p>`}</td>
       <td>${editing && person.source ? touringGridTextarea("awardsStaff", person.id, "notes", person.notes || "") : escapeHtml(person.notes || "Staff readiness record.")}</td>
-      <td>${person.source && !editing ? actionButtons("awardsStaff", person.id, "awardsStaffForm", "", canAdminEdit()) : ""}</td>
+      <td>${person.source && !editing ? actionButtons("awardsStaff", person.id, "awardsStaffForm", "", canEditAwardsRecords()) : ""}</td>
     </tr>`).join("")}</tbody>
   </table></div>`;
 }
@@ -8089,7 +8115,8 @@ function renderAwardsSettings() {
     ["Rundown Version Control", "Rundowns, scripts, quickies, schedules, and plots are checked for current, approved, distributed, and access-ready versions."],
     ["Technical Packet Readiness", "Stage plots, venue plots, broadcast/camera notes, and power or technical packets are checked as live production lanes."],
     ["Talent / VIP Readiness", "Talent calls, presenter scripts, VIP-facing access, credentials, and contact paths are checked as show-critical lanes."],
-    ["Bulk Operations", "Awards teams can select visible rows and update document delivery, current versions, schedule locks, staff status, and credentials in groups."]
+    ["Bulk Operations", "Awards teams can select visible rows and update document delivery, current versions, schedule locks, staff status, and credentials in groups."],
+    ["Access Boundaries", "Client-side roles manage restricted broadcast records; promoter and production views see scoped, non-restricted show records."]
   ].map(([title, detail]) => `<article class="touring-card"><h4>${escapeHtml(title)}</h4><p>${escapeHtml(detail)}</p></article>`).join("");
 }
 
