@@ -10,7 +10,7 @@
     <title>Production Crew Database</title>
     <link rel="manifest" href="manifest.webmanifest">
     <link rel="icon" href="assets/logo/app-logo-admin.png" type="image/png">
-    <link rel="stylesheet" href="styles.css?v=V1.06.008-rider-attention">
+    <link rel="stylesheet" href="styles.css?v=V1.07.001-awards-foundation">
   </head>
   <body>
     <div id="appLoadingOverlay" class="app-loading-overlay" aria-live="polite">
@@ -1024,6 +1024,89 @@
           </div>
         </section>
 
+        <section id="awardsDashboard" class="view">
+          <div class="stack-layout touring-suite">
+            <section class="touring-hero">
+              <div>
+                <p class="suite-kicker">Awards / Live Broadcast Suite</p>
+                <h3 id="awardsHeroTitle">Broadcast Operations</h3>
+                <p id="awardsHeroCopy">Build the show control layer: documents, rundowns, staff lists, plots, scripts, and production readiness.</p>
+              </div>
+              <div id="awardsHeroStats" class="touring-stat-row"></div>
+            </section>
+            <section id="awardsSuiteAccessNotice" class="touring-access-notice" hidden></section>
+            <section class="touring-grid-two">
+              <article class="panel touring-panel">
+                <div class="panel-heading">
+                  <h3>Needs Attention</h3>
+                  <span id="awardsAttentionCount" class="muted"></span>
+                </div>
+                <div id="awardsAttentionList" class="compact-list"></div>
+              </article>
+              <article class="panel touring-panel">
+                <div class="panel-heading">
+                  <h3>Suite Flow</h3>
+                  <span class="muted">First pass</span>
+                </div>
+                <div id="awardsFlowList" class="touring-flow-list"></div>
+              </article>
+            </section>
+          </div>
+        </section>
+
+        <section id="awardsDocuments" class="view">
+          <div class="stack-layout touring-suite">
+            <section class="panel touring-panel">
+              <div class="panel-heading">
+                <h3>Broadcast Documents</h3>
+                <div class="panel-tools">
+                  <span id="awardsDocumentsCount" class="muted"></span>
+                  <button class="tiny-button owner-action" data-open-form="awardsDocumentForm" type="button">Add Document</button>
+                </div>
+              </div>
+              <div id="awardsDocumentsList" class="touring-card-grid"></div>
+            </section>
+          </div>
+        </section>
+
+        <section id="awardsRundown" class="view">
+          <div class="stack-layout touring-suite">
+            <section class="panel touring-panel table-panel">
+              <div class="panel-heading">
+                <h3>Rundown</h3>
+                <span id="awardsRundownCount" class="muted"></span>
+              </div>
+              <div class="touring-section-note">Rundowns, quickies, scripts, schedules, plots, and distro versions live together here so production can track what is current.</div>
+              <div id="awardsRundownList" class="touring-card-grid"></div>
+            </section>
+          </div>
+        </section>
+
+        <section id="awardsStaffing" class="view">
+          <div class="stack-layout touring-suite">
+            <section class="panel touring-panel table-panel">
+              <div class="panel-heading">
+                <h3>Broadcast Staffing</h3>
+                <span id="awardsStaffingCount" class="muted"></span>
+              </div>
+              <div class="touring-section-note">Staff lists, departments, production office contacts, credentials, and show-day readiness will connect here.</div>
+              <div id="awardsStaffingList" class="touring-card-grid"></div>
+            </section>
+          </div>
+        </section>
+
+        <section id="awardsSettings" class="view">
+          <div class="stack-layout touring-suite">
+            <section class="panel touring-panel">
+              <div class="panel-heading">
+                <h3>Broadcast Settings</h3>
+                <span class="muted">Defaults, access, delivery</span>
+              </div>
+              <div id="awardsSettingsList" class="touring-card-grid"></div>
+            </section>
+          </div>
+        </section>
+
         <form id="touringStopForm" class="panel form-panel owner-form">
           <div class="panel-heading">
             <h3>Tour Stop</h3>
@@ -1142,6 +1225,43 @@
           <label>Link<input name="link" type="url" placeholder="https://"></label>
           <label>Notes<textarea name="notes" rows="3"></textarea></label>
           <button class="primary-action" type="submit">Save Document</button>
+        </form>
+
+        <form id="awardsDocumentForm" class="panel form-panel owner-form">
+          <div class="panel-heading">
+            <h3>Broadcast Document</h3>
+            <button class="ghost-button clear-form" type="button" data-form="awardsDocumentForm">Clear</button>
+          </div>
+          <input type="hidden" name="id">
+          <label>Document name<input name="name" required placeholder="Final Rundown"></label>
+          <label>Show / Event<input name="showName" placeholder="Awards show or live broadcast"></label>
+          <label>Document type
+            <select name="type">
+              <option>Rundown</option>
+              <option>Quickie</option>
+              <option>Schedule</option>
+              <option>Staff List</option>
+              <option>Plot</option>
+              <option>Script</option>
+              <option>Health & Safety</option>
+              <option>Start Paperwork</option>
+              <option>Other</option>
+            </select>
+          </label>
+          <label>Status
+            <select name="status">
+              <option>Draft</option>
+              <option>Received</option>
+              <option>In Review</option>
+              <option>Ready</option>
+              <option>Distributed</option>
+              <option>Final</option>
+            </select>
+          </label>
+          <label>Department<input name="department" placeholder="Production, Mimeo, Stage Management"></label>
+          <label>Link<input name="link" type="url" placeholder="https://"></label>
+          <label>Notes<textarea name="notes" rows="3" placeholder="Version notes, distro notes, missing approvals"></textarea></label>
+          <button class="primary-action" type="submit">Save Broadcast Document</button>
         </form>
 
         <section id="productionResponse" class="view">
@@ -1936,6 +2056,6 @@
     <div id="modalHost"></div>
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js?v=V1.06.008-rider-attention"></script>
+    <script src="app.js?v=V1.07.001-awards-foundation"></script>
   </body>
 </html>

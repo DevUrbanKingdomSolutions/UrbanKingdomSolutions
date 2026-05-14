@@ -1,5 +1,5 @@
 const DB_NAME = "productionCrewDatabase";
-const DB_VERSION = 15;
+const DB_VERSION = 16;
 const SUPABASE_URL = "https://nnhqrhaltkmymnwxydwr.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5uaHFyaGFsdGtteW1ud3h5ZHdyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgwMjMxNDgsImV4cCI6MjA5MzU5OTE0OH0.X9iGhE61WehM57133LKCWMfXXDHmcb2rhw-ZPCKAJos";
 const LOGIN_SETUP_FUNCTION = "send-login-setup";
@@ -38,9 +38,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.06.008",
-  title: "V1.06.008 update installed",
-  body: "Touring dashboard now surfaces missing city rider workspace sections in Needs Attention so incomplete rider data is easier to spot."
+  version: "V1.07.001",
+  title: "V1.07.001 update installed",
+  body: "Awards / Live Broadcast Suite now has its first dashboard, document lanes, rundown, staffing, and settings foundation."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -66,6 +66,10 @@ const STORES = [
   "touringCrew",
   "touringTravel",
   "touringDocuments",
+  "awardsShows",
+  "awardsDocuments",
+  "awardsStaff",
+  "awardsSchedules",
   "eventAssignments",
   "eventSwaps",
   "timecards",
@@ -92,6 +96,10 @@ const CLOUD_SYNC_STORES = new Set([
   "touringCrew",
   "touringTravel",
   "touringDocuments",
+  "awardsShows",
+  "awardsDocuments",
+  "awardsStaff",
+  "awardsSchedules",
   "eventAssignments",
   "eventSwaps",
   "timecards",
@@ -154,7 +162,7 @@ const ACCESS_PROFILES = {
   CLIENT_ADMIN: {
     label: "CLIENT ADMIN",
     baseRole: "CLIENT",
-    views: ["dashboard", "clientCompanyProfile", "clientProfile", "workers", "promoters", "venues", "events", "eventDocuments", "emailTemplates", "touringDashboard", "tourAdvancing", "tourCrewPersonnel", "tourTravel", "tourDocuments", "tourSettings", "productionBoard", "staffingAssignments", "staffingSchedule", "timecards", "vehicles", "reports", "payroll", "directory", "runner", "messages", "dataTools", "mobileApp"],
+    views: ["dashboard", "clientCompanyProfile", "clientProfile", "workers", "promoters", "venues", "events", "eventDocuments", "emailTemplates", "touringDashboard", "tourAdvancing", "tourCrewPersonnel", "tourTravel", "tourDocuments", "tourSettings", "awardsDashboard", "awardsDocuments", "awardsRundown", "awardsStaffing", "awardsSettings", "productionBoard", "staffingAssignments", "staffingSchedule", "timecards", "vehicles", "reports", "payroll", "directory", "runner", "messages", "dataTools", "mobileApp"],
     canAdminEdit: true,
     canOwnerEdit: true,
     canVenueEdit: true,
@@ -166,7 +174,7 @@ const ACCESS_PROFILES = {
   CLIENT_REP: {
     label: "CLIENT REP",
     baseRole: "CLIENT",
-    views: ["dashboard", "clientProfile", "promoters", "events", "touringDashboard", "tourAdvancing", "tourCrewPersonnel", "tourTravel", "tourDocuments", "productionBoard", "staffingAssignments", "staffingSchedule", "vehicles", "reports", "directory", "runner", "messages", "dataTools", "mobileApp"],
+    views: ["dashboard", "clientProfile", "promoters", "events", "touringDashboard", "tourAdvancing", "tourCrewPersonnel", "tourTravel", "tourDocuments", "awardsDashboard", "awardsDocuments", "awardsRundown", "awardsStaffing", "productionBoard", "staffingAssignments", "staffingSchedule", "vehicles", "reports", "directory", "runner", "messages", "dataTools", "mobileApp"],
     canAdminEdit: true,
     canOwnerEdit: true,
     canVenueEdit: false,
@@ -178,7 +186,7 @@ const ACCESS_PROFILES = {
   CLIENT_REP_LEAD: {
     label: "CLIENT REP LEAD",
     baseRole: "CLIENT",
-    views: ["dashboard", "clientProfile", "workers", "promoters", "venues", "events", "eventDocuments", "emailTemplates", "touringDashboard", "tourAdvancing", "tourCrewPersonnel", "tourTravel", "tourDocuments", "tourSettings", "productionBoard", "staffingAssignments", "staffingSchedule", "vehicles", "reports", "directory", "runner", "messages", "dataTools", "mobileApp"],
+    views: ["dashboard", "clientProfile", "workers", "promoters", "venues", "events", "eventDocuments", "emailTemplates", "touringDashboard", "tourAdvancing", "tourCrewPersonnel", "tourTravel", "tourDocuments", "tourSettings", "awardsDashboard", "awardsDocuments", "awardsRundown", "awardsStaffing", "awardsSettings", "productionBoard", "staffingAssignments", "staffingSchedule", "vehicles", "reports", "directory", "runner", "messages", "dataTools", "mobileApp"],
     canAdminEdit: true,
     canOwnerEdit: true,
     canVenueEdit: true,
@@ -369,6 +377,10 @@ let state = {
   touringCrew: [],
   touringTravel: [],
   touringDocuments: [],
+  awardsShows: [],
+  awardsDocuments: [],
+  awardsStaff: [],
+  awardsSchedules: [],
   eventAssignments: [],
   eventSwaps: [],
   timecards: [],
@@ -474,6 +486,7 @@ const NAV_GROUPS = {
     { label: "PROFILES", items: [["workers", "Crew Profiles"], ["promoters", "Promoter Profiles"], ["venues", "Venues"]] },
     { label: "EVENTS", items: [["events", "Events"], ["eventDocuments", "Documents"], ["emailTemplates", "Email Templates"], ["timecards", "Timecards"], ["vehicles", "Vehicles"], ["reports", "Reports"]] },
     { label: "TOURING OFFICE", items: [["touringDashboard", "Dashboard"], ["tourAdvancing", "Tour Advancing"], ["tourCrewPersonnel", "Crew Personnel"], ["tourTravel", "Travel & Accommodations"], ["tourDocuments", "Documents"], ["tourSettings", "Settings"]] },
+    { label: "AWARDS / BROADCAST", items: [["awardsDashboard", "Dashboard"], ["awardsDocuments", "Documents"], ["awardsRundown", "Rundown"], ["awardsStaffing", "Staffing"], ["awardsSettings", "Settings"]] },
     { label: "PRODUCTION OFFICE", items: [["productionBoard", "Production Office"], ["staffingAssignments", "Staffing Assignment"], ["staffingSchedule", "Staffing Schedule"]] },
     { label: "PAYROLL", items: [["payroll", "Payroll"]] },
     { label: "DIRECTORIES", items: [["directory", "Directory"], ["runner", "Gig Resources"]] },
@@ -485,6 +498,7 @@ const NAV_GROUPS = {
     { label: "PROFILES", items: [["promoters", "Promoter Profiles"]] },
     { label: "EVENTS", items: [["events", "Events"], ["vehicles", "Vehicles"], ["reports", "Reports"]] },
     { label: "TOURING OFFICE", items: [["touringDashboard", "Dashboard"], ["tourAdvancing", "Tour Advancing"], ["tourCrewPersonnel", "Crew Personnel"], ["tourTravel", "Travel & Accommodations"], ["tourDocuments", "Documents"]] },
+    { label: "AWARDS / BROADCAST", items: [["awardsDashboard", "Dashboard"], ["awardsDocuments", "Documents"], ["awardsRundown", "Rundown"], ["awardsStaffing", "Staffing"]] },
     { label: "PRODUCTION OFFICE", items: [["productionBoard", "Production Office"], ["staffingAssignments", "Staffing Assignment"], ["staffingSchedule", "Staffing Schedule"]] },
     { label: "DIRECTORIES", items: [["directory", "Directory"], ["runner", "Gig Resources"]] },
     { items: [["messages", "Messages"]] },
@@ -495,6 +509,7 @@ const NAV_GROUPS = {
     { label: "PROFILES", items: [["workers", "Crew Profiles"], ["promoters", "Promoter Profiles"], ["venues", "Venues"]] },
     { label: "EVENTS", items: [["events", "Events"], ["eventDocuments", "Documents"], ["emailTemplates", "Email Templates"], ["vehicles", "Vehicles"], ["reports", "Reports"]] },
     { label: "TOURING OFFICE", items: [["touringDashboard", "Dashboard"], ["tourAdvancing", "Tour Advancing"], ["tourCrewPersonnel", "Crew Personnel"], ["tourTravel", "Travel & Accommodations"], ["tourDocuments", "Documents"], ["tourSettings", "Settings"]] },
+    { label: "AWARDS / BROADCAST", items: [["awardsDashboard", "Dashboard"], ["awardsDocuments", "Documents"], ["awardsRundown", "Rundown"], ["awardsStaffing", "Staffing"], ["awardsSettings", "Settings"]] },
     { label: "PRODUCTION OFFICE", items: [["productionBoard", "Production Office"], ["staffingAssignments", "Staffing Assignment"], ["staffingSchedule", "Staffing Schedule"]] },
     { label: "DIRECTORIES", items: [["directory", "Directory"], ["runner", "Gig Resources"]] },
     { items: [["messages", "Messages"]] },
@@ -611,9 +626,9 @@ const CLIENT_PACKAGE_DEFINITIONS = [
   },
   {
     id: "AWARDS_SHOWS",
-    name: "Awards / Live Events",
-    status: "Planned",
-    description: "Awards production teams, live broadcast documents, rundowns, plots, mimeo, credentials, and event-day operations."
+    name: "Awards / Live Broadcast Suite",
+    status: "Active",
+    description: "Awards production teams, broadcast documents, rundowns, plots, scripts, staff lists, mimeo, credentials, and event-day operations."
   },
   {
     id: "LIVE_TV_SPECIALS",
@@ -629,6 +644,7 @@ const CLIENT_PACKAGE_DEFINITIONS = [
   }
 ];
 const TOURING_SUITE_ID = "TOUR_DATA_SERVICES";
+const AWARDS_SUITE_ID = "AWARDS_SHOWS";
 
 const SMTP_PROVIDER_SETTINGS = {
   google: {
@@ -1384,7 +1400,7 @@ async function cloudRecordCount() {
 }
 
 async function loadState() {
-  const [clients, clientReps, accessLevelDefs, eventAccessLinks, workers, venues, promoters, profileNotes, events, touringStops, touringCrew, touringTravel, touringDocuments, eventAssignments, eventSwaps, timecards, runnerStops, runnerCategories, runnerNotes, runnerRatings, systemProfiles, venueContacts, productionCompanies, productionContacts, vehicleLogs, accidentReports, messageThreadSettings, appNotifications] = await Promise.all(STORES.map(getAll));
+  const [clients, clientReps, accessLevelDefs, eventAccessLinks, workers, venues, promoters, profileNotes, events, touringStops, touringCrew, touringTravel, touringDocuments, awardsShows, awardsDocuments, awardsStaff, awardsSchedules, eventAssignments, eventSwaps, timecards, runnerStops, runnerCategories, runnerNotes, runnerRatings, systemProfiles, venueContacts, productionCompanies, productionContacts, vehicleLogs, accidentReports, messageThreadSettings, appNotifications] = await Promise.all(STORES.map(getAll));
   state = {
     ...state,
     clients: sortByName(clients),
@@ -1400,6 +1416,10 @@ async function loadState() {
     touringCrew: sortByName(touringCrew),
     touringTravel: sortByName(touringTravel),
     touringDocuments: touringDocuments.sort((a, b) => new Date(b.updatedAt || b.createdAt || 0) - new Date(a.updatedAt || a.createdAt || 0)),
+    awardsShows: awardsShows.sort((a, b) => new Date(b.showDate || b.createdAt || 0) - new Date(a.showDate || a.createdAt || 0)),
+    awardsDocuments: awardsDocuments.sort((a, b) => new Date(b.updatedAt || b.createdAt || 0) - new Date(a.updatedAt || a.createdAt || 0)),
+    awardsStaff: sortByName(awardsStaff),
+    awardsSchedules: awardsSchedules.sort((a, b) => new Date(a.callDate || a.createdAt || 0) - new Date(b.callDate || b.createdAt || 0)),
     eventAssignments: eventAssignments.sort((a, b) => new Date(a.startDate || 0) - new Date(b.startDate || 0)),
     eventSwaps: eventSwaps.sort((a, b) => new Date(b.swapDate || b.createdAt || 0) - new Date(a.swapDate || a.createdAt || 0)),
     timecards: timecards.sort((a, b) => new Date(b.clockIn || b.createdAt || 0) - new Date(a.clockIn || a.createdAt || 0)),
@@ -1500,6 +1520,10 @@ function clientHasOfficeSuite(suiteId, client = activeClientRecord()) {
 
 function touringSuiteEnabled(client = activeClientRecord()) {
   return clientHasOfficeSuite(TOURING_SUITE_ID, client);
+}
+
+function awardsSuiteEnabled(client = activeClientRecord()) {
+  return clientHasOfficeSuite(AWARDS_SUITE_ID, client);
 }
 
 function officeSuiteLabel(id, client = activeClientRecord()) {
@@ -3970,6 +3994,7 @@ function render() {
   renderAdminProfile();
   renderEvents();
   renderTouringSuite();
+  renderAwardsSuite();
   renderProductionBoard();
   renderStaffingAssignments();
   renderStaffingSchedule();
@@ -4606,6 +4631,8 @@ function openReadOnlyRecord(storeName, id) {
     openTouringTravelProfile(record);
   } else if (storeName === "touringDocuments") {
     openTouringDocumentProfile(record);
+  } else if (storeName === "awardsDocuments") {
+    openAwardsDocumentProfile(record);
   } else
   if (storeName === "workers") {
     readOnlyProfileCard(record.name, record.role || "Crew / Runner", [], [
@@ -6944,6 +6971,193 @@ function renderTourSettings() {
     ["Sensitive Access", "Passport, DOB, medical, emergency contact, travel, and hotel details require restricted permissions."],
     ["Stage Intelligence", "Quiet checks for missing promoter emails, parking notes, travel confirmations, and ready-to-generate packets."]
   ].map(([title, detail]) => `<article class="touring-card"><h4>${escapeHtml(title)}</h4><p>${escapeHtml(detail)}</p></article>`).join("");
+}
+
+function renderAwardsSuite() {
+  if (!$("#awardsHeroStats")) return;
+  renderAwardsSuiteAccessNotice();
+  const documents = awardsDocumentsRows();
+  const staffing = awardsStaffRows();
+  const attention = awardsAttentionRows(documents, staffing);
+  renderAwardsDashboard(documents, staffing, attention);
+  renderAwardsDocuments(documents);
+  renderAwardsRundown(documents);
+  renderAwardsStaffing(staffing);
+  renderAwardsSettings();
+}
+
+function renderAwardsSuiteAccessNotice() {
+  const notice = $("#awardsSuiteAccessNotice");
+  if (!notice) return;
+  const client = activeClientRecord();
+  const enabled = awardsSuiteEnabled(client);
+  notice.hidden = false;
+  notice.classList.toggle("enabled", enabled);
+  notice.innerHTML = enabled
+    ? `<div><strong>Awards / Live Broadcast Suite enabled</strong><p>${escapeHtml(client?.name || "This client")} can now organize broadcast documents, rundowns, staff lists, plots, scripts, and show-day readiness.</p></div><span class="status-pill">Active</span>`
+    : `<div><strong>Preview mode</strong><p>Enable Awards / Live Broadcast Suite under this client account's Office Suites to use this as a live production workspace.</p></div>${canSystemEdit() ? `<button class="tiny-button system-action" data-dashboard-link="adminClients" type="button">Open Client Accounts</button>` : `<span class="status-pill warn">Not enabled</span>`}`;
+}
+
+function awardsDocumentsRows() {
+  if (state.awardsDocuments.length) {
+    return state.awardsDocuments.map((doc) => ({
+      id: doc.id,
+      name: doc.name || "Broadcast Document",
+      showName: doc.showName || "Show TBD",
+      type: doc.type || "Document",
+      status: doc.status || "Draft",
+      department: doc.department || "Production",
+      link: doc.link || "",
+      notes: doc.notes || "",
+      source: doc
+    }));
+  }
+  return [
+    ["Rundown", "Final-ready show rundown, daily rundown, and long rundown versions."],
+    ["Schedule", "Show schedule, rehearsal schedule, and daily production schedule."],
+    ["Staff List", "Production staff list, department contacts, and distro notes."],
+    ["Plots", "Stage plots, distro plots, venue plots, and technical drawing packets."],
+    ["Script", "Show script, revisions, presenter notes, and live broadcast copy."],
+    ["Quickie / Pre-Mimeo", "Fast distro versions and pre-mimeo working packets."],
+    ["Health & Safety", "Safety plan, site notices, and crew-facing production requirements."],
+    ["Start Paperwork", "Crew start packets, compliance documents, and onboarding forms."]
+  ].map(([type, notes], index) => ({
+    id: `awards-demo-doc-${index}`,
+    name: type,
+    showName: "Awards / Live Broadcast",
+    type,
+    status: index < 3 ? "Template Ready" : "Planned",
+    department: index === 2 ? "Production Office" : "Production",
+    link: "",
+    notes,
+    source: null
+  }));
+}
+
+function awardsStaffRows() {
+  if (state.awardsStaff.length) return state.awardsStaff;
+  const workers = visibleRecords(state.workers).slice(0, 8);
+  if (workers.length) {
+    return workers.map((worker) => ({
+      id: worker.id,
+      name: worker.name,
+      department: worker.role || "Crew / Runner",
+      phone: worker.phone || "Missing",
+      email: worker.email || "Missing",
+      status: worker.phone && worker.email ? "Ready" : "Needs Contact"
+    }));
+  }
+  return [
+    { id: "awards-staff-demo-1", name: "Executive Producer", department: "Production", phone: "Pending", email: "Pending", status: "Needs Contact" },
+    { id: "awards-staff-demo-2", name: "Stage Manager", department: "Stage Management", phone: "Pending", email: "Pending", status: "Needs Contact" },
+    { id: "awards-staff-demo-3", name: "Mimeo Lead", department: "Production Office", phone: "Pending", email: "Pending", status: "Needs Contact" }
+  ];
+}
+
+function awardsAttentionRows(documents, staffing) {
+  return [
+    ...documents.filter((doc) => !["Distributed", "Final", "Template Ready"].includes(doc.status)).map((doc) => ({
+      title: `${doc.type} needs review`,
+      detail: `${doc.showName || "Show"} - ${doc.status || "Draft"}`,
+      view: "awardsDocuments"
+    })),
+    ...staffing.filter((person) => person.status !== "Ready").slice(0, 4).map((person) => ({
+      title: `${person.name} contact info needed`,
+      detail: `${person.department || "Production"} - ${person.status || "Needs Review"}`,
+      view: "awardsStaffing"
+    }))
+  ].slice(0, 8);
+}
+
+function renderAwardsDashboard(documents, staffing, attention) {
+  const client = activeClientRecord();
+  const enabled = awardsSuiteEnabled(client);
+  $("#awardsHeroTitle").textContent = client?.name ? `${client.name} Broadcast` : "Broadcast Operations";
+  $("#awardsHeroCopy").textContent = enabled
+    ? "Awards / Broadcast is active for this client. Manage show documents, rundowns, staff lists, plots, scripts, and production readiness here."
+    : "Awards / Broadcast is ready to enable. Preview the suite structure here, then turn it on from the client's Office Suites when this account is ready.";
+  $("#awardsHeroStats").innerHTML = [
+    ["Documents", documents.length, "awardsDocuments"],
+    ["Rundown Items", documents.filter((doc) => ["Rundown", "Quickie", "Schedule", "Script"].includes(doc.type)).length, "awardsRundown"],
+    ["Staffing", staffing.length, "awardsStaffing"]
+  ].map(([label, value, view]) => `<button class="touring-stat" data-dashboard-link="${escapeHtml(view)}" type="button"><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></button>`).join("");
+  $("#awardsAttentionCount").textContent = `${attention.length} open`;
+  $("#awardsAttentionList").innerHTML = attention.length
+    ? attention.map((item) => `<button class="compact-item touring-attention-item" data-dashboard-link="${escapeHtml(item.view)}" type="button"><strong>${escapeHtml(item.title)}</strong><p>${escapeHtml(item.detail)}</p></button>`).join("")
+    : `<div class="compact-item empty"><strong>No urgent broadcast items</strong><p>Stage Intelligence checks will surface missing rundowns, plots, scripts, and staff details here.</p></div>`;
+  $("#awardsFlowList").innerHTML = [
+    ["Documents", "Rundowns, schedules, staff lists, plots, scripts, quickies, and safety packets."],
+    ["Rundown", "Current versions and show-control docs that need clear status."],
+    ["Staffing", "Staff lists, departments, contact readiness, credentials, and production office contacts."],
+    ["Settings", "Broadcast defaults, distro rules, restricted files, and notification rules."]
+  ].map(([title, detail], index) => `<div class="touring-flow-step"><span>${index + 1}</span><strong>${escapeHtml(title)}</strong><p>${escapeHtml(detail)}</p></div>`).join("");
+}
+
+function renderAwardsDocuments(documents) {
+  $("#awardsDocumentsCount").textContent = `${documents.length} lanes`;
+  $("#awardsDocumentsList").innerHTML = documents.map((doc) => `<article class="touring-card">
+    <span class="suite-kicker">${escapeHtml(doc.status)}</span>
+    <h4>${doc.source ? recordLink("awardsDocuments", doc.id, doc.name) : escapeHtml(doc.name)}</h4>
+    <p>${escapeHtml(doc.notes || "Broadcast document lane.")}</p>
+    <div class="profile-meta-row">
+      <span>${escapeHtml(doc.type)}</span>
+      <span>${escapeHtml(doc.department)}</span>
+    </div>
+    ${doc.link ? `<p><a href="${escapeHtml(doc.link)}" target="_blank" rel="noopener">Open document</a></p>` : ""}
+    ${doc.source ? actionButtons("awardsDocuments", doc.id, "awardsDocumentForm", "", canAdminEdit()) : ""}
+  </article>`).join("");
+}
+
+function renderAwardsRundown(documents) {
+  const rows = documents.filter((doc) => ["Rundown", "Quickie", "Schedule", "Script", "Plot", "Plots"].includes(doc.type));
+  $("#awardsRundownCount").textContent = `${rows.length} records`;
+  $("#awardsRundownList").innerHTML = rows.map((doc) => `<article class="touring-card">
+    <span class="suite-kicker">${escapeHtml(doc.type)}</span>
+    <h4>${doc.source ? recordLink("awardsDocuments", doc.id, doc.name) : escapeHtml(doc.name)}</h4>
+    <p>${escapeHtml(doc.showName)} - ${escapeHtml(doc.status)}</p>
+    <p>${escapeHtml(doc.notes || "Track version, distro, and approval state here.")}</p>
+  </article>`).join("");
+}
+
+function renderAwardsStaffing(staffing) {
+  $("#awardsStaffingCount").textContent = `${staffing.length} people`;
+  $("#awardsStaffingList").innerHTML = staffing.map((person) => `<article class="touring-card">
+    <span class="suite-kicker">${escapeHtml(person.status || "Needs Review")}</span>
+    <h4>${escapeHtml(person.name || "Staff Member")}</h4>
+    <p>${escapeHtml(person.department || "Production")}</p>
+    <div class="profile-meta-row">
+      <span>${escapeHtml(person.phone || "Phone missing")}</span>
+      <span>${escapeHtml(person.email || "Email missing")}</span>
+    </div>
+  </article>`).join("");
+}
+
+function renderAwardsSettings() {
+  $("#awardsSettingsList").innerHTML = [
+    ["Document Types", "Rundown, quickie, schedule, staff list, plots, script, health and safety, and start paperwork."],
+    ["Version Control", "Stage Intelligence should identify current, draft, final, distributed, and superseded files."],
+    ["Distro Rules", "Future rules can decide who receives mimeo, staff lists, plots, scripts, or redacted views."],
+    ["Sensitive Access", "Credentials, start paperwork, payroll details, and restricted broadcast documents need tight access controls."],
+    ["Bulk Editing", "Awards teams will need spreadsheet-fast updates for staff lists, schedules, document statuses, and show grids."]
+  ].map(([title, detail]) => `<article class="touring-card"><h4>${escapeHtml(title)}</h4><p>${escapeHtml(detail)}</p></article>`).join("");
+}
+
+function openAwardsDocumentProfile(record) {
+  readOnlyProfileCard(record.name || "Broadcast Document", record.type || "Document", [], [
+    ["Notes", noteSectionText(record.notes, record.updatedAt || record.createdAt)]
+  ], "", [
+    ["Document", [
+      ["Show / Event", record.showName],
+      ["Type", record.type],
+      ["Status", record.status],
+      ["Department", record.department]
+    ]],
+    ["Delivery", [
+      ["Link", record.link],
+      ["Created", formatDateWithYear(record.createdAt)],
+      ["Updated", formatDateWithYear(record.updatedAt)]
+    ]]
+  ]);
 }
 
 function assignmentPayLine(assignment, event) {
@@ -10669,7 +10883,7 @@ async function saveForm(event, storeName) {
     toast("This access view cannot save promoter profiles.");
     return;
   }
-  if (["events", "eventAssignments", "eventSwaps", "runnerStops", "timecards", "touringStops", "touringCrew", "touringTravel", "touringDocuments"].includes(storeName) && !canAdminEdit()) {
+  if (["events", "eventAssignments", "eventSwaps", "runnerStops", "timecards", "touringStops", "touringCrew", "touringTravel", "touringDocuments", "awardsShows", "awardsDocuments", "awardsStaff", "awardsSchedules"].includes(storeName) && !canAdminEdit()) {
     toast("Switch to CLIENT or PROMOTER to save this.");
     return;
   }
@@ -10733,7 +10947,7 @@ async function saveForm(event, storeName) {
     merged.workerIds = Array.isArray(merged.workerIds) ? merged.workerIds : eventWorkerIds(merged);
     delete merged.showAllCrew;
   }
-  if (["touringStops", "touringCrew", "touringTravel", "touringDocuments"].includes(storeName)) {
+  if (["touringStops", "touringCrew", "touringTravel", "touringDocuments", "awardsShows", "awardsDocuments", "awardsStaff", "awardsSchedules"].includes(storeName)) {
     merged.id = merged.id || crypto.randomUUID();
     merged.clientId = merged.clientId || authState.roleRecord?.client_id || activeClientRecord()?.id || "";
   }
@@ -10906,7 +11120,7 @@ async function deleteRecord(storeName, id) {
   if (storeName === "clients" && !canSystemEdit()) return;
   if (storeName === "accessLevelDefs" && !canSystemEdit()) return;
   if (storeName === "venues" && !canVenueEdit()) return;
-  const adminStores = ["events", "eventAssignments", "eventSwaps", "workers", "promoters", "runnerStops", "timecards", "touringStops", "touringCrew", "touringTravel", "touringDocuments"];
+  const adminStores = ["events", "eventAssignments", "eventSwaps", "workers", "promoters", "runnerStops", "timecards", "touringStops", "touringCrew", "touringTravel", "touringDocuments", "awardsShows", "awardsDocuments", "awardsStaff", "awardsSchedules"];
   if (adminStores.includes(storeName) && !canAdminEdit()) return;
   if (["vehicleLogs", "accidentReports"].includes(storeName) && !canScopedEdit()) return;
   const confirmed = confirm("Delete this record?");
@@ -13442,6 +13656,7 @@ function bindEvents() {
   $("#touringCrewForm").addEventListener("submit", (event) => saveForm(event, "touringCrew"));
   $("#touringTravelForm").addEventListener("submit", (event) => saveForm(event, "touringTravel"));
   $("#touringDocumentForm").addEventListener("submit", (event) => saveForm(event, "touringDocuments"));
+  $("#awardsDocumentForm").addEventListener("submit", (event) => saveForm(event, "awardsDocuments"));
   $("#dashboardNoteForm").addEventListener("submit", saveDashboardNote);
   $("#eventAssignmentForm").addEventListener("submit", (event) => saveForm(event, "eventAssignments"));
   $("#assignmentDepartmentForm").addEventListener("submit", saveAssignmentDepartmentForm);
