@@ -38,9 +38,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.06.014",
-  title: "V1.06.014 update installed",
-  body: "Existing client accounts now default into active Office Suites so Touring and Awards are ready for playtesting."
+  version: "V1.06.015",
+  title: "V1.06.015 update installed",
+  body: "Touring dashboard cards now open the right stop, crew, or travel profile when a real record is available."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -6736,6 +6736,7 @@ function touringAttentionRows(stops, crew, travel) {
     ...stops.filter((stop) => stop.missing.length).map((stop) => ({
       title: `${stop.city} advance needs review`,
       detail: stop.missing.join(", "),
+      recordTarget: touringStopRecordTarget(stop),
       view: "tourAdvancing"
     })),
     ...stops.map((stop) => {
@@ -6743,6 +6744,7 @@ function touringAttentionRows(stops, crew, travel) {
       return {
         title: `${stop.city} city rider sections needed`,
         detail: missing.slice(0, 4).join(", ") + (missing.length > 4 ? ` +${missing.length - 4} more` : ""),
+        recordTarget: touringStopRecordTarget(stop),
         view: "tourAdvancing",
         count: missing.length
       };
@@ -6750,11 +6752,13 @@ function touringAttentionRows(stops, crew, travel) {
     ...crew.filter((person) => person.formStatus !== "Submitted").slice(0, 3).map((person) => ({
       title: `${person.name} team info needed`,
       detail: "Team info form has not been completed.",
+      recordTarget: touringCrewRecordTarget(person),
       view: "tourCrewPersonnel"
     })),
     ...travel.filter((person) => person.overall !== "Ready").slice(0, 3).map((person) => ({
       title: `${person.name} travel packet not ready`,
       detail: person.missing.join(", "),
+      recordTarget: touringTravelRecordTarget(person),
       view: "tourTravel"
     }))
   ].slice(0, 8);
@@ -6856,6 +6860,7 @@ function touringRiderReadinessRows(stops = []) {
       missingSections,
       advanceReady,
       riderReady,
+      recordTarget: touringStopRecordTarget(stop),
       view: "tourAdvancing"
     };
   });
@@ -6883,6 +6888,7 @@ function touringCrewReadinessRows(crew = []) {
       readyCount,
       totalCount: checks.length,
       checks,
+      recordTarget: touringCrewRecordTarget(person),
       view: "tourCrewPersonnel"
     };
   });
@@ -6908,6 +6914,7 @@ function touringTravelReadinessRows(travel = []) {
       readyCount,
       totalCount: checks.length,
       checks,
+      recordTarget: touringTravelRecordTarget(person),
       view: "tourTravel"
     };
   });
@@ -6962,7 +6969,7 @@ function touringDocumentReadinessRows(stops = [], crew = [], travel = []) {
 function touringReadinessCard(item = {}) {
   const checks = item.checks || item.sections?.map(([label, field]) => [label, item.readySections?.some((ready) => ready[1] === field)]) || [];
   const statusClass = item.status === "Ready" ? "" : "warn";
-  return `<button class="touring-card touring-readiness-card" data-dashboard-link="${escapeHtml(item.view || "touringDashboard")}" type="button">
+  return `<button class="touring-card touring-readiness-card" ${recordTargetAttrs(item.recordTarget, item.view || "touringDashboard")} type="button">
     <span class="suite-kicker">${escapeHtml(item.status || "Needs Review")}</span>
     <h4>${escapeHtml(item.name || "Readiness Item")}</h4>
     <p>${escapeHtml(item.detail || `${item.readyCount || 0}/${item.totalCount || 0} ready`)}</p>
@@ -6998,7 +7005,7 @@ function renderTouringDashboard(stops, crew, travel, attention, riderReadiness =
   ].map(([label, value, view]) => `<button class="touring-stat" data-dashboard-link="${escapeHtml(view)}" type="button"><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></button>`).join("");
   $("#touringAttentionCount").textContent = `${attention.length} open`;
   $("#touringAttentionList").innerHTML = attention.length
-    ? attention.map((item) => `<button class="compact-item touring-attention-item" data-dashboard-link="${escapeHtml(item.view)}" type="button"><strong>${escapeHtml(item.title)}</strong><p>${escapeHtml(item.detail)}</p></button>`).join("")
+    ? attention.map((item) => `<button class="compact-item touring-attention-item" ${recordTargetAttrs(item.recordTarget, item.view)} type="button"><strong>${escapeHtml(item.title)}</strong><p>${escapeHtml(item.detail)}</p></button>`).join("")
     : `<div class="compact-item empty"><strong>No urgent touring items</strong><p>Stage Intelligence checks will surface missing advance, crew, and travel items here.</p></div>`;
   $("#touringFlowList").innerHTML = [
     ["Tour Advancing", "Tour stops, advance tracker, city rider sub-databases."],
@@ -7479,7 +7486,7 @@ function renderTourAdvancing(stops) {
     <td>${editing && stop.source ? touringGridInput("touringStops", stop.id, "owner", stop.source.owner || stop.owner) : escapeHtml(stop.owner)}</td>
     <td><strong>${escapeHtml(stop.documents)}</strong><p>City rider workspace</p>${stop.source ? actionButtons("touringStops", stop.id, "touringStopForm", "", canAdminEdit()) : ""}</td>
   </tr>`).join("");
-  $("#cityRiderWorkspace").innerHTML = rows.slice(0, 4).map((stop) => `<article class="touring-card">
+  $("#cityRiderWorkspace").innerHTML = rows.slice(0, 4).map((stop) => `<button class="touring-card touring-readiness-card" ${recordTargetAttrs(touringStopRecordTarget(stop), "tourAdvancing")} type="button">
     <span class="suite-kicker">${escapeHtml(stop.city)}</span>
     <h4>${escapeHtml(stop.venue)}</h4>
     <div class="touring-card-sections">
@@ -7495,7 +7502,7 @@ function renderTourAdvancing(stops) {
       ].map(([label, field]) => `<span class="${touringRiderSectionStatus(stop.source || stop, field) === "Ready" ? "is-ready" : ""}">${escapeHtml(label)}</span>`).join("")}
     </div>
     <p>${stop.missing.length ? `Needs: ${escapeHtml(stop.missing.join(", "))}` : "Ready to generate rider when approved."}</p>
-  </article>`).join("");
+  </button>`).join("");
 }
 
 function renderTourCrewPersonnel(crew) {
@@ -9067,6 +9074,30 @@ function actionButtons(store, id, formId, extra = "", allowed = canAdminEdit()) 
 
 function recordLink(store, id, label, className = "link-button") {
   return `<button class="${escapeHtml(className)}" data-view-record="${escapeHtml(store)}:${escapeHtml(id)}" type="button">${escapeHtml(label || "View")}</button>`;
+}
+
+function recordTargetAttrs(target = "", fallbackView = "") {
+  if (target) return `data-view-record="${escapeHtml(target)}"`;
+  return fallbackView ? `data-dashboard-link="${escapeHtml(fallbackView)}"` : "";
+}
+
+function touringStopRecordTarget(stop = {}) {
+  if (stop.source?.id) return `touringStops:${stop.source.id}`;
+  if (stop.event?.id) return `events:${stop.event.id}`;
+  return "";
+}
+
+function touringCrewRecordTarget(person = {}) {
+  if (person.source?.id) return `touringCrew:${person.source.id}`;
+  if (state.workers.some((worker) => worker.id === person.id)) return `workers:${person.id}`;
+  return "";
+}
+
+function touringTravelRecordTarget(person = {}) {
+  if (state.touringTravel.some((record) => record.id === person.id)) return `touringTravel:${person.id}`;
+  if (person.source?.id) return `touringCrew:${person.source.id}`;
+  if (state.workers.some((worker) => worker.id === person.id)) return `workers:${person.id}`;
+  return "";
 }
 
 function loginSetupButton(store, profile) {
