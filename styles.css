@@ -199,6 +199,34 @@
   font-weight: 700;
 }
 
+.touring-grid-input {
+  width: 100%;
+  min-width: 8rem;
+  margin: 0.12rem 0;
+  padding: 0.45rem 0.55rem;
+  border: 0;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--role-color, #2563eb) 8%, white);
+  color: #111827;
+  font: inherit;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--role-color, #2563eb) 16%, transparent);
+}
+
+.touring-grid-input:focus {
+  outline: 2px solid color-mix(in srgb, var(--role-color, #2563eb) 34%, white);
+  outline-offset: 1px;
+  background: #ffffff;
+}
+
+.touring-grid-textarea {
+  min-height: 4.25rem;
+  resize: vertical;
+}
+
+.touring-document-grid {
+  width: 100%;
+}
+
 .premium-grid-wrap table {
   border-collapse: separate;
   border-spacing: 0 0.35rem;

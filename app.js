@@ -38,9 +38,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.06.004",
-  title: "V1.06.004 update installed",
-  body: "Touring Office Suite records now open profile views for tour stops, crew personnel, travel, and documents, with edit actions connected where access allows."
+  version: "V1.06.005",
+  title: "V1.06.005 update installed",
+  body: "Touring Office Suite now has grid edit mode for tour stops, crew personnel, travel, and documents so saved rows can be updated quickly in place."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -389,6 +389,7 @@ let state = {
   accessLevelDefs: [],
   userAccessRows: [],
   eventAccessLinks: [],
+  touringGridEdit: {},
   search: "",
   activeView: "dashboard",
   accessRole: "CLIENT",
@@ -6655,15 +6656,78 @@ function renderTouringDashboard(stops, crew, travel, attention) {
   ].map(([title, detail], index) => `<div class="touring-flow-step"><span>${index + 1}</span><strong>${escapeHtml(title)}</strong><p>${escapeHtml(detail)}</p></div>`).join("");
 }
 
+function touringGridEditing(viewId) {
+  return !!state.touringGridEdit?.[viewId] && canAdminEdit();
+}
+
+function touringGridToolbar(viewId) {
+  const editing = touringGridEditing(viewId);
+  const toggle = document.querySelector(`[data-tour-grid="${viewId}"]`);
+  const save = document.querySelector(`[data-tour-grid-save="${viewId}"]`);
+  if (toggle) toggle.textContent = editing ? "Done" : "Grid Edit";
+  if (save) save.hidden = !editing;
+}
+
+function touringGridInput(storeName, id, field, value = "", type = "text", className = "") {
+  return `<input class="touring-grid-input ${escapeHtml(className)}" data-tour-grid-input data-store="${escapeHtml(storeName)}" data-id="${escapeHtml(id)}" data-field="${escapeHtml(field)}" type="${escapeHtml(type)}" value="${escapeHtml(value || "")}">`;
+}
+
+function touringGridTextarea(storeName, id, field, value = "") {
+  return `<textarea class="touring-grid-input touring-grid-textarea" data-tour-grid-input data-store="${escapeHtml(storeName)}" data-id="${escapeHtml(id)}" data-field="${escapeHtml(field)}" rows="2">${escapeHtml(value || "")}</textarea>`;
+}
+
+function touringGridSelect(storeName, id, field, value = "", options = []) {
+  return `<select class="touring-grid-input" data-tour-grid-input data-store="${escapeHtml(storeName)}" data-id="${escapeHtml(id)}" data-field="${escapeHtml(field)}">
+    ${options.map((option) => `<option value="${escapeHtml(option)}"${option === value ? " selected" : ""}>${escapeHtml(option)}</option>`).join("")}
+  </select>`;
+}
+
+function toggleTouringGrid(viewId) {
+  if (!canAdminEdit()) {
+    toast("This access view cannot edit Touring grids.");
+    return;
+  }
+  state.touringGridEdit = { [viewId]: !touringGridEditing(viewId) };
+  render();
+}
+
+async function saveTouringGrid(viewId) {
+  if (!canAdminEdit()) return;
+  const inputs = $$(`[data-tour-grid-input]`).filter((input) => input.closest(`#${viewId}`));
+  if (!inputs.length) {
+    toast("No saved rows to update yet.");
+    return;
+  }
+  const updates = new Map();
+  inputs.forEach((input) => {
+    const storeName = input.dataset.store;
+    const id = input.dataset.id;
+    const field = input.dataset.field;
+    const key = `${storeName}:${id}`;
+    if (!updates.has(key)) updates.set(key, { storeName, id, values: {} });
+    updates.get(key).values[field] = input.value;
+  });
+  for (const update of updates.values()) {
+    const existing = state[update.storeName]?.find((item) => item.id === update.id);
+    if (existing) await put(update.storeName, { ...existing, ...update.values });
+  }
+  state.touringGridEdit = { ...state.touringGridEdit, [viewId]: false };
+  await loadState();
+  setView(viewId);
+  toast("Touring grid saved.");
+}
+
 function renderTourAdvancing(stops) {
+  const editing = touringGridEditing("tourAdvancing");
+  touringGridToolbar("tourAdvancing");
   $("#tourAdvancingCount").textContent = `${stops.length} stops`;
   $("#tourAdvancingHead").innerHTML = `<tr><th>City / Venue</th><th>Dates</th><th>Advance Status</th><th>Missing Info</th><th>Owner</th><th>Rider</th></tr>`;
   $("#tourAdvancingTable").innerHTML = stops.map((stop) => `<tr>
-    <td><strong>${stop.source ? recordLink("touringStops", stop.id, stop.city) : escapeHtml(stop.city)}</strong><p>${escapeHtml(stop.venue)}</p></td>
-    <td>${escapeHtml(formatDate(stop.loadIn) || "Load-in TBD")}<p>${escapeHtml(formatDate(stop.showDate) || "Show TBD")} - ${escapeHtml(formatDate(stop.loadOut) || "Load-out TBD")}</p></td>
-    <td><span class="status-pill ${stop.status === "Ready" ? "" : "warn"}">${escapeHtml(stop.status)}</span><p>${escapeHtml(stop.priority)} priority</p></td>
-    <td>${stop.missing.length ? stop.missing.map((item) => `<span class="touring-chip">${escapeHtml(item)}</span>`).join("") : `<span class="status-pill">Complete</span>`}</td>
-    <td>${escapeHtml(stop.owner)}</td>
+    <td>${editing && stop.source ? `${touringGridInput("touringStops", stop.id, "city", stop.source.city || stop.city)}${touringGridInput("touringStops", stop.id, "venue", stop.source.venue || stop.venue)}` : `<strong>${stop.source ? recordLink("touringStops", stop.id, stop.city) : escapeHtml(stop.city)}</strong><p>${escapeHtml(stop.venue)}</p>`}</td>
+    <td>${editing && stop.source ? `${touringGridInput("touringStops", stop.id, "loadInDate", stop.source.loadInDate || "", "date")}${touringGridInput("touringStops", stop.id, "showDate", stop.source.showDate || "", "date")}${touringGridInput("touringStops", stop.id, "loadOutDate", stop.source.loadOutDate || "", "date")}` : `${escapeHtml(formatDate(stop.loadIn) || "Load-in TBD")}<p>${escapeHtml(formatDate(stop.showDate) || "Show TBD")} - ${escapeHtml(formatDate(stop.loadOut) || "Load-out TBD")}</p>`}</td>
+    <td>${editing && stop.source ? `${touringGridSelect("touringStops", stop.id, "status", stop.source.status || stop.status, ["Not Sent", "Sent", "Awaiting Response", "Partial Response", "Follow Up Required", "Confirmed", "Finalized"])}${touringGridInput("touringStops", stop.id, "priority", stop.source.priority || stop.priority)}` : `<span class="status-pill ${stop.status === "Ready" ? "" : "warn"}">${escapeHtml(stop.status)}</span><p>${escapeHtml(stop.priority)} priority</p>`}</td>
+    <td>${editing && stop.source ? touringGridTextarea("touringStops", stop.id, "missingInfo", stop.source.missingInfo || stop.missing.join(", ")) : (stop.missing.length ? stop.missing.map((item) => `<span class="touring-chip">${escapeHtml(item)}</span>`).join("") : `<span class="status-pill">Complete</span>`)}</td>
+    <td>${editing && stop.source ? touringGridInput("touringStops", stop.id, "owner", stop.source.owner || stop.owner) : escapeHtml(stop.owner)}</td>
     <td><strong>${escapeHtml(stop.documents)}</strong><p>City rider workspace</p>${stop.source ? actionButtons("touringStops", stop.id, "touringStopForm", "", canAdminEdit()) : ""}</td>
   </tr>`).join("");
   $("#cityRiderWorkspace").innerHTML = stops.slice(0, 4).map((stop) => `<article class="touring-card">
@@ -6683,25 +6747,29 @@ function renderTourAdvancing(stops) {
 }
 
 function renderTourCrewPersonnel(crew) {
+  const editing = touringGridEditing("tourCrewPersonnel");
+  touringGridToolbar("tourCrewPersonnel");
   $("#tourCrewCount").textContent = `${crew.length} people`;
   $("#tourCrewHead").innerHTML = `<tr><th>Name</th><th>Department</th><th>Contact</th><th>Info Form</th><th>Travel</th><th>One-Sheet</th></tr>`;
   $("#tourCrewTable").innerHTML = crew.map((person) => `<tr>
-    <td><strong>${person.source ? recordLink("touringCrew", person.id, person.name) : escapeHtml(person.name)}</strong><p>${escapeHtml(person.assignedStops?.map((stop) => stop.city).join(", ") || "Tour team")}</p>${person.source ? actionButtons("touringCrew", person.id, "touringCrewForm", "", canAdminEdit()) : ""}</td>
-    <td>${escapeHtml(person.department)}</td>
-    <td>${escapeHtml(person.phone)}<p>${escapeHtml(person.email)}</p></td>
-    <td><span class="status-pill ${person.formStatus === "Submitted" ? "" : "warn"}">${escapeHtml(person.formStatus)}</span></td>
+    <td>${editing && person.source ? touringGridInput("touringCrew", person.id, "name", person.source.name || person.name) : `<strong>${person.source ? recordLink("touringCrew", person.id, person.name) : escapeHtml(person.name)}</strong><p>${escapeHtml(person.assignedStops?.map((stop) => stop.city).join(", ") || "Tour team")}</p>`}${person.source && !editing ? actionButtons("touringCrew", person.id, "touringCrewForm", "", canAdminEdit()) : ""}</td>
+    <td>${editing && person.source ? `${touringGridInput("touringCrew", person.id, "department", person.source.department || person.department)}${touringGridInput("touringCrew", person.id, "title", person.source.title || person.title || "")}` : escapeHtml(person.department)}</td>
+    <td>${editing && person.source ? `${touringGridInput("touringCrew", person.id, "phone", person.source.phone || "", "tel")}${touringGridInput("touringCrew", person.id, "email", person.source.email || "", "email")}` : `${escapeHtml(person.phone)}<p>${escapeHtml(person.email)}</p>`}</td>
+    <td>${editing && person.source ? touringGridSelect("touringCrew", person.id, "formStatus", person.source.formStatus || person.formStatus, ["Needed", "Sent", "Submitted", "Needs Review"]) : `<span class="status-pill ${person.formStatus === "Submitted" ? "" : "warn"}">${escapeHtml(person.formStatus)}</span>`}</td>
     <td>${escapeHtml(person.travelStatus)}</td>
     <td>${escapeHtml(person.oneSheet)}</td>
   </tr>`).join("");
 }
 
 function renderTourTravel(travel) {
+  const editing = touringGridEditing("tourTravel");
+  touringGridToolbar("tourTravel");
   $("#tourTravelCount").textContent = `${travel.length} travelers`;
   $("#tourTravelHead").innerHTML = `<tr><th>Traveler</th><th>Flight</th><th>Hotel</th><th>Overall</th><th>Missing Info</th><th>Packet</th></tr>`;
   $("#tourTravelTable").innerHTML = travel.map((person) => `<tr>
-    <td><strong>${state.touringTravel.some((record) => record.id === person.id) ? recordLink("touringTravel", person.id, person.name) : escapeHtml(person.name)}</strong><p>${escapeHtml(person.email)}</p>${state.touringTravel.some((record) => record.id === person.id) ? actionButtons("touringTravel", person.id, "touringTravelForm", "", canAdminEdit()) : ""}</td>
-    <td>${escapeHtml(person.airline || "Not booked")}<p>${escapeHtml([person.depart, person.arrive].filter(Boolean).join(" to ") || "Route TBD")}</p></td>
-    <td>${escapeHtml(person.hotel || "Not booked")}<p>${escapeHtml([person.checkIn, person.checkOut].filter(Boolean).join(" - ") || "Dates TBD")}</p></td>
+    <td>${editing && state.touringTravel.some((record) => record.id === person.id) ? `${touringGridInput("touringTravel", person.id, "name", person.name)}${touringGridInput("touringTravel", person.id, "email", person.email, "email")}` : `<strong>${state.touringTravel.some((record) => record.id === person.id) ? recordLink("touringTravel", person.id, person.name) : escapeHtml(person.name)}</strong><p>${escapeHtml(person.email)}</p>`}${state.touringTravel.some((record) => record.id === person.id) && !editing ? actionButtons("touringTravel", person.id, "touringTravelForm", "", canAdminEdit()) : ""}</td>
+    <td>${editing && state.touringTravel.some((record) => record.id === person.id) ? `${touringGridInput("touringTravel", person.id, "flightDate", person.flightDate || "", "date")}${touringGridInput("touringTravel", person.id, "airline", person.airline || "")}${touringGridInput("touringTravel", person.id, "depart", person.depart || "")}${touringGridInput("touringTravel", person.id, "arrive", person.arrive || "")}${touringGridInput("touringTravel", person.id, "flightConfirmation", person.flightConfirmation || "")}` : `${escapeHtml(person.airline || "Not booked")}<p>${escapeHtml([person.depart, person.arrive].filter(Boolean).join(" to ") || "Route TBD")}</p>`}</td>
+    <td>${editing && state.touringTravel.some((record) => record.id === person.id) ? `${touringGridInput("touringTravel", person.id, "hotel", person.hotel || "")}${touringGridInput("touringTravel", person.id, "checkIn", person.checkIn || "", "date")}${touringGridInput("touringTravel", person.id, "checkOut", person.checkOut || "", "date")}${touringGridInput("touringTravel", person.id, "hotelConfirmation", person.hotelConfirmation || "")}` : `${escapeHtml(person.hotel || "Not booked")}<p>${escapeHtml([person.checkIn, person.checkOut].filter(Boolean).join(" - ") || "Dates TBD")}</p>`}</td>
     <td><span class="status-pill ${person.overall === "Ready" ? "" : "warn"}">${escapeHtml(person.overall)}</span></td>
     <td>${person.missing.map((item) => `<span class="touring-chip">${escapeHtml(item)}</span>`).join("")}</td>
     <td>${person.overall === "Ready" ? "Ready to generate" : "Waiting on info"}</td>
@@ -6709,6 +6777,8 @@ function renderTourTravel(travel) {
 }
 
 function renderTourDocuments(stops, crew, travel) {
+  const editing = touringGridEditing("tourDocuments");
+  touringGridToolbar("tourDocuments");
   const fallbackDocs = [
     ["Advance Riders", `${stops.filter((stop) => stop.documents === "Generated").length}/${stops.length} generated`, "City rider PDFs and version history."],
     ["Team One-Sheets", `${crew.filter((person) => person.oneSheet === "Ready").length}/${crew.length} ready`, "Individual tour team one-sheet packets."],
@@ -6720,7 +6790,13 @@ function renderTourDocuments(stops, crew, travel) {
   const docs = state.touringDocuments.length ? state.touringDocuments : fallbackDocs;
   $("#tourDocumentsCount").textContent = `${docs.length} document lanes`;
   $("#tourDocumentsList").innerHTML = state.touringDocuments.length
-    ? docs.map((doc) => `<article class="touring-card"><span class="suite-kicker">${escapeHtml(doc.status || "Draft")}</span><h4>${recordLink("touringDocuments", doc.id, doc.name || "Tour Document")}</h4><p>${escapeHtml(doc.notes || doc.type || "Saved touring document.")}</p>${actionButtons("touringDocuments", doc.id, "touringDocumentForm", "", canAdminEdit())}</article>`).join("")
+    ? `<div class="table-wrap premium-grid-wrap touring-document-grid"><table><thead><tr><th>Document</th><th>Type / Status</th><th>Link</th><th>Notes</th><th></th></tr></thead><tbody>${docs.map((doc) => `<tr>
+      <td>${editing ? touringGridInput("touringDocuments", doc.id, "name", doc.name || "Tour Document") : recordLink("touringDocuments", doc.id, doc.name || "Tour Document")}</td>
+      <td>${editing ? `${touringGridSelect("touringDocuments", doc.id, "type", doc.type || "Advance Rider", ["Advance Rider", "Team One-Sheet", "Hotel Manifest", "Flight Manifest", "Travel Itinerary", "Tour Book"])}${touringGridSelect("touringDocuments", doc.id, "status", doc.status || "Draft", ["Draft", "Ready", "Generated", "Sent"])}` : `<span class="suite-kicker">${escapeHtml(doc.type || "Document")}</span><p>${escapeHtml(doc.status || "Draft")}</p>`}</td>
+      <td>${editing ? touringGridInput("touringDocuments", doc.id, "link", doc.link || "", "url") : (doc.link ? `<a href="${escapeHtml(doc.link)}" target="_blank" rel="noopener">Open</a>` : "No link")}</td>
+      <td>${editing ? touringGridTextarea("touringDocuments", doc.id, "notes", doc.notes || "") : escapeHtml(doc.notes || "Saved touring document.")}</td>
+      <td>${!editing ? actionButtons("touringDocuments", doc.id, "touringDocumentForm", "", canAdminEdit()) : ""}</td>
+    </tr>`).join("")}</tbody></table></div>`
     : docs.map(([title, status, detail]) => `<article class="touring-card"><span class="suite-kicker">${escapeHtml(status)}</span><h4>${escapeHtml(title)}</h4><p>${escapeHtml(detail)}</p></article>`).join("");
 }
 
@@ -13397,6 +13473,8 @@ function bindEvents() {
     const manageClientPackagesButton = event.target.closest("[data-manage-client-packages]");
     const viewAccessLevelsButton = event.target.closest("[data-view-access-levels]");
     const closeAccessLevelsButton = event.target.closest("[data-close-access-levels]");
+    const touringGridButton = event.target.closest("[data-tour-grid]");
+    const touringGridSaveButton = event.target.closest("[data-tour-grid-save]");
     const connectSendbirdButton = event.target.closest("[data-connect-sendbird]");
     const openEventChannelButton = event.target.closest("[data-open-event-channel]");
     const messageThreadTypeButton = event.target.closest("[data-message-thread-type]");
@@ -13467,6 +13545,14 @@ function bindEvents() {
     }
     if (closeAccessLevelsButton) {
       closeAccessLevelsView();
+      return;
+    }
+    if (touringGridButton) {
+      toggleTouringGrid(touringGridButton.dataset.tourGrid);
+      return;
+    }
+    if (touringGridSaveButton) {
+      await saveTouringGrid(touringGridSaveButton.dataset.tourGridSave);
       return;
     }
     if (runnerResourceButton) {

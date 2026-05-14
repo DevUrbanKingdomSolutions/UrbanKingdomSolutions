@@ -10,7 +10,7 @@
     <title>Production Crew Database</title>
     <link rel="manifest" href="manifest.webmanifest">
     <link rel="icon" href="assets/logo/app-logo-admin.png" type="image/png">
-    <link rel="stylesheet" href="styles.css?v=V1.06.004-touring-profiles">
+    <link rel="stylesheet" href="styles.css?v=V1.06.005-touring-grid-edit">
   </head>
   <body>
     <div id="appLoadingOverlay" class="app-loading-overlay" aria-live="polite">
@@ -926,6 +926,8 @@
                 <h3>Tour Advancing</h3>
                 <div class="panel-tools">
                   <span id="tourAdvancingCount" class="muted"></span>
+                  <button class="tiny-button owner-action" data-tour-grid="tourAdvancing" type="button">Grid Edit</button>
+                  <button class="tiny-button owner-action" data-tour-grid-save="tourAdvancing" type="button" hidden>Save Grid</button>
                   <button class="tiny-button owner-action" data-open-form="touringStopForm" type="button">Add Tour Stop</button>
                 </div>
               </div>
@@ -954,6 +956,8 @@
                 <h3>Crew Personnel</h3>
                 <div class="panel-tools">
                   <span id="tourCrewCount" class="muted"></span>
+                  <button class="tiny-button owner-action" data-tour-grid="tourCrewPersonnel" type="button">Grid Edit</button>
+                  <button class="tiny-button owner-action" data-tour-grid-save="tourCrewPersonnel" type="button" hidden>Save Grid</button>
                   <button class="tiny-button owner-action" data-open-form="touringCrewForm" type="button">Add Team Member</button>
                 </div>
               </div>
@@ -975,6 +979,8 @@
                 <h3>Travel & Accommodations</h3>
                 <div class="panel-tools">
                   <span id="tourTravelCount" class="muted"></span>
+                  <button class="tiny-button owner-action" data-tour-grid="tourTravel" type="button">Grid Edit</button>
+                  <button class="tiny-button owner-action" data-tour-grid-save="tourTravel" type="button" hidden>Save Grid</button>
                   <button class="tiny-button owner-action" data-open-form="touringTravelForm" type="button">Add Travel</button>
                 </div>
               </div>
@@ -996,6 +1002,8 @@
                 <h3>Tour Documents</h3>
                 <div class="panel-tools">
                   <span id="tourDocumentsCount" class="muted"></span>
+                  <button class="tiny-button owner-action" data-tour-grid="tourDocuments" type="button">Grid Edit</button>
+                  <button class="tiny-button owner-action" data-tour-grid-save="tourDocuments" type="button" hidden>Save Grid</button>
                   <button class="tiny-button owner-action" data-open-form="touringDocumentForm" type="button">Add Document</button>
                 </div>
               </div>
@@ -1917,6 +1925,6 @@
     <div id="modalHost"></div>
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js?v=V1.06.004-touring-profiles"></script>
+    <script src="app.js?v=V1.06.005-touring-grid-edit"></script>
   </body>
 </html>
