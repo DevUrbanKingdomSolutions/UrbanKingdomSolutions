@@ -10,7 +10,7 @@
     <title>Production Crew Database</title>
     <link rel="manifest" href="manifest.webmanifest">
     <link rel="icon" href="assets/logo/app-logo-admin.png" type="image/png">
-    <link rel="stylesheet" href="styles.css?v=V1.07.005-awards-delivery">
+    <link rel="stylesheet" href="styles.css?v=V1.07.006-awards-credentials">
   </head>
   <body>
     <div id="appLoadingOverlay" class="app-loading-overlay" aria-live="polite">
@@ -1362,6 +1362,18 @@
               <option>Ready</option>
             </select>
           </label>
+          <div class="form-grid">
+            <label>Credential status
+              <select name="credentialStatus">
+                <option>Not Started</option>
+                <option>Requested</option>
+                <option>Approved</option>
+                <option>Issued</option>
+              </select>
+            </label>
+            <label>Credential zone<input name="credentialZone" placeholder="All Access, Backstage, Production Office"></label>
+          </div>
+          <label>Check-in / badge location<input name="checkInLocation" placeholder="Credential desk, production office, security gate"></label>
           <label>Notes<textarea name="notes" rows="3" placeholder="Credential, distro, or production notes"></textarea></label>
           <button class="primary-action" type="submit">Save Broadcast Staff</button>
         </form>
@@ -2183,6 +2195,6 @@
     <div id="modalHost"></div>
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js?v=V1.07.005-awards-delivery"></script>
+    <script src="app.js?v=V1.07.006-awards-credentials"></script>
   </body>
 </html>

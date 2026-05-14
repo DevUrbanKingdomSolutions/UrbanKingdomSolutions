@@ -38,9 +38,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.07.005",
-  title: "V1.07.005 update installed",
-  body: "Awards / Live Broadcast documents now track delivery status, distro date, and access scope for production distribution."
+  version: "V1.07.006",
+  title: "V1.07.006 update installed",
+  body: "Awards / Live Broadcast staffing now tracks credential status, access zone, and check-in location."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -6803,7 +6803,7 @@ const TOURING_COLUMNS = {
   tourDocuments: [["name", "Document"], ["type", "Type / Status"], ["link", "Link"], ["notes", "Notes"], ["actions", ""]],
   awardsDocuments: [["record", "Show / Record"], ["type", "Type"], ["status", "Version / Status"], ["owner", "Department / Lead"], ["distro", "Distro"], ["delivery", "Delivery"], ["notes", "Notes"], ["actions", ""]],
   awardsRundown: [["item", "Item"], ["date", "Date / Time"], ["status", "Status"], ["department", "Department"], ["notes", "Notes"], ["actions", ""]],
-  awardsStaffing: [["name", "Name"], ["department", "Department"], ["contact", "Contact"], ["status", "Status"], ["notes", "Notes"], ["actions", ""]]
+  awardsStaffing: [["name", "Name"], ["department", "Department"], ["contact", "Contact"], ["status", "Status"], ["credential", "Credential"], ["notes", "Notes"], ["actions", ""]]
 };
 
 function touringColumnValue(row = {}, key, viewId) {
@@ -6858,6 +6858,7 @@ function touringColumnValue(row = {}, key, viewId) {
     if (key === "department") return row.department || "";
     if (key === "contact") return `${row.phone || ""} ${row.email || ""}`;
     if (key === "status") return row.status || "";
+    if (key === "credential") return `${row.credentialStatus || ""} ${row.credentialZone || ""} ${row.checkInLocation || ""}`;
     if (key === "notes") return row.notes || "";
   }
   return "";
@@ -7130,6 +7131,9 @@ function awardsStaffRows() {
       phone: person.phone || "Missing",
       email: person.email || "Missing",
       status: person.status || "Needs Contact",
+      credentialStatus: person.credentialStatus || "Not Started",
+      credentialZone: person.credentialZone || "",
+      checkInLocation: person.checkInLocation || "",
       notes: person.notes || "",
       source: person
     }));
@@ -7143,13 +7147,16 @@ function awardsStaffRows() {
       phone: worker.phone || "Missing",
       email: worker.email || "Missing",
       status: worker.phone && worker.email ? "Ready" : "Needs Contact",
+      credentialStatus: "Not Started",
+      credentialZone: "",
+      checkInLocation: "",
       source: null
     }));
   }
   return [
-    { id: "awards-staff-demo-1", name: "Executive Producer", department: "Production", phone: "Pending", email: "Pending", status: "Needs Contact" },
-    { id: "awards-staff-demo-2", name: "Stage Manager", department: "Stage Management", phone: "Pending", email: "Pending", status: "Needs Contact" },
-    { id: "awards-staff-demo-3", name: "Mimeo Lead", department: "Production Office", phone: "Pending", email: "Pending", status: "Needs Contact" }
+    { id: "awards-staff-demo-1", name: "Executive Producer", department: "Production", phone: "Pending", email: "Pending", status: "Needs Contact", credentialStatus: "Not Started", credentialZone: "All Access", checkInLocation: "Production Office" },
+    { id: "awards-staff-demo-2", name: "Stage Manager", department: "Stage Management", phone: "Pending", email: "Pending", status: "Needs Contact", credentialStatus: "Not Started", credentialZone: "Backstage", checkInLocation: "Credential Desk" },
+    { id: "awards-staff-demo-3", name: "Mimeo Lead", department: "Production Office", phone: "Pending", email: "Pending", status: "Needs Contact", credentialStatus: "Not Started", credentialZone: "Production Office", checkInLocation: "Production Office" }
   ];
 }
 
@@ -7209,6 +7216,11 @@ function awardsAttentionRows(shows, documents, staffing, schedules) {
     ...staffing.filter((person) => person.status !== "Ready").slice(0, 4).map((person) => ({
       title: `${person.name} contact info needed`,
       detail: `${person.department || "Production"} - ${person.status || "Needs Review"}`,
+      view: "awardsStaffing"
+    })),
+    ...staffing.filter((person) => person.source && ["Confirmed", "Ready"].includes(person.status) && !["Approved", "Issued"].includes(person.credentialStatus)).slice(0, 4).map((person) => ({
+      title: `${person.name} credential needs review`,
+      detail: `${person.credentialStatus || "Not Started"} - ${person.credentialZone || "Zone TBD"}`,
       view: "awardsStaffing"
     }))
   ].slice(0, 8);
@@ -7306,6 +7318,7 @@ function renderAwardsStaffing(staffing) {
       <td>${editing && person.source ? `${touringGridInput("awardsStaff", person.id, "department", person.department || "")}${touringGridInput("awardsStaff", person.id, "title", person.title || "")}` : escapeHtml(person.department || "Production")}</td>
       <td>${editing && person.source ? `${touringGridInput("awardsStaff", person.id, "phone", person.phone || "", "tel")}${touringGridInput("awardsStaff", person.id, "email", person.email || "", "email")}` : `${escapeHtml(person.phone || "Phone missing")}<p>${escapeHtml(person.email || "Email missing")}</p>`}</td>
       <td>${editing && person.source ? touringGridSelect("awardsStaff", person.id, "status", person.status || "Needs Contact", ["Needs Contact", "Invited", "Confirmed", "Ready"]) : `<span class="status-pill ${person.status === "Ready" ? "" : "warn"}">${escapeHtml(person.status || "Needs Review")}</span>`}</td>
+      <td>${editing && person.source ? `${touringGridSelect("awardsStaff", person.id, "credentialStatus", person.credentialStatus || "Not Started", ["Not Started", "Requested", "Approved", "Issued"])}${touringGridInput("awardsStaff", person.id, "credentialZone", person.credentialZone || "")}${touringGridInput("awardsStaff", person.id, "checkInLocation", person.checkInLocation || "")}` : `${escapeHtml(person.credentialStatus || "Not Started")}<p>${escapeHtml([person.credentialZone, person.checkInLocation].filter(Boolean).join(" / ") || "Credential details TBD")}</p>`}</td>
       <td>${editing && person.source ? touringGridTextarea("awardsStaff", person.id, "notes", person.notes || "") : escapeHtml(person.notes || "Staff readiness record.")}</td>
       <td>${person.source && !editing ? actionButtons("awardsStaff", person.id, "awardsStaffForm", "", canAdminEdit()) : ""}</td>
     </tr>`).join("")}</tbody>
@@ -7374,6 +7387,11 @@ function openAwardsStaffProfile(record) {
       ["Department", record.department],
       ["Title / Role", record.title],
       ["Status", record.status]
+    ]],
+    ["Credentials", [
+      ["Credential Status", record.credentialStatus],
+      ["Access Zone", record.credentialZone],
+      ["Check-in Location", record.checkInLocation]
     ]],
     ["Contact", [
       ["Phone", record.phone],
