@@ -38,9 +38,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.07.018",
-  title: "V1.07.018 update installed",
-  body: "Awards / Live Broadcast now includes bulk operations for documents, rundowns, schedules, and staffing records."
+  version: "V1.07.019",
+  title: "V1.07.019 update installed",
+  body: "Awards / Live Broadcast dashboard readiness checks are now grouped into cleaner command, access, document, and people sections."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
