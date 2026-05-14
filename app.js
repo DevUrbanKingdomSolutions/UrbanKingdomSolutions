@@ -38,9 +38,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.07.020",
-  title: "V1.07.020 update installed",
-  body: "Awards / Live Broadcast access is now tightened for promoter and production views while keeping restricted broadcast records client-side."
+  version: "V1.07.021",
+  title: "V1.07.021 update installed",
+  body: "Awards / Live Broadcast readiness items now create clean in-app notifications for client-side action items."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -403,6 +403,7 @@ let state = {
   eventAccessLinks: [],
   touringGridEdit: {},
   awardsBulkSelection: {},
+  awardsAttentionNotificationSignature: "",
   touringSort: JSON.parse(localStorage.getItem("productionCrewTouringSort") || "{}"),
   touringColumnFilters: JSON.parse(localStorage.getItem("productionCrewTouringColumnFilters") || "{}"),
   search: "",
@@ -7181,6 +7182,7 @@ function renderAwardsSuite() {
   const talent = awardsTalentRows(documents, staffing, schedules);
   const packets = awardsPacketRows(shows, documents, staffing, schedules);
   const attention = awardsAttentionRows(shows, documents, staffing, schedules, packets, departments, distribution, access, showDay, contacts, compliance, versions, technical, talent);
+  ensureAwardsAttentionNotifications(attention).catch((error) => console.warn("Awards notification sync failed", error));
   renderAwardsDashboard(shows, documents, staffing, schedules, attention, packets, departments, distribution, access, showDay, contacts, compliance, versions, technical, talent);
   renderAwardsDocuments(shows, documents);
   renderAwardsRundown(documents, schedules);
@@ -7809,6 +7811,69 @@ function awardsAttentionRows(shows, documents, staffing, schedules, packets = []
   ].slice(0, 8);
 }
 
+function awardsAttentionNotificationId(item = {}) {
+  const key = `${item.title || ""}|${item.detail || ""}|${item.view || "awardsDashboard"}`;
+  return `awards-attention-${key.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 96) || "item"}`;
+}
+
+function awardsAttentionNotificationRecipients() {
+  const clientId = cloudClientId() || activeClientRecord()?.id || "";
+  const reps = state.clientReps.filter((rep) => {
+    if (clientId && rep.clientId !== clientId) return false;
+    const levels = ensureClientRepAccessLevels(rep.accessLevels, "CLIENT_REP");
+    return levels.includes("CLIENT_ADMIN") || levels.includes("CLIENT_REP_LEAD");
+  });
+  const recipients = reps
+    .map((rep) => sendbirdUserIdForProfile({ authUserId: rep.authUserId || rep.id || rep.email }))
+    .filter(Boolean);
+  const current = sendbirdUserIdForProfile({ authUserId: authState.user?.id || activeClientRepRecord()?.id || authState.user?.email });
+  return Array.from(new Set(recipients.length ? recipients : [current].filter(Boolean)));
+}
+
+async function ensureAwardsAttentionNotifications(attention = []) {
+  if (!authState.session || !canEditAwardsRecords()) return;
+  const actionable = attention.slice(0, 6);
+  const signature = actionable.map((item) => `${item.title}|${item.detail}|${item.view}`).join("::");
+  const hasUnreadAwardsNotices = state.appNotifications.some((notification) => notification.type === "awards" && !notification.readAt);
+  if (state.awardsAttentionNotificationSignature === signature && !hasUnreadAwardsNotices) return;
+  state.awardsAttentionNotificationSignature = signature;
+  const recipientIds = awardsAttentionNotificationRecipients();
+  if (!recipientIds.length) return;
+  const activeIds = new Set(actionable.map(awardsAttentionNotificationId));
+  const clientId = cloudClientId() || activeClientRecord()?.id || "";
+  let changed = false;
+  for (const item of actionable) {
+    const id = awardsAttentionNotificationId(item);
+    const existing = state.appNotifications.find((notification) => notification.id === id);
+    const next = {
+      ...(existing || {}),
+      id,
+      title: item.title,
+      body: item.detail || "Awards / Live Broadcast item needs review.",
+      type: "awards",
+      viewId: item.view || "awardsDashboard",
+      recordId: item.recordId || "",
+      recipientIds,
+      clientId
+    };
+    if (existing && existing.title === next.title && existing.body === next.body && existing.viewId === next.viewId) continue;
+    await put("appNotifications", next);
+    syncAppNotificationToSupabase(next).catch((error) => console.warn("Awards notification cloud sync failed", error));
+    state.appNotifications = [next, ...state.appNotifications.filter((notification) => notification.id !== id)]
+      .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+    changed = true;
+  }
+  const now = new Date().toISOString();
+  for (const notification of state.appNotifications.filter((item) => item.type === "awards" && !activeIds.has(item.id) && !item.readAt)) {
+    const updated = { ...notification, readAt: now };
+    await put("appNotifications", updated);
+    syncAppNotificationToSupabase(updated).catch((error) => console.warn("Awards notification cleanup sync failed", error));
+    state.appNotifications = state.appNotifications.map((item) => item.id === updated.id ? updated : item);
+    changed = true;
+  }
+  if (changed) renderNotificationSurfaces();
+}
+
 function renderAwardsDashboard(shows, documents, staffing, schedules, attention, packets = [], departments = [], distribution = [], access = [], showDay = [], contacts = [], compliance = [], versions = [], technical = [], talent = []) {
   const client = activeClientRecord();
   const enabled = awardsSuiteEnabled(client);
@@ -8116,7 +8181,8 @@ function renderAwardsSettings() {
     ["Technical Packet Readiness", "Stage plots, venue plots, broadcast/camera notes, and power or technical packets are checked as live production lanes."],
     ["Talent / VIP Readiness", "Talent calls, presenter scripts, VIP-facing access, credentials, and contact paths are checked as show-critical lanes."],
     ["Bulk Operations", "Awards teams can select visible rows and update document delivery, current versions, schedule locks, staff status, and credentials in groups."],
-    ["Access Boundaries", "Client-side roles manage restricted broadcast records; promoter and production views see scoped, non-restricted show records."]
+    ["Access Boundaries", "Client-side roles manage restricted broadcast records; promoter and production views see scoped, non-restricted show records."],
+    ["Notification Routing", "Open Awards readiness items create stable client-side notifications and clear themselves when the item is resolved."]
   ].map(([title, detail]) => `<article class="touring-card"><h4>${escapeHtml(title)}</h4><p>${escapeHtml(detail)}</p></article>`).join("");
 }
 
