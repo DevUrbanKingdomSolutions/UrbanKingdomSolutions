@@ -1,5 +1,5 @@
 {
-  "version": "V1.07.009",
-  "title": "V1.07.009 update installed",
-  "body": "Awards / Live Broadcast dashboard now includes department readiness for documents, distro, staffing, credentials, and schedule."
+  "version": "V1.07.010",
+  "title": "V1.07.010 update installed",
+  "body": "Awards / Live Broadcast dashboard now includes distribution readiness by distro group, delivery status, and restricted access review."
 }

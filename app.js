@@ -38,9 +38,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.07.009",
-  title: "V1.07.009 update installed",
-  body: "Awards / Live Broadcast dashboard now includes department readiness for documents, distro, staffing, credentials, and schedule."
+  version: "V1.07.010",
+  title: "V1.07.010 update installed",
+  body: "Awards / Live Broadcast dashboard now includes distribution readiness by distro group, delivery status, and restricted access review."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -7015,9 +7015,10 @@ function renderAwardsSuite() {
   const staffing = awardsStaffRows();
   const schedules = awardsScheduleRows(shows);
   const departments = awardsDepartmentRows(documents, staffing, schedules);
+  const distribution = awardsDistributionRows(documents);
   const packets = awardsPacketRows(shows, documents, staffing, schedules);
-  const attention = awardsAttentionRows(shows, documents, staffing, schedules, packets, departments);
-  renderAwardsDashboard(shows, documents, staffing, schedules, attention, packets, departments);
+  const attention = awardsAttentionRows(shows, documents, staffing, schedules, packets, departments, distribution);
+  renderAwardsDashboard(shows, documents, staffing, schedules, attention, packets, departments, distribution);
   renderAwardsDocuments(shows, documents);
   renderAwardsRundown(documents, schedules);
   renderAwardsStaffing(staffing);
@@ -7225,6 +7226,36 @@ function awardsDepartmentRows(documents, staffing, schedules) {
   });
 }
 
+function awardsDistributionRows(documents) {
+  const groupNames = new Set(documents.map((doc) => doc.distributionGroup || "Production").filter(Boolean));
+  if (!groupNames.size) {
+    ["Production", "Production Office", "Mimeo", "Department Heads"].forEach((name) => groupNames.add(name));
+  }
+  return [...groupNames].sort((a, b) => a.localeCompare(b)).map((name) => {
+    const groupDocs = documents.filter((doc) => (doc.distributionGroup || "Production") === name);
+    const sentDocs = groupDocs.filter((doc) => ["Distributed", "Ready to Send"].includes(doc.deliveryStatus) || ["Distributed", "Final", "Template Ready"].includes(doc.status));
+    const restrictedDocs = groupDocs.filter((doc) => doc.restrictedAccess === "yes");
+    const restrictedReady = !restrictedDocs.length || restrictedDocs.every((doc) => ["Restricted", "Public / Redacted"].includes(doc.accessScope));
+    const datesReady = sentDocs.every((doc) => doc.deliveryStatus !== "Distributed" || doc.distributionDate || !doc.source);
+    const deliveryReady = groupDocs.length > 0 && sentDocs.length === groupDocs.length;
+    const checks = [deliveryReady, restrictedReady, datesReady];
+    const readyCount = checks.filter(Boolean).length;
+    return {
+      name,
+      status: readyCount === checks.length ? "Ready" : readyCount >= 2 ? "Pending" : "Needs Work",
+      readyCount,
+      totalCount: checks.length,
+      docCount: groupDocs.length,
+      sentCount: sentDocs.length,
+      restrictedCount: restrictedDocs.length,
+      deliveryReady,
+      restrictedReady,
+      datesReady,
+      pendingDocs: groupDocs.filter((doc) => !sentDocs.includes(doc)).map((doc) => doc.name || doc.type).slice(0, 3)
+    };
+  });
+}
+
 function awardsPacketRows(shows, documents, staffing, schedules) {
   return shows.map((show) => {
     const showName = normalizedMatchValue(show.name || "");
@@ -7271,7 +7302,7 @@ function awardsPacketRows(shows, documents, staffing, schedules) {
   });
 }
 
-function awardsAttentionRows(shows, documents, staffing, schedules, packets = [], departments = []) {
+function awardsAttentionRows(shows, documents, staffing, schedules, packets = [], departments = [], distribution = []) {
   return [
     ...shows.filter((show) => !show.showDate || !show.venue || show.venue === "Venue TBD").map((show) => ({
       title: `${show.name} show details needed`,
@@ -7323,6 +7354,11 @@ function awardsAttentionRows(shows, documents, staffing, schedules, packets = []
       detail: `${department.readyCount}/${department.totalCount} checks complete across docs, distro, staffing, credentials, and schedule.`,
       view: "awardsDashboard"
     })),
+    ...distribution.filter((group) => group.status !== "Ready").slice(0, 4).map((group) => ({
+      title: `${group.name} distro needs review`,
+      detail: `${group.sentCount}/${group.docCount} documents ready to send or distributed.`,
+      view: "awardsDashboard"
+    })),
     ...staffing.filter((person) => person.status !== "Ready").slice(0, 4).map((person) => ({
       title: `${person.name} contact info needed`,
       detail: `${person.department || "Production"} - ${person.status || "Needs Review"}`,
@@ -7336,7 +7372,7 @@ function awardsAttentionRows(shows, documents, staffing, schedules, packets = []
   ].slice(0, 8);
 }
 
-function renderAwardsDashboard(shows, documents, staffing, schedules, attention, packets = [], departments = []) {
+function renderAwardsDashboard(shows, documents, staffing, schedules, attention, packets = [], departments = [], distribution = []) {
   const client = activeClientRecord();
   const enabled = awardsSuiteEnabled(client);
   $("#awardsHeroTitle").textContent = client?.name ? `${client.name} Broadcast` : "Broadcast Operations";
@@ -7399,6 +7435,23 @@ function renderAwardsDashboard(shows, documents, staffing, schedules, attention,
       <p>${escapeHtml(`${department.docCount} docs / ${department.staffCount} staff / ${department.scheduleCount} schedule items`)}</p>
     </article>`).join("")
     : `<div class="compact-item empty"><strong>No departments yet</strong><p>Add documents, staff, or schedule items to build department readiness.</p></div>`;
+  const readyDistribution = distribution.filter((group) => group.status === "Ready").length;
+  $("#awardsDistributionCount").textContent = `${readyDistribution}/${distribution.length} ready`;
+  $("#awardsDistributionList").innerHTML = distribution.length
+    ? distribution.map((group) => `<article class="touring-card">
+      <span class="suite-kicker">${escapeHtml(group.status)}</span>
+      <h4>${escapeHtml(group.name)}</h4>
+      <p>${escapeHtml(`${group.sentCount}/${group.docCount} documents ready or distributed`)}</p>
+      <div class="touring-card-sections">
+        ${[
+          ["Delivery", group.deliveryReady],
+          ["Restricted", group.restrictedReady],
+          ["Distro Date", group.datesReady]
+        ].map(([label, ready]) => `<span class="${ready ? "is-ready" : ""}">${escapeHtml(label)}</span>`).join("")}
+      </div>
+      <p>${group.pendingDocs.length ? `Pending: ${escapeHtml(group.pendingDocs.join(", "))}` : `Restricted docs: ${escapeHtml(group.restrictedCount)}`}</p>
+    </article>`).join("")
+    : `<div class="compact-item empty"><strong>No distro groups yet</strong><p>Add broadcast documents to track distribution readiness.</p></div>`;
 }
 
 function renderAwardsDocuments(shows, documents) {
@@ -7483,6 +7536,7 @@ function renderAwardsSettings() {
     ["Distro Rules", "Future rules can decide who receives mimeo, staff lists, plots, scripts, or redacted views."],
     ["Sensitive Access", "Credentials, start paperwork, payroll details, and restricted broadcast documents need tight access controls."],
     ["Department Readiness", "Stage Intelligence checks each department across documents, distro, staffing, credentials, and schedule."],
+    ["Distribution Readiness", "Distro groups can be checked for delivery status, sent dates, and restricted/redacted access paths."],
     ["Bulk Editing", "Awards teams will need spreadsheet-fast updates for staff lists, schedules, document statuses, and show grids."]
   ].map(([title, detail]) => `<article class="touring-card"><h4>${escapeHtml(title)}</h4><p>${escapeHtml(detail)}</p></article>`).join("");
 }
