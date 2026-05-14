@@ -38,9 +38,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.06.010",
-  title: "V1.06.010 update installed",
-  body: "Touring Office now has deeper Stage Intelligence readiness views for city riders, crew personnel, travel packets, and document exports."
+  version: "V1.06.011",
+  title: "V1.06.011 update installed",
+  body: "Office Suite access now controls which Touring and Awards suite pages appear for each client account."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -648,6 +648,8 @@ const CLIENT_PACKAGE_DEFINITIONS = [
 ];
 const TOURING_SUITE_ID = "TOUR_DATA_SERVICES";
 const AWARDS_SUITE_ID = "AWARDS_SHOWS";
+const TOURING_SUITE_VIEWS = ["touringDashboard", "tourAdvancing", "tourCrewPersonnel", "tourTravel", "tourDocuments", "tourSettings"];
+const AWARDS_SUITE_VIEWS = ["awardsDashboard", "awardsDocuments", "awardsRundown", "awardsStaffing", "awardsSettings"];
 
 const SMTP_PROVIDER_SETTINGS = {
   google: {
@@ -1527,6 +1529,21 @@ function touringSuiteEnabled(client = activeClientRecord()) {
 
 function awardsSuiteEnabled(client = activeClientRecord()) {
   return clientHasOfficeSuite(AWARDS_SUITE_ID, client);
+}
+
+function suiteIdForView(viewId) {
+  if (TOURING_SUITE_VIEWS.includes(viewId)) return TOURING_SUITE_ID;
+  if (AWARDS_SUITE_VIEWS.includes(viewId)) return AWARDS_SUITE_ID;
+  return "";
+}
+
+function officeSuiteEnabledForView(viewId, client = activeClientRecord()) {
+  const suiteId = suiteIdForView(viewId);
+  return !suiteId || clientHasOfficeSuite(suiteId, client);
+}
+
+function filterOfficeSuiteViews(views = [], client = activeClientRecord()) {
+  return views.filter((view) => officeSuiteEnabledForView(view, client));
 }
 
 function officeSuiteLabel(id, client = activeClientRecord()) {
@@ -3058,10 +3075,11 @@ function hasAssignedProfilePermission(predicate) {
 }
 
 function assignedViews() {
-  return Array.from(new Set(assignedAccessProfiles().flatMap((item) => item.profile.views)));
+  return Array.from(new Set(assignedAccessProfiles().flatMap((item) => filterOfficeSuiteViews(item.profile.views))));
 }
 
 function accessRoleForView(viewId) {
+  if (!officeSuiteEnabledForView(viewId)) return "";
   if (currentProfile().views.includes(viewId)) return state.accessRole;
   return assignedAccessProfiles().find((item) => item.profile.views.includes(viewId))?.role || "";
 }
@@ -12051,7 +12069,7 @@ function combinedNavGroups() {
   assigned.forEach(({ role, profile }) => {
     const roleGroups = NAV_GROUPS[role] || NAV_GROUPS[profile.effectiveRole] || [];
     roleGroups.forEach((group) => {
-      const items = group.items.filter(([view]) => profile.views.includes(view) && !seenViews.has(view));
+      const items = group.items.filter(([view]) => profile.views.includes(view) && officeSuiteEnabledForView(view) && !seenViews.has(view));
       if (!items.length) return;
       items.forEach(([view]) => seenViews.add(view));
       const label = group.label || "";
