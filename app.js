@@ -38,9 +38,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.07.014",
-  title: "V1.07.014 update installed",
-  body: "Awards / Live Broadcast dashboard now includes start paperwork readiness for onboarding, safety, and restricted compliance documents."
+  version: "V1.07.015",
+  title: "V1.07.015 update installed",
+  body: "Awards / Live Broadcast dashboard now includes rundown version control for scripts, rundowns, quickies, schedules, and plots."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -7020,9 +7020,10 @@ function renderAwardsSuite() {
   const showDay = awardsShowDayRows(shows, schedules);
   const contacts = awardsContactRows(staffing);
   const compliance = awardsComplianceRows(documents);
+  const versions = awardsVersionRows(documents);
   const packets = awardsPacketRows(shows, documents, staffing, schedules);
-  const attention = awardsAttentionRows(shows, documents, staffing, schedules, packets, departments, distribution, access, showDay, contacts, compliance);
-  renderAwardsDashboard(shows, documents, staffing, schedules, attention, packets, departments, distribution, access, showDay, contacts, compliance);
+  const attention = awardsAttentionRows(shows, documents, staffing, schedules, packets, departments, distribution, access, showDay, contacts, compliance, versions);
+  renderAwardsDashboard(shows, documents, staffing, schedules, attention, packets, departments, distribution, access, showDay, contacts, compliance, versions);
   renderAwardsDocuments(shows, documents);
   renderAwardsRundown(documents, schedules);
   renderAwardsStaffing(staffing);
@@ -7392,6 +7393,34 @@ function awardsComplianceRows(documents) {
   });
 }
 
+function awardsVersionRows(documents) {
+  const versionTypes = ["Rundown", "Script", "Quickie", "Schedule", "Plot"];
+  return versionTypes.map((type) => {
+    const typeDocs = documents.filter((doc) => normalizedMatchValue(doc.type || doc.name || "").includes(normalizedMatchValue(type)));
+    const currentDocs = typeDocs.filter((doc) => doc.currentVersion === "yes" || ["Final", "Template Ready"].includes(doc.status));
+    const approvalReady = typeDocs.length > 0 && typeDocs.every((doc) => ["Ready", "Distributed", "Final", "Template Ready"].includes(doc.status));
+    const distroReady = typeDocs.length > 0 && typeDocs.every((doc) => ["Ready to Send", "Distributed"].includes(doc.deliveryStatus) || ["Distributed", "Final", "Template Ready"].includes(doc.status));
+    const accessReady = typeDocs.every((doc) => doc.restrictedAccess !== "yes" || ["Restricted", "Public / Redacted"].includes(doc.accessScope));
+    const currentReady = typeDocs.length > 0 && currentDocs.length > 0;
+    const checks = [typeDocs.length > 0, currentReady, approvalReady, distroReady, accessReady];
+    const readyCount = checks.filter(Boolean).length;
+    return {
+      type,
+      status: readyCount === checks.length ? "Ready" : readyCount >= 3 ? "Close" : "Needs Work",
+      readyCount,
+      totalCount: checks.length,
+      docCount: typeDocs.length,
+      currentCount: currentDocs.length,
+      hasDocs: typeDocs.length > 0,
+      currentReady,
+      approvalReady,
+      distroReady,
+      accessReady,
+      examples: typeDocs.map((doc) => [doc.name || doc.type, doc.versionLabel].filter(Boolean).join(" ")).slice(0, 3)
+    };
+  });
+}
+
 function awardsPacketRows(shows, documents, staffing, schedules) {
   return shows.map((show) => {
     const showName = normalizedMatchValue(show.name || "");
@@ -7438,7 +7467,7 @@ function awardsPacketRows(shows, documents, staffing, schedules) {
   });
 }
 
-function awardsAttentionRows(shows, documents, staffing, schedules, packets = [], departments = [], distribution = [], access = [], showDay = [], contacts = [], compliance = []) {
+function awardsAttentionRows(shows, documents, staffing, schedules, packets = [], departments = [], distribution = [], access = [], showDay = [], contacts = [], compliance = [], versions = []) {
   return [
     ...shows.filter((show) => !show.showDate || !show.venue || show.venue === "Venue TBD").map((show) => ({
       title: `${show.name} show details needed`,
@@ -7515,6 +7544,11 @@ function awardsAttentionRows(shows, documents, staffing, schedules, packets = []
       detail: `${lane.readyCount}/${lane.totalCount} compliance checks complete.`,
       view: "awardsDocuments"
     })),
+    ...versions.filter((lane) => lane.status !== "Ready").slice(0, 3).map((lane) => ({
+      title: `${lane.type} version control`,
+      detail: `${lane.readyCount}/${lane.totalCount} version checks complete.`,
+      view: "awardsRundown"
+    })),
     ...staffing.filter((person) => person.status !== "Ready").slice(0, 4).map((person) => ({
       title: `${person.name} contact info needed`,
       detail: `${person.department || "Production"} - ${person.status || "Needs Review"}`,
@@ -7528,7 +7562,7 @@ function awardsAttentionRows(shows, documents, staffing, schedules, packets = []
   ].slice(0, 8);
 }
 
-function renderAwardsDashboard(shows, documents, staffing, schedules, attention, packets = [], departments = [], distribution = [], access = [], showDay = [], contacts = [], compliance = []) {
+function renderAwardsDashboard(shows, documents, staffing, schedules, attention, packets = [], departments = [], distribution = [], access = [], showDay = [], contacts = [], compliance = [], versions = []) {
   const client = activeClientRecord();
   const enabled = awardsSuiteEnabled(client);
   $("#awardsHeroTitle").textContent = client?.name ? `${client.name} Broadcast` : "Broadcast Operations";
@@ -7682,6 +7716,25 @@ function renderAwardsDashboard(shows, documents, staffing, schedules, attention,
       <p>${lane.examples.length ? `Documents: ${escapeHtml(lane.examples.join(", "))}` : "No documents in this lane yet."}</p>
     </article>`).join("")
     : `<div class="compact-item empty"><strong>No compliance lanes yet</strong><p>Add start paperwork and safety documents to track readiness.</p></div>`;
+  const readyVersions = versions.filter((lane) => lane.status === "Ready").length;
+  $("#awardsVersionCount").textContent = `${readyVersions}/${versions.length} ready`;
+  $("#awardsVersionList").innerHTML = versions.length
+    ? versions.map((lane) => `<article class="touring-card">
+      <span class="suite-kicker">${escapeHtml(lane.status)}</span>
+      <h4>${escapeHtml(lane.type)}</h4>
+      <p>${escapeHtml(`${lane.currentCount}/${lane.docCount} current documents`)}</p>
+      <div class="touring-card-sections">
+        ${[
+          ["Docs", lane.hasDocs],
+          ["Current", lane.currentReady],
+          ["Approved", lane.approvalReady],
+          ["Distro", lane.distroReady],
+          ["Access", lane.accessReady]
+        ].map(([label, ready]) => `<span class="${ready ? "is-ready" : ""}">${escapeHtml(label)}</span>`).join("")}
+      </div>
+      <p>${lane.examples.length ? `Versions: ${escapeHtml(lane.examples.join(", "))}` : "No documents in this lane yet."}</p>
+    </article>`).join("")
+    : `<div class="compact-item empty"><strong>No version lanes yet</strong><p>Add rundowns, scripts, schedules, quickies, and plots to track versions.</p></div>`;
 }
 
 function renderAwardsDocuments(shows, documents) {
@@ -7771,6 +7824,7 @@ function renderAwardsSettings() {
     ["Show-Day Readiness", "Live-day checks track timing, locations, owners, final schedule status, and locked show calls."],
     ["Production Office Contacts", "Key contacts are checked for phone, email, credential zone, check-in location, and confirmed status."],
     ["Start Paperwork Readiness", "Start paperwork, safety, and restricted onboarding documents are checked for readiness and delivery."],
+    ["Rundown Version Control", "Rundowns, scripts, quickies, schedules, and plots are checked for current, approved, distributed, and access-ready versions."],
     ["Bulk Editing", "Awards teams will need spreadsheet-fast updates for staff lists, schedules, document statuses, and show grids."]
   ].map(([title, detail]) => `<article class="touring-card"><h4>${escapeHtml(title)}</h4><p>${escapeHtml(detail)}</p></article>`).join("");
 }
