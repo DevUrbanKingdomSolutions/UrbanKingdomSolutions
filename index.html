@@ -10,7 +10,7 @@
     <title>Production Crew Database</title>
     <link rel="manifest" href="manifest.webmanifest">
     <link rel="icon" href="assets/logo/app-logo-admin.png" type="image/png">
-    <link rel="stylesheet" href="styles.css?v=V1.05.034-clock-timezone">
+    <link rel="stylesheet" href="styles.css?v=V1.06.001-touring-suite">
   </head>
   <body>
     <div id="appLoadingOverlay" class="app-loading-overlay" aria-live="polite">
@@ -496,7 +496,7 @@
               <label>Office suites
                 <div class="checkbox-grid package-grid" data-package-options data-checkbox-group data-name="packageLayouts"></div>
               </label>
-              <p class="form-note">Planned office suites are visible here for roadmap clarity, but stay disabled until their pages, data rules, and security model exist.</p>
+              <p class="form-note">Touring Office Suite can now be enabled for client accounts. Remaining planned suites stay disabled until their pages, data rules, and security model exist.</p>
               <button class="primary-action" type="submit">Save Office Suites</button>
             </form>
             <form id="accessLevelForm" class="panel form-panel system-form">
@@ -885,6 +885,120 @@
                   <p>Email template layouts will be built here next.</p>
                 </div>
               </div>
+            </section>
+          </div>
+        </section>
+
+        <section id="touringDashboard" class="view">
+          <div class="stack-layout touring-suite">
+            <section class="touring-hero">
+              <div>
+                <p class="suite-kicker">Touring Office Suite</p>
+                <h3 id="touringHeroTitle">Tour Operations</h3>
+                <p id="touringHeroCopy">Build the tour spine first: stops, advancing, crew personnel, travel, and generated documents.</p>
+              </div>
+              <div id="touringHeroStats" class="touring-stat-row"></div>
+            </section>
+            <section class="touring-grid-two">
+              <article class="panel touring-panel">
+                <div class="panel-heading">
+                  <h3>Needs Attention</h3>
+                  <span id="touringAttentionCount" class="muted"></span>
+                </div>
+                <div id="touringAttentionList" class="compact-list"></div>
+              </article>
+              <article class="panel touring-panel">
+                <div class="panel-heading">
+                  <h3>Suite Flow</h3>
+                  <span class="muted">First pass</span>
+                </div>
+                <div id="touringFlowList" class="touring-flow-list"></div>
+              </article>
+            </section>
+          </div>
+        </section>
+
+        <section id="tourAdvancing" class="view">
+          <div class="stack-layout touring-suite">
+            <section class="panel touring-panel table-panel">
+              <div class="panel-heading">
+                <h3>Tour Advancing</h3>
+                <span id="tourAdvancingCount" class="muted"></span>
+              </div>
+              <div class="touring-section-note">Tour stops, advance tracker, and city rider workspaces live here. Each city is treated like its own sub-database under the tour.</div>
+              <div class="table-wrap premium-grid-wrap">
+                <table>
+                  <thead id="tourAdvancingHead"></thead>
+                  <tbody id="tourAdvancingTable"></tbody>
+                </table>
+              </div>
+            </section>
+            <section class="panel touring-panel">
+              <div class="panel-heading">
+                <h3>City Rider Workspace</h3>
+                <span class="muted">Tour defaults flow into each city</span>
+              </div>
+              <div id="cityRiderWorkspace" class="touring-card-grid"></div>
+            </section>
+          </div>
+        </section>
+
+        <section id="tourCrewPersonnel" class="view">
+          <div class="stack-layout touring-suite">
+            <section class="panel touring-panel table-panel">
+              <div class="panel-heading">
+                <h3>Crew Personnel</h3>
+                <span id="tourCrewCount" class="muted"></span>
+              </div>
+              <div class="touring-section-note">Team members, team info forms, one-sheets, and personnel readiness are nested here.</div>
+              <div class="table-wrap premium-grid-wrap">
+                <table>
+                  <thead id="tourCrewHead"></thead>
+                  <tbody id="tourCrewTable"></tbody>
+                </table>
+              </div>
+            </section>
+          </div>
+        </section>
+
+        <section id="tourTravel" class="view">
+          <div class="stack-layout touring-suite">
+            <section class="panel touring-panel table-panel">
+              <div class="panel-heading">
+                <h3>Travel & Accommodations</h3>
+                <span id="tourTravelCount" class="muted"></span>
+              </div>
+              <div class="touring-section-note">Hotel options, flights, hotel confirmations, master itinerary, and travel packet status are connected to the team member record.</div>
+              <div class="table-wrap premium-grid-wrap">
+                <table>
+                  <thead id="tourTravelHead"></thead>
+                  <tbody id="tourTravelTable"></tbody>
+                </table>
+              </div>
+            </section>
+          </div>
+        </section>
+
+        <section id="tourDocuments" class="view">
+          <div class="stack-layout touring-suite">
+            <section class="panel touring-panel">
+              <div class="panel-heading">
+                <h3>Tour Documents</h3>
+                <span id="tourDocumentsCount" class="muted"></span>
+              </div>
+              <div id="tourDocumentsList" class="touring-card-grid"></div>
+            </section>
+          </div>
+        </section>
+
+        <section id="tourSettings" class="view">
+          <div class="stack-layout touring-suite">
+            <section class="panel touring-panel">
+              <div class="panel-heading">
+                <h3>Touring Settings</h3>
+                <span class="muted">Defaults, forms, permissions</span>
+              </div>
+              <div id="tourSettingsList" class="touring-card-grid"></div>
             </section>
           </div>
         </section>
@@ -1681,6 +1795,6 @@
     <div id="modalHost"></div>
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js?v=V1.05.034-clock-timezone"></script>
+    <script src="app.js?v=V1.06.001-touring-suite"></script>
   </body>
 </html>

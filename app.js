@@ -38,9 +38,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.05.034",
-  title: "V1.05.034 update installed",
-  body: "Added the device timezone to the live mobile Time Clock timestamp."
+  version: "V1.06.001",
+  title: "V1.06.001 update installed",
+  body: "Opened the Touring Office Suite first pass with tour advancing, crew personnel, travel, documents, and settings workspaces."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -146,7 +146,7 @@ const ACCESS_PROFILES = {
   CLIENT_ADMIN: {
     label: "CLIENT ADMIN",
     baseRole: "CLIENT",
-    views: ["dashboard", "clientCompanyProfile", "clientProfile", "workers", "promoters", "venues", "events", "eventDocuments", "emailTemplates", "productionBoard", "staffingAssignments", "staffingSchedule", "timecards", "vehicles", "reports", "payroll", "directory", "runner", "messages", "dataTools", "mobileApp"],
+    views: ["dashboard", "clientCompanyProfile", "clientProfile", "workers", "promoters", "venues", "events", "eventDocuments", "emailTemplates", "touringDashboard", "tourAdvancing", "tourCrewPersonnel", "tourTravel", "tourDocuments", "tourSettings", "productionBoard", "staffingAssignments", "staffingSchedule", "timecards", "vehicles", "reports", "payroll", "directory", "runner", "messages", "dataTools", "mobileApp"],
     canAdminEdit: true,
     canOwnerEdit: true,
     canVenueEdit: true,
@@ -158,7 +158,7 @@ const ACCESS_PROFILES = {
   CLIENT_REP: {
     label: "CLIENT REP",
     baseRole: "CLIENT",
-    views: ["dashboard", "clientProfile", "promoters", "events", "productionBoard", "staffingAssignments", "staffingSchedule", "vehicles", "reports", "directory", "runner", "messages", "dataTools", "mobileApp"],
+    views: ["dashboard", "clientProfile", "promoters", "events", "touringDashboard", "tourAdvancing", "tourCrewPersonnel", "tourTravel", "tourDocuments", "productionBoard", "staffingAssignments", "staffingSchedule", "vehicles", "reports", "directory", "runner", "messages", "dataTools", "mobileApp"],
     canAdminEdit: true,
     canOwnerEdit: true,
     canVenueEdit: false,
@@ -170,7 +170,7 @@ const ACCESS_PROFILES = {
   CLIENT_REP_LEAD: {
     label: "CLIENT REP LEAD",
     baseRole: "CLIENT",
-    views: ["dashboard", "clientProfile", "workers", "promoters", "venues", "events", "eventDocuments", "emailTemplates", "productionBoard", "staffingAssignments", "staffingSchedule", "vehicles", "reports", "directory", "runner", "messages", "dataTools", "mobileApp"],
+    views: ["dashboard", "clientProfile", "workers", "promoters", "venues", "events", "eventDocuments", "emailTemplates", "touringDashboard", "tourAdvancing", "tourCrewPersonnel", "tourTravel", "tourDocuments", "tourSettings", "productionBoard", "staffingAssignments", "staffingSchedule", "vehicles", "reports", "directory", "runner", "messages", "dataTools", "mobileApp"],
     canAdminEdit: true,
     canOwnerEdit: true,
     canVenueEdit: true,
@@ -458,6 +458,7 @@ const NAV_GROUPS = {
     { items: [["dashboard", "Dashboard"]] },
     { label: "PROFILES", items: [["workers", "Crew Profiles"], ["promoters", "Promoter Profiles"], ["venues", "Venues"]] },
     { label: "EVENTS", items: [["events", "Events"], ["eventDocuments", "Documents"], ["emailTemplates", "Email Templates"], ["timecards", "Timecards"], ["vehicles", "Vehicles"], ["reports", "Reports"]] },
+    { label: "TOURING OFFICE", items: [["touringDashboard", "Dashboard"], ["tourAdvancing", "Tour Advancing"], ["tourCrewPersonnel", "Crew Personnel"], ["tourTravel", "Travel & Accommodations"], ["tourDocuments", "Documents"], ["tourSettings", "Settings"]] },
     { label: "PRODUCTION OFFICE", items: [["productionBoard", "Production Office"], ["staffingAssignments", "Staffing Assignment"], ["staffingSchedule", "Staffing Schedule"]] },
     { label: "PAYROLL", items: [["payroll", "Payroll"]] },
     { label: "DIRECTORIES", items: [["directory", "Directory"], ["runner", "Gig Resources"]] },
@@ -468,6 +469,7 @@ const NAV_GROUPS = {
     { items: [["dashboard", "Dashboard"]] },
     { label: "PROFILES", items: [["promoters", "Promoter Profiles"]] },
     { label: "EVENTS", items: [["events", "Events"], ["vehicles", "Vehicles"], ["reports", "Reports"]] },
+    { label: "TOURING OFFICE", items: [["touringDashboard", "Dashboard"], ["tourAdvancing", "Tour Advancing"], ["tourCrewPersonnel", "Crew Personnel"], ["tourTravel", "Travel & Accommodations"], ["tourDocuments", "Documents"]] },
     { label: "PRODUCTION OFFICE", items: [["productionBoard", "Production Office"], ["staffingAssignments", "Staffing Assignment"], ["staffingSchedule", "Staffing Schedule"]] },
     { label: "DIRECTORIES", items: [["directory", "Directory"], ["runner", "Gig Resources"]] },
     { items: [["messages", "Messages"]] },
@@ -477,6 +479,7 @@ const NAV_GROUPS = {
     { items: [["dashboard", "Dashboard"]] },
     { label: "PROFILES", items: [["workers", "Crew Profiles"], ["promoters", "Promoter Profiles"], ["venues", "Venues"]] },
     { label: "EVENTS", items: [["events", "Events"], ["eventDocuments", "Documents"], ["emailTemplates", "Email Templates"], ["vehicles", "Vehicles"], ["reports", "Reports"]] },
+    { label: "TOURING OFFICE", items: [["touringDashboard", "Dashboard"], ["tourAdvancing", "Tour Advancing"], ["tourCrewPersonnel", "Crew Personnel"], ["tourTravel", "Travel & Accommodations"], ["tourDocuments", "Documents"], ["tourSettings", "Settings"]] },
     { label: "PRODUCTION OFFICE", items: [["productionBoard", "Production Office"], ["staffingAssignments", "Staffing Assignment"], ["staffingSchedule", "Staffing Schedule"]] },
     { label: "DIRECTORIES", items: [["directory", "Directory"], ["runner", "Gig Resources"]] },
     { items: [["messages", "Messages"]] },
@@ -587,15 +590,15 @@ const CLIENT_PACKAGE_DEFINITIONS = [
   },
   {
     id: "TOUR_DATA_SERVICES",
-    name: "Tour Data Services",
-    status: "Planned",
-    description: "Tour cities, travel, HR, production documents, and city-by-city resource sharing."
+    name: "Touring Office Suite",
+    status: "Active",
+    description: "Tour stops, advance tracker, city rider workspaces, crew personnel, travel, accommodations, and generated tour documents."
   },
   {
     id: "AWARDS_SHOWS",
-    name: "Awards Shows",
+    name: "Awards / Live Events",
     status: "Planned",
-    description: "Awards production teams, show departments, credentials, documents, runs, and event-day operations."
+    description: "Awards production teams, live broadcast documents, rundowns, plots, mimeo, credentials, and event-day operations."
   },
   {
     id: "LIVE_TV_SPECIALS",
@@ -3938,6 +3941,7 @@ function render() {
   renderClientProfile();
   renderAdminProfile();
   renderEvents();
+  renderTouringSuite();
   renderProductionBoard();
   renderStaffingAssignments();
   renderStaffingSchedule();
@@ -6255,6 +6259,260 @@ function sortEventCards(events) {
     const bDate = new Date(b.startDate || b.endDate || b.createdAt || 0).getTime() || 0;
     return state.eventSort === "latest" ? bDate - aDate : aDate - bDate;
   });
+}
+
+function renderTouringSuite() {
+  if (!$("#touringHeroStats")) return;
+  const stops = touringStops();
+  const crew = touringCrewRows(stops);
+  const travel = touringTravelRows(crew);
+  const attention = touringAttentionRows(stops, crew, travel);
+  renderTouringDashboard(stops, crew, travel, attention);
+  renderTourAdvancing(stops);
+  renderTourCrewPersonnel(crew);
+  renderTourTravel(travel);
+  renderTourDocuments(stops, crew, travel);
+  renderTourSettings();
+}
+
+function touringEvents() {
+  const events = visibleEvents().filter((event) => {
+    if (event.officeSuiteId === "TOUR_DATA_SERVICES") return true;
+    const typeText = listText(`${event.type || ""} ${event.name || ""}`);
+    return typeText.includes("tour") || typeText.includes("stadium");
+  });
+  return events.length ? events : visibleEvents().slice(0, 8);
+}
+
+function touringStops() {
+  const events = touringEvents();
+  if (!events.length) return touringDemoStops();
+  return events.map((event, index) => {
+    const venue = getVenue(event.venueId);
+    const promoter = getPromoter(event.promoterId);
+    const assignments = eventAssignments(event.id);
+    const missing = [
+      !promoter?.email ? "Promoter email" : "",
+      !venue?.address ? "Venue address" : "",
+      !event.productionContact ? "Production contact" : "",
+      !assignments.length ? "Runner plan" : ""
+    ].filter(Boolean);
+    return {
+      id: event.id,
+      city: event.city || eventGigSearchText(event, venue) || venue?.city || `Tour Stop ${index + 1}`,
+      venue: venue?.name || event.name || "Venue TBD",
+      loadIn: event.startDate || "",
+      showDate: event.startDate || "",
+      loadOut: event.endDate || "",
+      status: missing.length ? "Needs Review" : "Ready",
+      priority: missing.length > 2 ? "High" : "Normal",
+      owner: event.productionContact || activeClientRepRecord()?.name || "Advance Team",
+      missing,
+      documents: event.docLink || event.pdfLink ? "Generated" : "Not Generated",
+      event
+    };
+  });
+}
+
+function touringDemoStops() {
+  return [
+    {
+      id: "tour-demo-denver",
+      city: "Denver, CO",
+      venue: "Mile High Stadium",
+      loadIn: "2026-06-17",
+      showDate: "2026-06-26",
+      loadOut: "2026-06-28",
+      status: "Needs Review",
+      priority: "High",
+      owner: "Advance Team",
+      missing: ["Parking notes", "Runner plan"],
+      documents: "Not Generated"
+    },
+    {
+      id: "tour-demo-minneapolis",
+      city: "Minneapolis, MN",
+      venue: "US Bank Stadium",
+      loadIn: "2026-06-25",
+      showDate: "2026-06-30",
+      loadOut: "2026-07-01",
+      status: "Partial",
+      priority: "Normal",
+      owner: "Advance Lead",
+      missing: ["Promoter email"],
+      documents: "Draft Ready"
+    },
+    {
+      id: "tour-demo-cleveland",
+      city: "Cleveland, OH",
+      venue: "Huntington Bank Stadium",
+      loadIn: "2026-07-03",
+      showDate: "2026-07-07",
+      loadOut: "2026-07-09",
+      status: "Ready",
+      priority: "Normal",
+      owner: "Advance Team",
+      missing: [],
+      documents: "Generated"
+    }
+  ];
+}
+
+function touringCrewRows(stops = touringStops()) {
+  const workers = visibleRecords(state.workers).slice(0, 12);
+  if (!workers.length) {
+    return [
+      { id: "tour-crew-demo-1", name: "Tour Coordinator", department: "Production", phone: "Pending", email: "Pending", formStatus: "Needed", travelStatus: "Needs Review", oneSheet: "Not Generated" },
+      { id: "tour-crew-demo-2", name: "Runner Lead", department: "Runners", phone: "Pending", email: "Pending", formStatus: "Submitted", travelStatus: "Partial", oneSheet: "Draft Ready" }
+    ];
+  }
+  return workers.map((worker, index) => {
+    const assignedStops = stops.filter((stop) => stop.event && eventWorkerIds(stop.event).includes(worker.id));
+    return {
+      id: worker.id,
+      name: worker.name || `Crew Member ${index + 1}`,
+      department: worker.role || "Crew / Runner",
+      phone: worker.phone || "Missing",
+      email: worker.email || "Missing",
+      formStatus: worker.phone && worker.email ? "Submitted" : "Needed",
+      travelStatus: assignedStops.length ? "Needs Review" : "Not Started",
+      oneSheet: worker.headshotData ? "Ready" : "Needs Headshot",
+      assignedStops
+    };
+  });
+}
+
+function touringTravelRows(crew = touringCrewRows()) {
+  return crew.map((person, index) => {
+    const missing = [person.email === "Missing" ? "Email" : "", index % 3 === 0 ? "Flight confirmation" : "", index % 2 === 0 ? "Hotel confirmation" : ""].filter(Boolean);
+    return {
+      ...person,
+      flightDate: "",
+      depart: "",
+      arrive: "",
+      airline: "",
+      hotel: "",
+      checkIn: "",
+      checkOut: "",
+      overall: missing.length ? "Needs Review" : "Ready",
+      missing: missing.length ? missing : ["None"]
+    };
+  });
+}
+
+function touringAttentionRows(stops, crew, travel) {
+  return [
+    ...stops.filter((stop) => stop.missing.length).map((stop) => ({
+      title: `${stop.city} advance needs review`,
+      detail: stop.missing.join(", "),
+      view: "tourAdvancing"
+    })),
+    ...crew.filter((person) => person.formStatus !== "Submitted").slice(0, 3).map((person) => ({
+      title: `${person.name} team info needed`,
+      detail: "Team info form has not been completed.",
+      view: "tourCrewPersonnel"
+    })),
+    ...travel.filter((person) => person.overall !== "Ready").slice(0, 3).map((person) => ({
+      title: `${person.name} travel packet not ready`,
+      detail: person.missing.join(", "),
+      view: "tourTravel"
+    }))
+  ].slice(0, 8);
+}
+
+function renderTouringDashboard(stops, crew, travel, attention) {
+  $("#touringHeroTitle").textContent = activeClientRecord()?.name ? `${activeClientRecord().name} Touring` : "Tour Operations";
+  $("#touringHeroStats").innerHTML = [
+    ["Tour Stops", stops.length, "tourAdvancing"],
+    ["Crew Personnel", crew.length, "tourCrewPersonnel"],
+    ["Ready Travel", travel.filter((row) => row.overall === "Ready").length, "tourTravel"]
+  ].map(([label, value, view]) => `<button class="touring-stat" data-dashboard-link="${escapeHtml(view)}" type="button"><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></button>`).join("");
+  $("#touringAttentionCount").textContent = `${attention.length} open`;
+  $("#touringAttentionList").innerHTML = attention.length
+    ? attention.map((item) => `<button class="compact-item touring-attention-item" data-dashboard-link="${escapeHtml(item.view)}" type="button"><strong>${escapeHtml(item.title)}</strong><p>${escapeHtml(item.detail)}</p></button>`).join("")
+    : `<div class="compact-item empty"><strong>No urgent touring items</strong><p>Stage Intelligence checks will surface missing advance, crew, and travel items here.</p></div>`;
+  $("#touringFlowList").innerHTML = [
+    ["Tour Advancing", "Tour stops, advance tracker, city rider sub-databases."],
+    ["Crew Personnel", "Team members, team info forms, one-sheets."],
+    ["Travel & Accommodations", "Flights, hotels, master itinerary, travel packets."],
+    ["Documents", "Advance riders, manifests, one-sheets, and tour book exports."]
+  ].map(([title, detail], index) => `<div class="touring-flow-step"><span>${index + 1}</span><strong>${escapeHtml(title)}</strong><p>${escapeHtml(detail)}</p></div>`).join("");
+}
+
+function renderTourAdvancing(stops) {
+  $("#tourAdvancingCount").textContent = `${stops.length} stops`;
+  $("#tourAdvancingHead").innerHTML = `<tr><th>City / Venue</th><th>Dates</th><th>Advance Status</th><th>Missing Info</th><th>Owner</th><th>Rider</th></tr>`;
+  $("#tourAdvancingTable").innerHTML = stops.map((stop) => `<tr>
+    <td><strong>${escapeHtml(stop.city)}</strong><p>${escapeHtml(stop.venue)}</p></td>
+    <td>${escapeHtml(formatDate(stop.loadIn) || "Load-in TBD")}<p>${escapeHtml(formatDate(stop.showDate) || "Show TBD")} - ${escapeHtml(formatDate(stop.loadOut) || "Load-out TBD")}</p></td>
+    <td><span class="status-pill ${stop.status === "Ready" ? "" : "warn"}">${escapeHtml(stop.status)}</span><p>${escapeHtml(stop.priority)} priority</p></td>
+    <td>${stop.missing.length ? stop.missing.map((item) => `<span class="touring-chip">${escapeHtml(item)}</span>`).join("") : `<span class="status-pill">Complete</span>`}</td>
+    <td>${escapeHtml(stop.owner)}</td>
+    <td><strong>${escapeHtml(stop.documents)}</strong><p>City rider workspace</p></td>
+  </tr>`).join("");
+  $("#cityRiderWorkspace").innerHTML = stops.slice(0, 4).map((stop) => `<article class="touring-card">
+    <span class="suite-kicker">${escapeHtml(stop.city)}</span>
+    <h4>${escapeHtml(stop.venue)}</h4>
+    <div class="touring-card-sections">
+      <span>Labor Calls</span>
+      <span>Runner Plan</span>
+      <span>Trucks / Buses</span>
+      <span>Power</span>
+      <span>Heavy Equipment</span>
+      <span>Fire / FX</span>
+      <span>Golf Carts</span>
+    </div>
+    <p>${stop.missing.length ? `Needs: ${escapeHtml(stop.missing.join(", "))}` : "Ready to generate rider when approved."}</p>
+  </article>`).join("");
+}
+
+function renderTourCrewPersonnel(crew) {
+  $("#tourCrewCount").textContent = `${crew.length} people`;
+  $("#tourCrewHead").innerHTML = `<tr><th>Name</th><th>Department</th><th>Contact</th><th>Info Form</th><th>Travel</th><th>One-Sheet</th></tr>`;
+  $("#tourCrewTable").innerHTML = crew.map((person) => `<tr>
+    <td><strong>${escapeHtml(person.name)}</strong><p>${escapeHtml(person.assignedStops?.map((stop) => stop.city).join(", ") || "Tour team")}</p></td>
+    <td>${escapeHtml(person.department)}</td>
+    <td>${escapeHtml(person.phone)}<p>${escapeHtml(person.email)}</p></td>
+    <td><span class="status-pill ${person.formStatus === "Submitted" ? "" : "warn"}">${escapeHtml(person.formStatus)}</span></td>
+    <td>${escapeHtml(person.travelStatus)}</td>
+    <td>${escapeHtml(person.oneSheet)}</td>
+  </tr>`).join("");
+}
+
+function renderTourTravel(travel) {
+  $("#tourTravelCount").textContent = `${travel.length} travelers`;
+  $("#tourTravelHead").innerHTML = `<tr><th>Traveler</th><th>Flight</th><th>Hotel</th><th>Overall</th><th>Missing Info</th><th>Packet</th></tr>`;
+  $("#tourTravelTable").innerHTML = travel.map((person) => `<tr>
+    <td><strong>${escapeHtml(person.name)}</strong><p>${escapeHtml(person.email)}</p></td>
+    <td>${escapeHtml(person.airline || "Not booked")}<p>${escapeHtml([person.depart, person.arrive].filter(Boolean).join(" to ") || "Route TBD")}</p></td>
+    <td>${escapeHtml(person.hotel || "Not booked")}<p>${escapeHtml([person.checkIn, person.checkOut].filter(Boolean).join(" - ") || "Dates TBD")}</p></td>
+    <td><span class="status-pill ${person.overall === "Ready" ? "" : "warn"}">${escapeHtml(person.overall)}</span></td>
+    <td>${person.missing.map((item) => `<span class="touring-chip">${escapeHtml(item)}</span>`).join("")}</td>
+    <td>${person.overall === "Ready" ? "Ready to generate" : "Waiting on info"}</td>
+  </tr>`).join("");
+}
+
+function renderTourDocuments(stops, crew, travel) {
+  const docs = [
+    ["Advance Riders", `${stops.filter((stop) => stop.documents === "Generated").length}/${stops.length} generated`, "City rider PDFs and version history."],
+    ["Team One-Sheets", `${crew.filter((person) => person.oneSheet === "Ready").length}/${crew.length} ready`, "Individual tour team one-sheet packets."],
+    ["Hotel Manifest", "Template ready", "Hotel accommodations manifest from travel records."],
+    ["Flight Manifest", "Template ready", "Flight accommodations manifest from travel records."],
+    ["Travel Itineraries", `${travel.filter((person) => person.overall === "Ready").length} ready`, "Person-by-person travel itinerary packets."],
+    ["Tour Book", "Future module", "Polished book output with internal and redacted versions."]
+  ];
+  $("#tourDocumentsCount").textContent = `${docs.length} document lanes`;
+  $("#tourDocumentsList").innerHTML = docs.map(([title, status, detail]) => `<article class="touring-card"><span class="suite-kicker">${escapeHtml(status)}</span><h4>${escapeHtml(title)}</h4><p>${escapeHtml(detail)}</p></article>`).join("");
+}
+
+function renderTourSettings() {
+  $("#tourSettingsList").innerHTML = [
+    ["Tour Defaults", "Reusable labor calls, runner plans, trucks, power, and rider language that flow into each city."],
+    ["Public Forms", "Team info forms and city advance links will use token access like Production Office links."],
+    ["Bulk Grid Mode", "Tour stops, city rider sections, crew personnel, flights, and hotels need spreadsheet-fast editing."],
+    ["Sensitive Access", "Passport, DOB, medical, emergency contact, travel, and hotel details require restricted permissions."],
+    ["Stage Intelligence", "Quiet checks for missing promoter emails, parking notes, travel confirmations, and ready-to-generate packets."]
+  ].map(([title, detail]) => `<article class="touring-card"><h4>${escapeHtml(title)}</h4><p>${escapeHtml(detail)}</p></article>`).join("");
 }
 
 function assignmentPayLine(assignment, event) {
