@@ -38,9 +38,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.06.005",
-  title: "V1.06.005 update installed",
-  body: "Touring Office Suite now has grid edit mode for tour stops, crew personnel, travel, and documents so saved rows can be updated quickly in place."
+  version: "V1.06.006",
+  title: "V1.06.006 update installed",
+  body: "Touring Office Suite grids now include column sort and filter controls for tour stops, crew personnel, travel, and document records."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -390,6 +390,8 @@ let state = {
   userAccessRows: [],
   eventAccessLinks: [],
   touringGridEdit: {},
+  touringSort: JSON.parse(localStorage.getItem("productionCrewTouringSort") || "{}"),
+  touringColumnFilters: JSON.parse(localStorage.getItem("productionCrewTouringColumnFilters") || "{}"),
   search: "",
   activeView: "dashboard",
   accessRole: "CLIENT",
@@ -6717,12 +6719,97 @@ async function saveTouringGrid(viewId) {
   toast("Touring grid saved.");
 }
 
+const TOURING_COLUMNS = {
+  tourAdvancing: [["city", "City / Venue"], ["dates", "Dates"], ["status", "Advance Status"], ["missing", "Missing Info"], ["owner", "Owner"], ["documents", "Rider"]],
+  tourCrewPersonnel: [["name", "Name"], ["department", "Department"], ["contact", "Contact"], ["formStatus", "Info Form"], ["travelStatus", "Travel"], ["oneSheet", "One-Sheet"]],
+  tourTravel: [["name", "Traveler"], ["flight", "Flight"], ["hotel", "Hotel"], ["overall", "Overall"], ["missing", "Missing Info"], ["packet", "Packet"]],
+  tourDocuments: [["name", "Document"], ["type", "Type / Status"], ["link", "Link"], ["notes", "Notes"], ["actions", ""]]
+};
+
+function touringColumnValue(row = {}, key, viewId) {
+  if (viewId === "tourAdvancing") {
+    if (key === "city") return `${row.city || ""} ${row.venue || ""}`;
+    if (key === "dates") return `${row.loadIn || row.loadInDate || ""} ${row.showDate || ""} ${row.loadOut || row.loadOutDate || ""}`;
+    if (key === "status") return `${row.status || ""} ${row.priority || ""}`;
+    if (key === "missing") return (row.missing || touringMissingList(row)).join(" ");
+    if (key === "owner") return row.owner || "";
+    if (key === "documents") return row.documents || "";
+  }
+  if (viewId === "tourCrewPersonnel") {
+    if (key === "name") return row.name || "";
+    if (key === "department") return `${row.department || ""} ${row.title || ""}`;
+    if (key === "contact") return `${row.phone || ""} ${row.email || ""}`;
+    if (key === "formStatus") return row.formStatus || "";
+    if (key === "travelStatus") return row.travelStatus || "";
+    if (key === "oneSheet") return row.oneSheet || "";
+  }
+  if (viewId === "tourTravel") {
+    if (key === "name") return `${row.name || ""} ${row.email || ""}`;
+    if (key === "flight") return `${row.flightDate || ""} ${row.airline || ""} ${row.depart || ""} ${row.arrive || ""} ${row.flightConfirmation || ""}`;
+    if (key === "hotel") return `${row.hotel || ""} ${row.checkIn || ""} ${row.checkOut || ""} ${row.hotelConfirmation || ""}`;
+    if (key === "overall") return row.overall || "";
+    if (key === "missing") return (row.missing || []).join(" ");
+    if (key === "packet") return row.overall === "Ready" ? "Ready to generate" : "Waiting on info";
+  }
+  if (viewId === "tourDocuments") {
+    if (key === "name") return row.name || "";
+    if (key === "type") return `${row.type || ""} ${row.status || ""}`;
+    if (key === "link") return row.link || row.url || row.pdfLink || row.docLink || "";
+    if (key === "notes") return row.notes || "";
+  }
+  return "";
+}
+
+function touringColumnFilters(viewId) {
+  return state.touringColumnFilters?.[viewId] || {};
+}
+
+function filterTouringRows(viewId, rows) {
+  const filters = touringColumnFilters(viewId);
+  return rows.filter((row) => Object.entries(filters).every(([key, value]) => {
+    const term = String(value || "").trim().toLowerCase();
+    return !term || touringColumnValue(row, key, viewId).toLowerCase().includes(term);
+  }));
+}
+
+function sortTouringRows(viewId, rows) {
+  const sort = state.touringSort?.[viewId] || {};
+  const key = sort.key || TOURING_COLUMNS[viewId]?.[0]?.[0] || "name";
+  const direction = sort.direction === "desc" ? -1 : 1;
+  return rows.sort((a, b) => direction * touringColumnValue(a, key, viewId).localeCompare(touringColumnValue(b, key, viewId), undefined, { numeric: true, sensitivity: "base" }));
+}
+
+function touringColumnHead(viewId, key, label) {
+  if (key === "actions") return "<th></th>";
+  const sort = state.touringSort?.[viewId] || {};
+  const filters = touringColumnFilters(viewId);
+  const activeSort = sort.key === key;
+  const activeFilter = !!filters[key];
+  const arrow = activeSort ? (sort.direction === "desc" ? "▾" : "▴") : "▾";
+  return `<th><div class="column-filter-heading">
+    <span>${escapeHtml(label)}</span>
+    <details class="column-filter-menu ${activeSort || activeFilter ? "active" : ""}">
+      <summary aria-label="${escapeHtml(label)} sort and filter">${arrow}</summary>
+      <div class="record-options-menu">
+        <button class="tiny-button" data-tour-sort="${escapeHtml(viewId)}" data-tour-sort-key="${escapeHtml(key)}" data-tour-sort-direction="asc" type="button">Sort A-Z</button>
+        <button class="tiny-button" data-tour-sort="${escapeHtml(viewId)}" data-tour-sort-key="${escapeHtml(key)}" data-tour-sort-direction="desc" type="button">Sort Z-A</button>
+        <label>Filter<input data-tour-column-filter="${escapeHtml(viewId)}" data-tour-column-key="${escapeHtml(key)}" value="${escapeHtml(filters[key] || "")}" placeholder="Type to filter"></label>
+      </div>
+    </details>
+  </div></th>`;
+}
+
+function renderTouringHead(viewId, selector) {
+  $(selector).innerHTML = `<tr>${(TOURING_COLUMNS[viewId] || []).map(([key, label]) => touringColumnHead(viewId, key, label)).join("")}</tr>`;
+}
+
 function renderTourAdvancing(stops) {
   const editing = touringGridEditing("tourAdvancing");
   touringGridToolbar("tourAdvancing");
-  $("#tourAdvancingCount").textContent = `${stops.length} stops`;
-  $("#tourAdvancingHead").innerHTML = `<tr><th>City / Venue</th><th>Dates</th><th>Advance Status</th><th>Missing Info</th><th>Owner</th><th>Rider</th></tr>`;
-  $("#tourAdvancingTable").innerHTML = stops.map((stop) => `<tr>
+  const rows = sortTouringRows("tourAdvancing", filterTouringRows("tourAdvancing", [...stops]));
+  $("#tourAdvancingCount").textContent = `${rows.length}/${stops.length} stops`;
+  renderTouringHead("tourAdvancing", "#tourAdvancingHead");
+  $("#tourAdvancingTable").innerHTML = rows.map((stop) => `<tr>
     <td>${editing && stop.source ? `${touringGridInput("touringStops", stop.id, "city", stop.source.city || stop.city)}${touringGridInput("touringStops", stop.id, "venue", stop.source.venue || stop.venue)}` : `<strong>${stop.source ? recordLink("touringStops", stop.id, stop.city) : escapeHtml(stop.city)}</strong><p>${escapeHtml(stop.venue)}</p>`}</td>
     <td>${editing && stop.source ? `${touringGridInput("touringStops", stop.id, "loadInDate", stop.source.loadInDate || "", "date")}${touringGridInput("touringStops", stop.id, "showDate", stop.source.showDate || "", "date")}${touringGridInput("touringStops", stop.id, "loadOutDate", stop.source.loadOutDate || "", "date")}` : `${escapeHtml(formatDate(stop.loadIn) || "Load-in TBD")}<p>${escapeHtml(formatDate(stop.showDate) || "Show TBD")} - ${escapeHtml(formatDate(stop.loadOut) || "Load-out TBD")}</p>`}</td>
     <td>${editing && stop.source ? `${touringGridSelect("touringStops", stop.id, "status", stop.source.status || stop.status, ["Not Sent", "Sent", "Awaiting Response", "Partial Response", "Follow Up Required", "Confirmed", "Finalized"])}${touringGridInput("touringStops", stop.id, "priority", stop.source.priority || stop.priority)}` : `<span class="status-pill ${stop.status === "Ready" ? "" : "warn"}">${escapeHtml(stop.status)}</span><p>${escapeHtml(stop.priority)} priority</p>`}</td>
@@ -6730,7 +6817,7 @@ function renderTourAdvancing(stops) {
     <td>${editing && stop.source ? touringGridInput("touringStops", stop.id, "owner", stop.source.owner || stop.owner) : escapeHtml(stop.owner)}</td>
     <td><strong>${escapeHtml(stop.documents)}</strong><p>City rider workspace</p>${stop.source ? actionButtons("touringStops", stop.id, "touringStopForm", "", canAdminEdit()) : ""}</td>
   </tr>`).join("");
-  $("#cityRiderWorkspace").innerHTML = stops.slice(0, 4).map((stop) => `<article class="touring-card">
+  $("#cityRiderWorkspace").innerHTML = rows.slice(0, 4).map((stop) => `<article class="touring-card">
     <span class="suite-kicker">${escapeHtml(stop.city)}</span>
     <h4>${escapeHtml(stop.venue)}</h4>
     <div class="touring-card-sections">
@@ -6749,9 +6836,10 @@ function renderTourAdvancing(stops) {
 function renderTourCrewPersonnel(crew) {
   const editing = touringGridEditing("tourCrewPersonnel");
   touringGridToolbar("tourCrewPersonnel");
-  $("#tourCrewCount").textContent = `${crew.length} people`;
-  $("#tourCrewHead").innerHTML = `<tr><th>Name</th><th>Department</th><th>Contact</th><th>Info Form</th><th>Travel</th><th>One-Sheet</th></tr>`;
-  $("#tourCrewTable").innerHTML = crew.map((person) => `<tr>
+  const rows = sortTouringRows("tourCrewPersonnel", filterTouringRows("tourCrewPersonnel", [...crew]));
+  $("#tourCrewCount").textContent = `${rows.length}/${crew.length} people`;
+  renderTouringHead("tourCrewPersonnel", "#tourCrewHead");
+  $("#tourCrewTable").innerHTML = rows.map((person) => `<tr>
     <td>${editing && person.source ? touringGridInput("touringCrew", person.id, "name", person.source.name || person.name) : `<strong>${person.source ? recordLink("touringCrew", person.id, person.name) : escapeHtml(person.name)}</strong><p>${escapeHtml(person.assignedStops?.map((stop) => stop.city).join(", ") || "Tour team")}</p>`}${person.source && !editing ? actionButtons("touringCrew", person.id, "touringCrewForm", "", canAdminEdit()) : ""}</td>
     <td>${editing && person.source ? `${touringGridInput("touringCrew", person.id, "department", person.source.department || person.department)}${touringGridInput("touringCrew", person.id, "title", person.source.title || person.title || "")}` : escapeHtml(person.department)}</td>
     <td>${editing && person.source ? `${touringGridInput("touringCrew", person.id, "phone", person.source.phone || "", "tel")}${touringGridInput("touringCrew", person.id, "email", person.source.email || "", "email")}` : `${escapeHtml(person.phone)}<p>${escapeHtml(person.email)}</p>`}</td>
@@ -6764,9 +6852,10 @@ function renderTourCrewPersonnel(crew) {
 function renderTourTravel(travel) {
   const editing = touringGridEditing("tourTravel");
   touringGridToolbar("tourTravel");
-  $("#tourTravelCount").textContent = `${travel.length} travelers`;
-  $("#tourTravelHead").innerHTML = `<tr><th>Traveler</th><th>Flight</th><th>Hotel</th><th>Overall</th><th>Missing Info</th><th>Packet</th></tr>`;
-  $("#tourTravelTable").innerHTML = travel.map((person) => `<tr>
+  const rows = sortTouringRows("tourTravel", filterTouringRows("tourTravel", [...travel]));
+  $("#tourTravelCount").textContent = `${rows.length}/${travel.length} travelers`;
+  renderTouringHead("tourTravel", "#tourTravelHead");
+  $("#tourTravelTable").innerHTML = rows.map((person) => `<tr>
     <td>${editing && state.touringTravel.some((record) => record.id === person.id) ? `${touringGridInput("touringTravel", person.id, "name", person.name)}${touringGridInput("touringTravel", person.id, "email", person.email, "email")}` : `<strong>${state.touringTravel.some((record) => record.id === person.id) ? recordLink("touringTravel", person.id, person.name) : escapeHtml(person.name)}</strong><p>${escapeHtml(person.email)}</p>`}${state.touringTravel.some((record) => record.id === person.id) && !editing ? actionButtons("touringTravel", person.id, "touringTravelForm", "", canAdminEdit()) : ""}</td>
     <td>${editing && state.touringTravel.some((record) => record.id === person.id) ? `${touringGridInput("touringTravel", person.id, "flightDate", person.flightDate || "", "date")}${touringGridInput("touringTravel", person.id, "airline", person.airline || "")}${touringGridInput("touringTravel", person.id, "depart", person.depart || "")}${touringGridInput("touringTravel", person.id, "arrive", person.arrive || "")}${touringGridInput("touringTravel", person.id, "flightConfirmation", person.flightConfirmation || "")}` : `${escapeHtml(person.airline || "Not booked")}<p>${escapeHtml([person.depart, person.arrive].filter(Boolean).join(" to ") || "Route TBD")}</p>`}</td>
     <td>${editing && state.touringTravel.some((record) => record.id === person.id) ? `${touringGridInput("touringTravel", person.id, "hotel", person.hotel || "")}${touringGridInput("touringTravel", person.id, "checkIn", person.checkIn || "", "date")}${touringGridInput("touringTravel", person.id, "checkOut", person.checkOut || "", "date")}${touringGridInput("touringTravel", person.id, "hotelConfirmation", person.hotelConfirmation || "")}` : `${escapeHtml(person.hotel || "Not booked")}<p>${escapeHtml([person.checkIn, person.checkOut].filter(Boolean).join(" - ") || "Dates TBD")}</p>`}</td>
@@ -6787,10 +6876,10 @@ function renderTourDocuments(stops, crew, travel) {
     ["Travel Itineraries", `${travel.filter((person) => person.overall === "Ready").length} ready`, "Person-by-person travel itinerary packets."],
     ["Tour Book", "Future module", "Polished book output with internal and redacted versions."]
   ];
-  const docs = state.touringDocuments.length ? state.touringDocuments : fallbackDocs;
+  const docs = state.touringDocuments.length ? sortTouringRows("tourDocuments", filterTouringRows("tourDocuments", [...state.touringDocuments])) : fallbackDocs;
   $("#tourDocumentsCount").textContent = `${docs.length} document lanes`;
   $("#tourDocumentsList").innerHTML = state.touringDocuments.length
-    ? `<div class="table-wrap premium-grid-wrap touring-document-grid"><table><thead><tr><th>Document</th><th>Type / Status</th><th>Link</th><th>Notes</th><th></th></tr></thead><tbody>${docs.map((doc) => `<tr>
+    ? `<div class="table-wrap premium-grid-wrap touring-document-grid"><table><thead><tr>${TOURING_COLUMNS.tourDocuments.map(([key, label]) => touringColumnHead("tourDocuments", key, label)).join("")}</tr></thead><tbody>${docs.map((doc) => `<tr>
       <td>${editing ? touringGridInput("touringDocuments", doc.id, "name", doc.name || "Tour Document") : recordLink("touringDocuments", doc.id, doc.name || "Tour Document")}</td>
       <td>${editing ? `${touringGridSelect("touringDocuments", doc.id, "type", doc.type || "Advance Rider", ["Advance Rider", "Team One-Sheet", "Hotel Manifest", "Flight Manifest", "Travel Itinerary", "Tour Book"])}${touringGridSelect("touringDocuments", doc.id, "status", doc.status || "Draft", ["Draft", "Ready", "Generated", "Sent"])}` : `<span class="suite-kicker">${escapeHtml(doc.type || "Document")}</span><p>${escapeHtml(doc.status || "Draft")}</p>`}</td>
       <td>${editing ? touringGridInput("touringDocuments", doc.id, "link", doc.link || "", "url") : (doc.link ? `<a href="${escapeHtml(doc.link)}" target="_blank" rel="noopener">Open</a>` : "No link")}</td>
@@ -13244,6 +13333,17 @@ function bindEvents() {
       localStorage.setItem("productionCrewClientAccountColumnFilters", JSON.stringify(state.clientAccountColumnFilters));
       renderAdmin();
     }
+    if (event.target?.matches?.("[data-tour-column-filter]")) {
+      const viewId = event.target.dataset.tourColumnFilter;
+      const key = event.target.dataset.tourColumnKey;
+      state.touringColumnFilters = {
+        ...(state.touringColumnFilters || {}),
+        [viewId]: { ...(state.touringColumnFilters?.[viewId] || {}), [key]: event.target.value }
+      };
+      if (!state.touringColumnFilters[viewId][key]) delete state.touringColumnFilters[viewId][key];
+      localStorage.setItem("productionCrewTouringColumnFilters", JSON.stringify(state.touringColumnFilters));
+      renderTouringSuite();
+    }
   });
   $("#dashboardCalendarPrev")?.addEventListener("click", () => {
     const month = dashboardCalendarMonthDate();
@@ -13475,6 +13575,7 @@ function bindEvents() {
     const closeAccessLevelsButton = event.target.closest("[data-close-access-levels]");
     const touringGridButton = event.target.closest("[data-tour-grid]");
     const touringGridSaveButton = event.target.closest("[data-tour-grid-save]");
+    const touringSortButton = event.target.closest("[data-tour-sort]");
     const connectSendbirdButton = event.target.closest("[data-connect-sendbird]");
     const openEventChannelButton = event.target.closest("[data-open-event-channel]");
     const messageThreadTypeButton = event.target.closest("[data-message-thread-type]");
@@ -13553,6 +13654,20 @@ function bindEvents() {
     }
     if (touringGridSaveButton) {
       await saveTouringGrid(touringGridSaveButton.dataset.tourGridSave);
+      return;
+    }
+    if (touringSortButton) {
+      const viewId = touringSortButton.dataset.tourSort;
+      state.touringSort = {
+        ...(state.touringSort || {}),
+        [viewId]: {
+          key: touringSortButton.dataset.tourSortKey,
+          direction: touringSortButton.dataset.tourSortDirection || "asc"
+        }
+      };
+      localStorage.setItem("productionCrewTouringSort", JSON.stringify(state.touringSort));
+      touringSortButton.closest("details")?.removeAttribute("open");
+      renderTouringSuite();
       return;
     }
     if (runnerResourceButton) {
