@@ -38,9 +38,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.07.017",
-  title: "V1.07.017 update installed",
-  body: "Awards / Live Broadcast dashboard now includes talent and VIP readiness for calls, scripts, credentials, and public-facing access."
+  version: "V1.07.018",
+  title: "V1.07.018 update installed",
+  body: "Awards / Live Broadcast now includes bulk operations for documents, rundowns, schedules, and staffing records."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -402,6 +402,7 @@ let state = {
   userAccessRows: [],
   eventAccessLinks: [],
   touringGridEdit: {},
+  awardsBulkSelection: {},
   touringSort: JSON.parse(localStorage.getItem("productionCrewTouringSort") || "{}"),
   touringColumnFilters: JSON.parse(localStorage.getItem("productionCrewTouringColumnFilters") || "{}"),
   search: "",
@@ -6761,6 +6762,138 @@ function touringGridSelect(storeName, id, field, value = "", options = []) {
   </select>`;
 }
 
+function awardsBulkOptions(viewId) {
+  const options = {
+    awardsDocuments: [
+      ["status:Ready", "Mark version ready"],
+      ["status:Distributed", "Mark version distributed"],
+      ["status:Final", "Mark version final"],
+      ["deliveryStatus:Ready to Send", "Delivery ready to send"],
+      ["deliveryStatus:Distributed", "Delivery distributed"],
+      ["currentVersion:yes", "Set as current version"],
+      ["currentVersion:no", "Set as superseded"],
+      ["accessScope:Production Only", "Access: production only"],
+      ["accessScope:Department Heads", "Access: department heads"],
+      ["accessScope:All Staff", "Access: all staff"],
+      ["accessScope:Public / Redacted", "Access: public / redacted"],
+      ["accessScope:Restricted", "Access: restricted"]
+    ],
+    awardsRundown: [
+      ["status:Ready", "Mark ready"],
+      ["status:Final", "Mark final"],
+      ["lockStatus:Locked", "Lock selected"],
+      ["lockStatus:Final Locked", "Final lock selected"],
+      ["currentVersion:yes", "Set docs as current version"],
+      ["deliveryStatus:Distributed", "Mark docs distributed"]
+    ],
+    awardsStaffing: [
+      ["status:Invited", "Mark invited"],
+      ["status:Confirmed", "Mark confirmed"],
+      ["status:Ready", "Mark ready"],
+      ["credentialStatus:Requested", "Credential requested"],
+      ["credentialStatus:Approved", "Credential approved"],
+      ["credentialStatus:Issued", "Credential issued"]
+    ]
+  };
+  return options[viewId] || [];
+}
+
+function awardsBulkStoreName(viewId, row = {}) {
+  if (viewId === "awardsDocuments") return row.kind === "Document" ? "awardsDocuments" : "";
+  if (viewId === "awardsRundown") return row.kind === "Schedule" ? "awardsSchedules" : "awardsDocuments";
+  if (viewId === "awardsStaffing") return "awardsStaff";
+  return "";
+}
+
+function awardsBulkKey(viewId, row = {}) {
+  const storeName = awardsBulkStoreName(viewId, row);
+  return storeName && row.id ? `${viewId}:${storeName}:${row.id}` : "";
+}
+
+function awardsBulkSelectedKeys(viewId) {
+  return state.awardsBulkSelection?.[viewId] || [];
+}
+
+function awardsBulkSelectionSet(viewId) {
+  return new Set(awardsBulkSelectedKeys(viewId));
+}
+
+function awardsBulkSelectableRows(viewId, rows = []) {
+  return rows.filter((row) => row.source && awardsBulkStoreName(viewId, row));
+}
+
+function awardsBulkToolbar(viewId, rows = []) {
+  if (!canAdminEdit()) return "";
+  const selectable = awardsBulkSelectableRows(viewId, rows);
+  const selected = awardsBulkSelectedKeys(viewId).filter((key) => selectable.some((row) => awardsBulkKey(viewId, row) === key));
+  const options = awardsBulkOptions(viewId);
+  return `<div class="awards-bulk-bar">
+    <div>
+      <strong>Bulk Operations</strong>
+      <p>${escapeHtml(selected.length ? `${selected.length} selected` : "Select rows to update multiple records at once.")}</p>
+    </div>
+    <div class="awards-bulk-actions">
+      <button class="icon-text-button owner-action" data-awards-bulk-select="${escapeHtml(viewId)}" type="button">Select Visible</button>
+      <button class="icon-text-button owner-action" data-awards-bulk-clear="${escapeHtml(viewId)}" type="button">Clear</button>
+      <select class="touring-grid-input awards-bulk-select" data-awards-bulk-action="${escapeHtml(viewId)}" aria-label="Bulk action">
+        <option value="">Choose action</option>
+        ${options.map(([value, label]) => `<option value="${escapeHtml(value)}">${escapeHtml(label)}</option>`).join("")}
+      </select>
+      <button class="tiny-button owner-action" data-awards-bulk-apply="${escapeHtml(viewId)}" type="button">Apply</button>
+    </div>
+  </div>`;
+}
+
+function awardsBulkCell(viewId, row = {}) {
+  const key = awardsBulkKey(viewId, row);
+  if (!canAdminEdit()) return "";
+  if (!key) return `<td class="awards-bulk-cell"></td>`;
+  const checked = awardsBulkSelectionSet(viewId).has(key) ? " checked" : "";
+  return `<td class="awards-bulk-cell"><input data-awards-bulk-row="${escapeHtml(viewId)}" data-awards-bulk-key="${escapeHtml(key)}" type="checkbox" aria-label="Select ${escapeHtml(row.name || "record")}"${checked}></td>`;
+}
+
+function awardsBulkHead(viewId, columns) {
+  return `${canAdminEdit() ? `<th class="awards-bulk-cell"></th>` : ""}${columns.map(([key, label]) => touringColumnHead(viewId, key, label)).join("")}`;
+}
+
+function setAwardsBulkSelection(viewId, keys = []) {
+  state.awardsBulkSelection = {
+    ...(state.awardsBulkSelection || {}),
+    [viewId]: [...new Set(keys)]
+  };
+}
+
+async function applyAwardsBulkAction(viewId) {
+  if (!canAdminEdit()) return;
+  const select = document.querySelector(`[data-awards-bulk-action="${viewId}"]`);
+  const action = select?.value || "";
+  const selected = awardsBulkSelectedKeys(viewId);
+  if (!selected.length) {
+    toast("Select at least one row first.");
+    return;
+  }
+  if (!action) {
+    toast("Choose a bulk action first.");
+    return;
+  }
+  const [field, ...valueParts] = action.split(":");
+  const value = valueParts.join(":");
+  let updated = 0;
+  for (const key of selected) {
+    const [, storeName, id] = key.split(":");
+    const existing = state[storeName]?.find((item) => item.id === id);
+    if (!existing) continue;
+    if (field === "lockStatus" && storeName !== "awardsSchedules") continue;
+    if (["currentVersion", "deliveryStatus", "accessScope"].includes(field) && storeName !== "awardsDocuments") continue;
+    await put(storeName, { ...existing, [field]: value, updatedAt: new Date().toISOString() });
+    updated++;
+  }
+  setAwardsBulkSelection(viewId, []);
+  await loadState();
+  setView(viewId);
+  toast(updated ? `Updated ${updated} awards records.` : "No matching records could use that action.");
+}
+
 function toggleTouringGrid(viewId) {
   if (!canAdminEdit()) {
     toast("This access view cannot edit Touring grids.");
@@ -7871,13 +8004,14 @@ function renderAwardsDocuments(shows, documents) {
     ...documents.map((doc) => ({ ...doc, kind: "Document" }))
   ]));
   $("#awardsDocumentsCount").textContent = `${shows.length} shows / ${documents.length} docs`;
-  $("#awardsDocumentsList").innerHTML = `<div class="table-wrap premium-grid-wrap touring-document-grid"><table>
-    <thead><tr>${TOURING_COLUMNS.awardsDocuments.map(([key, label]) => touringColumnHead("awardsDocuments", key, label)).join("")}</tr></thead>
+  $("#awardsDocumentsList").innerHTML = `${awardsBulkToolbar("awardsDocuments", rows)}<div class="table-wrap premium-grid-wrap touring-document-grid"><table>
+    <thead><tr>${awardsBulkHead("awardsDocuments", TOURING_COLUMNS.awardsDocuments)}</tr></thead>
     <tbody>${rows.map((row) => {
       const isShow = row.kind === "Show";
       const storeName = isShow ? "awardsShows" : "awardsDocuments";
       const formId = isShow ? "awardsShowForm" : "awardsDocumentForm";
       return `<tr>
+        ${awardsBulkCell("awardsDocuments", row)}
         <td>${editing && row.source ? touringGridInput(storeName, row.id, "name", row.source.name || row.name) : `<strong>${row.source ? recordLink(storeName, row.id, row.name) : escapeHtml(row.name)}</strong><p>${escapeHtml(isShow ? ([formatDate(row.showDate), row.venue].filter(Boolean).join(" - ") || "Show details pending.") : (row.showName || "Show TBD"))}</p>`}</td>
         <td>${editing && row.source ? (isShow ? touringGridSelect(storeName, row.id, "status", row.status, ["Pre-Production", "Rehearsal", "Show Day", "Wrapped"]) : touringGridSelect(storeName, row.id, "type", row.type, ["Rundown", "Quickie", "Schedule", "Staff List", "Plot", "Script", "Health & Safety", "Start Paperwork", "Other"])) : `<span class="suite-kicker">${escapeHtml(isShow ? "Show" : row.type)}</span>`}</td>
         <td>${editing && row.source ? (isShow ? touringGridInput(storeName, row.id, "showDate", row.showDate || "", "date") : `${touringGridInput(storeName, row.id, "versionLabel", row.versionLabel || "")}${touringGridSelect(storeName, row.id, "status", row.status, ["Draft", "Received", "In Review", "Ready", "Distributed", "Final"])}${touringGridSelect(storeName, row.id, "currentVersion", row.currentVersion || "", ["", "yes", "no"])}`) : `<span class="status-pill ${["Final", "Distributed", "Ready", "Template Ready"].includes(row.status) ? "" : "warn"}">${escapeHtml([row.versionLabel, row.status].filter(Boolean).join(" / ") || row.status)}</span><p>${escapeHtml(row.currentVersion === "yes" ? "Current" : row.currentVersion === "no" ? "Superseded" : "")}</p>`}</td>
@@ -7900,13 +8034,14 @@ function renderAwardsRundown(documents, schedules) {
     ...schedules.map((item) => ({ ...item, kind: "Schedule" })),
     ...rows.map((doc) => ({ ...doc, kind: "Document" }))
   ]));
-  $("#awardsRundownList").innerHTML = `<div class="table-wrap premium-grid-wrap touring-document-grid"><table>
-    <thead><tr>${TOURING_COLUMNS.awardsRundown.map(([key, label]) => touringColumnHead("awardsRundown", key, label)).join("")}</tr></thead>
+  $("#awardsRundownList").innerHTML = `${awardsBulkToolbar("awardsRundown", displayRows)}<div class="table-wrap premium-grid-wrap touring-document-grid"><table>
+    <thead><tr>${awardsBulkHead("awardsRundown", TOURING_COLUMNS.awardsRundown)}</tr></thead>
     <tbody>${displayRows.map((row) => {
       const isSchedule = row.kind === "Schedule";
       const storeName = isSchedule ? "awardsSchedules" : "awardsDocuments";
       const formId = isSchedule ? "awardsScheduleForm" : "awardsDocumentForm";
       return `<tr>
+        ${awardsBulkCell("awardsRundown", row)}
         <td>${editing && row.source ? `${touringGridInput(storeName, row.id, "name", row.name || "")}${isSchedule ? touringGridSelect(storeName, row.id, "callType", row.callType || "Production", ["Production", "Rehearsal", "Talent", "Camera / Broadcast", "Show", "Wrap"]) : ""}` : `<strong>${row.source ? recordLink(storeName, row.id, row.name) : escapeHtml(row.name)}</strong><p>${escapeHtml(isSchedule ? `${row.callType || "Schedule"} - ${row.showName || "Broadcast"}` : (row.showName || row.type || "Broadcast"))}</p>`}</td>
         <td>${editing && row.source && isSchedule ? `${touringGridInput(storeName, row.id, "callDate", row.callDate || "", "date")}${touringGridInput(storeName, row.id, "callTime", row.callTime || "", "time")}` : escapeHtml(isSchedule ? ([formatDate(row.callDate), row.callTime].filter(Boolean).join(" at ") || "Timing TBD") : row.type)}</td>
         <td>${editing && row.source ? (isSchedule ? `${touringGridSelect(storeName, row.id, "status", row.status, ["Draft", "Needs Review", "Ready", "Final"])}${touringGridSelect(storeName, row.id, "lockStatus", row.lockStatus || "Open", ["Open", "Locked", "Final Locked"])}` : `${touringGridInput(storeName, row.id, "versionLabel", row.versionLabel || "")}${touringGridSelect(storeName, row.id, "status", row.status, ["Draft", "Received", "In Review", "Ready", "Distributed", "Final"])}${touringGridSelect(storeName, row.id, "currentVersion", row.currentVersion || "", ["", "yes", "no"])}`) : `<span class="status-pill ${["Final", "Ready", "Distributed"].includes(row.status) ? "" : "warn"}">${escapeHtml(isSchedule ? [row.status, row.lockStatus].filter(Boolean).join(" / ") : ([row.versionLabel, row.status].filter(Boolean).join(" / ") || row.status))}</span>`}</td>
@@ -7924,9 +8059,10 @@ function renderAwardsStaffing(staffing) {
   touringGridToolbar("awardsStaffing");
   const rows = sortTouringRows("awardsStaffing", filterTouringRows("awardsStaffing", [...staffing]));
   $("#awardsStaffingCount").textContent = `${staffing.length} people`;
-  $("#awardsStaffingList").innerHTML = `<div class="table-wrap premium-grid-wrap touring-document-grid"><table>
-    <thead><tr>${TOURING_COLUMNS.awardsStaffing.map(([key, label]) => touringColumnHead("awardsStaffing", key, label)).join("")}</tr></thead>
+  $("#awardsStaffingList").innerHTML = `${awardsBulkToolbar("awardsStaffing", rows)}<div class="table-wrap premium-grid-wrap touring-document-grid"><table>
+    <thead><tr>${awardsBulkHead("awardsStaffing", TOURING_COLUMNS.awardsStaffing)}</tr></thead>
     <tbody>${rows.map((person) => `<tr>
+      ${awardsBulkCell("awardsStaffing", person)}
       <td>${editing && person.source ? touringGridInput("awardsStaff", person.id, "name", person.name || "") : `<strong>${person.source ? recordLink("awardsStaff", person.id, person.name) : escapeHtml(person.name || "Staff Member")}</strong><p>${escapeHtml(person.title || "Broadcast staff")}</p>`}</td>
       <td>${editing && person.source ? `${touringGridInput("awardsStaff", person.id, "department", person.department || "")}${touringGridInput("awardsStaff", person.id, "title", person.title || "")}` : escapeHtml(person.department || "Production")}</td>
       <td>${editing && person.source ? `${touringGridInput("awardsStaff", person.id, "phone", person.phone || "", "tel")}${touringGridInput("awardsStaff", person.id, "email", person.email || "", "email")}` : `${escapeHtml(person.phone || "Phone missing")}<p>${escapeHtml(person.email || "Email missing")}</p>`}</td>
@@ -7953,7 +8089,7 @@ function renderAwardsSettings() {
     ["Rundown Version Control", "Rundowns, scripts, quickies, schedules, and plots are checked for current, approved, distributed, and access-ready versions."],
     ["Technical Packet Readiness", "Stage plots, venue plots, broadcast/camera notes, and power or technical packets are checked as live production lanes."],
     ["Talent / VIP Readiness", "Talent calls, presenter scripts, VIP-facing access, credentials, and contact paths are checked as show-critical lanes."],
-    ["Bulk Editing", "Awards teams will need spreadsheet-fast updates for staff lists, schedules, document statuses, and show grids."]
+    ["Bulk Operations", "Awards teams can select visible rows and update document delivery, current versions, schedule locks, staff status, and credentials in groups."]
   ].map(([title, detail]) => `<article class="touring-card"><h4>${escapeHtml(title)}</h4><p>${escapeHtml(detail)}</p></article>`).join("");
 }
 
@@ -14483,7 +14619,8 @@ function bindEvents() {
       };
       if (!state.touringColumnFilters[viewId][key]) delete state.touringColumnFilters[viewId][key];
       localStorage.setItem("productionCrewTouringColumnFilters", JSON.stringify(state.touringColumnFilters));
-      renderTouringSuite();
+      if (viewId.startsWith("awards")) renderAwardsSuite();
+      else renderTouringSuite();
     }
   });
   $("#dashboardCalendarPrev")?.addEventListener("click", () => {
@@ -14721,6 +14858,9 @@ function bindEvents() {
     const touringGridButton = event.target.closest("[data-tour-grid]");
     const touringGridSaveButton = event.target.closest("[data-tour-grid-save]");
     const touringSortButton = event.target.closest("[data-tour-sort]");
+    const awardsBulkSelectButton = event.target.closest("[data-awards-bulk-select]");
+    const awardsBulkClearButton = event.target.closest("[data-awards-bulk-clear]");
+    const awardsBulkApplyButton = event.target.closest("[data-awards-bulk-apply]");
     const connectSendbirdButton = event.target.closest("[data-connect-sendbird]");
     const openEventChannelButton = event.target.closest("[data-open-event-channel]");
     const messageThreadTypeButton = event.target.closest("[data-message-thread-type]");
@@ -14801,6 +14941,22 @@ function bindEvents() {
       await saveTouringGrid(touringGridSaveButton.dataset.tourGridSave);
       return;
     }
+    if (awardsBulkSelectButton) {
+      const viewId = awardsBulkSelectButton.dataset.awardsBulkSelect;
+      const keys = $$(`[data-awards-bulk-row="${viewId}"]`).map((input) => input.dataset.awardsBulkKey).filter(Boolean);
+      setAwardsBulkSelection(viewId, keys);
+      renderAwardsSuite();
+      return;
+    }
+    if (awardsBulkClearButton) {
+      setAwardsBulkSelection(awardsBulkClearButton.dataset.awardsBulkClear, []);
+      renderAwardsSuite();
+      return;
+    }
+    if (awardsBulkApplyButton) {
+      await applyAwardsBulkAction(awardsBulkApplyButton.dataset.awardsBulkApply);
+      return;
+    }
     if (touringSortButton) {
       const viewId = touringSortButton.dataset.tourSort;
       state.touringSort = {
@@ -14812,7 +14968,8 @@ function bindEvents() {
       };
       localStorage.setItem("productionCrewTouringSort", JSON.stringify(state.touringSort));
       touringSortButton.closest("details")?.removeAttribute("open");
-      renderTouringSuite();
+      if (viewId.startsWith("awards")) renderAwardsSuite();
+      else renderTouringSuite();
       return;
     }
     if (runnerResourceButton) {
@@ -15174,6 +15331,20 @@ function bindEvents() {
     const messageEventFilter = event.target.closest("[data-message-event-filter]");
     const messageEventSelect = event.target.closest("[data-message-event-select]");
     const permanentMessageClientSelect = event.target.closest("[data-permanent-message-client]");
+    const awardsBulkRow = event.target.closest("[data-awards-bulk-row]");
+    if (awardsBulkRow) {
+      const viewId = awardsBulkRow.dataset.awardsBulkRow;
+      const keys = awardsBulkSelectionSet(viewId);
+      if (awardsBulkRow.checked) keys.add(awardsBulkRow.dataset.awardsBulkKey);
+      else keys.delete(awardsBulkRow.dataset.awardsBulkKey);
+      setAwardsBulkSelection(viewId, [...keys].filter(Boolean));
+      const toolbarText = awardsBulkRow.closest(".touring-card-grid")?.querySelector(".awards-bulk-bar p");
+      if (toolbarText) {
+        const selectedCount = awardsBulkSelectedKeys(viewId).length;
+        toolbarText.textContent = selectedCount ? `${selectedCount} selected` : "Select rows to update multiple records at once.";
+      }
+      return;
+    }
     if (messageEventFilter) {
       state.messageEventFilter = messageEventFilter.value || "current";
       localStorage.setItem("productionCrewMessageEventFilter", state.messageEventFilter);
