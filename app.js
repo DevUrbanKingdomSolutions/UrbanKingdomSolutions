@@ -38,9 +38,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.07.015",
-  title: "V1.07.015 update installed",
-  body: "Awards / Live Broadcast dashboard now includes rundown version control for scripts, rundowns, quickies, schedules, and plots."
+  version: "V1.07.016",
+  title: "V1.07.016 update installed",
+  body: "Awards / Live Broadcast dashboard now includes technical packet readiness for stage, venue, broadcast, camera, and power documents."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -7021,9 +7021,10 @@ function renderAwardsSuite() {
   const contacts = awardsContactRows(staffing);
   const compliance = awardsComplianceRows(documents);
   const versions = awardsVersionRows(documents);
+  const technical = awardsTechnicalRows(documents);
   const packets = awardsPacketRows(shows, documents, staffing, schedules);
-  const attention = awardsAttentionRows(shows, documents, staffing, schedules, packets, departments, distribution, access, showDay, contacts, compliance, versions);
-  renderAwardsDashboard(shows, documents, staffing, schedules, attention, packets, departments, distribution, access, showDay, contacts, compliance, versions);
+  const attention = awardsAttentionRows(shows, documents, staffing, schedules, packets, departments, distribution, access, showDay, contacts, compliance, versions, technical);
+  renderAwardsDashboard(shows, documents, staffing, schedules, attention, packets, departments, distribution, access, showDay, contacts, compliance, versions, technical);
   renderAwardsDocuments(shows, documents);
   renderAwardsRundown(documents, schedules);
   renderAwardsStaffing(staffing);
@@ -7421,6 +7422,42 @@ function awardsVersionRows(documents) {
   });
 }
 
+function awardsTechnicalRows(documents) {
+  const lanes = [
+    { name: "Stage Plots", terms: ["stage", "plot"] },
+    { name: "Venue Plots", terms: ["venue", "plot"] },
+    { name: "Broadcast / Camera", terms: ["broadcast", "camera"] },
+    { name: "Power / Technical", terms: ["power", "technical"] }
+  ];
+  return lanes.map((lane) => {
+    const laneDocs = documents.filter((doc) => {
+      const text = normalizedMatchValue(`${doc.type || ""} ${doc.name || ""} ${doc.department || ""} ${doc.notes || ""}`);
+      return lane.terms.some((term) => text.includes(term)) || (lane.name.includes("Stage") && text.includes("plot"));
+    });
+    const currentDocs = laneDocs.filter((doc) => doc.currentVersion === "yes" || ["Final", "Template Ready"].includes(doc.status));
+    const docsReady = laneDocs.length > 0 && laneDocs.every((doc) => ["Ready", "Distributed", "Final", "Template Ready"].includes(doc.status));
+    const distroReady = laneDocs.length > 0 && laneDocs.every((doc) => ["Ready to Send", "Distributed"].includes(doc.deliveryStatus) || ["Distributed", "Final", "Template Ready"].includes(doc.status));
+    const accessReady = laneDocs.every((doc) => doc.restrictedAccess !== "yes" || ["Restricted", "Public / Redacted"].includes(doc.accessScope));
+    const currentReady = laneDocs.length > 0 && currentDocs.length > 0;
+    const checks = [laneDocs.length > 0, currentReady, docsReady, distroReady, accessReady];
+    const readyCount = checks.filter(Boolean).length;
+    return {
+      name: lane.name,
+      status: readyCount === checks.length ? "Ready" : readyCount >= 3 ? "Close" : "Needs Work",
+      readyCount,
+      totalCount: checks.length,
+      docCount: laneDocs.length,
+      currentCount: currentDocs.length,
+      hasDocs: laneDocs.length > 0,
+      currentReady,
+      docsReady,
+      distroReady,
+      accessReady,
+      examples: laneDocs.map((doc) => doc.name || doc.type).slice(0, 3)
+    };
+  });
+}
+
 function awardsPacketRows(shows, documents, staffing, schedules) {
   return shows.map((show) => {
     const showName = normalizedMatchValue(show.name || "");
@@ -7467,7 +7504,7 @@ function awardsPacketRows(shows, documents, staffing, schedules) {
   });
 }
 
-function awardsAttentionRows(shows, documents, staffing, schedules, packets = [], departments = [], distribution = [], access = [], showDay = [], contacts = [], compliance = [], versions = []) {
+function awardsAttentionRows(shows, documents, staffing, schedules, packets = [], departments = [], distribution = [], access = [], showDay = [], contacts = [], compliance = [], versions = [], technical = []) {
   return [
     ...shows.filter((show) => !show.showDate || !show.venue || show.venue === "Venue TBD").map((show) => ({
       title: `${show.name} show details needed`,
@@ -7549,6 +7586,11 @@ function awardsAttentionRows(shows, documents, staffing, schedules, packets = []
       detail: `${lane.readyCount}/${lane.totalCount} version checks complete.`,
       view: "awardsRundown"
     })),
+    ...technical.filter((lane) => lane.status !== "Ready").slice(0, 3).map((lane) => ({
+      title: `${lane.name} technical packet`,
+      detail: `${lane.readyCount}/${lane.totalCount} technical checks complete.`,
+      view: "awardsRundown"
+    })),
     ...staffing.filter((person) => person.status !== "Ready").slice(0, 4).map((person) => ({
       title: `${person.name} contact info needed`,
       detail: `${person.department || "Production"} - ${person.status || "Needs Review"}`,
@@ -7562,7 +7604,7 @@ function awardsAttentionRows(shows, documents, staffing, schedules, packets = []
   ].slice(0, 8);
 }
 
-function renderAwardsDashboard(shows, documents, staffing, schedules, attention, packets = [], departments = [], distribution = [], access = [], showDay = [], contacts = [], compliance = [], versions = []) {
+function renderAwardsDashboard(shows, documents, staffing, schedules, attention, packets = [], departments = [], distribution = [], access = [], showDay = [], contacts = [], compliance = [], versions = [], technical = []) {
   const client = activeClientRecord();
   const enabled = awardsSuiteEnabled(client);
   $("#awardsHeroTitle").textContent = client?.name ? `${client.name} Broadcast` : "Broadcast Operations";
@@ -7735,6 +7777,25 @@ function renderAwardsDashboard(shows, documents, staffing, schedules, attention,
       <p>${lane.examples.length ? `Versions: ${escapeHtml(lane.examples.join(", "))}` : "No documents in this lane yet."}</p>
     </article>`).join("")
     : `<div class="compact-item empty"><strong>No version lanes yet</strong><p>Add rundowns, scripts, schedules, quickies, and plots to track versions.</p></div>`;
+  const readyTechnical = technical.filter((lane) => lane.status === "Ready").length;
+  $("#awardsTechnicalCount").textContent = `${readyTechnical}/${technical.length} ready`;
+  $("#awardsTechnicalList").innerHTML = technical.length
+    ? technical.map((lane) => `<article class="touring-card">
+      <span class="suite-kicker">${escapeHtml(lane.status)}</span>
+      <h4>${escapeHtml(lane.name)}</h4>
+      <p>${escapeHtml(`${lane.currentCount}/${lane.docCount} current documents`)}</p>
+      <div class="touring-card-sections">
+        ${[
+          ["Docs", lane.hasDocs],
+          ["Current", lane.currentReady],
+          ["Ready", lane.docsReady],
+          ["Distro", lane.distroReady],
+          ["Access", lane.accessReady]
+        ].map(([label, ready]) => `<span class="${ready ? "is-ready" : ""}">${escapeHtml(label)}</span>`).join("")}
+      </div>
+      <p>${lane.examples.length ? `Packets: ${escapeHtml(lane.examples.join(", "))}` : "No technical documents in this lane yet."}</p>
+    </article>`).join("")
+    : `<div class="compact-item empty"><strong>No technical lanes yet</strong><p>Add stage, venue, broadcast, camera, and power docs to track technical readiness.</p></div>`;
 }
 
 function renderAwardsDocuments(shows, documents) {
@@ -7825,6 +7886,7 @@ function renderAwardsSettings() {
     ["Production Office Contacts", "Key contacts are checked for phone, email, credential zone, check-in location, and confirmed status."],
     ["Start Paperwork Readiness", "Start paperwork, safety, and restricted onboarding documents are checked for readiness and delivery."],
     ["Rundown Version Control", "Rundowns, scripts, quickies, schedules, and plots are checked for current, approved, distributed, and access-ready versions."],
+    ["Technical Packet Readiness", "Stage plots, venue plots, broadcast/camera notes, and power or technical packets are checked as live production lanes."],
     ["Bulk Editing", "Awards teams will need spreadsheet-fast updates for staff lists, schedules, document statuses, and show grids."]
   ].map(([title, detail]) => `<article class="touring-card"><h4>${escapeHtml(title)}</h4><p>${escapeHtml(detail)}</p></article>`).join("");
 }
