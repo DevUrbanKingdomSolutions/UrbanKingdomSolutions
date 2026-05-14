@@ -38,9 +38,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.07.022",
-  title: "V1.07.022 update installed",
-  body: "Awards dashboard readiness cards now open the matching Broadcast Documents, Rundown, or Staffing workspace."
+  version: "V1.06.012",
+  title: "V1.06.012 update installed",
+  body: "Touring readiness items now create persistent notifications for client admins and leads until the issue is resolved."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -404,6 +404,7 @@ let state = {
   touringGridEdit: {},
   touringBulkSelection: {},
   awardsBulkSelection: {},
+  touringAttentionNotificationSignature: "",
   awardsAttentionNotificationSignature: "",
   touringSort: JSON.parse(localStorage.getItem("productionCrewTouringSort") || "{}"),
   touringColumnFilters: JSON.parse(localStorage.getItem("productionCrewTouringColumnFilters") || "{}"),
@@ -6486,6 +6487,7 @@ function renderTouringSuite() {
   const crewReadiness = touringCrewReadinessRows(crew);
   const travelReadiness = touringTravelReadinessRows(travel);
   const documentReadiness = touringDocumentReadinessRows(stops, crew, travel);
+  ensureTouringAttentionNotifications(attention).catch((error) => console.warn("Touring notification sync failed", error));
   renderTouringDashboard(stops, crew, travel, attention, riderReadiness, crewReadiness, travelReadiness, documentReadiness);
   renderTourAdvancing(stops);
   renderTourCrewPersonnel(crew);
@@ -6755,6 +6757,74 @@ function touringAttentionRows(stops, crew, travel) {
       view: "tourTravel"
     }))
   ].slice(0, 8);
+}
+
+function suiteAttentionNotificationId(type, item = {}) {
+  const key = `${item.title || ""}|${item.detail || ""}|${item.view || `${type}Dashboard`}`;
+  return `${type}-attention-${key.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 96) || "item"}`;
+}
+
+function suiteAttentionNotificationRecipients() {
+  const clientId = cloudClientId() || activeClientRecord()?.id || "";
+  const reps = state.clientReps.filter((rep) => {
+    if (clientId && rep.clientId !== clientId) return false;
+    const levels = ensureClientRepAccessLevels(rep.accessLevels, "CLIENT_REP");
+    return levels.includes("CLIENT_ADMIN") || levels.includes("CLIENT_REP_LEAD");
+  });
+  const recipients = reps
+    .map((rep) => sendbirdUserIdForProfile({ authUserId: rep.authUserId || rep.id || rep.email }))
+    .filter(Boolean);
+  const current = sendbirdUserIdForProfile({ authUserId: authState.user?.id || activeClientRepRecord()?.id || authState.user?.email });
+  return Array.from(new Set(recipients.length ? recipients : [current].filter(Boolean)));
+}
+
+async function ensureSuiteAttentionNotifications(type, attention = [], fallbackView, fallbackBody) {
+  if (!authState.session || !canOwnerEdit() || isAdminRole()) return;
+  const actionable = attention.slice(0, 6);
+  const signature = actionable.map((item) => `${item.title}|${item.detail}|${item.view}`).join("::");
+  const signatureKey = `${type}AttentionNotificationSignature`;
+  const hasUnreadNotices = state.appNotifications.some((notification) => notification.type === type && !notification.readAt);
+  if (state[signatureKey] === signature && !hasUnreadNotices) return;
+  state[signatureKey] = signature;
+  const recipientIds = suiteAttentionNotificationRecipients();
+  if (!recipientIds.length) return;
+  const activeIds = new Set(actionable.map((item) => suiteAttentionNotificationId(type, item)));
+  const clientId = cloudClientId() || activeClientRecord()?.id || "";
+  let changed = false;
+  for (const item of actionable) {
+    const id = suiteAttentionNotificationId(type, item);
+    const existing = state.appNotifications.find((notification) => notification.id === id);
+    const next = {
+      ...(existing || {}),
+      id,
+      title: item.title,
+      body: item.detail || fallbackBody,
+      type,
+      viewId: item.view || fallbackView,
+      recordId: item.recordId || "",
+      recipientIds,
+      clientId
+    };
+    if (existing && existing.title === next.title && existing.body === next.body && existing.viewId === next.viewId) continue;
+    await put("appNotifications", next);
+    syncAppNotificationToSupabase(next).catch((error) => console.warn(`${type} notification cloud sync failed`, error));
+    state.appNotifications = [next, ...state.appNotifications.filter((notification) => notification.id !== id)]
+      .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+    changed = true;
+  }
+  const now = new Date().toISOString();
+  for (const notification of state.appNotifications.filter((item) => item.type === type && !activeIds.has(item.id) && !item.readAt)) {
+    const updated = { ...notification, readAt: now };
+    await put("appNotifications", updated);
+    syncAppNotificationToSupabase(updated).catch((error) => console.warn(`${type} notification cleanup sync failed`, error));
+    state.appNotifications = state.appNotifications.map((item) => item.id === updated.id ? updated : item);
+    changed = true;
+  }
+  if (changed) renderNotificationSurfaces();
+}
+
+function ensureTouringAttentionNotifications(attention = []) {
+  return ensureSuiteAttentionNotifications("touring", attention, "touringDashboard", "Touring item needs review.");
 }
 
 function touringRiderReadinessRows(stops = []) {
