@@ -38,9 +38,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.07.012",
-  title: "V1.07.012 update installed",
-  body: "Awards / Live Broadcast dashboard now includes show-day readiness for schedule timing, locations, owners, and lock status."
+  version: "V1.07.013",
+  title: "V1.07.013 update installed",
+  body: "Awards / Live Broadcast dashboard now includes production office contact readiness for phone, email, credentials, and check-in details."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -7018,9 +7018,10 @@ function renderAwardsSuite() {
   const distribution = awardsDistributionRows(documents);
   const access = awardsAccessRows(documents);
   const showDay = awardsShowDayRows(shows, schedules);
+  const contacts = awardsContactRows(staffing);
   const packets = awardsPacketRows(shows, documents, staffing, schedules);
-  const attention = awardsAttentionRows(shows, documents, staffing, schedules, packets, departments, distribution, access, showDay);
-  renderAwardsDashboard(shows, documents, staffing, schedules, attention, packets, departments, distribution, access, showDay);
+  const attention = awardsAttentionRows(shows, documents, staffing, schedules, packets, departments, distribution, access, showDay, contacts);
+  renderAwardsDashboard(shows, documents, staffing, schedules, attention, packets, departments, distribution, access, showDay, contacts);
   renderAwardsDocuments(shows, documents);
   renderAwardsRundown(documents, schedules);
   renderAwardsStaffing(staffing);
@@ -7317,6 +7318,39 @@ function awardsShowDayRows(shows, schedules) {
   });
 }
 
+function awardsContactRows(staffing) {
+  const productionContacts = staffing.filter((person) => {
+    const text = normalizedMatchValue(`${person.department || ""} ${person.title || ""} ${person.name || ""}`);
+    return text.includes("production") || text.includes("stage") || text.includes("broadcast") || text.includes("mimeo") || text.includes("producer");
+  });
+  const rows = productionContacts.length ? productionContacts : staffing.slice(0, 6);
+  return rows.map((person) => {
+    const phoneReady = Boolean(person.phone && person.phone !== "Missing" && person.phone !== "Pending");
+    const emailReady = Boolean(person.email && person.email !== "Missing" && person.email !== "Pending");
+    const credentialReady = Boolean(person.credentialZone && ["Approved", "Issued"].includes(person.credentialStatus));
+    const checkInReady = Boolean(person.checkInLocation);
+    const statusReady = ["Confirmed", "Ready"].includes(person.status);
+    const checks = [phoneReady, emailReady, credentialReady, checkInReady, statusReady];
+    const readyCount = checks.filter(Boolean).length;
+    return {
+      id: person.id,
+      name: person.name || "Production Contact",
+      department: person.department || "Production",
+      title: person.title || "",
+      status: readyCount === checks.length ? "Ready" : readyCount >= 3 ? "Close" : "Needs Work",
+      readyCount,
+      totalCount: checks.length,
+      phoneReady,
+      emailReady,
+      credentialReady,
+      checkInReady,
+      statusReady,
+      credentialZone: person.credentialZone || "Zone TBD",
+      checkInLocation: person.checkInLocation || "Check-in TBD"
+    };
+  });
+}
+
 function awardsPacketRows(shows, documents, staffing, schedules) {
   return shows.map((show) => {
     const showName = normalizedMatchValue(show.name || "");
@@ -7363,7 +7397,7 @@ function awardsPacketRows(shows, documents, staffing, schedules) {
   });
 }
 
-function awardsAttentionRows(shows, documents, staffing, schedules, packets = [], departments = [], distribution = [], access = [], showDay = []) {
+function awardsAttentionRows(shows, documents, staffing, schedules, packets = [], departments = [], distribution = [], access = [], showDay = [], contacts = []) {
   return [
     ...shows.filter((show) => !show.showDate || !show.venue || show.venue === "Venue TBD").map((show) => ({
       title: `${show.name} show details needed`,
@@ -7430,6 +7464,11 @@ function awardsAttentionRows(shows, documents, staffing, schedules, packets = []
       detail: `${show.readyCount}/${show.totalCount} show-day checks complete.`,
       view: "awardsDashboard"
     })),
+    ...contacts.filter((person) => person.status !== "Ready").slice(0, 3).map((person) => ({
+      title: `${person.name} contact readiness`,
+      detail: `${person.readyCount}/${person.totalCount} contact checks complete.`,
+      view: "awardsStaffing"
+    })),
     ...staffing.filter((person) => person.status !== "Ready").slice(0, 4).map((person) => ({
       title: `${person.name} contact info needed`,
       detail: `${person.department || "Production"} - ${person.status || "Needs Review"}`,
@@ -7443,7 +7482,7 @@ function awardsAttentionRows(shows, documents, staffing, schedules, packets = []
   ].slice(0, 8);
 }
 
-function renderAwardsDashboard(shows, documents, staffing, schedules, attention, packets = [], departments = [], distribution = [], access = [], showDay = []) {
+function renderAwardsDashboard(shows, documents, staffing, schedules, attention, packets = [], departments = [], distribution = [], access = [], showDay = [], contacts = []) {
   const client = activeClientRecord();
   const enabled = awardsSuiteEnabled(client);
   $("#awardsHeroTitle").textContent = client?.name ? `${client.name} Broadcast` : "Broadcast Operations";
@@ -7559,6 +7598,25 @@ function renderAwardsDashboard(shows, documents, staffing, schedules, attention,
       <p>${show.nextItems.length ? `Schedule: ${escapeHtml(show.nextItems.join(", "))}` : "No show-day schedule items yet."}</p>
     </article>`).join("")
     : `<div class="compact-item empty"><strong>No show-day records yet</strong><p>Add schedule items to track live-day readiness.</p></div>`;
+  const readyContacts = contacts.filter((person) => person.status === "Ready").length;
+  $("#awardsContactCount").textContent = `${readyContacts}/${contacts.length} ready`;
+  $("#awardsContactList").innerHTML = contacts.length
+    ? contacts.map((person) => `<article class="touring-card">
+      <span class="suite-kicker">${escapeHtml(person.status)}</span>
+      <h4>${escapeHtml(person.name)}</h4>
+      <p>${escapeHtml([person.department, person.title].filter(Boolean).join(" / ") || "Production Office")}</p>
+      <div class="touring-card-sections">
+        ${[
+          ["Phone", person.phoneReady],
+          ["Email", person.emailReady],
+          ["Credential", person.credentialReady],
+          ["Check-In", person.checkInReady],
+          ["Confirmed", person.statusReady]
+        ].map(([label, ready]) => `<span class="${ready ? "is-ready" : ""}">${escapeHtml(label)}</span>`).join("")}
+      </div>
+      <p>${escapeHtml(`${person.credentialZone} / ${person.checkInLocation}`)}</p>
+    </article>`).join("")
+    : `<div class="compact-item empty"><strong>No production contacts yet</strong><p>Add broadcast staffing records to track production office contact readiness.</p></div>`;
 }
 
 function renderAwardsDocuments(shows, documents) {
@@ -7646,6 +7704,7 @@ function renderAwardsSettings() {
     ["Distribution Readiness", "Distro groups can be checked for delivery status, sent dates, and restricted/redacted access paths."],
     ["Access Readiness", "Restricted, redacted, department, all-staff, and production-only documents are checked as separate access lanes."],
     ["Show-Day Readiness", "Live-day checks track timing, locations, owners, final schedule status, and locked show calls."],
+    ["Production Office Contacts", "Key contacts are checked for phone, email, credential zone, check-in location, and confirmed status."],
     ["Bulk Editing", "Awards teams will need spreadsheet-fast updates for staff lists, schedules, document statuses, and show grids."]
   ].map(([title, detail]) => `<article class="touring-card"><h4>${escapeHtml(title)}</h4><p>${escapeHtml(detail)}</p></article>`).join("");
 }
