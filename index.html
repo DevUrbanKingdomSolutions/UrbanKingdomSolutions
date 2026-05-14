@@ -10,7 +10,7 @@
     <title>Production Crew Database</title>
     <link rel="manifest" href="manifest.webmanifest">
     <link rel="icon" href="assets/logo/app-logo-admin.png" type="image/png">
-    <link rel="stylesheet" href="styles.css?v=V1.07.003-awards-grid">
+    <link rel="stylesheet" href="styles.css?v=V1.07.004-awards-doc-versions">
   </head>
   <body>
     <div id="appLoadingOverlay" class="app-loading-overlay" aria-live="polite">
@@ -1296,6 +1296,26 @@
             </select>
           </label>
           <label>Department<input name="department" placeholder="Production, Mimeo, Stage Management"></label>
+          <div class="form-grid">
+            <label>Version / revision<input name="versionLabel" placeholder="V8, 1116b, Final, Rev 2"></label>
+            <label>Distro group<input name="distributionGroup" placeholder="Mimeo, Production, Department Heads"></label>
+          </div>
+          <div class="form-grid">
+            <label>Current version
+              <select name="currentVersion">
+                <option value="">Needs Review</option>
+                <option value="yes">Current</option>
+                <option value="no">Superseded</option>
+              </select>
+            </label>
+            <label>Restricted access
+              <select name="restrictedAccess">
+                <option value="">Standard</option>
+                <option value="yes">Restricted</option>
+                <option value="no">Standard</option>
+              </select>
+            </label>
+          </div>
           <label>Link<input name="link" type="url" placeholder="https://"></label>
           <label>Notes<textarea name="notes" rows="3" placeholder="Version notes, distro notes, missing approvals"></textarea></label>
           <button class="primary-action" type="submit">Save Broadcast Document</button>
@@ -2143,6 +2163,6 @@
     <div id="modalHost"></div>
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js?v=V1.07.003-awards-grid"></script>
+    <script src="app.js?v=V1.07.004-awards-doc-versions"></script>
   </body>
 </html>
