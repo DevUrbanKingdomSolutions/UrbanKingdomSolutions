@@ -38,9 +38,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.06.035",
-  title: "V1.06.035 update installed",
-  body: "ADMIN account access saves now update Supabase roles directly, avoiding stale Edge Function access rules."
+  version: "V1.06.036",
+  title: "V1.06.036 update installed",
+  body: "Changing a login into Account, Accounting, or Client access now creates the needed client profile bridge so the user list does not snap back to Crew."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -2499,11 +2499,17 @@ async function saveAccountAccess(event) {
     return;
   }
   const role = selectedSecurityRole;
-  const matched = record.profileStore && record.profileId
+  let matched = record.profileStore && record.profileId
     ? { store: record.profileStore, profile: state[record.profileStore]?.find((item) => item.id === record.profileId) }
     : profileForUserAccessRow({ ...record, role });
-  if (role === "CLIENT" || matched.store === "clientReps") accessLevels = ensureClientRepAccessLevels(accessLevels);
-  if (matched.profile && matched.store) {
+  if (["ACCOUNT", "ACCOUNTING", "CLIENT"].includes(role)) {
+    accessLevels = ensureClientRepAccessLevels(accessLevels, serverAccessLevelForRole(role) || "CLIENT_REP");
+    const repProfile = await ensureAccountAccessClientRepProfile(record, role, accessLevels, matched);
+    matched = { store: "clientReps", profile: repProfile };
+  } else if (matched.store === "clientReps") {
+    accessLevels = ensureClientRepAccessLevels(accessLevels);
+  }
+  if (matched.profile && matched.store && matched.store !== "clientReps") {
     await put(matched.store, { ...matched.profile, accessLevels, loginRole: role });
   }
   try {
@@ -2542,6 +2548,32 @@ async function saveAccountAccess(event) {
   toast("Account access updated.");
 }
 
+async function ensureAccountAccessClientRepProfile(record, role, accessLevels, matched) {
+  const email = String(record.email || matched.profile?.email || "").trim();
+  const clientId = record.clientId || matched.profile?.clientId || authState.roleRecord?.client_id || "";
+  const existing = state.clientReps.find((rep) => rep.authUserId === record.userId)
+    || state.clientReps.find((rep) => email && normalizedMatchValue(rep.email) === normalizedMatchValue(email) && rep.clientId === clientId)
+    || (matched.store === "clientReps" ? matched.profile : null);
+  const source = matched.profile || {};
+  const name = existing?.name || source.name || source.contactName || email || "Account user";
+  const repProfile = {
+    ...(existing || {}),
+    id: existing?.id || (matched.store === "clientReps" ? matched.profile?.id : "") || crypto.randomUUID(),
+    clientId,
+    authUserId: record.userId || existing?.authUserId || "",
+    name,
+    title: existing?.title || source.title || accessLevelLabel(serverAccessLevelForRole(role)) || "",
+    email: email || existing?.email || source.email || "",
+    phone: existing?.phone || source.phone || "",
+    mailingAddress: existing?.mailingAddress || source.mailingAddress || "",
+    accessLevels,
+    loginRole: role,
+    emailRoutingStatus: existing?.emailRoutingStatus || "Not configured"
+  };
+  await put("clientReps", repProfile);
+  return repProfile;
+}
+
 function accountAccessPayload(record, role, accessLevels, matched) {
   return {
     action: "update",
@@ -2570,16 +2602,24 @@ async function saveAccountAccessDirectly(record, role, accessLevels, matched) {
     }, { onConflict: "user_id" });
   if (roleError) throw roleError;
   if (["ACCOUNT", "ACCOUNTING", "CLIENT"].includes(role)) {
-    const profileId = payload.profileId || matched.profile?.id || "";
+    const profile = matched.profile || {};
+    const profileId = payload.profileId || profile.id || "";
     if (!profileId) return;
     const { error: repError } = await supabaseClient
       .from("client_reps")
-      .update({
+      .upsert({
+        id: profileId,
+        client_id: payload.clientId,
+        name: profile.name || profile.email || "Account user",
+        title: profile.title || accessLevelLabel(serverAccessLevelForRole(role)) || "",
+        email: profile.email || record.email || "",
+        phone: profile.phone || "",
+        mailing_address: profile.mailingAddress || "",
         access_levels: accessLevels,
         auth_user_id: payload.userId,
+        email_routing_status: profile.emailRoutingStatus || "Not configured",
         updated_at: new Date().toISOString()
-      })
-      .eq("id", profileId);
+      }, { onConflict: "id" });
     if (repError) throw repError;
   }
 }
