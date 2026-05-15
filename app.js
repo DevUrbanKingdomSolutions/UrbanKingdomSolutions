@@ -38,9 +38,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.06.041",
-  title: "V1.06.041 update installed",
-  body: "Account Owner startup now opens the dashboard first and moves heavy sync/user-list refresh work into the background."
+  version: "V1.06.042",
+  title: "V1.06.042 update installed",
+  body: "Account Owner can now keep additional site-level access selected while staying the primary account-level role."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -2459,7 +2459,6 @@ function serverAccessLevelForRole(role) {
 function exclusiveAccessLevels(levels = []) {
   const normalized = normalizeAccessLevels(levels, "");
   if (normalized.includes("ADMIN")) return ["ADMIN"];
-  if (normalized.includes("ACCOUNT")) return ["ACCOUNT"];
   return normalized;
 }
 
