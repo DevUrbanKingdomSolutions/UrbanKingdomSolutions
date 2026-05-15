@@ -46,13 +46,14 @@ Deno.serve(async (request) => {
       throw new Error("Only ADMIN can save admin SMTP settings.");
     }
     if (scope === "client_rep") {
-      if (callerRole?.role !== "CLIENT") throw new Error("Only CLIENT can save client SMTP settings.");
+      if (!["ACCOUNT", "CLIENT"].includes(callerRole?.role)) throw new Error("Only ACCOUNT or CLIENT can save client SMTP settings.");
+      if (!callerRole) throw new Error("Login role is required.");
       if (!clientId || clientId !== callerRole.client_id) throw new Error("Client SMTP settings must stay inside your client account.");
     }
     if (scope === "promoter") {
       const isOwnPromoter = callerRole?.role === "PROMOTER_PRODUCTION_OFFICE" && profileId === callerRole.promoter_id;
-      const isClientForPromoter = callerRole?.role === "CLIENT" && clientId === callerRole.client_id;
-      if (!isOwnPromoter && !isClientForPromoter) throw new Error("Only the assigned Production Office or Client can save promoter SMTP settings.");
+      const isClientForPromoter = ["ACCOUNT", "CLIENT"].includes(callerRole?.role) && !!callerRole && clientId === callerRole.client_id;
+      if (!isOwnPromoter && !isClientForPromoter) throw new Error("Only the assigned Production Office, Account, or Client can save promoter SMTP settings.");
     }
     if (!["admin", "client_rep", "promoter"].includes(scope)) throw new Error("Unsupported SMTP route scope.");
 
@@ -87,12 +88,16 @@ Deno.serve(async (request) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" }
     });
   } catch (error) {
-    return new Response(JSON.stringify({ error: error.message || "SMTP route save failed." }), {
+    return new Response(JSON.stringify({ error: errorMessage(error, "SMTP route save failed.") }), {
       status: 400,
       headers: { ...corsHeaders, "Content-Type": "application/json" }
     });
   }
 });
+
+function errorMessage(error: unknown, fallback: string) {
+  return error instanceof Error ? error.message : fallback;
+}
 
 function routeIdFor(scope: string, userId: string, clientId: string | null, profileId: string) {
   if (scope === "admin") return `admin:${userId}`;

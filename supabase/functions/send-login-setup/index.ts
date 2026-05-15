@@ -35,6 +35,7 @@ Deno.serve(async (request) => {
       .eq("user_id", callerData.user.id)
       .maybeSingle();
     if (roleError) throw roleError;
+    if (!callerRole) throw new Error("Login role is required.");
 
     const body = await request.json();
     const email = String(body.email || "").trim().toLowerCase();
@@ -45,14 +46,14 @@ Deno.serve(async (request) => {
 
     if (profileType === "client") {
       if (callerRole?.role !== "ADMIN") throw new Error("Only ADMIN users can send client login setup.");
-      if (role !== "CLIENT") throw new Error("Client setup must use the CLIENT role.");
+      if (!["ACCOUNT", "CLIENT"].includes(role)) throw new Error("Client setup must use the ACCOUNT or CLIENT role.");
     } else {
       const callerIsPromoter = ["PROMOTER", "PROMOTER_PRODUCTION_OFFICE"].includes(callerRole?.role);
       const promoterInvitingPromoter = callerIsPromoter && profileType === "promoter" && ["PROMOTER", "PROMOTER_PRODUCTION_OFFICE"].includes(role);
-      if (callerRole?.role !== "CLIENT" && !promoterInvitingPromoter) {
-        throw new Error("Only CLIENT users can send crew and production office login setup.");
+      if (!["ACCOUNT", "CLIENT"].includes(callerRole?.role) && !promoterInvitingPromoter) {
+        throw new Error("Only ACCOUNT or CLIENT users can send crew and production office login setup.");
       }
-      if (callerRole?.role === "CLIENT" && !["CLIENT", "PROMOTER", "PRODUCTION", "PROMOTER_PRODUCTION_OFFICE", "CREW"].includes(role)) {
+      if (["ACCOUNT", "CLIENT"].includes(callerRole?.role) && !["ACCOUNTING", "CLIENT", "PROMOTER", "PRODUCTION", "PROMOTER_PRODUCTION_OFFICE", "CREW"].includes(role)) {
         throw new Error("Only client rep, promoter, production, and crew roles can be invited here.");
       }
       if (callerIsPromoter && !["PROMOTER", "PROMOTER_PRODUCTION_OFFICE"].includes(role)) {
@@ -77,7 +78,7 @@ Deno.serve(async (request) => {
     if (linkError) throw linkError;
 
     const userId = linkData.user?.id;
-    const inviteLink = linkData.properties?.action_link || linkData.properties?.actionLink || "";
+    const inviteLink = linkData.properties?.action_link || "";
     if (!userId || !inviteLink) throw new Error("Supabase did not return an invite link.");
 
     const { error: upsertError } = await admin.from("user_roles").upsert({
@@ -96,12 +97,16 @@ Deno.serve(async (request) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" }
     });
   } catch (error) {
-    return new Response(JSON.stringify({ error: error.message || "Login setup failed." }), {
+    return new Response(JSON.stringify({ error: errorMessage(error, "Login setup failed.") }), {
       status: 400,
       headers: { ...corsHeaders, "Content-Type": "application/json" }
     });
   }
 });
+
+function errorMessage(error: unknown, fallback: string) {
+  return error instanceof Error ? error.message : fallback;
+}
 
 async function userById(admin: any, userId: string) {
   const { data, error } = await admin.auth.admin.getUserById(userId);
@@ -109,7 +114,7 @@ async function userById(admin: any, userId: string) {
   return data?.user || null;
 }
 
-async function sendInviteEmail(admin: any, route, to, inviteLink, profileType, resetPassword = false) {
+async function sendInviteEmail(admin: any, route: any, to: string, inviteLink: string, profileType: string, resetPassword = false) {
   if (!route) throw new Error("SMTP routing settings are required.");
   const host = String(route.host || "").trim();
   const port = Number(route.port || 587);

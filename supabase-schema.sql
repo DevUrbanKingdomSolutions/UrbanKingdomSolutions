@@ -2,6 +2,8 @@ do $$
 begin
   create type public.app_role as enum (
     'ADMIN',
+    'ACCOUNT',
+    'ACCOUNTING',
     'CLIENT',
     'PROMOTER',
     'PRODUCTION',
@@ -13,6 +15,8 @@ exception
 end
 $$;
 
+alter type public.app_role add value if not exists 'ACCOUNT';
+alter type public.app_role add value if not exists 'ACCOUNTING';
 alter type public.app_role add value if not exists 'PROMOTER';
 alter type public.app_role add value if not exists 'PRODUCTION';
 
@@ -142,9 +146,9 @@ on public.user_roles
 for insert
 to authenticated
 with check (
-  public.current_app_role() = 'CLIENT'
+  public.current_app_role()::text in ('ACCOUNT', 'CLIENT')
   and client_id = public.current_client_id()
-  and role in ('CLIENT', 'PROMOTER', 'PRODUCTION', 'PROMOTER_PRODUCTION_OFFICE', 'CREW')
+  and role::text in ('ACCOUNTING', 'CLIENT', 'PROMOTER', 'PRODUCTION', 'PROMOTER_PRODUCTION_OFFICE', 'CREW')
 );
 
 create policy "Clients can update scoped login roles"
@@ -152,14 +156,14 @@ on public.user_roles
 for update
 to authenticated
 using (
-  public.current_app_role() = 'CLIENT'
+  public.current_app_role()::text in ('ACCOUNT', 'CLIENT')
   and client_id = public.current_client_id()
-  and role in ('CLIENT', 'PROMOTER', 'PRODUCTION', 'PROMOTER_PRODUCTION_OFFICE', 'CREW')
+  and role::text in ('ACCOUNTING', 'CLIENT', 'PROMOTER', 'PRODUCTION', 'PROMOTER_PRODUCTION_OFFICE', 'CREW')
 )
 with check (
-  public.current_app_role() = 'CLIENT'
+  public.current_app_role()::text in ('ACCOUNT', 'CLIENT')
   and client_id = public.current_client_id()
-  and role in ('CLIENT', 'PROMOTER', 'PRODUCTION', 'PROMOTER_PRODUCTION_OFFICE', 'CREW')
+  and role::text in ('ACCOUNTING', 'CLIENT', 'PROMOTER', 'PRODUCTION', 'PROMOTER_PRODUCTION_OFFICE', 'CREW')
 );
 
 create policy "Clients can remove scoped login roles"
@@ -167,9 +171,9 @@ on public.user_roles
 for delete
 to authenticated
 using (
-  public.current_app_role() = 'CLIENT'
+  public.current_app_role()::text in ('ACCOUNT', 'CLIENT')
   and client_id = public.current_client_id()
-  and role in ('CLIENT', 'PROMOTER', 'PRODUCTION', 'PROMOTER_PRODUCTION_OFFICE', 'CREW')
+  and role::text in ('ACCOUNTING', 'CLIENT', 'PROMOTER', 'PRODUCTION', 'PROMOTER_PRODUCTION_OFFICE', 'CREW')
 );
 
 create table if not exists public.clients (
@@ -225,7 +229,7 @@ on public.clients
 for select
 to authenticated
 using (
-  public.current_app_role() = 'CLIENT'
+  public.current_app_role()::text in ('ACCOUNT', 'CLIENT')
   and id = public.current_client_id()
 );
 
@@ -234,11 +238,11 @@ on public.clients
 for update
 to authenticated
 using (
-  public.current_app_role() = 'CLIENT'
+  public.current_app_role()::text in ('ACCOUNT', 'CLIENT')
   and id = public.current_client_id()
 )
 with check (
-  public.current_app_role() = 'CLIENT'
+  public.current_app_role()::text in ('ACCOUNT', 'CLIENT')
   and id = public.current_client_id()
 );
 
@@ -283,7 +287,7 @@ on public.access_levels
 for select
 to authenticated
 using (
-  public.current_app_role() = 'CLIENT'
+  public.current_app_role()::text in ('ACCOUNT', 'CLIENT', 'ACCOUNTING')
   and status = 'Active'
 );
 
@@ -352,11 +356,20 @@ on public.client_reps
 for all
 to authenticated
 using (
-  public.current_app_role() = 'CLIENT'
+  public.current_app_role()::text in ('ACCOUNT', 'CLIENT')
   and client_id = public.current_client_id()
 )
 with check (
-  public.current_app_role() = 'CLIENT'
+  public.current_app_role()::text in ('ACCOUNT', 'CLIENT')
+  and client_id = public.current_client_id()
+);
+
+create policy "Accounting can read reps for their client"
+on public.client_reps
+for select
+to authenticated
+using (
+  public.current_app_role()::text = 'ACCOUNTING'
   and client_id = public.current_client_id()
 );
 
@@ -500,12 +513,22 @@ on public.app_records
 for all
 to authenticated
 using (
-  public.current_app_role() = 'CLIENT'
+  public.current_app_role()::text in ('ACCOUNT', 'CLIENT')
   and client_id = public.current_client_id()
 )
 with check (
-  public.current_app_role() = 'CLIENT'
+  public.current_app_role()::text in ('ACCOUNT', 'CLIENT')
   and client_id = public.current_client_id()
+);
+
+create policy "Accounting can read financial app records"
+on public.app_records
+for select
+to authenticated
+using (
+  public.current_app_role()::text = 'ACCOUNTING'
+  and client_id = public.current_client_id()
+  and store_name in ('events', 'workers', 'timecards', 'vehicleLogs', 'accidentReports', 'appNotifications', 'messageThreadSettings')
 );
 
 create policy "Promoters can read shared production records"
@@ -548,12 +571,12 @@ on public.app_records
 for all
 to authenticated
 using (
-  public.current_app_role() in ('CLIENT', 'PROMOTER', 'PROMOTER_PRODUCTION_OFFICE', 'PRODUCTION', 'CREW')
+  public.current_app_role()::text in ('ACCOUNT', 'ACCOUNTING', 'CLIENT', 'PROMOTER', 'PROMOTER_PRODUCTION_OFFICE', 'PRODUCTION', 'CREW')
   and client_id = public.current_client_id()
   and store_name = 'appNotifications'
 )
 with check (
-  public.current_app_role() in ('CLIENT', 'PROMOTER', 'PROMOTER_PRODUCTION_OFFICE', 'PRODUCTION', 'CREW')
+  public.current_app_role()::text in ('ACCOUNT', 'ACCOUNTING', 'CLIENT', 'PROMOTER', 'PROMOTER_PRODUCTION_OFFICE', 'PRODUCTION', 'CREW')
   and client_id = public.current_client_id()
   and store_name = 'appNotifications'
 );

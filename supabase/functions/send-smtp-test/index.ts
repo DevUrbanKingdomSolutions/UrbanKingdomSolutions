@@ -47,7 +47,7 @@ Deno.serve(async (request) => {
       throw new Error("Only ADMIN can send admin SMTP tests.");
     }
     if (scope === "client") {
-      if (callerRole?.role !== "CLIENT") throw new Error("Only CLIENT can send client SMTP tests.");
+      if (!["ACCOUNT", "CLIENT"].includes(callerRole?.role)) throw new Error("Only ACCOUNT or CLIENT can send client SMTP tests.");
       await verifyClientSmtpRoute(admin, callerData.user.id, secretRef);
     }
     if (!["admin", "client"].includes(scope)) throw new Error("Unsupported SMTP test scope.");
@@ -87,12 +87,16 @@ Deno.serve(async (request) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" }
     });
   } catch (error) {
-    return new Response(JSON.stringify({ error: error.message || "SMTP test failed." }), {
+    return new Response(JSON.stringify({ error: errorMessage(error, "SMTP test failed.") }), {
       status: 400,
       headers: { ...corsHeaders, "Content-Type": "application/json" }
     });
   }
 });
+
+function errorMessage(error: unknown, fallback: string) {
+  return error instanceof Error ? error.message : fallback;
+}
 
 async function verifyClientSmtpRoute(admin: any, userId: string, routeId: string) {
   if (!routeId) throw new Error("Missing SMTP route.");

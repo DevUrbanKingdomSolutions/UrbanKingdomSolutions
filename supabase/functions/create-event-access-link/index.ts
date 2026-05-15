@@ -27,9 +27,10 @@ Deno.serve(async (request) => {
       .eq("user_id", callerData.user.id)
       .maybeSingle();
     if (roleError) throw roleError;
-    if (!["CLIENT", "PROMOTER_PRODUCTION_OFFICE"].includes(callerRole?.role)) {
-      throw new Error("Only Client or Production Office can create event access links.");
+    if (!["ACCOUNT", "CLIENT", "PROMOTER_PRODUCTION_OFFICE"].includes(callerRole?.role)) {
+      throw new Error("Only Account, Client, or Production Office can create event access links.");
     }
+    if (!callerRole) throw new Error("Login role is required.");
 
     const body = await request.json();
     const eventId = String(body.eventId || "").trim();
@@ -79,12 +80,16 @@ Deno.serve(async (request) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" }
     });
   } catch (error) {
-    return new Response(JSON.stringify({ error: error.message || "Event access link failed." }), {
+    return new Response(JSON.stringify({ error: errorMessage(error, "Event access link failed.") }), {
       status: 400,
       headers: { ...corsHeaders, "Content-Type": "application/json" }
     });
   }
 });
+
+function errorMessage(error: unknown, fallback: string) {
+  return error instanceof Error ? error.message : fallback;
+}
 
 async function sendEventAccessEmail(admin: any, route: any, to: string, name: string, publicUrl: string, snapshot: any) {
   if (!route) throw new Error("SMTP routing settings are required.");

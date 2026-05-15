@@ -34,7 +34,7 @@ where user_id = '1d8762d1-5e41-4979-85a2-d75941653492';
 -- insert into public.user_roles (user_id, role, client_id)
 -- values (
 --   'AUTH_USER_ID_HERE',
---   'CLIENT',
+--   'ACCOUNT',
 --   'CLIENT_ID_HERE'
 -- )
 -- on conflict (user_id) do update

@@ -38,9 +38,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.06.021",
-  title: "V1.06.021 update installed",
-  body: "Account and Accounting access lanes are now separated so customer workspaces and money workflows can grow cleanly."
+  version: "V1.06.022",
+  title: "V1.06.022 update installed",
+  body: "Account and Accounting access now carries into Supabase schema, role policies, and login management functions."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -2201,7 +2201,7 @@ async function syncSupabaseAccessLevel(record) {
 }
 
 async function hydrateClientSetupData(roleRecord, user) {
-  if (!supabaseClient || roleRecord.role !== "CLIENT" || !roleRecord.client_id) return { client: null, repCount: 0 };
+  if (!supabaseClient || !["ACCOUNT", "CLIENT", "ACCOUNTING"].includes(roleRecord.role) || !roleRecord.client_id) return { client: null, repCount: 0 };
   try {
     const { data: client, error: clientError } = await supabaseClient
       .from("clients")
@@ -2358,7 +2358,7 @@ async function refreshUserAccessList(showMessage = true) {
 }
 
 async function deleteUserAccount(userId) {
-  if (!isAdminRole() || !userId) return;
+  if (!(isAdminRole() || isAccountRole()) || !userId) return;
   const confirmed = confirm("Delete this login account? This removes their Supabase login and app role, but does not delete the client company profile.");
   if (!confirmed) return;
   const { error } = await supabaseClient.functions.invoke(USER_ACCESS_FUNCTION, {
@@ -2421,7 +2421,7 @@ function supabaseRoleFromAccessLevels(levels, fallback = "CLIENT") {
 }
 
 async function openAccountAccessForm(userId) {
-  if (!isAdminRole() || !userId) return;
+  if (!(isAdminRole() || isAccountRole()) || !userId) return;
   await refreshSiteAccessLevelsForForm("accountAccessForm");
   const row = state.userAccessRows.find((item) => item.userId === userId);
   if (!row) {
@@ -2445,7 +2445,7 @@ async function openAccountAccessForm(userId) {
 
 async function saveAccountAccess(event) {
   event.preventDefault();
-  if (!isAdminRole()) return;
+  if (!(isAdminRole() || isAccountRole())) return;
   if (!initializeSupabaseClient()) {
     toast("Supabase login is not configured.");
     return;

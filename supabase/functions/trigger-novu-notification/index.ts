@@ -27,7 +27,7 @@ Deno.serve(async (request) => {
       .eq("user_id", callerData.user.id)
       .maybeSingle();
     if (roleError) throw roleError;
-    if (!["ADMIN", "CLIENT", "PROMOTER", "PROMOTER_PRODUCTION_OFFICE", "CREW", "PRODUCTION"].includes(callerRole?.role)) {
+    if (!["ADMIN", "ACCOUNT", "ACCOUNTING", "CLIENT", "PROMOTER", "PROMOTER_PRODUCTION_OFFICE", "CREW", "PRODUCTION"].includes(callerRole?.role)) {
       throw new Error("This login cannot trigger notifications.");
     }
 
@@ -59,9 +59,13 @@ Deno.serve(async (request) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" }
     });
   } catch (error) {
-    return new Response(JSON.stringify({ error: error.message || "Novu notification failed." }), {
+    return new Response(JSON.stringify({ error: errorMessage(error, "Novu notification failed.") }), {
       status: 400,
       headers: { ...corsHeaders, "Content-Type": "application/json" }
     });
   }
 });
+
+function errorMessage(error: unknown, fallback: string) {
+  return error instanceof Error ? error.message : fallback;
+}

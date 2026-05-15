@@ -1,5 +1,5 @@
 {
-  "version": "V1.06.021",
-  "title": "V1.06.021 update installed",
-  "body": "Account and Accounting access lanes are now separated so customer workspaces and money workflows can grow cleanly."
+  "version": "V1.06.022",
+  "title": "V1.06.022 update installed",
+  "body": "Account and Accounting access now carries into Supabase schema, role policies, and login management functions."
 }

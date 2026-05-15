@@ -45,14 +45,14 @@ Deno.serve(async (request) => {
 });
 
 async function listUserAccounts(admin: any, callerRole: any) {
-  if (!["ADMIN", "CLIENT", "PROMOTER", "PROMOTER_PRODUCTION_OFFICE"].includes(callerRole?.role)) {
+  if (!["ADMIN", "ACCOUNT", "CLIENT", "PROMOTER", "PROMOTER_PRODUCTION_OFFICE"].includes(callerRole?.role)) {
     throw new Error("This role cannot view user accounts.");
   }
 
   let query = admin
     .from("user_roles")
     .select("user_id,role,client_id,worker_id,promoter_id,updated_at");
-  if (callerRole.role === "CLIENT") query = query.eq("client_id", callerRole.client_id);
+  if (["ACCOUNT", "CLIENT"].includes(callerRole.role)) query = query.eq("client_id", callerRole.client_id);
   if (["PROMOTER", "PROMOTER_PRODUCTION_OFFICE"].includes(callerRole.role)) {
     query = query.eq("client_id", callerRole.client_id).in("role", ["PROMOTER", "PROMOTER_PRODUCTION_OFFICE"]);
   }
@@ -99,19 +99,24 @@ async function listUserAccounts(admin: any, callerRole: any) {
 }
 
 async function updateUserAccess(admin: any, callerUserId: string, callerRole: any, body: any) {
-  if (callerRole?.role !== "ADMIN") throw new Error("Only ADMIN can manage login access.");
+  if (!["ADMIN", "ACCOUNT"].includes(callerRole?.role)) throw new Error("Only ADMIN or ACCOUNT can manage login access.");
   const userId = String(body.userId || "");
   if (!userId) throw new Error("User ID is required.");
-  if (userId === callerUserId) throw new Error("ADMIN cannot change their own login access here.");
+  if (userId === callerUserId) throw new Error("You cannot change your own login access here.");
 
-  const allowedRoles = new Set(["CLIENT", "PROMOTER", "PRODUCTION", "CREW"]);
+  const allowedRoles = new Set(callerRole?.role === "ADMIN"
+    ? ["ACCOUNT", "ACCOUNTING", "CLIENT", "PROMOTER", "PRODUCTION", "CREW"]
+    : ["ACCOUNTING", "CLIENT", "PROMOTER", "PRODUCTION", "CREW"]);
   const role = String(body.role || "").trim().toUpperCase();
   if (!allowedRoles.has(role)) throw new Error("Choose a valid Supabase security level.");
+  if (callerRole?.role === "ACCOUNT" && body.clientId !== callerRole.client_id) {
+    throw new Error("Account users can only manage users inside their own account.");
+  }
 
   let accessLevels = Array.isArray(body.accessLevels)
     ? body.accessLevels.map((level: unknown) => String(level || "").trim()).filter(Boolean)
     : [];
-  if (role === "CLIENT") accessLevels = ensureClientRepAccessLevels(accessLevels);
+  if (["ACCOUNT", "ACCOUNTING", "CLIENT"].includes(role)) accessLevels = ensureClientRepAccessLevels(accessLevels);
 
   const payload = {
     user_id: userId,
@@ -124,7 +129,7 @@ async function updateUserAccess(admin: any, callerUserId: string, callerRole: an
   const roleUpdate = await admin.from("user_roles").upsert(payload, { onConflict: "user_id" });
   if (roleUpdate.error) throw roleUpdate.error;
 
-  if (role === "CLIENT") {
+  if (["ACCOUNT", "ACCOUNTING", "CLIENT"].includes(role)) {
     let repQuery = admin
       .from("client_reps")
       .update({ access_levels: accessLevels, auth_user_id: userId, updated_at: new Date().toISOString() });
@@ -140,6 +145,8 @@ async function updateUserAccess(admin: any, callerUserId: string, callerRole: an
 
 function baseRoleForSiteAccess(level: string) {
   const value = String(level || "").trim().toUpperCase();
+  if (value.startsWith("ACCOUNTING")) return "ACCOUNTING";
+  if (value.startsWith("ACCOUNT")) return "ACCOUNT";
   if (value.startsWith("CLIENT")) return "CLIENT";
   if (value.startsWith("PROMOTER")) return "PROMOTER";
   if (value.startsWith("PRODUCTION")) return "PRODUCTION";
@@ -157,17 +164,21 @@ function ensureClientRepAccessLevels(levels: string[]) {
 }
 
 async function deleteUserAccount(admin: any, callerUserId: string, callerRole: any, userId: string) {
-  if (callerRole?.role !== "ADMIN") throw new Error("Only ADMIN can delete login accounts.");
+  if (!["ADMIN", "ACCOUNT"].includes(callerRole?.role)) throw new Error("Only ADMIN or ACCOUNT can delete login accounts.");
   if (!userId) throw new Error("User ID is required.");
-  if (userId === callerUserId) throw new Error("ADMIN cannot delete their own login here.");
+  if (userId === callerUserId) throw new Error("You cannot delete your own login here.");
 
   const { data: targetRole, error: targetError } = await admin
     .from("user_roles")
-    .select("role")
+    .select("role, client_id")
     .eq("user_id", userId)
     .maybeSingle();
   if (targetError) throw targetError;
   if (targetRole?.role === "ADMIN") throw new Error("ADMIN accounts cannot be deleted here.");
+  if (callerRole?.role === "ACCOUNT") {
+    if (targetRole?.client_id !== callerRole.client_id) throw new Error("Account users can only delete users inside their own account.");
+    if (targetRole?.role === "ACCOUNT") throw new Error("ACCOUNT owners cannot be deleted here.");
+  }
 
   const roleDelete = await admin.from("user_roles").delete().eq("user_id", userId);
   if (roleDelete.error) throw roleDelete.error;
