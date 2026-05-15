@@ -38,9 +38,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.06.029",
-  title: "V1.06.029 update installed",
-  body: "ADMIN can now assign any Supabase server level, including ADMIN, while account owners stay scoped to their account."
+  version: "V1.06.030",
+  title: "V1.06.030 update installed",
+  body: "Supabase security level saves now use the selected server level as the source of truth and add the matching access level automatically."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -2433,6 +2433,18 @@ function supabaseRoleFromAccessLevels(levels, fallback = "CLIENT") {
   return normalizeRole(fallback);
 }
 
+function serverAccessLevelForRole(role) {
+  const normalized = normalizeRole(role);
+  if (normalized === "ADMIN") return "ADMIN";
+  if (normalized === "ACCOUNT") return "ACCOUNT";
+  if (normalized === "ACCOUNTING") return "ACCOUNTING";
+  if (normalized === "CLIENT") return "CLIENT_ADMIN";
+  if (normalized === "PROMOTER") return "PROMOTER_ADMIN";
+  if (normalized === "PRODUCTION") return "PRODUCTION_TEAM_ACCESS";
+  if (normalized === "CREW") return "CREW";
+  return "";
+}
+
 async function openAccountAccessForm(userId) {
   if (!(isAdminRole() || isAccountRole()) || !userId) return;
   await refreshSiteAccessLevelsForForm("accountAccessForm");
@@ -2467,20 +2479,17 @@ async function saveAccountAccess(event) {
   const record = await formRecord(form);
   const selectedSecurityRole = normalizeRole(record.role);
   let accessLevels = normalizeAccessLevels(record.accessLevels, "");
+  const requiredServerAccess = serverAccessLevelForRole(selectedSecurityRole);
   if (selectedSecurityRole === "ADMIN") {
     accessLevels = ["ADMIN"];
-  }
-  if (selectedSecurityRole === "ACCOUNT" && !accessLevels.some((level) => baseRoleForAccess(level) === "ACCOUNT")) {
-    accessLevels = ["ACCOUNT", ...accessLevels.filter((level) => baseRoleForAccess(level) !== "ACCOUNT")];
-  }
-  if (selectedSecurityRole === "ACCOUNTING" && !accessLevels.some((level) => baseRoleForAccess(level) === "ACCOUNTING")) {
-    accessLevels = ["ACCOUNTING", ...accessLevels.filter((level) => baseRoleForAccess(level) !== "ACCOUNTING")];
+  } else if (requiredServerAccess && !accessLevels.some((level) => baseRoleForAccess(level) === selectedSecurityRole)) {
+    accessLevels = [requiredServerAccess, ...accessLevels.filter((level) => baseRoleForAccess(level) !== selectedSecurityRole)];
   }
   if (!accessLevels.length) {
     toast("Select at least one site access level.");
     return;
   }
-  const role = supabaseRoleFromAccessLevels(accessLevels, record.role);
+  const role = selectedSecurityRole;
   const matched = record.profileStore && record.profileId
     ? { store: record.profileStore, profile: state[record.profileStore]?.find((item) => item.id === record.profileId) }
     : profileForUserAccessRow({ ...record, role });

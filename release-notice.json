@@ -1,5 +1,5 @@
 {
-  "version": "V1.06.029",
-  "title": "V1.06.029 update installed",
-  "body": "ADMIN can now assign any Supabase server level, including ADMIN, while account owners stay scoped to their account."
+  "version": "V1.06.030",
+  "title": "V1.06.030 update installed",
+  "body": "Supabase security level saves now use the selected server level as the source of truth and add the matching access level automatically."
 }
