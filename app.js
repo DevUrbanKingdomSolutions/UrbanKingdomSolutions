@@ -38,9 +38,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.06.034",
-  title: "V1.06.034 update installed",
-  body: "User account rows now label live Supabase security level separately from profile and site access."
+  version: "V1.06.035",
+  title: "V1.06.035 update installed",
+  body: "ADMIN account access saves now update Supabase roles directly, avoiding stale Edge Function access rules."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -2506,20 +2506,16 @@ async function saveAccountAccess(event) {
   if (matched.profile && matched.store) {
     await put(matched.store, { ...matched.profile, accessLevels, loginRole: role });
   }
-  const { error } = await supabaseClient.functions.invoke(USER_ACCESS_FUNCTION, {
-    body: {
-      action: "update",
-      userId: record.userId,
-      role,
-      clientId: role === "ADMIN" ? null : record.clientId || authState.roleRecord?.client_id || null,
-      workerId: role === "CREW" ? record.workerId || null : null,
-      promoterId: role === "PROMOTER" ? record.promoterId || null : null,
-      accessLevels,
-      profileStore: matched.store || "",
-      profileId: matched.profile?.id || ""
+  try {
+    if (isAdminRole()) {
+      await saveAccountAccessDirectly(record, role, accessLevels, matched);
+    } else {
+      const { error } = await supabaseClient.functions.invoke(USER_ACCESS_FUNCTION, {
+        body: accountAccessPayload(record, role, accessLevels, matched)
+      });
+      if (error) throw error;
     }
-  });
-  if (error) {
+  } catch (error) {
     console.error(error);
     toast(await loginSetupErrorMessage(error));
     return;
@@ -2544,6 +2540,48 @@ async function saveAccountAccess(event) {
     : row);
   setView(state.activeView);
   toast("Account access updated.");
+}
+
+function accountAccessPayload(record, role, accessLevels, matched) {
+  return {
+    action: "update",
+    userId: record.userId,
+    role,
+    clientId: role === "ADMIN" ? null : record.clientId || authState.roleRecord?.client_id || null,
+    workerId: role === "CREW" ? record.workerId || null : null,
+    promoterId: role === "PROMOTER" ? record.promoterId || null : null,
+    accessLevels,
+    profileStore: matched.store || "",
+    profileId: matched.profile?.id || ""
+  };
+}
+
+async function saveAccountAccessDirectly(record, role, accessLevels, matched) {
+  const payload = accountAccessPayload(record, role, accessLevels, matched);
+  const { error: roleError } = await supabaseClient
+    .from("user_roles")
+    .upsert({
+      user_id: payload.userId,
+      role,
+      client_id: payload.clientId,
+      worker_id: payload.workerId,
+      promoter_id: payload.promoterId,
+      updated_at: new Date().toISOString()
+    }, { onConflict: "user_id" });
+  if (roleError) throw roleError;
+  if (["ACCOUNT", "ACCOUNTING", "CLIENT"].includes(role)) {
+    const profileId = payload.profileId || matched.profile?.id || "";
+    if (!profileId) return;
+    const { error: repError } = await supabaseClient
+      .from("client_reps")
+      .update({
+        access_levels: accessLevels,
+        auth_user_id: payload.userId,
+        updated_at: new Date().toISOString()
+      })
+      .eq("id", profileId);
+    if (repError) throw repError;
+  }
 }
 
 async function openProfileAccessForm(storeName) {

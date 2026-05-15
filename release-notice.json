@@ -1,5 +1,5 @@
 {
-  "version": "V1.06.034",
-  "title": "V1.06.034 update installed",
-  "body": "User account rows now label live Supabase security level separately from profile and site access."
+  "version": "V1.06.035",
+  "title": "V1.06.035 update installed",
+  "body": "ADMIN account access saves now update Supabase roles directly, avoiding stale Edge Function access rules."
 }
