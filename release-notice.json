@@ -1,5 +1,5 @@
 {
-  "version": "V1.06.036",
-  "title": "V1.06.036 update installed",
-  "body": "Changing a login into Account, Accounting, or Client access now creates the needed client profile bridge so the user list does not snap back to Crew."
+  "version": "V1.06.037",
+  "title": "V1.06.037 update installed",
+  "body": "Supabase account role setup errors now explain the missing Account/Accounting database migration instead of showing the raw enum error."
 }

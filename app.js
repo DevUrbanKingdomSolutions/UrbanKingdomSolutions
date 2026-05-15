@@ -38,9 +38,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.06.036",
-  title: "V1.06.036 update installed",
-  body: "Changing a login into Account, Accounting, or Client access now creates the needed client profile bridge so the user list does not snap back to Crew."
+  version: "V1.06.037",
+  title: "V1.06.037 update installed",
+  body: "Supabase account role setup errors now explain the missing Account/Accounting database migration instead of showing the raw enum error."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -13583,6 +13583,9 @@ async function loginSetupErrorMessage(error) {
     }
   } catch {
     // Keep the original Supabase error when the response body is not JSON.
+  }
+  if (fallback.includes("enum") && (fallback.includes("ACCOUNT") || fallback.includes("ACCOUNTING") || fallback.includes("app_role"))) {
+    return "Supabase role setup is missing Account/Accounting. Run supabase-account-accounting-role-migration.sql in Supabase SQL Editor, then try again.";
   }
   if (fallback.includes("FunctionsFetchError")) return "Could not reach the Supabase login setup function.";
   if (fallback.includes("FunctionsRelayError") || fallback.includes("FunctionsHttpError")) return "Supabase login setup returned an error. Check the function logs.";

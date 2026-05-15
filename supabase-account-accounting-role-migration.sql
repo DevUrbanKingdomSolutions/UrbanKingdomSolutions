@@ -1,5 +1,6 @@
--- V1.06.022 account/accounting role foundation.
--- Run this in Supabase SQL Editor before assigning ACCOUNT or ACCOUNTING logins.
+-- V1.06 account/accounting role foundation and repair.
+-- Run this in Supabase SQL Editor if Account Owner saves show:
+-- Invalid input value for enum app_role: "ACCOUNT"
 
 alter type public.app_role add value if not exists 'ACCOUNT';
 alter type public.app_role add value if not exists 'ACCOUNTING';
