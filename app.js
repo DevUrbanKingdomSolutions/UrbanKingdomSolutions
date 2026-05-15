@@ -38,9 +38,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.06.019",
-  title: "V1.06.019 update installed",
-  body: "The main dashboard now works as a unified command center with Office Suite snapshots."
+  version: "V1.06.020",
+  title: "V1.06.020 update installed",
+  body: "Local Production now has its own suite nav section, shared profiles show suite context, and calendar events use suite colors."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -174,7 +174,7 @@ const ACCESS_PROFILES = {
   CLIENT_REP: {
     label: "CLIENT REP",
     baseRole: "CLIENT",
-    views: ["dashboard", "clientProfile", "promoters", "events", "touringDashboard", "tourAdvancing", "tourCrewPersonnel", "tourTravel", "tourDocuments", "awardsDashboard", "awardsDocuments", "awardsRundown", "awardsStaffing", "productionBoard", "staffingAssignments", "staffingSchedule", "vehicles", "reports", "directory", "runner", "messages", "dataTools", "mobileApp"],
+    views: ["dashboard", "clientProfile", "promoters", "venues", "events", "touringDashboard", "tourAdvancing", "tourCrewPersonnel", "tourTravel", "tourDocuments", "awardsDashboard", "awardsDocuments", "awardsRundown", "awardsStaffing", "productionBoard", "staffingAssignments", "staffingSchedule", "vehicles", "reports", "directory", "runner", "messages", "dataTools", "mobileApp"],
     canAdminEdit: true,
     canOwnerEdit: true,
     canVenueEdit: false,
@@ -210,7 +210,7 @@ const ACCESS_PROFILES = {
   PROMOTER_ADMIN: {
     label: "PROMOTER ADMIN",
     baseRole: "PROMOTER",
-    views: ["productionBoard", "staffingAssignments", "staffingSchedule", "events", "workers", "promoters", "venues", "awardsDashboard", "awardsDocuments", "awardsRundown", "awardsStaffing", "vehicles", "reports", "directory", "runner", "messages", "dataTools", "mobileApp"],
+    views: ["productionBoard", "staffingAssignments", "staffingSchedule", "events", "workers", "promoters", "awardsDashboard", "awardsDocuments", "awardsRundown", "awardsStaffing", "vehicles", "reports", "directory", "runner", "messages", "dataTools", "mobileApp"],
     canAdminEdit: true,
     canOwnerEdit: false,
     canVenueEdit: true,
@@ -222,7 +222,7 @@ const ACCESS_PROFILES = {
   PROMOTER_REP: {
     label: "PROMOTER REP",
     baseRole: "PROMOTER",
-    views: ["productionBoard", "staffingAssignments", "staffingSchedule", "events", "workers", "promoters", "venues", "awardsDashboard", "awardsDocuments", "awardsRundown", "awardsStaffing", "vehicles", "reports", "directory", "runner", "messages", "mobileApp"],
+    views: ["productionBoard", "staffingAssignments", "staffingSchedule", "events", "workers", "promoters", "awardsDashboard", "awardsDocuments", "awardsRundown", "awardsStaffing", "vehicles", "reports", "directory", "runner", "messages", "mobileApp"],
     canAdminEdit: true,
     canOwnerEdit: false,
     canVenueEdit: true,
@@ -488,19 +488,18 @@ const NAV_GROUPS = {
   CLIENT_ADMIN: [
     { items: [["dashboard", "Dashboard"]] },
     { label: "PROFILES", items: [["workers", "Crew Profiles"], ["promoters", "Promoter Profiles"], ["venues", "Venues"]] },
-    { label: "EVENTS", items: [["events", "Events"], ["eventDocuments", "Documents"], ["emailTemplates", "Email Templates"], ["timecards", "Timecards"], ["vehicles", "Vehicles"], ["reports", "Reports"]] },
+    { label: "LOCAL PRODUCTION", items: [["events", "Events"], ["eventDocuments", "Documents"], ["emailTemplates", "Email Templates"], ["timecards", "Timecards"], ["vehicles", "Vehicles"], ["reports", "Reports"], ["payroll", "Payroll"]] },
     { label: "TOURING", items: [["tourAdvancing", "Tour Advancing"], ["tourCrewPersonnel", "Crew Personnel"], ["tourTravel", "Travel & Accommodations"], ["tourDocuments", "Documents"], ["tourSettings", "Settings"]] },
     { label: "AWARDS / BROADCAST", items: [["awardsDocuments", "Documents"], ["awardsRundown", "Rundown"], ["awardsStaffing", "Staffing"], ["awardsSettings", "Settings"]] },
     { label: "PRODUCTION OFFICE", items: [["productionBoard", "Production Office"], ["staffingAssignments", "Staffing Assignment"], ["staffingSchedule", "Staffing Schedule"]] },
-    { label: "PAYROLL", items: [["payroll", "Payroll"]] },
     { label: "DIRECTORIES", items: [["directory", "Directory"], ["runner", "Gig Resources"]] },
     { items: [["messages", "Messages"]] },
     { label: "SETTINGS", items: [["clientCompanyProfile", "Client Profile"], ["clientProfile", "My Profile"], ["dataTools", "Import / Export"], ["mobileApp", "Mobile Settings"]] }
   ],
   CLIENT_REP: [
     { items: [["dashboard", "Dashboard"]] },
-    { label: "PROFILES", items: [["promoters", "Promoter Profiles"]] },
-    { label: "EVENTS", items: [["events", "Events"], ["vehicles", "Vehicles"], ["reports", "Reports"]] },
+    { label: "PROFILES", items: [["promoters", "Promoter Profiles"], ["venues", "Venues"]] },
+    { label: "LOCAL PRODUCTION", items: [["events", "Events"], ["vehicles", "Vehicles"], ["reports", "Reports"]] },
     { label: "TOURING", items: [["tourAdvancing", "Tour Advancing"], ["tourCrewPersonnel", "Crew Personnel"], ["tourTravel", "Travel & Accommodations"], ["tourDocuments", "Documents"]] },
     { label: "AWARDS / BROADCAST", items: [["awardsDocuments", "Documents"], ["awardsRundown", "Rundown"], ["awardsStaffing", "Staffing"]] },
     { label: "PRODUCTION OFFICE", items: [["productionBoard", "Production Office"], ["staffingAssignments", "Staffing Assignment"], ["staffingSchedule", "Staffing Schedule"]] },
@@ -511,7 +510,7 @@ const NAV_GROUPS = {
   CLIENT_REP_LEAD: [
     { items: [["dashboard", "Dashboard"]] },
     { label: "PROFILES", items: [["workers", "Crew Profiles"], ["promoters", "Promoter Profiles"], ["venues", "Venues"]] },
-    { label: "EVENTS", items: [["events", "Events"], ["eventDocuments", "Documents"], ["emailTemplates", "Email Templates"], ["vehicles", "Vehicles"], ["reports", "Reports"]] },
+    { label: "LOCAL PRODUCTION", items: [["events", "Events"], ["eventDocuments", "Documents"], ["emailTemplates", "Email Templates"], ["vehicles", "Vehicles"], ["reports", "Reports"]] },
     { label: "TOURING", items: [["tourAdvancing", "Tour Advancing"], ["tourCrewPersonnel", "Crew Personnel"], ["tourTravel", "Travel & Accommodations"], ["tourDocuments", "Documents"], ["tourSettings", "Settings"]] },
     { label: "AWARDS / BROADCAST", items: [["awardsDocuments", "Documents"], ["awardsRundown", "Rundown"], ["awardsStaffing", "Staffing"], ["awardsSettings", "Settings"]] },
     { label: "PRODUCTION OFFICE", items: [["productionBoard", "Production Office"], ["staffingAssignments", "Staffing Assignment"], ["staffingSchedule", "Staffing Schedule"]] },
@@ -520,27 +519,27 @@ const NAV_GROUPS = {
     { label: "SETTINGS", items: [["clientProfile", "My Profile"], ["dataTools", "Import / Export"], ["mobileApp", "Mobile Settings"]] }
   ],
   CLIENT_ACCOUNTING: [
-    { label: "PAYROLL", items: [["timecards", "Timecards"], ["payroll", "Payroll"]] },
+    { label: "LOCAL PRODUCTION", items: [["timecards", "Timecards"], ["payroll", "Payroll"]] },
     { label: "SETTINGS", items: [["mobileApp", "Mobile Settings"]] }
   ],
   PROMOTER_ADMIN: [
-    { label: "PROFILES", items: [["workers", "Crew Profiles"], ["promoters", "Promoter Profiles"], ["venues", "Venues"]] },
-    { label: "EVENTS", items: [["events", "Events"], ["vehicles", "Vehicles"], ["reports", "Reports"]] },
+    { label: "PROFILES", items: [["workers", "Crew Profiles"], ["promoters", "Promoter Profiles"]] },
+    { label: "LOCAL PRODUCTION", items: [["events", "Events"], ["vehicles", "Vehicles"], ["reports", "Reports"]] },
     { label: "PRODUCTION OFFICE", items: [["productionBoard", "Production Office"], ["staffingAssignments", "Staffing Assignment"], ["staffingSchedule", "Staffing Schedule"]] },
     { label: "DIRECTORIES", items: [["directory", "Directory"], ["runner", "Gig Resources"]] },
     { items: [["messages", "Messages"]] },
     { label: "SETTINGS", items: [["dataTools", "Import / Export"], ["mobileApp", "Mobile Settings"]] }
   ],
   PROMOTER_REP: [
-    { label: "PROFILES", items: [["workers", "Crew Profiles"], ["promoters", "Promoter Profiles"], ["venues", "Venues"]] },
-    { label: "EVENTS", items: [["events", "Events"], ["vehicles", "Vehicles"], ["reports", "Reports"]] },
+    { label: "PROFILES", items: [["workers", "Crew Profiles"], ["promoters", "Promoter Profiles"]] },
+    { label: "LOCAL PRODUCTION", items: [["events", "Events"], ["vehicles", "Vehicles"], ["reports", "Reports"]] },
     { label: "PRODUCTION OFFICE", items: [["productionBoard", "Production Office"], ["staffingAssignments", "Staffing Assignment"], ["staffingSchedule", "Staffing Schedule"]] },
     { label: "DIRECTORIES", items: [["directory", "Directory"], ["runner", "Gig Resources"]] },
     { items: [["messages", "Messages"]] },
     { label: "SETTINGS", items: [["mobileApp", "Mobile Settings"]] }
   ],
   PRODUCTION_TEAM_ACCESS: [
-    { label: "EVENTS", items: [["events", "Events"], ["vehicles", "Vehicles"], ["reports", "Reports"]] },
+    { label: "LOCAL PRODUCTION", items: [["events", "Events"], ["vehicles", "Vehicles"], ["reports", "Reports"]] },
     { label: "PRODUCTION OFFICE", items: [["productionBoard", "Production Office"], ["staffingAssignments", "Staffing Assignment"], ["staffingSchedule", "Staffing Schedule"]] },
     { label: "DIRECTORIES", items: [["directory", "Directory"]] },
     { items: [["messages", "Messages"]] },
@@ -548,7 +547,7 @@ const NAV_GROUPS = {
   ],
   CREW: [
     { items: [["dashboard", "Home"], ["clock", "Time Clock"]] },
-    { label: "EVENTS", items: [["events", "Events"], ["timecards", "Timecards"], ["vehicles", "Vehicles"], ["reports", "Reports"]] },
+    { label: "LOCAL PRODUCTION", items: [["events", "Events"], ["timecards", "Timecards"], ["vehicles", "Vehicles"], ["reports", "Reports"]] },
     { label: "PRODUCTION OFFICE", items: [["productionResponse", "Production Office"], ["staffingAssignments", "Staffing Assignment"], ["staffingSchedule", "Staffing Schedule"]] },
     { label: "DIRECTORIES", items: [["directory", "Directory"], ["runner", "Gig Resources"]] },
     { items: [["messages", "Messages"]] },
@@ -647,12 +646,21 @@ const CLIENT_PACKAGE_DEFINITIONS = [
     description: "Corporate event crews, venues, production offices, schedules, vendors, and client-facing operations."
   }
 ];
+const LOCAL_PRODUCTION_SUITE_ID = "LOCAL_PRODUCTION_SERVICES";
 const TOURING_SUITE_ID = "TOUR_DATA_SERVICES";
 const AWARDS_SUITE_ID = "AWARDS_SHOWS";
-const DEFAULT_ACTIVE_OFFICE_SUITE_IDS = ["LOCAL_PRODUCTION_SERVICES", TOURING_SUITE_ID, AWARDS_SUITE_ID];
+const DEFAULT_ACTIVE_OFFICE_SUITE_IDS = [LOCAL_PRODUCTION_SUITE_ID, TOURING_SUITE_ID, AWARDS_SUITE_ID];
+const LOCAL_PRODUCTION_SUITE_VIEWS = ["events", "eventDocuments", "emailTemplates", "timecards", "vehicles", "reports", "payroll"];
 const TOURING_SUITE_VIEWS = ["touringDashboard", "tourAdvancing", "tourCrewPersonnel", "tourTravel", "tourDocuments", "tourSettings"];
 const AWARDS_SUITE_VIEWS = ["awardsDashboard", "awardsDocuments", "awardsRundown", "awardsStaffing", "awardsSettings"];
 const DASHBOARD_VIEW_IDS = ["dashboard", "touringDashboard", "awardsDashboard"];
+const SUITE_NAV_COLORS = {
+  LOCAL_PRODUCTION_SERVICES: "#64748b",
+  TOUR_DATA_SERVICES: "#0f9ca8",
+  AWARDS_SHOWS: "#9d4edd",
+  LIVE_TV_SPECIALS: "#0ea5e9",
+  CORPORATE_LIVE_EVENTS: "#178f62"
+};
 const DASHBOARD_NAV_LABELS = {
   dashboard: "Main Dashboard",
   touringDashboard: "Touring Dashboard",
@@ -1540,6 +1548,7 @@ function awardsSuiteEnabled(client = activeClientRecord()) {
 }
 
 function suiteIdForView(viewId) {
+  if (LOCAL_PRODUCTION_SUITE_VIEWS.includes(viewId)) return LOCAL_PRODUCTION_SUITE_ID;
   if (TOURING_SUITE_VIEWS.includes(viewId)) return TOURING_SUITE_ID;
   if (AWARDS_SUITE_VIEWS.includes(viewId)) return AWARDS_SUITE_ID;
   return "";
@@ -1563,6 +1572,10 @@ function officeSuiteLabel(id, client = activeClientRecord()) {
 function eventOfficeSuiteLabel(event = {}) {
   const client = state.clients.find((item) => item.id === event.clientId) || activeClientRecord();
   return officeSuiteLabel(event.officeSuiteId, client);
+}
+
+function officeSuiteColor(suiteId = "") {
+  return SUITE_NAV_COLORS[suiteId] || "var(--accent)";
 }
 
 function renderClientPackageControls(form) {
@@ -3829,7 +3842,7 @@ function visiblePromoters() {
 
 function visibleVenues() {
   if (isAdminRole()) return [];
-  if (hasDataScope("CLIENT") || hasDataScope("PROMOTER")) return state.venues;
+  if (hasDataScope("CLIENT")) return state.venues;
   const venueIds = new Set(visibleEvents().map((event) => event.venueId).filter(Boolean));
   return state.venues.filter((venue) => venueIds.has(venue.id));
 }
@@ -5498,7 +5511,7 @@ function renderDashboardCalendar(events = visibleEvents()) {
     return `<div class="calendar-day ${dateKey === todayKey ? "today" : ""}">
       <span>${day}</span>
       <div class="calendar-events">
-        ${dayEvents.slice(0, 3).map((event) => `<button class="calendar-event" data-view-record="events:${escapeHtml(event.id)}" type="button">${escapeHtml(event.name)}</button>`).join("")}
+        ${dayEvents.slice(0, 3).map((event) => `<button class="calendar-event" style="--suite-color: ${escapeHtml(officeSuiteColor(event.officeSuiteId))}" data-view-record="events:${escapeHtml(event.id)}" type="button">${escapeHtml(event.name)}</button>`).join("")}
         ${dayEvents.length > 3 ? `<small>+${dayEvents.length - 3} more</small>` : ""}
       </div>
     </div>`;
@@ -5709,7 +5722,7 @@ function dashboardSuiteOverviewCards() {
   const liveCards = cards.filter((card) => !card.clockOut);
   const notes = dashboardRecentNotes();
   const result = [];
-  if (views.includes("dashboard") && clientHasOfficeSuite("LOCAL_PRODUCTION_SERVICES", client)) {
+  if (views.includes("dashboard") && clientHasOfficeSuite(LOCAL_PRODUCTION_SUITE_ID, client)) {
     result.push({
       label: "Operations",
       title: "Main Operations",
@@ -9347,7 +9360,7 @@ function workerProfileRow(worker) {
     : `${escapeHtml(worker.skills)}${showRates ? `<p>${currency(worker.defaultDayRate || worker.defaultRate || 0)}/${worker.defaultIncludedHours || 10} hrs</p>` : ""}${canOwnerEdit() ? `<p>${accessBadges(worker.accessLevels, "CREW")}</p>${loginStatus(worker)}` : ""}`;
   const note = isProductionRole() ? promoterNoteBox(worker.id) : "";
   return `<tr>
-    <td>${profileSelect("workers", worker.id)}${profileCell(worker, showLimited && worker.hideHeadshot && worker.id !== state.activeWorkerId, publicEmail, "workers", worker.id)}</td>
+    <td>${profileSelect("workers", worker.id)}${profileCell(worker, showLimited && worker.hideHeadshot && worker.id !== state.activeWorkerId, publicEmail, "workers", worker.id)}${profileSuiteBadges(profileSuiteUsageForWorker(worker))}</td>
     <td>${escapeHtml(showLimited ? "" : worker.role)}</td>
     <td>${showLimited ? "" : `<span class="status-pill ${worker.status === "Booked" ? "warn" : ""}">${escapeHtml(worker.status)}</span>`}</td>
     <td>${escapeHtml(publicPhone)}</td>
@@ -9363,6 +9376,40 @@ function profileCell(profile, hideHeadshot = false, subtitle = profile.email, st
     : `<div class="profile-headshot placeholder">${escapeHtml(initials)}</div>`;
   const title = storeName && id ? recordLink(storeName, id, profile.name || profile.contactName || "Profile") : escapeHtml(profile.name || profile.contactName || "Profile");
   return `<div class="profile-cell">${image}<div><strong>${title}</strong><p>${escapeHtml(subtitle)}</p></div></div>`;
+}
+
+function profileSuiteBadges(suiteIds = []) {
+  if (!suiteIds.length || isCrewRole()) return "";
+  return `<div class="profile-suite-badges">${suiteIds.map((suiteId) => {
+    const label = officeSuiteLabel(suiteId) || suiteId;
+    const color = SUITE_NAV_COLORS[suiteId] || "var(--accent)";
+    return `<span style="--suite-color: ${escapeHtml(color)}">${escapeHtml(label.replace(" Office Suite", "").replace(" Services", ""))}</span>`;
+  }).join("")}</div>`;
+}
+
+function profileSuiteUsageForWorker(worker = {}) {
+  const ids = new Set();
+  visibleEvents().forEach((event) => {
+    if (eventWorkerIds(event).includes(worker.id) && event.officeSuiteId) ids.add(event.officeSuiteId);
+  });
+  const match = normalizedMatchValue(`${worker.name || ""} ${worker.email || ""}`);
+  if (match) {
+    state.touringCrew.forEach((person) => {
+      if (normalizedMatchValue(`${person.name || ""} ${person.email || ""}`) === match) ids.add(TOURING_SUITE_ID);
+    });
+    state.awardsStaff.forEach((person) => {
+      if (normalizedMatchValue(`${person.name || ""} ${person.email || ""}`) === match) ids.add(AWARDS_SUITE_ID);
+    });
+  }
+  return Array.from(ids);
+}
+
+function profileSuiteUsageForPromoter(promoter = {}) {
+  const ids = new Set();
+  visibleEvents().forEach((event) => {
+    if (event.promoterId === promoter.id && event.officeSuiteId) ids.add(event.officeSuiteId);
+  });
+  return Array.from(ids);
 }
 
 function profileSelect(store, id) {
@@ -10332,7 +10379,7 @@ function renderPromoters() {
   $("#promoterTable").innerHTML = rows.length
     ? rows.map((promoter) => {
         const smtpStatus = promoter.smtpSecretRef ? `<p><span class="status-pill">SMTP saved</span></p>` : "";
-        return `<tr><td>${profileSelect("promoters", promoter.id)}${profileCell(promoter, false, promoter.contactName, "promoters", promoter.id)}</td><td><strong>${escapeHtml(promoter.companyName || "Independent")}</strong><p>${escapeHtml(promoter.contactName)}</p></td><td>${escapeHtml(promoter.phone)}</td><td>${escapeHtml(promoter.email)}</td><td>${escapeHtml(promoter.notes || promoter.billing)}<p>${accessBadges(promoter.accessLevels, "PROMOTER_ADMIN")}</p>${smtpStatus}${loginStatus(promoter)}</td><td>${actionButtons("promoters", promoter.id, "promoterForm", loginSetupButton("promoters", promoter), canEditPromoter(promoter))}</td></tr>`;
+        return `<tr><td>${profileSelect("promoters", promoter.id)}${profileCell(promoter, false, promoter.contactName, "promoters", promoter.id)}${profileSuiteBadges(profileSuiteUsageForPromoter(promoter))}</td><td><strong>${escapeHtml(promoter.companyName || "Independent")}</strong><p>${escapeHtml(promoter.contactName)}</p></td><td>${escapeHtml(promoter.phone)}</td><td>${escapeHtml(promoter.email)}</td><td>${escapeHtml(promoter.notes || promoter.billing)}<p>${accessBadges(promoter.accessLevels, "PROMOTER_ADMIN")}</p>${smtpStatus}${loginStatus(promoter)}</td><td>${actionButtons("promoters", promoter.id, "promoterForm", loginSetupButton("promoters", promoter), canEditPromoter(promoter))}</td></tr>`;
       }).join("")
     : `<tr><td colspan="6" class="empty">No promoter profiles match this search.</td></tr>`;
 }

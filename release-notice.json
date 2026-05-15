@@ -1,5 +1,5 @@
 {
-  "version": "V1.06.019",
-  "title": "V1.06.019 update installed",
-  "body": "The main dashboard now works as a unified command center with Office Suite snapshots."
+  "version": "V1.06.020",
+  "title": "V1.06.020 update installed",
+  "body": "Local Production now has its own suite nav section, shared profiles show suite context, and calendar events use suite colors."
 }
