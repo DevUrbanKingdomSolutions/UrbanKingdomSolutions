@@ -38,9 +38,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.06.038",
-  title: "V1.06.038 update installed",
-  body: "ADMIN account access saves now update existing Supabase role rows instead of using an upsert that can trigger RLS insert checks."
+  version: "V1.06.039",
+  title: "V1.06.039 update installed",
+  body: "ADMIN account access saves now verify Supabase role updates and keep the user list from flashing back to stale access settings."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -2355,7 +2355,7 @@ async function saveSupabaseSmtpRoute(storeName, record, password) {
   return "SMTP route saved securely.";
 }
 
-async function refreshUserAccessList(showMessage = true) {
+async function refreshUserAccessList(showMessage = true, renderNow = true) {
   if (!initializeSupabaseClient() || !(isAdminRole() || isClientRole() || isProductionRole())) return;
   const { data, error } = await supabaseClient.functions.invoke(USER_ACCESS_FUNCTION, {
     body: { action: "list" }
@@ -2366,8 +2366,15 @@ async function refreshUserAccessList(showMessage = true) {
     return;
   }
   state.userAccessRows = data?.users || [];
-  renderUserAccessTables();
+  if (renderNow) renderUserAccessTables();
   if (showMessage) toast("User accounts refreshed.");
+}
+
+function applyUserAccessRowPatch(userId, patch = {}) {
+  if (!userId) return;
+  state.userAccessRows = state.userAccessRows.map((row) => row.userId === userId
+    ? { ...row, ...patch }
+    : row);
 }
 
 async function deleteUserAccount(userId) {
@@ -2527,23 +2534,19 @@ async function saveAccountAccess(event) {
     return;
   }
   closeForm("accountAccessForm");
-  state.userAccessRows = state.userAccessRows.map((row) => row.userId === record.userId
-    ? {
-        ...row,
-        role,
-        clientId: role === "ADMIN" ? "" : record.clientId || authState.roleRecord?.client_id || row.clientId || "",
-        workerId: role === "CREW" ? record.workerId || row.workerId || "" : "",
-        promoterId: role === "PROMOTER" ? record.promoterId || row.promoterId || "" : "",
-        profileId: matched.profile?.id || row.profileId || "",
-        profileName: matched.profile?.name || matched.profile?.contactName || row.profileName || "",
-        accessLevels
-      }
-    : row);
+  const savedUserAccessPatch = {
+    role,
+    clientId: role === "ADMIN" ? "" : record.clientId || authState.roleRecord?.client_id || "",
+    workerId: role === "CREW" ? record.workerId || "" : "",
+    promoterId: role === "PROMOTER" ? record.promoterId || "" : "",
+    profileId: matched.profile?.id || "",
+    profileName: matched.profile?.name || matched.profile?.contactName || "",
+    accessLevels
+  };
+  applyUserAccessRowPatch(record.userId, savedUserAccessPatch);
   await loadState();
-  await refreshUserAccessList(false);
-  state.userAccessRows = state.userAccessRows.map((row) => row.userId === record.userId
-    ? { ...row, role, accessLevels }
-    : row);
+  await refreshUserAccessList(false, false);
+  applyUserAccessRowPatch(record.userId, savedUserAccessPatch);
   setView(state.activeView);
   toast("Account access updated.");
 }
@@ -2590,7 +2593,7 @@ function accountAccessPayload(record, role, accessLevels, matched) {
 
 async function saveAccountAccessDirectly(record, role, accessLevels, matched) {
   const payload = accountAccessPayload(record, role, accessLevels, matched);
-  const { error: roleError } = await supabaseClient
+  const { data: roleData, error: roleError } = await supabaseClient
     .from("user_roles")
     .update({
       role,
@@ -2599,8 +2602,13 @@ async function saveAccountAccessDirectly(record, role, accessLevels, matched) {
       promoter_id: payload.promoterId,
       updated_at: new Date().toISOString()
     })
-    .eq("user_id", payload.userId);
+    .eq("user_id", payload.userId)
+    .select("user_id, role, client_id, worker_id, promoter_id")
+    .maybeSingle();
   if (roleError) throw roleError;
+  if (!roleData?.user_id) {
+    throw new Error("Supabase role policy repair is needed. Run supabase-account-accounting-role-migration.sql in Supabase SQL Editor, then try again.");
+  }
   if (["ACCOUNT", "ACCOUNTING", "CLIENT"].includes(role)) {
     const profile = matched.profile || {};
     const profileId = payload.profileId || profile.id || "";
@@ -13586,6 +13594,9 @@ async function loginSetupErrorMessage(error) {
   }
   if (fallback.includes("enum") && (fallback.includes("ACCOUNT") || fallback.includes("ACCOUNTING") || fallback.includes("app_role"))) {
     return "Supabase role setup is missing Account/Accounting. Run supabase-account-accounting-role-migration.sql in Supabase SQL Editor, then try again.";
+  }
+  if (fallback.includes("row-level security") && fallback.includes("user_roles")) {
+    return "Supabase role policy repair is needed. Run supabase-account-accounting-role-migration.sql in Supabase SQL Editor, then try again.";
   }
   if (fallback.includes("FunctionsFetchError")) return "Could not reach the Supabase login setup function.";
   if (fallback.includes("FunctionsRelayError") || fallback.includes("FunctionsHttpError")) return "Supabase login setup returned an error. Check the function logs.";

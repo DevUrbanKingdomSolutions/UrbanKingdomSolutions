@@ -1,9 +1,18 @@
 -- V1.06 account/accounting role foundation and repair.
--- Run this in Supabase SQL Editor if Account Owner saves show:
+-- Run this in Supabase SQL Editor if Account Owner saves show either:
 -- Invalid input value for enum app_role: "ACCOUNT"
+-- new row violates row-level security policy for table "user_roles"
 
 alter type public.app_role add value if not exists 'ACCOUNT';
 alter type public.app_role add value if not exists 'ACCOUNTING';
+
+drop policy if exists "Admins can read user roles" on public.user_roles;
+
+create policy "Admins can read user roles"
+on public.user_roles
+for select
+to authenticated
+using (public.current_app_role() = 'ADMIN');
 
 -- Recreate user role policies so ACCOUNT can manage scoped account users,
 -- while system ADMIN remains the only role that can create other ACCOUNT owners.

@@ -119,6 +119,12 @@ for select
 to authenticated
 using (auth.uid() = user_id);
 
+create policy "Admins can read user roles"
+on public.user_roles
+for select
+to authenticated
+using (public.current_app_role() = 'ADMIN');
+
 -- Role management uses SECURITY DEFINER helper lookup, avoiding user_roles recursion.
 -- The first ADMIN row must be inserted from Supabase SQL Editor or a trusted
 -- service-role backend because no authenticated user is an ADMIN yet.
