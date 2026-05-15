@@ -38,9 +38,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.06.032",
-  title: "V1.06.032 update installed",
-  body: "Only ADMIN and Account Owner act as exclusive master access choices; Accounting can stay combined with other allowed access."
+  version: "V1.06.033",
+  title: "V1.06.033 update installed",
+  body: "The user access list now reflects master server-level changes immediately after Account Owner or ADMIN saves."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -2416,6 +2416,8 @@ function profileForUserAccessRow(row) {
 }
 
 function accessLevelsForUserAccessRow(row) {
+  const serverLevel = serverAccessLevelForRole(row.role);
+  if (serverLevel === "ADMIN" || serverLevel === "ACCOUNT") return [serverLevel];
   const matched = profileForUserAccessRow(row);
   const levels = normalizeAccessLevels(row.accessLevels || matched.profile?.accessLevels, matched.accessFallback);
   return matched.store === "clientReps" ? ensureClientRepAccessLevels(levels) : levels;
@@ -2523,8 +2525,23 @@ async function saveAccountAccess(event) {
     return;
   }
   closeForm("accountAccessForm");
+  state.userAccessRows = state.userAccessRows.map((row) => row.userId === record.userId
+    ? {
+        ...row,
+        role,
+        clientId: role === "ADMIN" ? "" : record.clientId || authState.roleRecord?.client_id || row.clientId || "",
+        workerId: role === "CREW" ? record.workerId || row.workerId || "" : "",
+        promoterId: role === "PROMOTER" ? record.promoterId || row.promoterId || "" : "",
+        profileId: matched.profile?.id || row.profileId || "",
+        profileName: matched.profile?.name || matched.profile?.contactName || row.profileName || "",
+        accessLevels
+      }
+    : row);
   await loadState();
   await refreshUserAccessList(false);
+  state.userAccessRows = state.userAccessRows.map((row) => row.userId === record.userId
+    ? { ...row, role, accessLevels }
+    : row);
   setView(state.activeView);
   toast("Account access updated.");
 }
