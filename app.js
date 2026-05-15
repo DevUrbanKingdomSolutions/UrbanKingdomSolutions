@@ -38,9 +38,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.06.033",
-  title: "V1.06.033 update installed",
-  body: "The user access list now reflects master server-level changes immediately after Account Owner or ADMIN saves."
+  version: "V1.06.034",
+  title: "V1.06.034 update installed",
+  body: "User account rows now label live Supabase security level separately from profile and site access."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -4479,14 +4479,15 @@ function renderUserAccessHead(tableId) {
   const head = document.getElementById(config.headId);
   if (!head) return;
   head.innerHTML = `<tr>${USER_ACCESS_COLUMNS.map(([key, label]) => {
+    const displayLabel = key === "role" ? "Security / Access" : label;
     const filters = state[config.filtersKey] || {};
     const activeSort = state[config.sortKey] === key;
     const activeFilter = !!filters[key];
     const arrow = activeSort ? (state[config.sortDirection] === "desc" ? "▼" : "▲") : "▾";
     return `<th><div class="column-filter-heading">
-      <span>${escapeHtml(label)}</span>
+      <span>${escapeHtml(displayLabel)}</span>
       <details class="column-filter-menu ${activeSort || activeFilter ? "active" : ""}">
-        <summary aria-label="${escapeHtml(label)} sort and filter">${arrow}</summary>
+        <summary aria-label="${escapeHtml(displayLabel)} sort and filter">${arrow}</summary>
         <div class="record-options-menu">
           <button class="tiny-button" data-user-access-table="${escapeHtml(tableId)}" data-user-access-sort="${escapeHtml(key)}" data-user-access-sort-direction="asc" type="button">Sort A-Z</button>
           <button class="tiny-button" data-user-access-table="${escapeHtml(tableId)}" data-user-access-sort="${escapeHtml(key)}" data-user-access-sort-direction="desc" type="button">Sort Z-A</button>
@@ -4517,18 +4518,22 @@ function sortUserAccessRows(rows, tableId) {
 
 function userAccessColumnValue(row, key) {
   if (key === "user") return listText(`${row.email || ""} ${row.userId || ""}`);
-  if (key === "role") return listText(`${ACCESS_LEVEL_LABELS[normalizeRole(row.role)] || row.role || ""} ${accessLevelsForUserAccessRow(row).map(accessLevelLabel).join(" ")}`);
+  if (key === "role") return listText(`${serverAccessLabelForRow(row)} ${accessLevelsForUserAccessRow(row).map(accessLevelLabel).join(" ")}`);
   if (key === "client") return listText(`${row.clientName || ""} ${row.clientId || ""}`);
   if (key === "profile") return listText(userAccessProfileLabel(row));
   return "";
 }
 
-function userAccessRoleCell(row) {
+function serverAccessLabelForRow(row) {
   const role = normalizeRole(row.role);
+  return ACCESS_LEVEL_LABELS[role] || role || "Not set";
+}
+
+function userAccessRoleCell(row) {
   const levels = accessLevelsForUserAccessRow(row);
-  const roleLabel = ACCESS_LEVEL_LABELS[role] || role;
+  const roleLabel = serverAccessLabelForRow(row);
   const siteAccess = levels.length ? accessBadges(levels, "") : `<span class="status-pill muted">None</span>`;
-  return `<p><strong>Server Access:</strong> <span class="status-pill">${escapeHtml(roleLabel)}</span></p><p><strong>Site Access:</strong> ${siteAccess}</p>`;
+  return `<p><strong>Supabase Security Level:</strong> <span class="status-pill">${escapeHtml(roleLabel)}</span></p><p><strong>Profile / Site Access:</strong> ${siteAccess}</p>`;
 }
 
 function userAccessProfileLabel(row) {

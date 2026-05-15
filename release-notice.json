@@ -1,5 +1,5 @@
 {
-  "version": "V1.06.033",
-  "title": "V1.06.033 update installed",
-  "body": "The user access list now reflects master server-level changes immediately after Account Owner or ADMIN saves."
+  "version": "V1.06.034",
+  "title": "V1.06.034 update installed",
+  "body": "User account rows now label live Supabase security level separately from profile and site access."
 }
