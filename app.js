@@ -38,9 +38,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.06.018",
-  title: "V1.06.018 update installed",
-  body: "Dashboard navigation now adapts to active Office Suites, and suite events only feed their assigned suite."
+  version: "V1.06.019",
+  title: "V1.06.019 update installed",
+  body: "The main dashboard now works as a unified command center with Office Suite snapshots."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -5657,9 +5657,9 @@ function dashboardHeroConfig() {
   const cards = visibleRecords(state.timecards);
   const liveCards = cards.filter((card) => !card.clockOut);
   return {
-    eyebrow: "Client workspace",
+    eyebrow: "Command center",
     title: activeClientRecord()?.name || "Production command center",
-    body: "Manage events, crew, venues, timecards, payroll, and client-side operations from a clean desktop view.",
+    body: "See the whole operation first: what is live, what is next, what needs attention, and which suite needs your focus.",
     primaryView: "events",
     primaryLabel: "Open Events",
     secondaryView: "timecards",
@@ -5701,6 +5701,98 @@ function dashboardHeroStat(stat) {
   </${tag}>`;
 }
 
+function dashboardSuiteOverviewCards() {
+  if (isAdminRole() || isCrewRole()) return [];
+  const views = assignedViews();
+  const client = activeClientRecord();
+  const cards = visibleRecords(state.timecards);
+  const liveCards = cards.filter((card) => !card.clockOut);
+  const notes = dashboardRecentNotes();
+  const result = [];
+  if (views.includes("dashboard") && clientHasOfficeSuite("LOCAL_PRODUCTION_SERVICES", client)) {
+    result.push({
+      label: "Operations",
+      title: "Main Operations",
+      detail: "Events, crew, vehicles, timecards, payroll, and local resources.",
+      view: "events",
+      stats: [
+        ["Events", visibleEvents().length],
+        ["Clocked In", liveCards.length],
+        ["Signals", notes.length]
+      ]
+    });
+  }
+  if (views.includes("touringDashboard") && touringSuiteEnabled(client)) {
+    const stops = touringStops();
+    const crew = touringCrewRows(stops);
+    const travel = touringTravelRows(crew);
+    const attention = touringAttentionRows(stops, crew, travel);
+    result.push({
+      label: "Touring",
+      title: "Touring",
+      detail: "Tour stops, city rider workspaces, crew personnel, travel, and generated packets.",
+      view: "touringDashboard",
+      stats: [
+        ["Stops", stops.length],
+        ["Travel Needs", travel.filter((person) => person.overall !== "Ready").length],
+        ["Signals", attention.length]
+      ]
+    });
+  }
+  if (views.includes("awardsDashboard") && awardsSuiteEnabled(client)) {
+    const shows = awardsShowRows();
+    const documents = awardsDocumentsRows();
+    const staffing = awardsStaffRows();
+    const schedules = awardsScheduleRows(shows);
+    const attention = awardsAttentionRows(shows, documents, staffing, schedules, awardsPacketRows(shows, documents, staffing, schedules), awardsDepartmentRows(documents, staffing, schedules), awardsDistributionRows(documents), awardsAccessRows(documents), awardsShowDayRows(shows, schedules), awardsContactRows(staffing), awardsComplianceRows(documents), awardsVersionRows(documents), awardsTechnicalRows(documents), awardsTalentRows(documents, staffing, schedules));
+    result.push({
+      label: "Broadcast",
+      title: "Awards / Broadcast",
+      detail: "Show documents, rundowns, staff lists, distro, access, scripts, and show-day readiness.",
+      view: "awardsDashboard",
+      stats: [
+        ["Shows", shows.length],
+        ["Docs", documents.length],
+        ["Signals", attention.length]
+      ]
+    });
+  }
+  return result;
+}
+
+function dashboardSuiteOverviewHtml() {
+  const cards = dashboardSuiteOverviewCards();
+  if (cards.length <= 1) return "";
+  return `<div class="desktop-suite-overview">
+    <div class="desktop-suite-heading">
+      <span>Office Suites</span>
+      <strong>Command Center</strong>
+    </div>
+    <div class="desktop-suite-grid">
+      ${cards.map((card) => `<button class="desktop-suite-card" data-dashboard-link="${escapeHtml(card.view)}" type="button">
+        <span>${escapeHtml(card.label)}</span>
+        <h4>${escapeHtml(card.title)}</h4>
+        <p>${escapeHtml(card.detail)}</p>
+        <div class="desktop-suite-card-stats">
+          ${card.stats.map(([label, value]) => `<small><b>${escapeHtml(String(value))}</b>${escapeHtml(label)}</small>`).join("")}
+        </div>
+      </button>`).join("")}
+    </div>
+  </div>`;
+}
+
+function dashboardIntelligenceStripHtml() {
+  if (isAdminRole()) return "";
+  const items = dashboardRecentNotes().slice(0, 3);
+  const content = items.length
+    ? items.map((item) => `<span>${escapeHtml(item.type)}: ${escapeHtml(noteDescription(item.text, item.updatedAt))}</span>`).join("")
+    : `<span>No urgent Stage Intelligence signals right now.</span>`;
+  return `<div class="desktop-intelligence-strip">
+    <strong>Stage Intelligence</strong>
+    <div>${content}</div>
+  </div>`;
+}
+
 function renderDesktopDashboardHero() {
   const hero = $("#desktopDashboardHero");
   if (!hero) return;
@@ -5719,7 +5811,9 @@ function renderDesktopDashboardHero() {
   </div>
   <div class="desktop-hero-stats">
     ${config.stats.map((stat) => dashboardHeroStat(stat)).join("")}
-  </div>`;
+  </div>
+  ${dashboardIntelligenceStripHtml()}
+  ${dashboardSuiteOverviewHtml()}`;
 }
 
 function renderMobileDeviceStatus() {
