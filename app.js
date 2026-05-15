@@ -38,9 +38,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.06.028",
-  title: "V1.06.028 update installed",
-  body: "Account Owners are now valid server-side account access targets within their own account scope."
+  version: "V1.06.029",
+  title: "V1.06.029 update installed",
+  body: "ADMIN can now assign any Supabase server level, including ADMIN, while account owners stay scoped to their account."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -2467,6 +2467,9 @@ async function saveAccountAccess(event) {
   const record = await formRecord(form);
   const selectedSecurityRole = normalizeRole(record.role);
   let accessLevels = normalizeAccessLevels(record.accessLevels, "");
+  if (selectedSecurityRole === "ADMIN") {
+    accessLevels = ["ADMIN"];
+  }
   if (selectedSecurityRole === "ACCOUNT" && !accessLevels.some((level) => baseRoleForAccess(level) === "ACCOUNT")) {
     accessLevels = ["ACCOUNT", ...accessLevels.filter((level) => baseRoleForAccess(level) !== "ACCOUNT")];
   }
@@ -2490,7 +2493,7 @@ async function saveAccountAccess(event) {
       action: "update",
       userId: record.userId,
       role,
-      clientId: record.clientId || authState.roleRecord?.client_id || null,
+      clientId: role === "ADMIN" ? null : record.clientId || authState.roleRecord?.client_id || null,
       workerId: role === "CREW" ? record.workerId || null : null,
       promoterId: role === "PROMOTER" ? record.promoterId || null : null,
       accessLevels,

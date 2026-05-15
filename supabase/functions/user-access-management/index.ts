@@ -105,7 +105,7 @@ async function updateUserAccess(admin: any, callerUserId: string, callerRole: an
   if (userId === callerUserId) throw new Error("You cannot change your own login access here.");
 
   const allowedRoles = new Set(callerRole?.role === "ADMIN"
-    ? ["ACCOUNT", "ACCOUNTING", "CLIENT", "PROMOTER", "PRODUCTION", "CREW"]
+    ? ["ADMIN", "ACCOUNT", "ACCOUNTING", "CLIENT", "PROMOTER", "PRODUCTION", "CREW"]
     : ["ACCOUNT", "ACCOUNTING", "CLIENT", "PROMOTER", "PRODUCTION", "CREW"]);
   const role = String(body.role || "").trim().toUpperCase();
   if (!allowedRoles.has(role)) throw new Error("Choose a valid Supabase security level.");
@@ -116,12 +116,13 @@ async function updateUserAccess(admin: any, callerUserId: string, callerRole: an
   let accessLevels = Array.isArray(body.accessLevels)
     ? body.accessLevels.map((level: unknown) => String(level || "").trim()).filter(Boolean)
     : [];
+  if (role === "ADMIN") accessLevels = ["ADMIN"];
   if (["ACCOUNT", "ACCOUNTING", "CLIENT"].includes(role)) accessLevels = ensureClientRepAccessLevels(accessLevels);
 
   const payload = {
     user_id: userId,
     role,
-    client_id: body.clientId || null,
+    client_id: role === "ADMIN" ? null : body.clientId || null,
     worker_id: role === "CREW" ? body.workerId || null : null,
     promoter_id: role === "PROMOTER" ? body.promoterId || null : null,
     updated_at: new Date().toISOString()

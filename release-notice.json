@@ -1,5 +1,5 @@
 {
-  "version": "V1.06.028",
-  "title": "V1.06.028 update installed",
-  "body": "Account Owners are now valid server-side account access targets within their own account scope."
+  "version": "V1.06.029",
+  "title": "V1.06.029 update installed",
+  "body": "ADMIN can now assign any Supabase server level, including ADMIN, while account owners stay scoped to their account."
 }
