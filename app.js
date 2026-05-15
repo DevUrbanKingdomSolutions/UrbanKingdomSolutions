@@ -38,9 +38,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.06.042",
-  title: "V1.06.042 update installed",
-  body: "Account Owner can now keep additional site-level access selected while staying the primary account-level role."
+  version: "V1.06.043",
+  title: "V1.06.043 update installed",
+  body: "User Accounts now shows Account Owner's stacked site access instead of visually collapsing it back to Account only."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -2426,10 +2426,11 @@ function profileForUserAccessRow(row) {
 
 function accessLevelsForUserAccessRow(row) {
   const serverLevel = serverAccessLevelForRole(row.role);
-  if (serverLevel === "ADMIN" || serverLevel === "ACCOUNT") return [serverLevel];
+  if (serverLevel === "ADMIN") return [serverLevel];
   const matched = profileForUserAccessRow(row);
-  const levels = normalizeAccessLevels(row.accessLevels || matched.profile?.accessLevels, matched.accessFallback);
-  return matched.store === "clientReps" ? ensureClientRepAccessLevels(levels) : levels;
+  const fallback = serverLevel || matched.accessFallback;
+  const levels = normalizeAccessLevels(row.accessLevels || matched.profile?.accessLevels, fallback);
+  return matched.store === "clientReps" ? ensureClientRepAccessLevels(levels, fallback) : levels;
 }
 
 function supabaseRoleFromAccessLevels(levels, fallback = "CLIENT") {
@@ -2628,7 +2629,9 @@ async function saveAccountAccessDirectly(record, role, accessLevels, matched) {
         auth_user_id: payload.userId,
         email_routing_status: profile.emailRoutingStatus || "Not configured",
         updated_at: new Date().toISOString()
-      }, { onConflict: "id" });
+      }, { onConflict: "id" })
+      .select("id")
+      .maybeSingle();
     if (repError) throw repError;
   }
 }
