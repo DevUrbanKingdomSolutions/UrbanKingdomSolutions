@@ -474,6 +474,13 @@ body[data-access-tone="admin"] {
   --accent-surface: #f7d8d5;
 }
 
+body[data-access-tone="account"] {
+  --accent: #343946;
+  --accent-dark: #171a21;
+  --accent-soft: #f4f7fb;
+  --accent-surface: #d8dde7;
+}
+
 body[data-access-tone="client"] {
   --accent: #2d6cdf;
   --accent-dark: #1d4f9f;
@@ -481,11 +488,18 @@ body[data-access-tone="client"] {
   --accent-surface: #d8e6ff;
 }
 
+body[data-access-tone="accounting"] {
+  --accent: #047857;
+  --accent-dark: #064e3b;
+  --accent-soft: #edfdf6;
+  --accent-surface: #cff4e5;
+}
+
 body[data-access-tone="promoter"] {
-  --accent: #2c7a4b;
-  --accent-dark: #1f5b38;
-  --accent-soft: #eef8f2;
-  --accent-surface: #d8ecdf;
+  --accent: #c76a1d;
+  --accent-dark: #87420e;
+  --accent-soft: #fff3e7;
+  --accent-surface: #f4d3b4;
 }
 
 body[data-access-tone="production"] {
@@ -509,6 +523,14 @@ body[data-access-tone] {
 
 body[data-access-tone="client"] {
   --brand-logo-image: url("assets/logo/app-logo-client.png");
+}
+
+body[data-access-tone="account"] {
+  --brand-logo-image: url("assets/logo/app-logo-account.png");
+}
+
+body[data-access-tone="accounting"] {
+  --brand-logo-image: url("assets/logo/app-logo-accounting.png");
 }
 
 body[data-access-tone="promoter"] {
@@ -4383,16 +4405,28 @@ td p {
   --message-sender-soft: #fff0ef;
 }
 
+.message-bubble-row.tone-account {
+  --message-sender-accent: #343946;
+  --message-sender-dark: #171a21;
+  --message-sender-soft: #f4f7fb;
+}
+
 .message-bubble-row.tone-client {
   --message-sender-accent: #2d6cdf;
   --message-sender-dark: #1d4f9f;
   --message-sender-soft: #eef4ff;
 }
 
+.message-bubble-row.tone-accounting {
+  --message-sender-accent: #047857;
+  --message-sender-dark: #064e3b;
+  --message-sender-soft: #edfdf6;
+}
+
 .message-bubble-row.tone-promoter {
-  --message-sender-accent: #2c7a4b;
-  --message-sender-dark: #1f5b38;
-  --message-sender-soft: #eef8f2;
+  --message-sender-accent: #c76a1d;
+  --message-sender-dark: #87420e;
+  --message-sender-soft: #fff3e7;
 }
 
 .message-bubble-row.tone-production {
@@ -4445,14 +4479,24 @@ td p {
   --message-avatar-dark: #87251f;
 }
 
+.message-avatar.tone-account {
+  --message-avatar-accent: #343946;
+  --message-avatar-dark: #171a21;
+}
+
 .message-avatar.tone-client {
   --message-avatar-accent: #2d6cdf;
   --message-avatar-dark: #1d4f9f;
 }
 
+.message-avatar.tone-accounting {
+  --message-avatar-accent: #047857;
+  --message-avatar-dark: #064e3b;
+}
+
 .message-avatar.tone-promoter {
-  --message-avatar-accent: #2c7a4b;
-  --message-avatar-dark: #1f5b38;
+  --message-avatar-accent: #c76a1d;
+  --message-avatar-dark: #87420e;
 }
 
 .message-avatar.tone-production {

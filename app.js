@@ -38,9 +38,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.06.022",
-  title: "V1.06.022 update installed",
-  body: "Account and Accounting access now carries into Supabase schema, role policies, and login management functions."
+  version: "V1.06.023",
+  title: "V1.06.023 update installed",
+  body: "Server role colors are updated with Account graphite, Accounting emerald, and Promoter burnt amber across the app."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -11919,7 +11919,7 @@ function messageData(message) {
 
 function messageSenderTone(message, profile) {
   const tone = String(messageData(message).senderTone || "").trim();
-  return ["admin", "client", "promoter", "production", "crew"].includes(tone) ? tone : messageAvatarTone(profile);
+  return ["admin", "account", "client", "accounting", "promoter", "production", "crew"].includes(tone) ? tone : messageAvatarTone(profile);
 }
 
 function messageAvatarTone(profile) {
@@ -11928,9 +11928,9 @@ function messageAvatarTone(profile) {
   const accessLevels = normalizeAccessLevels(profile.accessLevels, profile.loginRole || profile.role || "");
   const baseRoles = accessLevels.map(baseRoleForAccess);
   if (baseRoles.includes("ADMIN")) return "admin";
-  if (baseRoles.includes("ACCOUNT")) return "client";
+  if (baseRoles.includes("ACCOUNT")) return "account";
+  if (baseRoles.includes("ACCOUNTING")) return "accounting";
   if (baseRoles.includes("CLIENT")) return "client";
-  if (baseRoles.includes("ACCOUNTING")) return "client";
   if (baseRoles.includes("PROMOTER")) return "promoter";
   if (baseRoles.includes("PRODUCTION")) return "production";
   if (baseRoles.includes("CREW")) return "crew";

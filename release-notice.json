@@ -1,5 +1,5 @@
 {
-  "version": "V1.06.022",
-  "title": "V1.06.022 update installed",
-  "body": "Account and Accounting access now carries into Supabase schema, role policies, and login management functions."
+  "version": "V1.06.023",
+  "title": "V1.06.023 update installed",
+  "body": "Server role colors are updated with Account graphite, Accounting emerald, and Promoter burnt amber across the app."
 }
