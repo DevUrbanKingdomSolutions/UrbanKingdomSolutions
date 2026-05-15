@@ -861,6 +861,39 @@ button {
   gap: 8px;
 }
 
+.nav-dashboard-top,
+.nav-dashboard-switcher {
+  display: grid;
+  gap: 7px;
+}
+
+.nav-dashboard-switcher {
+  position: relative;
+  overflow: hidden;
+  border-radius: 12px;
+  padding: 8px;
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--accent) 14%, transparent), transparent 64%),
+    rgba(255, 255, 255, 0.045);
+  box-shadow:
+    inset 1px 0 0 color-mix(in srgb, var(--accent) 30%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.nav-dashboard-title {
+  padding: 2px 4px;
+  color: rgba(248, 250, 249, 0.58);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.nav-dashboard-options {
+  display: grid;
+  gap: 6px;
+}
+
 .nav-group-items {
   display: grid;
   gap: 8px;
@@ -5459,7 +5492,10 @@ body:not(.owner-mode) .rate-field {
 
   .nav-list,
   .nav-group,
-  .nav-group-items {
+  .nav-group-items,
+  .nav-dashboard-top,
+  .nav-dashboard-switcher,
+  .nav-dashboard-options {
     gap: 6px;
   }
 

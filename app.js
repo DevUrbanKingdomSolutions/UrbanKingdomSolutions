@@ -38,9 +38,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.06.017",
-  title: "V1.06.017 update installed",
-  body: "The splash screen text now has a stronger radio-style treatment."
+  version: "V1.06.018",
+  title: "V1.06.018 update installed",
+  body: "Dashboard navigation now adapts to active Office Suites, and suite events only feed their assigned suite."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -489,8 +489,8 @@ const NAV_GROUPS = {
     { items: [["dashboard", "Dashboard"]] },
     { label: "PROFILES", items: [["workers", "Crew Profiles"], ["promoters", "Promoter Profiles"], ["venues", "Venues"]] },
     { label: "EVENTS", items: [["events", "Events"], ["eventDocuments", "Documents"], ["emailTemplates", "Email Templates"], ["timecards", "Timecards"], ["vehicles", "Vehicles"], ["reports", "Reports"]] },
-    { label: "TOURING OFFICE", items: [["touringDashboard", "Dashboard"], ["tourAdvancing", "Tour Advancing"], ["tourCrewPersonnel", "Crew Personnel"], ["tourTravel", "Travel & Accommodations"], ["tourDocuments", "Documents"], ["tourSettings", "Settings"]] },
-    { label: "AWARDS / BROADCAST", items: [["awardsDashboard", "Dashboard"], ["awardsDocuments", "Documents"], ["awardsRundown", "Rundown"], ["awardsStaffing", "Staffing"], ["awardsSettings", "Settings"]] },
+    { label: "TOURING", items: [["tourAdvancing", "Tour Advancing"], ["tourCrewPersonnel", "Crew Personnel"], ["tourTravel", "Travel & Accommodations"], ["tourDocuments", "Documents"], ["tourSettings", "Settings"]] },
+    { label: "AWARDS / BROADCAST", items: [["awardsDocuments", "Documents"], ["awardsRundown", "Rundown"], ["awardsStaffing", "Staffing"], ["awardsSettings", "Settings"]] },
     { label: "PRODUCTION OFFICE", items: [["productionBoard", "Production Office"], ["staffingAssignments", "Staffing Assignment"], ["staffingSchedule", "Staffing Schedule"]] },
     { label: "PAYROLL", items: [["payroll", "Payroll"]] },
     { label: "DIRECTORIES", items: [["directory", "Directory"], ["runner", "Gig Resources"]] },
@@ -501,8 +501,8 @@ const NAV_GROUPS = {
     { items: [["dashboard", "Dashboard"]] },
     { label: "PROFILES", items: [["promoters", "Promoter Profiles"]] },
     { label: "EVENTS", items: [["events", "Events"], ["vehicles", "Vehicles"], ["reports", "Reports"]] },
-    { label: "TOURING OFFICE", items: [["touringDashboard", "Dashboard"], ["tourAdvancing", "Tour Advancing"], ["tourCrewPersonnel", "Crew Personnel"], ["tourTravel", "Travel & Accommodations"], ["tourDocuments", "Documents"]] },
-    { label: "AWARDS / BROADCAST", items: [["awardsDashboard", "Dashboard"], ["awardsDocuments", "Documents"], ["awardsRundown", "Rundown"], ["awardsStaffing", "Staffing"]] },
+    { label: "TOURING", items: [["tourAdvancing", "Tour Advancing"], ["tourCrewPersonnel", "Crew Personnel"], ["tourTravel", "Travel & Accommodations"], ["tourDocuments", "Documents"]] },
+    { label: "AWARDS / BROADCAST", items: [["awardsDocuments", "Documents"], ["awardsRundown", "Rundown"], ["awardsStaffing", "Staffing"]] },
     { label: "PRODUCTION OFFICE", items: [["productionBoard", "Production Office"], ["staffingAssignments", "Staffing Assignment"], ["staffingSchedule", "Staffing Schedule"]] },
     { label: "DIRECTORIES", items: [["directory", "Directory"], ["runner", "Gig Resources"]] },
     { items: [["messages", "Messages"]] },
@@ -512,8 +512,8 @@ const NAV_GROUPS = {
     { items: [["dashboard", "Dashboard"]] },
     { label: "PROFILES", items: [["workers", "Crew Profiles"], ["promoters", "Promoter Profiles"], ["venues", "Venues"]] },
     { label: "EVENTS", items: [["events", "Events"], ["eventDocuments", "Documents"], ["emailTemplates", "Email Templates"], ["vehicles", "Vehicles"], ["reports", "Reports"]] },
-    { label: "TOURING OFFICE", items: [["touringDashboard", "Dashboard"], ["tourAdvancing", "Tour Advancing"], ["tourCrewPersonnel", "Crew Personnel"], ["tourTravel", "Travel & Accommodations"], ["tourDocuments", "Documents"], ["tourSettings", "Settings"]] },
-    { label: "AWARDS / BROADCAST", items: [["awardsDashboard", "Dashboard"], ["awardsDocuments", "Documents"], ["awardsRundown", "Rundown"], ["awardsStaffing", "Staffing"], ["awardsSettings", "Settings"]] },
+    { label: "TOURING", items: [["tourAdvancing", "Tour Advancing"], ["tourCrewPersonnel", "Crew Personnel"], ["tourTravel", "Travel & Accommodations"], ["tourDocuments", "Documents"], ["tourSettings", "Settings"]] },
+    { label: "AWARDS / BROADCAST", items: [["awardsDocuments", "Documents"], ["awardsRundown", "Rundown"], ["awardsStaffing", "Staffing"], ["awardsSettings", "Settings"]] },
     { label: "PRODUCTION OFFICE", items: [["productionBoard", "Production Office"], ["staffingAssignments", "Staffing Assignment"], ["staffingSchedule", "Staffing Schedule"]] },
     { label: "DIRECTORIES", items: [["directory", "Directory"], ["runner", "Gig Resources"]] },
     { items: [["messages", "Messages"]] },
@@ -652,6 +652,12 @@ const AWARDS_SUITE_ID = "AWARDS_SHOWS";
 const DEFAULT_ACTIVE_OFFICE_SUITE_IDS = ["LOCAL_PRODUCTION_SERVICES", TOURING_SUITE_ID, AWARDS_SUITE_ID];
 const TOURING_SUITE_VIEWS = ["touringDashboard", "tourAdvancing", "tourCrewPersonnel", "tourTravel", "tourDocuments", "tourSettings"];
 const AWARDS_SUITE_VIEWS = ["awardsDashboard", "awardsDocuments", "awardsRundown", "awardsStaffing", "awardsSettings"];
+const DASHBOARD_VIEW_IDS = ["dashboard", "touringDashboard", "awardsDashboard"];
+const DASHBOARD_NAV_LABELS = {
+  dashboard: "Main Dashboard",
+  touringDashboard: "Touring Dashboard",
+  awardsDashboard: "Awards / Broadcast Dashboard"
+};
 
 const SMTP_PROVIDER_SETTINGS = {
   google: {
@@ -3285,6 +3291,7 @@ async function refreshSiteAccessLevelsForForm(formId) {
 }
 
 function viewLabel(viewId) {
+  if (DASHBOARD_NAV_LABELS[viewId]) return DASHBOARD_NAV_LABELS[viewId];
   return Object.values(NAV_GROUPS)
     .flat()
     .flatMap((group) => group.items || [])
@@ -6510,12 +6517,7 @@ function renderTouringSuiteAccessNotice() {
 }
 
 function touringEvents() {
-  const events = visibleEvents().filter((event) => {
-    if (event.officeSuiteId === TOURING_SUITE_ID) return true;
-    const typeText = listText(`${event.type || ""} ${event.name || ""}`);
-    return typeText.includes("tour") || typeText.includes("stadium");
-  });
-  return events.length ? events : visibleEvents().slice(0, 8);
+  return visibleEvents().filter((event) => event.officeSuiteId === TOURING_SUITE_ID);
 }
 
 function touringStops() {
@@ -7630,11 +7632,7 @@ function awardsShowRows() {
       source: show
     }));
   }
-  const events = visibleEvents().filter((event) => {
-    if (event.officeSuiteId === AWARDS_SUITE_ID) return true;
-    const text = listText(`${event.type || ""} ${event.name || ""}`);
-    return text.includes("award") || text.includes("broadcast") || text.includes("live tv") || text.includes("show");
-  });
+  const events = visibleEvents().filter((event) => event.officeSuiteId === AWARDS_SUITE_ID);
   if (events.length) {
     return events.slice(0, 6).map((event) => {
       const venue = getVenue(event.venueId);
@@ -12132,7 +12130,7 @@ function setView(viewId, options = {}) {
   $$(".view").forEach((view) => view.classList.toggle("active-view", view.id === viewId));
   $$(".nav-item").forEach((button) => button.classList.toggle("active", button.dataset.view === viewId));
   const label = combinedNavGroups().flatMap((group) => group.items).find(([view]) => view === viewId)?.[1];
-  $("#viewTitle").textContent = label || $(`.nav-item[data-view="${viewId}"]`)?.textContent || "Dashboard";
+  $("#viewTitle").textContent = label || viewLabel(viewId) || $(`.nav-item[data-view="${viewId}"]`)?.textContent || "Dashboard";
   if (location.hash !== `#${viewId}`) history.replaceState(null, "", `#${viewId}`);
   if (requestedView !== viewId) toast("That view is restricted for your role.");
   closeMobileNavigation();
@@ -12186,10 +12184,34 @@ function combinedNavGroups() {
   return groups;
 }
 
+function dashboardNavItems(groups = combinedNavGroups()) {
+  const allItems = groups.flatMap((group) => group.items || []);
+  return DASHBOARD_VIEW_IDS
+    .filter((view) => allItems.some(([itemView]) => itemView === view))
+    .filter((view) => accessRoleForView(view))
+    .map((view) => [view, DASHBOARD_NAV_LABELS[view] || viewLabel(view)]);
+}
+
+function dashboardSwitcherHtml(items = dashboardNavItems()) {
+  if (!items.length) return "";
+  if (items.length === 1) {
+    const [view, label] = items[0];
+    return `<div class="nav-dashboard-top"><button class="nav-item ${state.activeView === view ? "active" : ""}" data-view="${escapeHtml(view)}" type="button">${escapeHtml(label)}</button></div>`;
+  }
+  return `<section class="nav-dashboard-switcher" aria-label="Available dashboards">
+    <div class="nav-dashboard-title">Dashboards</div>
+    <div class="nav-dashboard-options">
+      ${items.map(([view, label]) => `<button class="nav-item ${state.activeView === view ? "active" : ""}" data-view="${escapeHtml(view)}" type="button">${escapeHtml(label)}</button>`).join("")}
+    </div>
+  </section>`;
+}
+
 function renderNavigation() {
   const groups = combinedNavGroups();
-  $(".nav-list").innerHTML = groups.map((group, index) => {
+  const dashboardItems = dashboardNavItems(groups);
+  $(".nav-list").innerHTML = `${dashboardSwitcherHtml(dashboardItems)}${groups.map((group, index) => {
     const items = group.items
+      .filter(([view]) => !DASHBOARD_VIEW_IDS.includes(view))
       .map(([view, label]) => `<button class="nav-item ${state.activeView === view ? "active" : ""}" data-view="${view}" type="button">${label}</button>`)
       .join("");
     if (!items) return "";
@@ -12203,17 +12225,19 @@ function renderNavigation() {
       </button>
       <div class="nav-group-items" ${isCollapsed ? "hidden" : ""}>${items}</div>
     </section>`;
-  }).join("");
-  renderMobileBottomNavigation(groups);
+  }).join("")}`;
+  renderMobileBottomNavigation(groups, dashboardItems);
 }
 
-function renderMobileBottomNavigation(groups = combinedNavGroups()) {
+function renderMobileBottomNavigation(groups = combinedNavGroups(), dashboardItems = dashboardNavItems(groups)) {
   const nav = $("#mobileBottomNav");
   if (!nav) return;
   const preferred = ["dashboard", "clock", "events", "messages", "workers"];
-  const allItems = groups.flatMap((group) => group.items || []);
+  const allItems = groups.flatMap((group) => group.items || []).filter(([view]) => !DASHBOARD_VIEW_IDS.includes(view));
   const byView = new Map(allItems.map(([view, label]) => [view, label]));
   const selected = [];
+  const activeDashboard = dashboardItems.find(([view]) => view === state.activeView) || dashboardItems[0];
+  if (activeDashboard) selected.push([activeDashboard[0], "Dashboard"]);
   preferred.forEach((view) => {
     if (byView.has(view)) selected.push([view, byView.get(view)]);
   });

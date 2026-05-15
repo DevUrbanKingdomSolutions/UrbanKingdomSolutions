@@ -1,5 +1,5 @@
 {
-  "version": "V1.06.017",
-  "title": "V1.06.017 update installed",
-  "body": "The splash screen text now has a stronger radio-style treatment."
+  "version": "V1.06.018",
+  "title": "V1.06.018 update installed",
+  "body": "Dashboard navigation now adapts to active Office Suites, and suite events only feed their assigned suite."
 }
