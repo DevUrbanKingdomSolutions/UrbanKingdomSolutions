@@ -38,9 +38,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.06.016",
-  title: "V1.06.016 update installed",
-  body: "The splash screen now uses a walkie-talkie signal loader with Stand By and Copy language."
+  version: "V1.06.017",
+  title: "V1.06.017 update installed",
+  body: "The splash screen text now has a stronger radio-style treatment."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",

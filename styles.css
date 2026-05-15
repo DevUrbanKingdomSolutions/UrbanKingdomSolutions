@@ -552,12 +552,32 @@ button {
 }
 
 .app-loading-overlay p {
+  position: relative;
   margin: 0;
-  color: var(--muted);
-  font-size: 14px;
-  font-weight: 800;
-  letter-spacing: 0.04em;
+  color: color-mix(in srgb, var(--accent) 70%, var(--ink));
+  font-family: "Arial Narrow", "DIN Condensed", "Roboto Condensed", "Impact", system-ui, sans-serif;
+  font-size: 16px;
+  font-weight: 900;
+  letter-spacing: 0.18em;
+  line-height: 1;
   text-transform: uppercase;
+  text-shadow:
+    0 0 10px color-mix(in srgb, var(--accent) 28%, transparent),
+    0 1px 0 rgba(255, 255, 255, 0.38);
+}
+
+.app-loading-overlay p::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -8px;
+  width: 42px;
+  height: 2px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  opacity: 0.72;
+  transform: translateX(-50%);
+  animation: radioTextScan 1200ms ease-in-out infinite;
 }
 
 .loading-walkie {
@@ -686,6 +706,19 @@ button {
 
   50% {
     transform: translateX(-50%) scale(1.08);
+  }
+}
+
+@keyframes radioTextScan {
+  0%,
+  100% {
+    opacity: 0.35;
+    width: 24px;
+  }
+
+  50% {
+    opacity: 0.9;
+    width: 58px;
   }
 }
 
