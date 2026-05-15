@@ -38,9 +38,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.06.031",
-  title: "V1.06.031 update installed",
-  body: "Account Owner, Accounting, and Admin now act as exclusive master access choices in the account access form."
+  version: "V1.06.032",
+  title: "V1.06.032 update installed",
+  body: "Only ADMIN and Account Owner act as exclusive master access choices; Accounting can stay combined with other allowed access."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -2449,7 +2449,6 @@ function exclusiveAccessLevels(levels = []) {
   const normalized = normalizeAccessLevels(levels, "");
   if (normalized.includes("ADMIN")) return ["ADMIN"];
   if (normalized.includes("ACCOUNT")) return ["ACCOUNT"];
-  if (normalized.includes("ACCOUNTING")) return ["ACCOUNTING"];
   return normalized;
 }
 
@@ -3410,7 +3409,7 @@ function syncAccountAccessSelection(input) {
   if (!input?.checked || input.name !== "accessLevels") return;
   const form = input.closest("form");
   if (!form || form.id !== "accountAccessForm") return;
-  const exclusiveLevels = new Set(["ADMIN", "ACCOUNT", "ACCOUNTING"]);
+  const exclusiveLevels = new Set(["ADMIN", "ACCOUNT"]);
   if (!exclusiveLevels.has(input.value)) return;
   form.querySelectorAll("[data-access-level-options] input[name='accessLevels']").forEach((checkbox) => {
     if (checkbox !== input) checkbox.checked = false;
