@@ -106,7 +106,7 @@ async function updateUserAccess(admin: any, callerUserId: string, callerRole: an
 
   const allowedRoles = new Set(callerRole?.role === "ADMIN"
     ? ["ACCOUNT", "ACCOUNTING", "CLIENT", "PROMOTER", "PRODUCTION", "CREW"]
-    : ["ACCOUNTING", "CLIENT", "PROMOTER", "PRODUCTION", "CREW"]);
+    : ["ACCOUNT", "ACCOUNTING", "CLIENT", "PROMOTER", "PRODUCTION", "CREW"]);
   const role = String(body.role || "").trim().toUpperCase();
   if (!allowedRoles.has(role)) throw new Error("Choose a valid Supabase security level.");
   if (callerRole?.role === "ACCOUNT" && body.clientId !== callerRole.client_id) {

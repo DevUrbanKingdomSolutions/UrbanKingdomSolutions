@@ -38,9 +38,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.06.027",
-  title: "V1.06.027 update installed",
-  body: "Account access saves now honor Account and Accounting security choices by applying the matching master access level."
+  version: "V1.06.028",
+  title: "V1.06.028 update installed",
+  body: "Account Owners are now valid server-side account access targets within their own account scope."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
