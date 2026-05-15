@@ -38,9 +38,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.06.037",
-  title: "V1.06.037 update installed",
-  body: "Supabase account role setup errors now explain the missing Account/Accounting database migration instead of showing the raw enum error."
+  version: "V1.06.038",
+  title: "V1.06.038 update installed",
+  body: "ADMIN account access saves now update existing Supabase role rows instead of using an upsert that can trigger RLS insert checks."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -2592,14 +2592,14 @@ async function saveAccountAccessDirectly(record, role, accessLevels, matched) {
   const payload = accountAccessPayload(record, role, accessLevels, matched);
   const { error: roleError } = await supabaseClient
     .from("user_roles")
-    .upsert({
-      user_id: payload.userId,
+    .update({
       role,
       client_id: payload.clientId,
       worker_id: payload.workerId,
       promoter_id: payload.promoterId,
       updated_at: new Date().toISOString()
-    }, { onConflict: "user_id" });
+    })
+    .eq("user_id", payload.userId);
   if (roleError) throw roleError;
   if (["ACCOUNT", "ACCOUNTING", "CLIENT"].includes(role)) {
     const profile = matched.profile || {};
