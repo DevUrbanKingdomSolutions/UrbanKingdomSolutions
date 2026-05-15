@@ -38,9 +38,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.06.023",
-  title: "V1.06.023 update installed",
-  body: "Server role colors are updated with Account graphite, Accounting emerald, and Promoter burnt amber across the app."
+  version: "V1.06.024",
+  title: "V1.06.024 update installed",
+  body: "Office suite sub-colors now carry through dashboard cards, suite navigation, event cards, and active suite pages."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -1637,6 +1637,19 @@ function eventOfficeSuiteLabel(event = {}) {
 
 function officeSuiteColor(suiteId = "") {
   return SUITE_NAV_COLORS[suiteId] || "var(--accent)";
+}
+
+function suiteStyleVars(suiteId = "", variableName = "--suite-color") {
+  if (!suiteId) return "";
+  return ` style="${variableName}: ${escapeHtml(officeSuiteColor(suiteId))}"`;
+}
+
+function suiteIdForNavLabel(label = "") {
+  const normalized = String(label || "").trim().toUpperCase();
+  if (normalized === "LOCAL PRODUCTION") return LOCAL_PRODUCTION_SUITE_ID;
+  if (normalized === "TOURING") return TOURING_SUITE_ID;
+  if (normalized === "AWARDS / BROADCAST") return AWARDS_SUITE_ID;
+  return "";
 }
 
 function renderClientPackageControls(form) {
@@ -5809,6 +5822,7 @@ function dashboardSuiteOverviewCards() {
   const result = [];
   if (views.includes("dashboard") && clientHasOfficeSuite(LOCAL_PRODUCTION_SUITE_ID, client)) {
     result.push({
+      suiteId: LOCAL_PRODUCTION_SUITE_ID,
       label: "Operations",
       title: "Main Operations",
       detail: "Events, crew, vehicles, timecards, payroll, and local resources.",
@@ -5826,6 +5840,7 @@ function dashboardSuiteOverviewCards() {
     const travel = touringTravelRows(crew);
     const attention = touringAttentionRows(stops, crew, travel);
     result.push({
+      suiteId: TOURING_SUITE_ID,
       label: "Touring",
       title: "Touring",
       detail: "Tour stops, city rider workspaces, crew personnel, travel, and generated packets.",
@@ -5844,6 +5859,7 @@ function dashboardSuiteOverviewCards() {
     const schedules = awardsScheduleRows(shows);
     const attention = awardsAttentionRows(shows, documents, staffing, schedules, awardsPacketRows(shows, documents, staffing, schedules), awardsDepartmentRows(documents, staffing, schedules), awardsDistributionRows(documents), awardsAccessRows(documents), awardsShowDayRows(shows, schedules), awardsContactRows(staffing), awardsComplianceRows(documents), awardsVersionRows(documents), awardsTechnicalRows(documents), awardsTalentRows(documents, staffing, schedules));
     result.push({
+      suiteId: AWARDS_SUITE_ID,
       label: "Broadcast",
       title: "Awards / Broadcast",
       detail: "Show documents, rundowns, staff lists, distro, access, scripts, and show-day readiness.",
@@ -5867,7 +5883,7 @@ function dashboardSuiteOverviewHtml() {
       <strong>Command Center</strong>
     </div>
     <div class="desktop-suite-grid">
-      ${cards.map((card) => `<button class="desktop-suite-card" data-dashboard-link="${escapeHtml(card.view)}" type="button">
+      ${cards.map((card) => `<button class="desktop-suite-card"${suiteStyleVars(card.suiteId)} data-dashboard-link="${escapeHtml(card.view)}" type="button">
         <span>${escapeHtml(card.label)}</span>
         <h4>${escapeHtml(card.title)}</h4>
         <p>${escapeHtml(card.detail)}</p>
@@ -6300,7 +6316,7 @@ function renderProductionBoard() {
         const gigDirectoryButton = eventGigSearchText(event, venue)
           ? `<button class="tiny-button" data-event-gig-search="${event.id}" type="button">City Resources</button>`
           : "";
-        return `<article class="record-card"><div><span>${escapeHtml(event.type || "Event")}</span><strong>${escapeHtml(event.name)}</strong><p>${escapeHtml(venue?.name || "")}</p><p>${escapeHtml(promoterLabel(promoter))}</p><p>${escapeHtml(crew || "No runners assigned")}</p></div><div><span>${formatDate(event.startDate)}</span><span>${formatDate(event.endDate)}</span><div class="row-actions">${gigDirectoryButton}${publicAccessButton}</div></div></article>`;
+        return `<article class="record-card"${suiteStyleVars(event.officeSuiteId, "--card-suite-color")}><div><span>${escapeHtml(event.type || "Event")}</span><strong>${escapeHtml(event.name)}</strong><p>${escapeHtml(venue?.name || "")}</p><p>${escapeHtml(promoterLabel(promoter))}</p><p>${escapeHtml(crew || "No runners assigned")}</p></div><div><span>${formatDate(event.startDate)}</span><span>${formatDate(event.endDate)}</span><div class="row-actions">${gigDirectoryButton}${publicAccessButton}</div></div></article>`;
       }).join("")
     : `<div class="compact-item empty">No production-board events match this view.</div>`;
 
@@ -9071,7 +9087,7 @@ function eventCard(event) {
     ? `<button class="tiny-button" data-add-assignment="${event.id}" type="button">Add Runner</button><button class="tiny-button" data-swap-crew="${event.id}" type="button">Swap Crew</button><button class="tiny-button" data-substitute-crew="${event.id}" type="button">Substitution</button>`
     : "";
   const eventActions = `${gigDirectoryButton}${publicAccessButton}${adminEventActions}${actionButtons("events", event.id, "eventForm", "", canAdminEdit())}`;
-  return `<article class="record-card event-card-view">
+  return `<article class="record-card event-card-view"${suiteStyleVars(event.officeSuiteId, "--card-suite-color")}>
     <div class="record-card-main">
       <div class="event-card-section event-card-title-section">
         <div class="event-card-kicker">
@@ -12349,6 +12365,7 @@ function setView(viewId, options = {}) {
   }
   sessionStorage.setItem(LAST_ACTIVE_VIEW_KEY, viewId);
   applyAccessProfile();
+  applyActiveSuiteTone(viewId);
   document.body.classList.toggle("messages-desktop-view", viewId === "messages");
   document.body.classList.toggle("mobile-message-chat-open", viewId === "messages" && !!sendbirdActiveChannel && isMobileMessageLayout());
   if (viewId !== "messages") {
@@ -12364,6 +12381,17 @@ function setView(viewId, options = {}) {
   closeMobileNavigation();
   if (resetMessagesSelector) renderMessaging();
   if (changedView) resetViewScrollPosition(viewId);
+}
+
+function applyActiveSuiteTone(viewId = state.activeView) {
+  const suiteId = suiteIdForView(viewId);
+  if (!suiteId) {
+    document.body.removeAttribute("data-active-suite");
+    document.body.style.removeProperty("--active-suite-color");
+    return;
+  }
+  document.body.dataset.activeSuite = suiteId;
+  document.body.style.setProperty("--active-suite-color", officeSuiteColor(suiteId));
 }
 
 function resetViewScrollPosition(viewId = state.activeView) {
@@ -12440,13 +12468,13 @@ function renderNavigation() {
   $(".nav-list").innerHTML = `${dashboardSwitcherHtml(dashboardItems)}${groups.map((group, index) => {
     const items = group.items
       .filter(([view]) => !DASHBOARD_VIEW_IDS.includes(view))
-      .map(([view, label]) => `<button class="nav-item ${state.activeView === view ? "active" : ""}" data-view="${view}" type="button">${label}</button>`)
+      .map(([view, label]) => `<button class="nav-item ${state.activeView === view ? "active" : ""}"${suiteStyleVars(suiteIdForView(view), "--nav-suite-color")} data-view="${view}" type="button">${label}</button>`)
       .join("");
     if (!items) return "";
     if (!group.label) return `<div class="nav-group nav-group-plain">${items}</div>`;
     const key = navGroupKey(group, index);
     const isCollapsed = navGroupIsCollapsed(key);
-    return `<section class="nav-group ${isCollapsed ? "collapsed" : ""}">
+    return `<section class="nav-group ${isCollapsed ? "collapsed" : ""}"${suiteStyleVars(suiteIdForNavLabel(group.label), "--nav-suite-color")}>
       <button class="nav-group-toggle" data-nav-group="${escapeHtml(key)}" type="button" aria-expanded="${String(!isCollapsed)}">
         <span>${escapeHtml(group.label)}</span>
         <span class="nav-group-caret">${isCollapsed ? "+" : "-"}</span>

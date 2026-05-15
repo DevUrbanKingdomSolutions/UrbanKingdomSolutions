@@ -25,14 +25,14 @@
   padding: 1.25rem;
   border-radius: 18px;
   background:
-    linear-gradient(135deg, color-mix(in srgb, var(--role-color, #2563eb) 13%, transparent), rgba(255, 255, 255, 0.94) 48%),
+    linear-gradient(135deg, color-mix(in srgb, var(--active-suite-color, var(--role-color, #2563eb)) 13%, transparent), rgba(255, 255, 255, 0.94) 48%),
     linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(250, 252, 255, 0.92));
   box-shadow: 0 18px 50px rgba(15, 23, 42, 0.08);
 }
 
 .suite-kicker {
   margin: 0 0 0.35rem;
-  color: color-mix(in srgb, var(--role-color, #2563eb) 72%, #111827);
+  color: color-mix(in srgb, var(--active-suite-color, var(--role-color, #2563eb)) 72%, #111827);
   font-size: 0.76rem;
   font-weight: 800;
   letter-spacing: 0.08em;
@@ -924,10 +924,10 @@ button {
 .nav-group:not(.collapsed) .nav-group-items {
   border-radius: 10px;
   background:
-    linear-gradient(180deg, color-mix(in srgb, var(--accent) 12%, transparent), color-mix(in srgb, var(--accent-dark) 10%, transparent)),
+    linear-gradient(180deg, color-mix(in srgb, var(--nav-suite-color, var(--accent)) 12%, transparent), color-mix(in srgb, var(--accent-dark) 10%, transparent)),
     rgba(255, 255, 255, 0.035);
   padding: 6px;
-  box-shadow: inset 1px 0 0 color-mix(in srgb, var(--accent) 22%, transparent);
+  box-shadow: inset 1px 0 0 color-mix(in srgb, var(--nav-suite-color, var(--accent)) 22%, transparent);
 }
 
 .nav-group-toggle {
@@ -948,6 +948,10 @@ button {
 
 .nav-group-toggle:hover {
   color: #ffffff;
+}
+
+.nav-group[style*="--nav-suite-color"] .nav-group-toggle {
+  color: color-mix(in srgb, var(--nav-suite-color) 48%, #f8faf9);
 }
 
 .nav-group-caret {
@@ -993,6 +997,11 @@ button {
 
 .nav-item.active {
   box-shadow: none;
+}
+
+.nav-item[style*="--nav-suite-color"]:hover,
+.nav-item[style*="--nav-suite-color"].active {
+  background: color-mix(in srgb, var(--nav-suite-color) 18%, rgba(255, 255, 255, 0.08));
 }
 
 .side-actions {
@@ -1878,11 +1887,12 @@ body[data-access-tone="crew"] .desktop-dashboard-hero {
 .desktop-suite-card {
   display: grid;
   gap: 9px;
-  border: 1px solid color-mix(in srgb, var(--hero-accent) 14%, var(--line));
+  border: 1px solid color-mix(in srgb, var(--suite-color, var(--hero-accent)) 16%, var(--line));
   border-radius: 8px;
   background:
-    linear-gradient(145deg, color-mix(in srgb, var(--hero-accent) 8%, transparent), transparent 58%),
+    linear-gradient(145deg, color-mix(in srgb, var(--suite-color, var(--hero-accent)) 9%, transparent), transparent 58%),
     rgba(255, 255, 255, 0.92);
+  box-shadow: inset 3px 0 0 color-mix(in srgb, var(--suite-color, var(--hero-accent)) 70%, #ffffff);
   padding: 15px;
   color: inherit;
   font: inherit;
@@ -1892,13 +1902,15 @@ body[data-access-tone="crew"] .desktop-dashboard-hero {
 
 .desktop-suite-card:hover,
 .desktop-suite-card:focus-visible {
-  border-color: color-mix(in srgb, var(--hero-accent) 34%, var(--line));
-  box-shadow: 0 14px 28px color-mix(in srgb, var(--hero-accent) 12%, transparent);
+  border-color: color-mix(in srgb, var(--suite-color, var(--hero-accent)) 34%, var(--line));
+  box-shadow:
+    inset 3px 0 0 color-mix(in srgb, var(--suite-color, var(--hero-accent)) 80%, #ffffff),
+    0 14px 28px color-mix(in srgb, var(--suite-color, var(--hero-accent)) 12%, transparent);
   outline: none;
 }
 
 .desktop-suite-card > span {
-  color: var(--hero-accent);
+  color: color-mix(in srgb, var(--suite-color, var(--hero-accent)) 84%, #111827);
   font-size: 11px;
   font-weight: 900;
   letter-spacing: 0.08em;
@@ -1930,7 +1942,7 @@ body[data-access-tone="crew"] .desktop-dashboard-hero {
   display: grid;
   gap: 2px;
   border-radius: 7px;
-  background: color-mix(in srgb, var(--hero-accent) 7%, #ffffff);
+  background: color-mix(in srgb, var(--suite-color, var(--hero-accent)) 7%, #ffffff);
   padding: 8px;
   color: var(--muted);
   font-size: 11px;
@@ -3220,10 +3232,16 @@ td p {
   gap: 12px;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: start;
-  border: 1px solid var(--line);
+  border: 1px solid color-mix(in srgb, var(--card-suite-color, var(--line)) 18%, var(--line));
   border-radius: 8px;
-  background: #ffffff;
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--card-suite-color, transparent) 8%, transparent), transparent 46%),
+    #ffffff;
   padding: 14px;
+}
+
+.record-card[style*="--card-suite-color"] {
+  box-shadow: inset 3px 0 0 color-mix(in srgb, var(--card-suite-color) 62%, #ffffff);
 }
 
 .event-card-grid {
@@ -5703,15 +5721,15 @@ body:not(.owner-mode) .rate-field {
   .nav-group:not(.collapsed) .nav-group-items {
     position: relative;
     overflow: hidden;
-    border: 1px solid color-mix(in srgb, var(--accent) 16%, rgba(255, 255, 255, 0.08));
+    border: 1px solid color-mix(in srgb, var(--nav-suite-color, var(--accent)) 16%, rgba(255, 255, 255, 0.08));
     border-radius: 12px;
     background:
-      linear-gradient(135deg, color-mix(in srgb, var(--accent) 15%, transparent), transparent 64%),
+      linear-gradient(135deg, color-mix(in srgb, var(--nav-suite-color, var(--accent)) 15%, transparent), transparent 64%),
       linear-gradient(180deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.018)),
       color-mix(in srgb, var(--accent-dark) 18%, transparent);
     padding: 7px;
     box-shadow:
-      inset 1px 0 0 color-mix(in srgb, var(--accent) 34%, transparent),
+      inset 1px 0 0 color-mix(in srgb, var(--nav-suite-color, var(--accent)) 34%, transparent),
       inset 0 1px 0 rgba(255, 255, 255, 0.08);
   }
 
@@ -5720,7 +5738,7 @@ body:not(.owner-mode) .rate-field {
     inset: 0 auto 0 0;
     width: 3px;
     content: "";
-    background: linear-gradient(180deg, transparent, color-mix(in srgb, var(--accent) 82%, #ffffff), transparent);
+    background: linear-gradient(180deg, transparent, color-mix(in srgb, var(--nav-suite-color, var(--accent)) 82%, #ffffff), transparent);
     opacity: 0.72;
   }
 
@@ -5749,10 +5767,10 @@ body:not(.owner-mode) .rate-field {
   }
 
   .nav-item.active {
-    border-color: var(--accent-dark);
+    border-color: color-mix(in srgb, var(--nav-suite-color, var(--accent-dark)) 70%, var(--accent-dark));
     background:
       linear-gradient(180deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0) 54%),
-      linear-gradient(90deg, #ffffff 0 8px, var(--accent) 8px 12px, var(--accent) 12px, var(--accent-dark) calc(100% + 2px));
+      linear-gradient(90deg, #ffffff 0 8px, var(--nav-suite-color, var(--accent)) 8px 12px, var(--nav-suite-color, var(--accent)) 12px, var(--accent-dark) calc(100% + 2px));
     background-color: var(--accent-dark);
     background-clip: border-box;
     color: #ffffff;
