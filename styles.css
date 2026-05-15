@@ -2635,6 +2635,20 @@ body.crew-mode .crew-mobile-home:not([hidden]) {
   box-shadow: none;
 }
 
+.form-panel.modal-form .premium-profile-card {
+  overflow: hidden;
+}
+
+.form-panel.modal-form .premium-profile-hero {
+  padding-right: clamp(18px, 3vw, 28px);
+  padding-left: clamp(18px, 3vw, 28px);
+}
+
+.form-panel.modal-form .premium-profile-content {
+  padding-right: clamp(18px, 3vw, 28px);
+  padding-left: clamp(18px, 3vw, 28px);
+}
+
 .form-panel.modal-form .profile-detail-grid div,
 .form-panel.modal-form .profile-section {
   border-width: 0 0 1px;
@@ -5300,7 +5314,7 @@ td p {
   border-bottom: 1px solid color-mix(in srgb, var(--accent) 16%, var(--line));
 }
 
-.profile-popup-card .premium-profile-content {
+.profile-popup-card:not(.premium-profile-card) .premium-profile-content {
   padding: 0;
 }
 

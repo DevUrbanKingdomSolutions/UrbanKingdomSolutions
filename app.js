@@ -38,9 +38,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.06.024",
-  title: "V1.06.024 update installed",
-  body: "Office suite sub-colors now carry through dashboard cards, suite navigation, event cards, and active suite pages."
+  version: "V1.06.025",
+  title: "V1.06.025 update installed",
+  body: "Profile popups now share the premium client company profile look with cleaner spacing across read-only views."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -4662,13 +4662,15 @@ function readOnlyProfileCard(title, subtitle, details = [], sections = [], avata
   const groupedContent = groups.length
     ? groups.map(([groupTitle, groupDetails]) => profileInfoSection(groupTitle, groupDetails)).join("")
     : profileInfoSection("Details", details);
-  $("#recordViewBody").innerHTML = `<article class="profile-page-card profile-popup-card">
-    <div class="profile-page-header">
+  $("#recordViewBody").innerHTML = `<article class="profile-page-card premium-profile-card profile-popup-card">
+    <div class="premium-profile-hero">
       ${avatarHtml || `<div class="profile-avatar-large placeholder">${escapeHtml(initialsFor(title || "Profile"))}</div>`}
-      <div>
+      <div class="premium-profile-title">
+        <span>Profile</span>
         <h3>${escapeHtml(title || "Profile")}</h3>
         <p>${escapeHtml(subtitle || "")}</p>
       </div>
+      <div class="premium-profile-actions"></div>
     </div>
     <div class="premium-profile-content">
       ${groupedContent}
@@ -10273,13 +10275,15 @@ function openVehiclePhotoViewer(button) {
   const gallery = photoGallery(vehiclePhasePhotoItems(log, phase));
   const empty = `<div class="empty">No ${escapeHtml(phase.toLowerCase())} photos have been uploaded yet.</div>`;
   $("#recordViewTitle").textContent = `${phase} Photos`;
-  $("#recordViewBody").innerHTML = `<article class="profile-page-card profile-popup-card">
-    <div class="profile-page-header">
+  $("#recordViewBody").innerHTML = `<article class="profile-page-card premium-profile-card profile-popup-card">
+    <div class="premium-profile-hero">
       <div class="profile-avatar-large placeholder">${escapeHtml(initialsFor(phase))}</div>
-      <div>
+      <div class="premium-profile-title">
+        <span>Vehicle Check</span>
         <h3>${escapeHtml(`${phase} Vehicle Photos`)}</h3>
         <p>${escapeHtml(event?.name || "Vehicle check")}${worker?.name ? ` - ${escapeHtml(worker.name)}` : ""}</p>
       </div>
+      <div class="premium-profile-actions"></div>
     </div>
     <div class="premium-profile-content">
       ${profileInfoSection("Vehicle Check", [
