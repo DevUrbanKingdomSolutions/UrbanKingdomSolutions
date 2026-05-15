@@ -38,9 +38,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.06.040",
-  title: "V1.06.040 update installed",
-  body: "Account Owner now stays on the Account access path after login while keeping its site-level permissions underneath it."
+  version: "V1.06.041",
+  title: "V1.06.041 update installed",
+  body: "Account Owner startup now opens the dashboard first and moves heavy sync/user-list refresh work into the background."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -312,6 +312,8 @@ let db;
 let supabaseClient;
 let appHasLoaded = false;
 let cloudSyncPaused = false;
+let activeSessionLoadKey = "";
+let activeSessionLoadPromise = null;
 let authState = {
   session: null,
   user: null,
@@ -2913,6 +2915,19 @@ function openCurrentClientSetupStep() {
 }
 
 async function applyAuthenticatedSession(session, preferredView = "") {
+  const sessionLoadKey = session?.access_token || session?.user?.id || "";
+  if (session && appHasLoaded && sessionLoadKey && sessionLoadKey === activeSessionLoadKey && !preferredView) return;
+  if (session && activeSessionLoadPromise && sessionLoadKey && sessionLoadKey === activeSessionLoadKey && !preferredView) {
+    await activeSessionLoadPromise;
+    return;
+  }
+  let resolveSessionLoad = null;
+  if (session && sessionLoadKey) {
+    activeSessionLoadKey = sessionLoadKey;
+    activeSessionLoadPromise = new Promise((resolve) => {
+      resolveSessionLoad = resolve;
+    });
+  }
   try {
     if (!session) {
       stopIdleSignOutTimer();
@@ -2950,13 +2965,9 @@ async function applyAuthenticatedSession(session, preferredView = "") {
     await loadState();
     await ensureLoggedInWorkerProfile();
     if (hasCrewRunnerAccess()) await loadState();
-    await ensureWelcomeNotification();
-    await ensureReleaseNotification();
     startNotificationAutoRefresh();
     startNotificationRealtime();
     startReleaseNoticePoller();
-    await syncLocalRecordsToSupabase();
-    await refreshUserAccessList(false);
     appHasLoaded = true;
     const hashView = location.hash && !setupTypeFromUrl() ? location.hash.replace("#", "") : "";
     const savedView = sessionStorage.getItem(LAST_ACTIVE_VIEW_KEY) || "";
@@ -2973,11 +2984,28 @@ async function applyAuthenticatedSession(session, preferredView = "") {
     }
     resetIdleSignOutTimer();
     autoConnectMessagingAfterLogin();
+    runPostLoginBackgroundTasks();
   } catch (error) {
     console.error(error);
     setLoadingOverlay("", false);
     showAuthScreen(await loginSetupErrorMessage(error));
+  } finally {
+    if (resolveSessionLoad) resolveSessionLoad();
+    if (sessionLoadKey && activeSessionLoadKey === sessionLoadKey) activeSessionLoadPromise = null;
   }
+}
+
+function runPostLoginBackgroundTasks() {
+  window.setTimeout(async () => {
+    try {
+      await ensureWelcomeNotification();
+      await ensureReleaseNotification();
+      await syncLocalRecordsToSupabase();
+      await refreshUserAccessList(false, state.activeView === "adminUserAccounts");
+    } catch (error) {
+      console.warn("Post-login background tasks did not finish.", error);
+    }
+  }, 250);
 }
 
 async function initializeAuth() {
