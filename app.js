@@ -38,9 +38,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.06.039",
-  title: "V1.06.039 update installed",
-  body: "ADMIN account access saves now verify Supabase role updates and keep the user list from flashing back to stale access settings."
+  version: "V1.06.040",
+  title: "V1.06.040 update installed",
+  body: "Account Owner now stays on the Account access path after login while keeping its site-level permissions underneath it."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -2913,65 +2913,71 @@ function openCurrentClientSetupStep() {
 }
 
 async function applyAuthenticatedSession(session, preferredView = "") {
-  if (!session) {
-    stopIdleSignOutTimer();
-    authState = { session: null, user: null, roleRecord: null, pendingSetup: false };
-    pendingActivationSession = null;
-    pendingActivationType = "";
-    appHasLoaded = false;
-    showAuthScreen("Log in with your Supabase account.");
-    return;
-  }
+  try {
+    if (!session) {
+      stopIdleSignOutTimer();
+      authState = { session: null, user: null, roleRecord: null, pendingSetup: false };
+      pendingActivationSession = null;
+      pendingActivationType = "";
+      appHasLoaded = false;
+      showAuthScreen("Log in with your Supabase account.");
+      return;
+    }
 
-  setLoadingOverlay("Restoring session...", true);
-  authState.session = session;
-  authState.user = session.user;
-  if (authState.pendingSetup) {
-    stopIdleSignOutTimer();
-    showSetupScreen(session);
-    return;
-  }
-  const roleRecord = await fetchUserRole(session);
-  authState.roleRecord = roleRecord;
-  state.accessRole = roleRecord.role;
-  state.activeView = preferredView && ACCESS_PROFILES[roleRecord.role]?.views.includes(preferredView)
-    ? preferredView
-    : roleHomeView();
-  if (roleRecord.worker_id) state.activeWorkerId = roleRecord.worker_id;
-  if (roleRecord.promoter_id) state.activePromoterId = roleRecord.promoter_id;
+    setLoadingOverlay("Restoring session...", true);
+    authState.session = session;
+    authState.user = session.user;
+    if (authState.pendingSetup) {
+      stopIdleSignOutTimer();
+      showSetupScreen(session);
+      return;
+    }
+    const roleRecord = await fetchUserRole(session);
+    authState.roleRecord = roleRecord;
+    state.accessRole = roleRecord.role;
+    state.activeView = preferredView && ACCESS_PROFILES[roleRecord.role]?.views.includes(preferredView)
+      ? preferredView
+      : roleHomeView();
+    if (roleRecord.worker_id) state.activeWorkerId = roleRecord.worker_id;
+    if (roleRecord.promoter_id) state.activePromoterId = roleRecord.promoter_id;
 
-  $("#sessionEmail").textContent = session.user.user_metadata?.name || session.user.email || "Signed in";
-  $("#sessionRole").textContent = state.accessRole;
-  await ensureDatabase();
-  await hydrateAccessLevelsFromSupabase();
-  await hydrateClientSetupData(roleRecord, session.user);
-  await hydrateAppRecordsFromSupabase();
-  await loadState();
-  await ensureLoggedInWorkerProfile();
-  if (hasCrewRunnerAccess()) await loadState();
-  await ensureWelcomeNotification();
-  await ensureReleaseNotification();
-  startNotificationAutoRefresh();
-  startNotificationRealtime();
-  startReleaseNoticePoller();
-  await syncLocalRecordsToSupabase();
-  await refreshUserAccessList(false);
-  appHasLoaded = true;
-  const hashView = location.hash && !setupTypeFromUrl() ? location.hash.replace("#", "") : "";
-  const savedView = sessionStorage.getItem(LAST_ACTIVE_VIEW_KEY) || "";
-  const requestedView = preferredView || hashView || savedView || state.activeView;
-  const homeView = requestedView && assignedViews().includes(requestedView) ? requestedView : roleHomeView();
-  if (location.hash !== `#${homeView}`) history.replaceState(null, "", `#${homeView}`);
-  setView(homeView);
-  showAppShell({ keepLoading: true });
-  setLoadingOverlay("", false);
-  openCurrentClientSetupStep();
-  if (sessionStorage.getItem(POST_SETUP_PERMISSION_PROMPT_KEY)) {
-    sessionStorage.removeItem(POST_SETUP_PERMISSION_PROMPT_KEY);
-    await maybePromptForMobilePermissions({ force: true });
+    $("#sessionEmail").textContent = session.user.user_metadata?.name || session.user.email || "Signed in";
+    $("#sessionRole").textContent = state.accessRole;
+    await ensureDatabase();
+    await hydrateAccessLevelsFromSupabase();
+    await hydrateClientSetupData(roleRecord, session.user);
+    await hydrateAppRecordsFromSupabase();
+    await loadState();
+    await ensureLoggedInWorkerProfile();
+    if (hasCrewRunnerAccess()) await loadState();
+    await ensureWelcomeNotification();
+    await ensureReleaseNotification();
+    startNotificationAutoRefresh();
+    startNotificationRealtime();
+    startReleaseNoticePoller();
+    await syncLocalRecordsToSupabase();
+    await refreshUserAccessList(false);
+    appHasLoaded = true;
+    const hashView = location.hash && !setupTypeFromUrl() ? location.hash.replace("#", "") : "";
+    const savedView = sessionStorage.getItem(LAST_ACTIVE_VIEW_KEY) || "";
+    const requestedView = preferredView || hashView || savedView || state.activeView;
+    const homeView = requestedView && assignedViews().includes(requestedView) ? requestedView : roleHomeView();
+    if (location.hash !== `#${homeView}`) history.replaceState(null, "", `#${homeView}`);
+    setView(homeView);
+    showAppShell({ keepLoading: true });
+    setLoadingOverlay("", false);
+    openCurrentClientSetupStep();
+    if (sessionStorage.getItem(POST_SETUP_PERMISSION_PROMPT_KEY)) {
+      sessionStorage.removeItem(POST_SETUP_PERMISSION_PROMPT_KEY);
+      await maybePromptForMobilePermissions({ force: true });
+    }
+    resetIdleSignOutTimer();
+    autoConnectMessagingAfterLogin();
+  } catch (error) {
+    console.error(error);
+    setLoadingOverlay("", false);
+    showAuthScreen(await loginSetupErrorMessage(error));
   }
-  resetIdleSignOutTimer();
-  autoConnectMessagingAfterLogin();
 }
 
 async function initializeAuth() {
@@ -3128,7 +3134,7 @@ async function completeAccountSetup(event) {
       name: form.elements.name.value,
       email: session.user.email || "",
       phone: form.elements.phone.value,
-      accessLevels: ensureClientRepAccessLevels(existingRep?.accessLevels, hydratedSetup.repCount === 0 ? "CLIENT_ADMIN" : "CLIENT_REP"),
+      accessLevels: ensureClientRepAccessLevels(existingRep?.accessLevels, roleRecord.role === "ACCOUNT" ? "ACCOUNT" : hydratedSetup.repCount === 0 ? "CLIENT_ADMIN" : "CLIENT_REP"),
       emailRoutingStatus: existingRep?.emailRoutingStatus || "Not configured"
     });
     await loadState();
@@ -3387,8 +3393,8 @@ function assignedAccessForCurrentUser() {
   if (baseRole === "ADMIN") return ["ADMIN"];
   if (baseRole === "ACCOUNT") {
     const rep = activeClientRepRecord();
-    const roles = sortAccessRoles(ensureClientRepAccessLevels(rep?.accessLevels, "ACCOUNT").filter((role) => accessProfileFor(role)));
-    return roles.includes("ADMIN") ? ["ADMIN"] : roles;
+    const roles = sortAccessRoles(ensureClientRepAccessLevels(rep?.accessLevels, "ACCOUNT").filter((role) => accessProfileFor(role) && role !== "ADMIN"));
+    return ["ACCOUNT", ...roles.filter((role) => role !== "ACCOUNT")];
   }
   if (baseRole === "ACCOUNTING") return ["ACCOUNTING"];
   if (baseRole === "CLIENT") {
