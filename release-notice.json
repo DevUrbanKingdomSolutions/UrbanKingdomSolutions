@@ -1,5 +1,5 @@
 {
-  "version": "V1.06.030",
-  "title": "V1.06.030 update installed",
-  "body": "Supabase security level saves now use the selected server level as the source of truth and add the matching access level automatically."
+  "version": "V1.06.031",
+  "title": "V1.06.031 update installed",
+  "body": "Account Owner, Accounting, and Admin now act as exclusive master access choices in the account access form."
 }

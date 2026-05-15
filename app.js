@@ -38,9 +38,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.06.030",
-  title: "V1.06.030 update installed",
-  body: "Supabase security level saves now use the selected server level as the source of truth and add the matching access level automatically."
+  version: "V1.06.031",
+  title: "V1.06.031 update installed",
+  body: "Account Owner, Accounting, and Admin now act as exclusive master access choices in the account access form."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -2445,6 +2445,14 @@ function serverAccessLevelForRole(role) {
   return "";
 }
 
+function exclusiveAccessLevels(levels = []) {
+  const normalized = normalizeAccessLevels(levels, "");
+  if (normalized.includes("ADMIN")) return ["ADMIN"];
+  if (normalized.includes("ACCOUNT")) return ["ACCOUNT"];
+  if (normalized.includes("ACCOUNTING")) return ["ACCOUNTING"];
+  return normalized;
+}
+
 async function openAccountAccessForm(userId) {
   if (!(isAdminRole() || isAccountRole()) || !userId) return;
   await refreshSiteAccessLevelsForForm("accountAccessForm");
@@ -2454,7 +2462,7 @@ async function openAccountAccessForm(userId) {
     return;
   }
   const matched = profileForUserAccessRow(row);
-  const accessLevels = accessLevelsForUserAccessRow(row);
+  const accessLevels = exclusiveAccessLevels(accessLevelsForUserAccessRow(row));
   fillForm("accountAccessForm", {
     userId: row.userId,
     email: row.email || "",
@@ -2478,7 +2486,7 @@ async function saveAccountAccess(event) {
   const form = event.currentTarget;
   const record = await formRecord(form);
   const selectedSecurityRole = normalizeRole(record.role);
-  let accessLevels = normalizeAccessLevels(record.accessLevels, "");
+  let accessLevels = exclusiveAccessLevels(record.accessLevels);
   const requiredServerAccess = serverAccessLevelForRole(selectedSecurityRole);
   if (selectedSecurityRole === "ADMIN") {
     accessLevels = ["ADMIN"];
@@ -3396,6 +3404,18 @@ function renderAccessLevelControls(root = document) {
     const options = accessLevelOptionsForForm(group.closest("form"));
     group.innerHTML = options.map((role) => `<label class="checkbox-option"><input name="${escapeHtml(group.dataset.name || "accessLevels")}" type="checkbox" value="${escapeHtml(role)}" ${selected.includes(role) ? "checked" : ""}>${escapeHtml(accessLevelLabel(role))}</label>`).join("");
   });
+}
+
+function syncAccountAccessSelection(input) {
+  if (!input?.checked || input.name !== "accessLevels") return;
+  const form = input.closest("form");
+  if (!form || form.id !== "accountAccessForm") return;
+  const exclusiveLevels = new Set(["ADMIN", "ACCOUNT", "ACCOUNTING"]);
+  if (!exclusiveLevels.has(input.value)) return;
+  form.querySelectorAll("[data-access-level-options] input[name='accessLevels']").forEach((checkbox) => {
+    if (checkbox !== input) checkbox.checked = false;
+  });
+  if (form.elements.role) form.elements.role.value = baseRoleForAccess(input.value);
 }
 
 function accessPickerAllowed(form) {
@@ -15615,6 +15635,9 @@ function bindEvents() {
     });
   });
   $("#accessLevelForm select[name='baseRole']").addEventListener("change", () => renderViewOptionControls($("#accessLevelForm")));
+  $("#accountAccessForm").addEventListener("change", (event) => {
+    if (event.target?.matches?.("input[name='accessLevels']")) syncAccountAccessSelection(event.target);
+  });
 
   $$(".clear-form").forEach((button) => button.addEventListener("click", () => closeForm(button.dataset.form)));
   $("#clockInNow").addEventListener("click", () => {
