@@ -38,9 +38,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.06.026",
-  title: "V1.06.026 update installed",
-  body: "Profile popup spacing now holds across desktop modal views so the premium profile layout has cleaner side breathing room."
+  version: "V1.06.027",
+  title: "V1.06.027 update installed",
+  body: "Account access saves now honor Account and Accounting security choices by applying the matching master access level."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -2465,7 +2465,14 @@ async function saveAccountAccess(event) {
   }
   const form = event.currentTarget;
   const record = await formRecord(form);
+  const selectedSecurityRole = normalizeRole(record.role);
   let accessLevels = normalizeAccessLevels(record.accessLevels, "");
+  if (selectedSecurityRole === "ACCOUNT" && !accessLevels.some((level) => baseRoleForAccess(level) === "ACCOUNT")) {
+    accessLevels = ["ACCOUNT", ...accessLevels.filter((level) => baseRoleForAccess(level) !== "ACCOUNT")];
+  }
+  if (selectedSecurityRole === "ACCOUNTING" && !accessLevels.some((level) => baseRoleForAccess(level) === "ACCOUNTING")) {
+    accessLevels = ["ACCOUNTING", ...accessLevels.filter((level) => baseRoleForAccess(level) !== "ACCOUNTING")];
+  }
   if (!accessLevels.length) {
     toast("Select at least one site access level.");
     return;
