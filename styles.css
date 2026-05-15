@@ -6129,6 +6129,16 @@ body:not(.owner-mode) .rate-field {
     padding: 20px 0 0;
   }
 
+  .form-panel .premium-profile-hero {
+    padding-right: clamp(18px, 3vw, 28px);
+    padding-left: clamp(18px, 3vw, 28px);
+  }
+
+  .form-panel .premium-profile-content {
+    padding-right: clamp(18px, 3vw, 28px);
+    padding-left: clamp(18px, 3vw, 28px);
+  }
+
   .profile-info-section {
     padding: 0 0 18px;
     border-radius: 0;

@@ -38,9 +38,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.06.025",
-  title: "V1.06.025 update installed",
-  body: "Profile popups now share the premium client company profile look with cleaner spacing across read-only views."
+  version: "V1.06.026",
+  title: "V1.06.026 update installed",
+  body: "Profile popup spacing now holds across desktop modal views so the premium profile layout has cleaner side breathing room."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
