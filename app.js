@@ -38,9 +38,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.06.020",
-  title: "V1.06.020 update installed",
-  body: "Local Production now has its own suite nav section, shared profiles show suite context, and calendar events use suite colors."
+  version: "V1.06.021",
+  title: "V1.06.021 update installed",
+  body: "Account and Accounting access lanes are now separated so customer workspaces and money workflows can grow cleanly."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -118,6 +118,12 @@ const CLOUD_SYNC_STORES = new Set([
 
 const ROLE_ALIASES = {
   admin: "ADMIN",
+  account: "ACCOUNT",
+  account_admin: "ACCOUNT",
+  account_owner: "ACCOUNT",
+  accounting: "ACCOUNTING",
+  accounting_admin: "ACCOUNTING",
+  accounting_rep: "ACCOUNTING",
   owner: "CLIENT",
   client: "CLIENT",
   client_admin: "CLIENT",
@@ -138,6 +144,12 @@ const ROLE_ALIASES = {
   CLIENT_REP: "CLIENT",
   CLIENT_REP_LEAD: "CLIENT",
   CLIENT_ACCOUNTING: "CLIENT",
+  ACCOUNT: "ACCOUNT",
+  ACCOUNT_ADMIN: "ACCOUNT",
+  ACCOUNT_OWNER: "ACCOUNT",
+  ACCOUNTING: "ACCOUNTING",
+  ACCOUNTING_ADMIN: "ACCOUNTING",
+  ACCOUNTING_REP: "ACCOUNTING",
   PROMOTER: "PROMOTER",
   PROMOTER_PRODUCTION_OFFICE: "PROMOTER",
   PROMOTER_ADMIN: "PROMOTER",
@@ -158,6 +170,30 @@ const ACCESS_PROFILES = {
     canScopedEdit: false,
     canImportExport: false,
     canSystemEdit: true
+  },
+  ACCOUNT: {
+    label: "ACCOUNT",
+    baseRole: "ACCOUNT",
+    views: ["dashboard", "clientCompanyProfile", "clientProfile", "adminUserAccounts", "events", "eventDocuments", "emailTemplates", "touringDashboard", "tourAdvancing", "tourCrewPersonnel", "tourTravel", "tourDocuments", "tourSettings", "awardsDashboard", "awardsDocuments", "awardsRundown", "awardsStaffing", "awardsSettings", "productionBoard", "staffingAssignments", "staffingSchedule", "timecards", "vehicles", "reports", "payroll", "directory", "runner", "messages", "dataTools", "mobileApp"],
+    canAdminEdit: true,
+    canOwnerEdit: true,
+    canVenueEdit: true,
+    canScopedEdit: true,
+    canImportExport: true,
+    canViewRates: true,
+    canSystemEdit: false
+  },
+  ACCOUNTING: {
+    label: "ACCOUNTING",
+    baseRole: "ACCOUNTING",
+    views: ["dashboard", "timecards", "payroll", "reports", "events", "messages", "mobileApp"],
+    canAdminEdit: false,
+    canOwnerEdit: false,
+    canVenueEdit: false,
+    canScopedEdit: true,
+    canImportExport: false,
+    canViewRates: true,
+    canSystemEdit: false
   },
   CLIENT_ADMIN: {
     label: "CLIENT ADMIN",
@@ -555,6 +591,23 @@ const NAV_GROUPS = {
   ]
 };
 NAV_GROUPS.CLIENT = NAV_GROUPS.CLIENT_ADMIN;
+NAV_GROUPS.ACCOUNT = [
+  { items: [["dashboard", "Dashboard"]] },
+  { label: "ACCOUNT", items: [["clientCompanyProfile", "Account Profile"], ["adminUserAccounts", "User Accounts"], ["dataTools", "Import / Export"]] },
+  { label: "LOCAL PRODUCTION", items: [["events", "Events"], ["eventDocuments", "Documents"], ["emailTemplates", "Email Templates"], ["timecards", "Timecards"], ["vehicles", "Vehicles"], ["reports", "Reports"], ["payroll", "Payroll"]] },
+  { label: "TOURING", items: [["tourAdvancing", "Tour Advancing"], ["tourCrewPersonnel", "Crew Personnel"], ["tourTravel", "Travel & Accommodations"], ["tourDocuments", "Documents"], ["tourSettings", "Settings"]] },
+  { label: "AWARDS / BROADCAST", items: [["awardsDocuments", "Documents"], ["awardsRundown", "Rundown"], ["awardsStaffing", "Staffing"], ["awardsSettings", "Settings"]] },
+  { label: "PRODUCTION OFFICE", items: [["productionBoard", "Production Office"], ["staffingAssignments", "Staffing Assignment"], ["staffingSchedule", "Staffing Schedule"]] },
+  { label: "DIRECTORIES", items: [["directory", "Directory"], ["runner", "Gig Resources"]] },
+  { items: [["messages", "Messages"]] },
+  { label: "SETTINGS", items: [["clientProfile", "My Profile"], ["mobileApp", "Mobile Settings"]] }
+];
+NAV_GROUPS.ACCOUNTING = [
+  { items: [["dashboard", "Dashboard"]] },
+  { label: "ACCOUNTING", items: [["timecards", "Timecards"], ["payroll", "Payroll"], ["reports", "Reports"], ["events", "Events"]] },
+  { items: [["messages", "Messages"]] },
+  { label: "SETTINGS", items: [["mobileApp", "Mobile Settings"]] }
+];
 NAV_GROUPS.PROMOTER = NAV_GROUPS.PROMOTER_ADMIN;
 NAV_GROUPS.PROMOTER_PRODUCTION_OFFICE = NAV_GROUPS.PROMOTER_ADMIN;
 NAV_GROUPS.PRODUCTION = NAV_GROUPS.PRODUCTION_TEAM_ACCESS;
@@ -562,6 +615,8 @@ NAV_GROUPS.PRODUCTION_TEAM_ACCESS = NAV_GROUPS.PRODUCTION;
 
 const ROLE_HOME_VIEWS = {
   ADMIN: "adminProfile",
+  ACCOUNT: "dashboard",
+  ACCOUNTING: "timecards",
   CLIENT: "dashboard",
   CLIENT_ADMIN: "dashboard",
   CLIENT_REP: "dashboard",
@@ -578,6 +633,8 @@ const ROLE_HOME_VIEWS = {
 
 const ACCESS_LEVEL_LABELS = {
   ADMIN: "Admin",
+  ACCOUNT: "Account Owner",
+  ACCOUNTING: "Accounting",
   CLIENT: "Client Admin",
   CLIENT_ADMIN: "Client Admin",
   CLIENT_REP: "Client Rep",
@@ -593,9 +650,11 @@ const ACCESS_LEVEL_LABELS = {
 };
 const ACCESS_ROLE_PRIORITY = {
   ADMIN: 100,
+  ACCOUNT: 95,
   CLIENT_ADMIN: 90,
   CLIENT: 90,
   CLIENT_REP_LEAD: 80,
+  ACCOUNTING: 75,
   CLIENT_REP: 70,
   CLIENT_ACCOUNTING: 65,
   PROMOTER_ADMIN: 60,
@@ -608,7 +667,9 @@ const ACCESS_ROLE_PRIORITY = {
 };
 const SERVER_ROLE_PRIORITY = {
   ADMIN: 100,
+  ACCOUNT: 95,
   CLIENT: 90,
+  ACCOUNTING: 75,
   PROMOTER: 70,
   PRODUCTION: 50,
   CREW: 10
@@ -2314,7 +2375,7 @@ async function deleteUserAccount(userId) {
 
 function profileForUserAccessRow(row) {
   const email = normalizedMatchValue(row.email || "");
-  if (normalizeRole(row.role) === "CLIENT" && row.profileId) {
+  if (["ACCOUNT", "CLIENT", "ACCOUNTING"].includes(normalizeRole(row.role)) && row.profileId) {
     const profile = state.clientReps.find((item) => item.id === row.profileId)
       || state.clientReps.find((item) => item.authUserId === row.userId)
       || {
@@ -2350,6 +2411,8 @@ function accessLevelsForUserAccessRow(row) {
 function supabaseRoleFromAccessLevels(levels, fallback = "CLIENT") {
   const baseRoles = sortAccessRoles(normalizeAccessLevels(levels, fallback)).map(baseRoleForAccess);
   if (baseRoles.includes("ADMIN")) return "ADMIN";
+  if (baseRoles.includes("ACCOUNT")) return "ACCOUNT";
+  if (baseRoles.includes("ACCOUNTING")) return "ACCOUNTING";
   if (baseRoles.includes("CLIENT")) return "CLIENT";
   if (baseRoles.includes("PROMOTER")) return "PROMOTER";
   if (baseRoles.includes("PRODUCTION")) return "PRODUCTION";
@@ -2870,6 +2933,8 @@ async function startAccountActivation(event) {
 function profileViewForRole(role) {
   const normalized = normalizeRole(role);
   if (normalized === "ADMIN") return "adminProfile";
+  if (normalized === "ACCOUNT") return "clientCompanyProfile";
+  if (normalized === "ACCOUNTING") return "timecards";
   if (normalized === "CLIENT") return "clientProfile";
   if (normalized === "PROMOTER") return "promoters";
   if (normalized === "PRODUCTION") return "productionBoard";
@@ -2908,7 +2973,7 @@ async function completeAccountSetup(event) {
   const roleRecord = await fetchUserRole(session);
   authState.roleRecord = roleRecord;
   state.accessRole = roleRecord.role;
-  if (roleRecord.role === "CLIENT") {
+  if (["ACCOUNT", "CLIENT", "ACCOUNTING"].includes(roleRecord.role)) {
     await ensureDatabase();
     const hydratedSetup = await hydrateClientSetupData(roleRecord, session.user);
     await loadState();
@@ -2927,7 +2992,7 @@ async function completeAccountSetup(event) {
     await loadState();
     setClientSetupStep(clientCompanyNeedsSetup(activeClientRecord()) || hydratedSetup.repCount === 0 ? "company" : "rep", session.user.id);
   }
-  const profileView = roleRecord.role === "CLIENT" && clientSetupStep(session.user.id) === "company"
+  const profileView = ["ACCOUNT", "CLIENT"].includes(roleRecord.role) && clientSetupStep(session.user.id) === "company"
     ? "clientCompanyProfile"
     : profileViewForRole(roleRecord.role);
   if (location.hash !== `#${profileView}`) history.replaceState(null, "", `#${profileView}`);
@@ -3053,8 +3118,16 @@ function isAdminRole() {
   return effectiveAccessRole() === "ADMIN";
 }
 
+function isAccountRole() {
+  return effectiveAccessRole() === "ACCOUNT";
+}
+
+function isAccountingRole() {
+  return effectiveAccessRole() === "ACCOUNTING";
+}
+
 function isClientRole() {
-  return effectiveAccessRole() === "CLIENT";
+  return ["ACCOUNT", "CLIENT"].includes(effectiveAccessRole());
 }
 
 function isProductionRole() {
@@ -3107,6 +3180,8 @@ function accessRoleForView(viewId) {
 
 function assignedAccessForRole(role) {
   const normalized = normalizeRole(role);
+  if (normalized === "ACCOUNT") return ["ACCOUNT", "CLIENT_ADMIN", "CLIENT_REP_LEAD", "CLIENT_REP", "CLIENT_ACCOUNTING", "ACCOUNTING", "PROMOTER_ADMIN", "PROMOTER_REP", "PRODUCTION_TEAM_ACCESS", "CREW"];
+  if (normalized === "ACCOUNTING") return ["ACCOUNTING"];
   if (normalized === "CLIENT") return ["CLIENT_ADMIN", "CLIENT_REP", "CLIENT_REP_LEAD", "CLIENT_ACCOUNTING", "PROMOTER_ADMIN", "PROMOTER_REP", "CREW", "PRODUCTION_TEAM_ACCESS"];
   if (normalized === "CREW") {
     const worker = getWorker(state.activeWorkerId);
@@ -3137,6 +3212,8 @@ function grantableAccessLevelsForCurrentUser() {
   const allRoles = accessLevelDefinitions().map((level) => level.id).filter((role) => role !== "ADMIN");
   if (isAdminRole()) return allRoles;
   const assigned = assignedAccessForCurrentUser();
+  if (assigned.includes("ACCOUNT")) return allRoles.filter((role) => baseRoleForAccess(role) !== "ADMIN");
+  if (assigned.includes("ACCOUNTING")) return allRoles.filter((role) => baseRoleForAccess(role) === "ACCOUNTING");
   if (assigned.includes("CLIENT_ADMIN")) return allRoles.filter((role) => baseRoleForAccess(role) !== "ADMIN");
   if (assigned.includes("CLIENT_REP_LEAD")) {
     const blocked = new Set(["CLIENT", "CLIENT_ADMIN"]);
@@ -3144,7 +3221,7 @@ function grantableAccessLevelsForCurrentUser() {
   }
   if (assigned.includes("CLIENT_REP")) {
     const blocked = new Set(["CLIENT", "CLIENT_ADMIN", "CLIENT_REP_LEAD", "CLIENT_ACCOUNTING"]);
-    return allRoles.filter((role) => !blocked.has(role) && !["ADMIN", "CLIENT"].includes(baseRoleForAccess(role)));
+    return allRoles.filter((role) => !blocked.has(role) && !["ADMIN", "ACCOUNT", "CLIENT", "ACCOUNTING"].includes(baseRoleForAccess(role)));
   }
   if (assigned.includes("PROMOTER_ADMIN")) {
     return allRoles.filter((role) => ["PROMOTER", "PRODUCTION", "CREW"].includes(baseRoleForAccess(role)) && role !== "PROMOTER_ADMIN");
@@ -3166,6 +3243,12 @@ function filterGrantableAccessLevels(roles) {
 function assignedAccessForCurrentUser() {
   const baseRole = normalizeRole(authState.roleRecord?.role || state.accessRole);
   if (baseRole === "ADMIN") return ["ADMIN"];
+  if (baseRole === "ACCOUNT") {
+    const rep = activeClientRepRecord();
+    const roles = sortAccessRoles(ensureClientRepAccessLevels(rep?.accessLevels, "ACCOUNT").filter((role) => accessProfileFor(role)));
+    return roles.includes("ADMIN") ? ["ADMIN"] : roles;
+  }
+  if (baseRole === "ACCOUNTING") return ["ACCOUNTING"];
   if (baseRole === "CLIENT") {
     const rep = activeClientRepRecord();
     let roles = ensureClientRepAccessLevels(rep?.accessLevels, "CLIENT_ADMIN").filter((role) => accessProfileFor(role));
@@ -3187,8 +3270,8 @@ function accessLevelOptionsForForm(form) {
     return filterGrantableAccessLevels(roles);
   }
   if (["clientProfileForm", "workerForm", "promoterForm"].includes(form?.id)) return [];
-  if (form?.id === "clientForm") return filterGrantableAccessLevels(roles.filter((role) => baseRoleForAccess(role) === "CLIENT"));
-  if (form?.id !== "clientForm") roles = roles.filter((role) => !["CLIENT", "PRODUCTION"].includes(baseRoleForAccess(role)));
+  if (form?.id === "clientForm") return filterGrantableAccessLevels(roles.filter((role) => ["ACCOUNT", "CLIENT", "ACCOUNTING"].includes(baseRoleForAccess(role))));
+  if (form?.id !== "clientForm") roles = roles.filter((role) => !["ACCOUNT", "CLIENT", "ACCOUNTING", "PRODUCTION"].includes(baseRoleForAccess(role)));
   return filterGrantableAccessLevels(roles);
 }
 
@@ -3199,7 +3282,7 @@ function accessLevelLabel(role) {
 function quickProfileAccessOptions(targetStore) {
   const roles = accessLevelDefinitions().map((level) => level.id).filter((role) => role !== "ADMIN");
   if (targetStore === "clients" || isAdminRole()) {
-    return roles.filter((role) => baseRoleForAccess(role) === "CLIENT");
+    return roles.filter((role) => ["ACCOUNT", "CLIENT", "ACCOUNTING"].includes(baseRoleForAccess(role)));
   }
   return filterGrantableAccessLevels(roles);
 }
@@ -3373,7 +3456,7 @@ function normalizeAccessLevels(levels, fallback) {
 
 function ensureClientRepAccessLevels(levels, fallback = "CLIENT_REP") {
   const normalized = normalizeAccessLevels(levels, fallback);
-  const hasClientAccess = normalized.some((level) => baseRoleForAccess(level) === "CLIENT");
+  const hasClientAccess = normalized.some((level) => ["ACCOUNT", "CLIENT", "ACCOUNTING"].includes(baseRoleForAccess(level)));
   return hasClientAccess ? normalized : Array.from(new Set([fallback, ...normalized]));
 }
 
@@ -3408,7 +3491,9 @@ function hasAssignedAccess(role) {
 function dataScopeRole() {
   if (isAdminRole()) return "ADMIN";
   const baseRoles = assignedAccessForCurrentUser().map(baseRoleForAccess);
+  if (baseRoles.includes("ACCOUNT")) return "CLIENT";
   if (baseRoles.includes("CLIENT")) return "CLIENT";
+  if (baseRoles.includes("ACCOUNTING")) return "ACCOUNTING";
   if (baseRoles.includes("PROMOTER")) return "PROMOTER";
   if (baseRoles.includes("PRODUCTION")) return "PRODUCTION";
   if (baseRoles.includes("CREW")) return "CREW";
@@ -3420,7 +3505,7 @@ function hasDataScope(role) {
 }
 
 function canEditRates() {
-  return currentProfile().canViewRates || (hasAssignedAccess("CLIENT_ACCOUNTING") && hasAssignedAccess("CLIENT_REP_LEAD"));
+  return currentProfile().canViewRates || hasDataScope("ACCOUNTING") || (hasAssignedAccess("CLIENT_ACCOUNTING") && hasAssignedAccess("CLIENT_REP_LEAD"));
 }
 
 function crewCanViewRates() {
@@ -3441,7 +3526,7 @@ function canEditAwardsRecords() {
 }
 
 function canViewRestrictedAwardsRecords() {
-  return canOwnerEdit() || hasAssignedAccess("CLIENT_ACCOUNTING");
+  return canOwnerEdit() || hasDataScope("ACCOUNTING") || hasAssignedAccess("CLIENT_ACCOUNTING");
 }
 
 function awardsRecordVisible(record = {}) {
@@ -10027,7 +10112,7 @@ function appendTimecardAdminNote(card, message) {
 
 function canViewTimecardAdminNotes() {
   const roles = assignedAccessForCurrentUser();
-  return roles.includes("CLIENT_ADMIN") || roles.includes("CLIENT_ACCOUNTING");
+  return roles.includes("CLIENT_ADMIN") || roles.includes("ACCOUNTING") || roles.includes("CLIENT_ACCOUNTING");
 }
 
 function timecardTableNotes(card) {
@@ -11843,7 +11928,9 @@ function messageAvatarTone(profile) {
   const accessLevels = normalizeAccessLevels(profile.accessLevels, profile.loginRole || profile.role || "");
   const baseRoles = accessLevels.map(baseRoleForAccess);
   if (baseRoles.includes("ADMIN")) return "admin";
+  if (baseRoles.includes("ACCOUNT")) return "client";
   if (baseRoles.includes("CLIENT")) return "client";
+  if (baseRoles.includes("ACCOUNTING")) return "client";
   if (baseRoles.includes("PROMOTER")) return "promoter";
   if (baseRoles.includes("PRODUCTION")) return "production";
   if (baseRoles.includes("CREW")) return "crew";
@@ -12506,7 +12593,7 @@ function loggedInProfileRecord() {
   const baseRole = normalizeRole(authState.roleRecord?.role || "");
   const userId = authState.user?.id || "";
   const email = normalizedMatchValue(authState.user?.email || "");
-  if (baseRole === "CLIENT") {
+  if (baseRole === "ACCOUNT" || baseRole === "ACCOUNTING" || baseRole === "CLIENT") {
     return activeClientRepRecord() || clientRepDefaults();
   }
   if (baseRole === "CREW") {

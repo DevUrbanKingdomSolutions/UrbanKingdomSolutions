@@ -10,7 +10,7 @@
     <title>Production Crew Database</title>
     <link rel="manifest" href="manifest.webmanifest">
     <link rel="icon" href="assets/logo/app-logo-admin.png" type="image/png">
-    <link rel="stylesheet" href="styles.css?v=V1.06.020-local-suite">
+    <link rel="stylesheet" href="styles.css?v=V1.06.021-accounting-lanes">
   </head>
   <body>
     <div id="appLoadingOverlay" class="app-loading-overlay" aria-live="polite">
@@ -520,7 +520,9 @@
               <label>Access name<input name="name" required placeholder="Runner Lead, Production Viewer"></label>
               <label>Security foundation
                 <select name="baseRole">
+                  <option value="ACCOUNT">Account</option>
                   <option value="CLIENT">Client</option>
+                  <option value="ACCOUNTING">Accounting</option>
                   <option value="PROMOTER">Promoter</option>
                   <option value="PRODUCTION">Production</option>
                   <option value="CREW">Crew / Runner</option>
@@ -546,7 +548,9 @@
               <label>Email<input name="email" readonly></label>
               <label>Supabase security level
                 <select name="role">
+                  <option value="ACCOUNT">Account</option>
                   <option value="CLIENT">Client</option>
+                  <option value="ACCOUNTING">Accounting</option>
                   <option value="PROMOTER">Promoter</option>
                   <option value="PRODUCTION">Production</option>
                   <option value="CREW">Crew / Runner</option>
@@ -2423,6 +2427,6 @@
     <div id="modalHost"></div>
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js?v=V1.06.020-local-suite"></script>
+    <script src="app.js?v=V1.06.021-accounting-lanes"></script>
   </body>
 </html>
