@@ -38,9 +38,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.06.015",
-  title: "V1.06.015 update installed",
-  body: "Touring dashboard cards now open the right stop, crew, or travel profile when a real record is available."
+  version: "V1.06.016",
+  title: "V1.06.016 update installed",
+  body: "The splash screen now uses a walkie-talkie signal loader with Stand By and Copy language."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
