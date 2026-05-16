@@ -38,9 +38,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.06.045",
-  title: "V1.06.045 update installed",
-  body: "The web favicon and install icon now use the red owner-power mark."
+  version: "V1.06.046",
+  title: "V1.06.046 update installed",
+  body: "The merged dashboard suite cards now open their suite work areas instead of old separate dashboard pages."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -6007,10 +6007,11 @@ function dashboardSuiteOverviewCards() {
   if (views.includes("dashboard") && clientHasOfficeSuite(LOCAL_PRODUCTION_SUITE_ID, client)) {
     result.push({
       suiteId: LOCAL_PRODUCTION_SUITE_ID,
-      label: "Operations",
-      title: "Main Operations",
+      label: "Local",
+      title: "Local Production",
       detail: "Events, crew, vehicles, timecards, payroll, and local resources.",
       view: "events",
+      action: "Open Events",
       stats: [
         ["Events", visibleEvents().length],
         ["Clocked In", liveCards.length],
@@ -6028,7 +6029,8 @@ function dashboardSuiteOverviewCards() {
       label: "Touring",
       title: "Touring",
       detail: "Tour stops, city rider workspaces, crew personnel, travel, and generated packets.",
-      view: "touringDashboard",
+      view: "tourAdvancing",
+      action: "Open Advancing",
       stats: [
         ["Stops", stops.length],
         ["Travel Needs", travel.filter((person) => person.overall !== "Ready").length],
@@ -6047,7 +6049,8 @@ function dashboardSuiteOverviewCards() {
       label: "Broadcast",
       title: "Awards / Broadcast",
       detail: "Show documents, rundowns, staff lists, distro, access, scripts, and show-day readiness.",
-      view: "awardsDashboard",
+      view: "awardsDocuments",
+      action: "Open Documents",
       stats: [
         ["Shows", shows.length],
         ["Docs", documents.length],
@@ -6074,6 +6077,7 @@ function dashboardSuiteOverviewHtml() {
         <div class="desktop-suite-card-stats">
           ${card.stats.map(([label, value]) => `<small><b>${escapeHtml(String(value))}</b>${escapeHtml(label)}</small>`).join("")}
         </div>
+        <em>${escapeHtml(card.action || "Open Suite")}</em>
       </button>`).join("")}
     </div>
   </div>`;

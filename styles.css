@@ -1959,6 +1959,14 @@ body[data-access-tone="crew"] .desktop-dashboard-hero {
   font-size: 18px;
 }
 
+.desktop-suite-card em {
+  justify-self: start;
+  color: color-mix(in srgb, var(--suite-color, var(--hero-accent)) 78%, #111827);
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 900;
+}
+
 .metric-control span {
   font-size: 11px;
 }
