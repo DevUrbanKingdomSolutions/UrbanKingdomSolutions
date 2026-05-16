@@ -38,9 +38,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.06.044",
-  title: "V1.06.044 update installed",
-  body: "Account Owner now carries the red owner-power color, while ADMIN uses the graphite x-ray system color."
+  version: "V1.06.045",
+  title: "V1.06.045 update installed",
+  body: "The web favicon and install icon now use the red owner-power mark."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",

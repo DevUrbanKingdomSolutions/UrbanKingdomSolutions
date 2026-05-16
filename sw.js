@@ -1,12 +1,11 @@
-const APP_SHELL_CACHE = "production-crew-shell-v1.06.044";
+const APP_SHELL_CACHE = "production-crew-shell-v1.06.045";
 const APP_SHELL_ASSETS = [
   "./",
   "./index.html",
-  "./styles.css?v=V1.06.044-role-color-swap",
-  "./app.js?v=V1.06.044-role-color-swap",
+  "./styles.css?v=V1.06.045-web-red-icon",
+  "./app.js?v=V1.06.045-web-red-icon",
   "./release-notice.json",
   "./manifest.webmanifest",
-  "./assets/logo/app-logo-account.png",
   "./assets/logo/app-logo-admin.png",
   "./assets/logo/app-logo-account.png",
   "./assets/logo/app-logo-client.png",
