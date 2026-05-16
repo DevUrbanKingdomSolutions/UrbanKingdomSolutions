@@ -38,9 +38,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.06.052",
-  title: "V1.06.052 update installed",
-  body: "Events moved into the global dashboard nav area because they are shared across Office Suites."
+  version: "V1.06.053",
+  title: "V1.06.053 update installed",
+  body: "Events options now keep Edit and Delete inside the main Options menu, and Needs Attention wording is clearer."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -5554,7 +5554,7 @@ function renderDashboard() {
     renderDashboardPayrollControls([]);
     renderDashboardCalendar([]);
     $("#liveCrewList").innerHTML = `<div class="compact-item empty">ADMIN does not load production timecard data.</div>`;
-    $("#recentNotes").innerHTML = `<div class="compact-item empty">ADMIN does not load production intelligence signals.</div>`;
+    $("#recentNotes").innerHTML = `<div class="compact-item empty">ADMIN does not load production notes or alerts.</div>`;
     return;
   }
   const cards = visibleRecords(state.timecards);
@@ -5574,7 +5574,7 @@ function renderDashboard() {
 
   $("#recentNotes").innerHTML = noteItems.length
     ? noteItems.slice(0, 8).map(recentNoteItemHtml).join("")
-    : `<div class="compact-item empty">Stage Intelligence signals and notes will appear here as they are created.</div>`;
+    : `<div class="compact-item empty">Stage Intelligence notes and alerts will appear here as they are created.</div>`;
 }
 
 function dashboardRecentNotes() {
@@ -5685,7 +5685,7 @@ function openRecentNotesView() {
   const notes = dashboardRecentNotes().slice(0, 8);
   $("#recentNotesViewBody").innerHTML = notes.length
     ? notes.map(recentNoteItemHtml).join("")
-    : `<div class="compact-item empty">Stage Intelligence signals and notes will appear here as they are created.</div>`;
+    : `<div class="compact-item empty">Stage Intelligence notes and alerts will appear here as they are created.</div>`;
   openForm("recentNotesView");
 }
 
@@ -6019,7 +6019,7 @@ function dashboardSuiteOverviewCards() {
       stats: [
         ["Events", visibleEvents().length],
         ["Clocked In", liveCards.length],
-        ["Signals", notes.length]
+        ["Needs Attention", notes.length]
       ]
     });
   }
@@ -6038,7 +6038,7 @@ function dashboardSuiteOverviewCards() {
       stats: [
         ["Stops", stops.length],
         ["Travel Needs", travel.filter((person) => person.overall !== "Ready").length],
-        ["Signals", attention.length]
+        ["Needs Attention", attention.length]
       ]
     });
   }
@@ -6058,7 +6058,7 @@ function dashboardSuiteOverviewCards() {
       stats: [
         ["Shows", shows.length],
         ["Docs", documents.length],
-        ["Signals", attention.length]
+        ["Needs Attention", attention.length]
       ]
     });
   }
@@ -6092,7 +6092,7 @@ function dashboardIntelligenceStripHtml() {
   const items = dashboardRecentNotes().slice(0, 3);
   const content = items.length
     ? items.map((item) => `<span>${escapeHtml(item.type)}: ${escapeHtml(noteDescription(item.text, item.updatedAt))}</span>`).join("")
-    : `<span>No urgent Stage Intelligence signals right now.</span>`;
+    : `<span>No urgent Stage Intelligence alerts right now.</span>`;
   return `<div class="desktop-intelligence-strip">
     <strong>Stage Intelligence</strong>
     <div>${content}</div>
@@ -9301,7 +9301,10 @@ function eventCard(event) {
   const adminEventActions = canAdminEdit()
     ? `<button class="tiny-button" data-add-assignment="${event.id}" type="button">Add Runner</button><button class="tiny-button" data-swap-crew="${event.id}" type="button">Swap Crew</button><button class="tiny-button" data-substitute-crew="${event.id}" type="button">Substitution</button>`
     : "";
-  const eventActions = `${gigDirectoryButton}${publicAccessButton}${adminEventActions}${actionButtons("events", event.id, "eventForm", "", canAdminEdit())}`;
+  const eventEditActions = canAdminEdit()
+    ? `<button class="tiny-button" data-edit="events" data-id="${event.id}" data-form="eventForm" type="button">Edit</button><button class="tiny-button danger" data-delete="events" data-id="${event.id}" type="button">Delete</button>`
+    : "";
+  const eventActions = `${gigDirectoryButton}${publicAccessButton}${adminEventActions}${eventEditActions}`;
   return `<article class="record-card event-card-view"${suiteStyleVars(event.officeSuiteId, "--card-suite-color")}>
     <div class="record-card-main">
       <div class="event-card-section event-card-title-section">
