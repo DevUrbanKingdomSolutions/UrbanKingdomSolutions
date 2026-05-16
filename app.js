@@ -38,9 +38,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.06.051",
-  title: "V1.06.051 update installed",
-  body: "Events now include Office Suite filtering and a suite summary strip for multi-suite accounts."
+  version: "V1.06.052",
+  title: "V1.06.052 update installed",
+  body: "Events moved into the global dashboard nav area because they are shared across Office Suites."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -525,9 +525,9 @@ const NAV_GROUPS = {
     { label: "SETTINGS", items: [["adminProfile", "My Profile"], ["mobileApp", "Mobile Settings"]] }
   ],
   CLIENT_ADMIN: [
-    { items: [["dashboard", "Dashboard"]] },
+    { items: [["dashboard", "Dashboard"], ["events", "Events"]] },
     { label: "PROFILES", items: [["workers", "Crew Profiles"], ["promoters", "Promoter Profiles"], ["venues", "Venues"]] },
-    { label: "LOCAL PRODUCTION", items: [["events", "Events"], ["eventDocuments", "Documents"], ["emailTemplates", "Email Templates"], ["timecards", "Timecards"], ["vehicles", "Vehicles"], ["reports", "Reports"], ["payroll", "Payroll"]] },
+    { label: "LOCAL PRODUCTION", items: [["eventDocuments", "Documents"], ["emailTemplates", "Email Templates"], ["timecards", "Timecards"], ["vehicles", "Vehicles"], ["reports", "Reports"], ["payroll", "Payroll"]] },
     { label: "TOURING", items: [["tourAdvancing", "Tour Advancing"], ["tourCrewPersonnel", "Crew Personnel"], ["tourTravel", "Travel & Accommodations"], ["tourDocuments", "Documents"], ["tourSettings", "Settings"]] },
     { label: "AWARDS / BROADCAST", items: [["awardsDocuments", "Documents"], ["awardsRundown", "Rundown"], ["awardsStaffing", "Staffing"], ["awardsSettings", "Settings"]] },
     { label: "PRODUCTION OFFICE", items: [["productionBoard", "Production Office"], ["staffingAssignments", "Staffing Assignment"], ["staffingSchedule", "Staffing Schedule"]] },
@@ -536,9 +536,9 @@ const NAV_GROUPS = {
     { label: "SETTINGS", items: [["clientCompanyProfile", "Client Profile"], ["clientProfile", "My Profile"], ["dataTools", "Import / Export"], ["mobileApp", "Mobile Settings"]] }
   ],
   CLIENT_REP: [
-    { items: [["dashboard", "Dashboard"]] },
+    { items: [["dashboard", "Dashboard"], ["events", "Events"]] },
     { label: "PROFILES", items: [["promoters", "Promoter Profiles"], ["venues", "Venues"]] },
-    { label: "LOCAL PRODUCTION", items: [["events", "Events"], ["vehicles", "Vehicles"], ["reports", "Reports"]] },
+    { label: "LOCAL PRODUCTION", items: [["vehicles", "Vehicles"], ["reports", "Reports"]] },
     { label: "TOURING", items: [["tourAdvancing", "Tour Advancing"], ["tourCrewPersonnel", "Crew Personnel"], ["tourTravel", "Travel & Accommodations"], ["tourDocuments", "Documents"]] },
     { label: "AWARDS / BROADCAST", items: [["awardsDocuments", "Documents"], ["awardsRundown", "Rundown"], ["awardsStaffing", "Staffing"]] },
     { label: "PRODUCTION OFFICE", items: [["productionBoard", "Production Office"], ["staffingAssignments", "Staffing Assignment"], ["staffingSchedule", "Staffing Schedule"]] },
@@ -547,9 +547,9 @@ const NAV_GROUPS = {
     { label: "SETTINGS", items: [["clientProfile", "My Profile"], ["dataTools", "Import / Export"], ["mobileApp", "Mobile Settings"]] }
   ],
   CLIENT_REP_LEAD: [
-    { items: [["dashboard", "Dashboard"]] },
+    { items: [["dashboard", "Dashboard"], ["events", "Events"]] },
     { label: "PROFILES", items: [["workers", "Crew Profiles"], ["promoters", "Promoter Profiles"], ["venues", "Venues"]] },
-    { label: "LOCAL PRODUCTION", items: [["events", "Events"], ["eventDocuments", "Documents"], ["emailTemplates", "Email Templates"], ["vehicles", "Vehicles"], ["reports", "Reports"]] },
+    { label: "LOCAL PRODUCTION", items: [["eventDocuments", "Documents"], ["emailTemplates", "Email Templates"], ["vehicles", "Vehicles"], ["reports", "Reports"]] },
     { label: "TOURING", items: [["tourAdvancing", "Tour Advancing"], ["tourCrewPersonnel", "Crew Personnel"], ["tourTravel", "Travel & Accommodations"], ["tourDocuments", "Documents"], ["tourSettings", "Settings"]] },
     { label: "AWARDS / BROADCAST", items: [["awardsDocuments", "Documents"], ["awardsRundown", "Rundown"], ["awardsStaffing", "Staffing"], ["awardsSettings", "Settings"]] },
     { label: "PRODUCTION OFFICE", items: [["productionBoard", "Production Office"], ["staffingAssignments", "Staffing Assignment"], ["staffingSchedule", "Staffing Schedule"]] },
@@ -562,31 +562,34 @@ const NAV_GROUPS = {
     { label: "SETTINGS", items: [["mobileApp", "Mobile Settings"]] }
   ],
   PROMOTER_ADMIN: [
+    { items: [["events", "Events"]] },
     { label: "PROFILES", items: [["workers", "Crew Profiles"], ["promoters", "Promoter Profiles"]] },
-    { label: "LOCAL PRODUCTION", items: [["events", "Events"], ["vehicles", "Vehicles"], ["reports", "Reports"]] },
+    { label: "LOCAL PRODUCTION", items: [["vehicles", "Vehicles"], ["reports", "Reports"]] },
     { label: "PRODUCTION OFFICE", items: [["productionBoard", "Production Office"], ["staffingAssignments", "Staffing Assignment"], ["staffingSchedule", "Staffing Schedule"]] },
     { label: "DIRECTORIES", items: [["directory", "Directory"], ["runner", "Gig Resources"]] },
     { items: [["messages", "Messages"]] },
     { label: "SETTINGS", items: [["dataTools", "Import / Export"], ["mobileApp", "Mobile Settings"]] }
   ],
   PROMOTER_REP: [
+    { items: [["events", "Events"]] },
     { label: "PROFILES", items: [["workers", "Crew Profiles"], ["promoters", "Promoter Profiles"]] },
-    { label: "LOCAL PRODUCTION", items: [["events", "Events"], ["vehicles", "Vehicles"], ["reports", "Reports"]] },
+    { label: "LOCAL PRODUCTION", items: [["vehicles", "Vehicles"], ["reports", "Reports"]] },
     { label: "PRODUCTION OFFICE", items: [["productionBoard", "Production Office"], ["staffingAssignments", "Staffing Assignment"], ["staffingSchedule", "Staffing Schedule"]] },
     { label: "DIRECTORIES", items: [["directory", "Directory"], ["runner", "Gig Resources"]] },
     { items: [["messages", "Messages"]] },
     { label: "SETTINGS", items: [["mobileApp", "Mobile Settings"]] }
   ],
   PRODUCTION_TEAM_ACCESS: [
-    { label: "LOCAL PRODUCTION", items: [["events", "Events"], ["vehicles", "Vehicles"], ["reports", "Reports"]] },
+    { items: [["events", "Events"]] },
+    { label: "LOCAL PRODUCTION", items: [["vehicles", "Vehicles"], ["reports", "Reports"]] },
     { label: "PRODUCTION OFFICE", items: [["productionBoard", "Production Office"], ["staffingAssignments", "Staffing Assignment"], ["staffingSchedule", "Staffing Schedule"]] },
     { label: "DIRECTORIES", items: [["directory", "Directory"]] },
     { items: [["messages", "Messages"]] },
     { label: "SETTINGS", items: [["mobileApp", "Mobile Settings"]] }
   ],
   CREW: [
-    { items: [["dashboard", "Home"], ["clock", "Time Clock"]] },
-    { label: "LOCAL PRODUCTION", items: [["events", "Events"], ["timecards", "Timecards"], ["vehicles", "Vehicles"], ["reports", "Reports"]] },
+    { items: [["dashboard", "Home"], ["clock", "Time Clock"], ["events", "Events"]] },
+    { label: "LOCAL PRODUCTION", items: [["timecards", "Timecards"], ["vehicles", "Vehicles"], ["reports", "Reports"]] },
     { label: "PRODUCTION OFFICE", items: [["productionResponse", "Production Office"], ["staffingAssignments", "Staffing Assignment"], ["staffingSchedule", "Staffing Schedule"]] },
     { label: "DIRECTORIES", items: [["directory", "Directory"], ["runner", "Gig Resources"]] },
     { items: [["messages", "Messages"]] },
@@ -595,9 +598,9 @@ const NAV_GROUPS = {
 };
 NAV_GROUPS.CLIENT = NAV_GROUPS.CLIENT_ADMIN;
 NAV_GROUPS.ACCOUNT = [
-  { items: [["dashboard", "Dashboard"]] },
+  { items: [["dashboard", "Dashboard"], ["events", "Events"]] },
   { label: "ACCOUNT", items: [["clientCompanyProfile", "Account Profile"], ["adminUserAccounts", "User Accounts"], ["dataTools", "Import / Export"]] },
-  { label: "LOCAL PRODUCTION", items: [["events", "Events"], ["eventDocuments", "Documents"], ["emailTemplates", "Email Templates"], ["timecards", "Timecards"], ["vehicles", "Vehicles"], ["reports", "Reports"], ["payroll", "Payroll"]] },
+  { label: "LOCAL PRODUCTION", items: [["eventDocuments", "Documents"], ["emailTemplates", "Email Templates"], ["timecards", "Timecards"], ["vehicles", "Vehicles"], ["reports", "Reports"], ["payroll", "Payroll"]] },
   { label: "TOURING", items: [["tourAdvancing", "Tour Advancing"], ["tourCrewPersonnel", "Crew Personnel"], ["tourTravel", "Travel & Accommodations"], ["tourDocuments", "Documents"], ["tourSettings", "Settings"]] },
   { label: "AWARDS / BROADCAST", items: [["awardsDocuments", "Documents"], ["awardsRundown", "Rundown"], ["awardsStaffing", "Staffing"], ["awardsSettings", "Settings"]] },
   { label: "PRODUCTION OFFICE", items: [["productionBoard", "Production Office"], ["staffingAssignments", "Staffing Assignment"], ["staffingSchedule", "Staffing Schedule"]] },
@@ -606,8 +609,8 @@ NAV_GROUPS.ACCOUNT = [
   { label: "SETTINGS", items: [["clientProfile", "My Profile"], ["mobileApp", "Mobile Settings"]] }
 ];
 NAV_GROUPS.ACCOUNTING = [
-  { items: [["dashboard", "Dashboard"]] },
-  { label: "ACCOUNTING", items: [["timecards", "Timecards"], ["payroll", "Payroll"], ["reports", "Reports"], ["events", "Events"]] },
+  { items: [["dashboard", "Dashboard"], ["events", "Events"]] },
+  { label: "ACCOUNTING", items: [["timecards", "Timecards"], ["payroll", "Payroll"], ["reports", "Reports"]] },
   { items: [["messages", "Messages"]] },
   { label: "SETTINGS", items: [["mobileApp", "Mobile Settings"]] }
 ];
