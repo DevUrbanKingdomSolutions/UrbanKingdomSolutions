@@ -3276,6 +3276,42 @@ td p {
   align-items: start;
 }
 
+.suite-summary-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 0 14px 12px;
+}
+
+.suite-summary-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 0;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--suite-color, var(--accent)) 13%, #ffffff);
+  color: color-mix(in srgb, var(--suite-color, var(--accent)) 76%, #111827);
+  padding: 7px 10px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.suite-summary-chip strong {
+  min-width: 22px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--suite-color, var(--accent)) 22%, #ffffff);
+  padding: 2px 6px;
+  color: var(--ink);
+  text-align: center;
+}
+
+.suite-summary-chip.active {
+  background: color-mix(in srgb, var(--suite-color, var(--accent)) 25%, #ffffff);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--suite-color, var(--accent)) 38%, transparent);
+}
+
 .event-card-view {
   min-height: 100%;
 }

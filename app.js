@@ -38,9 +38,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.06.050",
-  title: "V1.06.050 update installed",
-  body: "Local Production now uses a warmer pastel orange suite accent that fits better beside Touring and Broadcast."
+  version: "V1.06.051",
+  title: "V1.06.051 update installed",
+  body: "Events now include Office Suite filtering and a suite summary strip for multi-suite accounts."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -451,6 +451,7 @@ let state = {
   accessRole: "CLIENT",
   activeWorkerId: localStorage.getItem("productionCrewActiveWorker") || "",
   activePromoterId: localStorage.getItem("productionCrewActivePromoter") || "",
+  eventSuiteFilter: localStorage.getItem("productionCrewEventSuiteFilter") || "all",
   eventScheduleFilter: localStorage.getItem("productionCrewEventScheduleFilter") || "all",
   eventTypeFilter: localStorage.getItem("productionCrewEventTypeFilter") || "all",
   eventSort: localStorage.getItem("productionCrewEventSort") || "upcoming",
@@ -6847,9 +6848,10 @@ function renderEvents() {
     const venue = getVenue(event.venueId);
     const promoter = getPromoter(event.promoterId);
     const crewNames = eventWorkerIds(event).map((id) => getWorker(id)?.name).join(" ");
+    const suiteMatch = state.eventSuiteFilter === "all" || event.officeSuiteId === state.eventSuiteFilter;
     const scheduleMatch = state.eventScheduleFilter === "all" || eventScheduleBucket(event) === state.eventScheduleFilter;
     const typeMatch = state.eventTypeFilter === "all" || normalizedMatchValue(event.type) === state.eventTypeFilter;
-    return scheduleMatch && typeMatch && matchesSearch(event, `${venue?.name || ""} ${promoter?.name || ""} ${crewNames}`);
+    return suiteMatch && scheduleMatch && typeMatch && matchesSearch(event, `${eventOfficeSuiteLabel(event)} ${venue?.name || ""} ${promoter?.name || ""} ${crewNames}`);
   }));
   $("#eventTableCount").textContent = `${rows.length} shown`;
   $("#eventCards").innerHTML = rows.length
@@ -6858,9 +6860,18 @@ function renderEvents() {
 }
 
 function renderEventCardControls(events = visibleEvents()) {
+  renderEventSuiteSummary(events);
+  const suite = $("#eventSuiteFilter");
   const schedule = $("#eventScheduleFilter");
   const type = $("#eventTypeFilter");
   const sort = $("#eventSort");
+  if (suite) {
+    const suites = clientOfficeSuiteDefinitions(activeClientRecord()).filter((item) => events.some((event) => event.officeSuiteId === item.id) || clientHasOfficeSuite(item.id));
+    suite.innerHTML = `<option value="all">All suites</option>${suites.map((item) => `<option value="${escapeHtml(item.id)}">${escapeHtml(item.name)}</option>`).join("")}`;
+    const suiteIds = suites.map((item) => item.id);
+    suite.value = [...suiteIds, "all"].includes(state.eventSuiteFilter) ? state.eventSuiteFilter : "all";
+    if (suite.value !== state.eventSuiteFilter) state.eventSuiteFilter = suite.value;
+  }
   if (schedule) schedule.value = state.eventScheduleFilter;
   if (sort) sort.value = state.eventSort;
   if (!type) return;
@@ -6868,6 +6879,19 @@ function renderEventCardControls(events = visibleEvents()) {
   type.innerHTML = `<option value="all">All types</option>${types.map((eventType) => `<option value="${escapeHtml(normalizedMatchValue(eventType))}">${escapeHtml(eventType)}</option>`).join("")}`;
   type.value = [...types.map((eventType) => normalizedMatchValue(eventType)), "all"].includes(state.eventTypeFilter) ? state.eventTypeFilter : "all";
   if (type.value !== state.eventTypeFilter) state.eventTypeFilter = type.value;
+}
+
+function renderEventSuiteSummary(events = visibleEvents()) {
+  const container = $("#eventSuiteSummary");
+  if (!container) return;
+  const suites = clientOfficeSuiteDefinitions(activeClientRecord()).filter((suite) => clientHasOfficeSuite(suite.id));
+  container.innerHTML = suites.length
+    ? suites.map((suite) => {
+        const count = events.filter((event) => event.officeSuiteId === suite.id).length;
+        const active = state.eventSuiteFilter === suite.id;
+        return `<button class="suite-summary-chip ${active ? "active" : ""}" style="--suite-color: ${escapeHtml(officeSuiteColor(suite.id))}" data-event-suite-filter="${escapeHtml(suite.id)}" type="button"><span>${escapeHtml(suite.name.replace(" Office Suite", "").replace(" Services", ""))}</span><strong>${count}</strong></button>`;
+      }).join("")
+    : "";
 }
 
 function sortEventCards(events) {
@@ -15505,6 +15529,11 @@ function bindEvents() {
     state.search = event.target.value.trim().toLowerCase();
     render();
   });
+  $("#eventSuiteFilter")?.addEventListener("change", (event) => {
+    state.eventSuiteFilter = event.target.value;
+    localStorage.setItem("productionCrewEventSuiteFilter", state.eventSuiteFilter);
+    renderEvents();
+  });
   $("#eventScheduleFilter").addEventListener("change", (event) => {
     state.eventScheduleFilter = event.target.value;
     localStorage.setItem("productionCrewEventScheduleFilter", state.eventScheduleFilter);
@@ -15626,6 +15655,15 @@ function bindEvents() {
       localStorage.setItem("productionCrewTouringColumnFilters", JSON.stringify(state.touringColumnFilters));
       if (viewId.startsWith("awards")) renderAwardsSuite();
       else renderTouringSuite();
+    }
+  });
+  document.body.addEventListener("click", (event) => {
+    const suiteFilterButton = event.target.closest("[data-event-suite-filter]");
+    if (suiteFilterButton) {
+      state.eventSuiteFilter = state.eventSuiteFilter === suiteFilterButton.dataset.eventSuiteFilter ? "all" : suiteFilterButton.dataset.eventSuiteFilter;
+      localStorage.setItem("productionCrewEventSuiteFilter", state.eventSuiteFilter);
+      renderEvents();
+      return;
     }
   });
   $("#dashboardCalendarPrev")?.addEventListener("click", () => {
