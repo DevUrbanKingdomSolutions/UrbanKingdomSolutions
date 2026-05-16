@@ -38,9 +38,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.06.053",
-  title: "V1.06.053 update installed",
-  body: "Events options now keep Edit and Delete inside the main Options menu, and Needs Attention wording is clearer."
+  version: "V1.06.054",
+  title: "V1.06.054 update installed",
+  body: "The visible notes area is now named Stage Intelligence Notes while Stage Intelligence remains the inner working system."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -5574,7 +5574,7 @@ function renderDashboard() {
 
   $("#recentNotes").innerHTML = noteItems.length
     ? noteItems.slice(0, 8).map(recentNoteItemHtml).join("")
-    : `<div class="compact-item empty">Stage Intelligence notes and alerts will appear here as they are created.</div>`;
+    : `<div class="compact-item empty">Stage Intelligence Notes will appear here as they are created.</div>`;
 }
 
 function dashboardRecentNotes() {
@@ -5685,7 +5685,7 @@ function openRecentNotesView() {
   const notes = dashboardRecentNotes().slice(0, 8);
   $("#recentNotesViewBody").innerHTML = notes.length
     ? notes.map(recentNoteItemHtml).join("")
-    : `<div class="compact-item empty">Stage Intelligence notes and alerts will appear here as they are created.</div>`;
+    : `<div class="compact-item empty">Stage Intelligence Notes will appear here as they are created.</div>`;
   openForm("recentNotesView");
 }
 
@@ -6092,9 +6092,9 @@ function dashboardIntelligenceStripHtml() {
   const items = dashboardRecentNotes().slice(0, 3);
   const content = items.length
     ? items.map((item) => `<span>${escapeHtml(item.type)}: ${escapeHtml(noteDescription(item.text, item.updatedAt))}</span>`).join("")
-    : `<span>No urgent Stage Intelligence alerts right now.</span>`;
+    : `<span>No urgent Stage Intelligence Notes right now.</span>`;
   return `<div class="desktop-intelligence-strip">
-    <strong>Stage Intelligence</strong>
+    <strong>Stage Intelligence Notes</strong>
     <div>${content}</div>
   </div>`;
 }
