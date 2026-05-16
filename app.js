@@ -38,9 +38,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.06.056",
-  title: "V1.06.056 update installed",
-  body: "Needs Attention now shows action items before notes and carries the clicked issue into the opened profile or page."
+  version: "V1.06.057",
+  title: "V1.06.057 update installed",
+  body: "Needs Attention cards now use a softer treatment without hard button borders."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",

@@ -133,11 +133,14 @@
 }
 
 .dashboard-attention-item {
+  border: 0;
   border-left: 3px solid var(--accent);
   background:
     linear-gradient(90deg, color-mix(in srgb, var(--accent) 13%, transparent), transparent 62%),
     rgba(255, 255, 255, 0.9);
+  color: inherit;
   cursor: pointer;
+  font: inherit;
 }
 
 .dashboard-attention-item em {
@@ -6659,6 +6662,12 @@ body:not(.owner-mode) .rate-field {
     background: transparent;
     padding: 12px 2px;
     box-shadow: none;
+  }
+
+  .view:not(#messages) .dashboard-attention-item {
+    border: 0;
+    border-left: 3px solid var(--accent);
+    border-radius: 0 8px 8px 0;
   }
 
   .topbar {
