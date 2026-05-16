@@ -38,9 +38,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.06.049",
-  title: "V1.06.049 update installed",
-  body: "Local Production now uses a soft peach suite accent to separate it from Broadcast purple and system graphite."
+  version: "V1.06.050",
+  title: "V1.06.050 update installed",
+  body: "Local Production now uses a warmer pastel orange suite accent that fits better beside Touring and Broadcast."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -718,7 +718,7 @@ const TOURING_SUITE_VIEWS = ["touringDashboard", "tourAdvancing", "tourCrewPerso
 const AWARDS_SUITE_VIEWS = ["awardsDashboard", "awardsDocuments", "awardsRundown", "awardsStaffing", "awardsSettings"];
 const DASHBOARD_VIEW_IDS = ["dashboard", "touringDashboard", "awardsDashboard"];
 const SUITE_NAV_COLORS = {
-  LOCAL_PRODUCTION_SERVICES: "#f7c59f",
+  LOCAL_PRODUCTION_SERVICES: "#f6b26b",
   TOUR_DATA_SERVICES: "#0f9ca8",
   AWARDS_SHOWS: "#9d4edd",
   LIVE_TV_SPECIALS: "#0ea5e9",
