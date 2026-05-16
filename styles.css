@@ -132,6 +132,54 @@
   text-align: left;
 }
 
+.dashboard-attention-item {
+  border-left: 3px solid var(--accent);
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--accent) 13%, transparent), transparent 62%),
+    rgba(255, 255, 255, 0.9);
+  cursor: pointer;
+}
+
+.dashboard-attention-item em {
+  align-self: center;
+  color: color-mix(in srgb, var(--accent-dark) 72%, var(--ink));
+  font-size: 0.68rem;
+  font-style: normal;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.attention-context-banner {
+  margin: 0 1.25rem 1rem;
+  padding: 0.85rem 1rem;
+  border-left: 4px solid var(--accent);
+  border-radius: 0 10px 10px 0;
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--accent) 15%, transparent), rgba(255, 255, 255, 0.92));
+}
+
+.attention-context-banner span {
+  display: block;
+  color: color-mix(in srgb, var(--accent-dark) 70%, var(--muted));
+  font-size: 0.68rem;
+  font-weight: 950;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.attention-context-banner strong {
+  display: block;
+  margin-top: 0.18rem;
+  color: color-mix(in srgb, var(--accent-dark) 74%, var(--ink));
+}
+
+.attention-context-banner p {
+  margin: 0.25rem 0 0;
+  color: var(--muted);
+}
+
 .touring-flow-list,
 .touring-card-grid {
   display: grid;

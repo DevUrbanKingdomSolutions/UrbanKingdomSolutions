@@ -38,9 +38,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.06.055",
-  title: "V1.06.055 update installed",
-  body: "The visible notes area now uses the simpler Notes label while Stage Intelligence remains the inner working system."
+  version: "V1.06.056",
+  title: "V1.06.056 update installed",
+  body: "Needs Attention now shows action items before notes and carries the clicked issue into the opened profile or page."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -4843,8 +4843,38 @@ function profileHeroCard({ tone = "", title = "", subtitle = "", meta = "", imag
   </article>`;
 }
 
+function setActiveAttentionContextFromElement(element) {
+  if (!element?.dataset?.attentionTitle) return;
+  state.activeAttentionContext = {
+    title: element.dataset.attentionTitle || "Needs attention",
+    detail: element.dataset.attentionDetail || ""
+  };
+}
+
+function consumeActiveAttentionContext() {
+  const context = state.activeAttentionContext || null;
+  state.activeAttentionContext = null;
+  return context;
+}
+
+function attentionContextBannerHtml(context) {
+  if (!context) return "";
+  return `<section class="attention-context-banner">
+    <span>Needs Attention</span>
+    <strong>${escapeHtml(context.title || "Needs attention")}</strong>
+    ${context.detail ? `<p>${escapeHtml(context.detail)}</p>` : ""}
+  </section>`;
+}
+
+function toastAttentionContext(context = state.activeAttentionContext) {
+  if (!context) return;
+  toast(`${context.title || "Needs attention"}${context.detail ? `: ${context.detail}` : ""}`);
+  state.activeAttentionContext = null;
+}
+
 function readOnlyProfileCard(title, subtitle, details = [], sections = [], avatarHtml = "", groups = []) {
   $("#recordViewTitle").textContent = title || "Profile";
+  const attentionContext = consumeActiveAttentionContext();
   const groupedContent = groups.length
     ? groups.map(([groupTitle, groupDetails]) => profileInfoSection(groupTitle, groupDetails)).join("")
     : profileInfoSection("Details", details);
@@ -4858,6 +4888,7 @@ function readOnlyProfileCard(title, subtitle, details = [], sections = [], avata
       </div>
       <div class="premium-profile-actions"></div>
     </div>
+    ${attentionContextBannerHtml(attentionContext)}
     <div class="premium-profile-content">
       ${groupedContent}
       ${sections.map(([label, value]) => profileTextSection(label, value)).join("")}
@@ -5570,11 +5601,121 @@ function renderDashboard() {
       }).join("")
     : `<div class="compact-item empty">No one is clocked in right now.</div>`;
 
+  const attentionItems = dashboardNeedsAttentionItems();
   const noteItems = dashboardRecentNotes();
+  const noteLimit = Math.max(0, 8 - attentionItems.length);
 
-  $("#recentNotes").innerHTML = noteItems.length
-    ? noteItems.slice(0, 8).map(recentNoteItemHtml).join("")
-    : `<div class="compact-item empty">Notes will appear here as they are created.</div>`;
+  $("#recentNotes").innerHTML = attentionItems.length || noteItems.length
+    ? `${attentionItems.slice(0, 8).map(dashboardAttentionItemHtml).join("")}${noteItems.slice(0, noteLimit).map(recentNoteItemHtml).join("")}`
+    : `<div class="compact-item empty">No items need attention. Notes will appear here as they are created.</div>`;
+}
+
+function dashboardNeedsAttentionItems() {
+  if (isAdminRole()) return [];
+  const localItems = dashboardLocalAttentionItems();
+  const client = activeClientRecord();
+  const suiteItems = [];
+  if (touringSuiteEnabled(client)) {
+    const stops = touringStops();
+    const crew = touringCrewRows(stops);
+    const travel = touringTravelRows(crew);
+    suiteItems.push(...touringAttentionRows(stops, crew, travel).map((item) => ({
+      ...item,
+      type: "Touring",
+      target: item.recordTarget || "",
+      view: item.view || "touringDashboard"
+    })));
+  }
+  if (awardsSuiteEnabled(client)) {
+    const shows = awardsShowRows();
+    const documents = awardsDocumentsRows();
+    const staffing = awardsStaffRows();
+    const schedules = awardsScheduleRows(shows);
+    suiteItems.push(...awardsAttentionRows(shows, documents, staffing, schedules, awardsPacketRows(shows, documents, staffing, schedules), awardsDepartmentRows(documents, staffing, schedules), awardsDistributionRows(documents), awardsAccessRows(documents), awardsShowDayRows(shows, schedules), awardsContactRows(staffing), awardsComplianceRows(documents), awardsVersionRows(documents), awardsTechnicalRows(documents), awardsTalentRows(documents, staffing, schedules)).map((item) => ({
+      ...item,
+      type: "Broadcast",
+      target: item.recordTarget || "",
+      view: item.view || "awardsDashboard"
+    })));
+  }
+  return uniqueAttentionItems([...localItems, ...suiteItems]).slice(0, 8);
+}
+
+function dashboardLocalAttentionItems() {
+  const items = [];
+  const today = localDateKey();
+  visibleRecords(state.timecards).forEach((card) => {
+    const worker = getWorker(card.workerId);
+    const event = getEvent(card.eventId);
+    const label = [worker?.name, event?.name || card.eventName].filter(Boolean).join(" - ") || "Timecard";
+    if (card.clockIn && !card.clockOut && timecardWorkDate(card) < today) {
+      items.push({
+        type: "Timecard",
+        title: `${worker?.name || "Crew member"} missing wrap punch`,
+        detail: `${label} is still open from ${timecardDateLabel(card)}.`,
+        target: `timecards:${card.id}`,
+        view: "timecards"
+      });
+    }
+    if (card.clockIn && !event) {
+      items.push({
+        type: "Timecard",
+        title: `${worker?.name || "Crew member"} timecard needs event`,
+        detail: "This timecard is not connected to a scheduled event.",
+        target: `timecards:${card.id}`,
+        view: "timecards"
+      });
+    }
+    if (Array.isArray(card.distanceWarnings) && card.distanceWarnings.length) {
+      items.push({
+        type: "Timecard",
+        title: `${worker?.name || "Crew member"} clock-in location needs review`,
+        detail: "Clock-in was more than 2 miles from the scheduled venue.",
+        target: `timecards:${card.id}`,
+        view: "timecards"
+      });
+    }
+  });
+
+  visibleEvents().forEach((event) => {
+    eventWorkerIds(event).forEach((workerId) => {
+      const assignment = assignmentForEventWorker(event.id, workerId);
+      const card = state.timecards.find((item) => item.eventId === event.id && item.workerId === workerId);
+      if (!rentalVehicleRequired(event, card || assignment || {})) return;
+      const worker = getWorker(workerId);
+      const startLog = vehicleLogForEventWorker(event.id, workerId, "Start");
+      const endLog = vehicleLogForEventWorker(event.id, workerId, "End");
+      if (card?.clockIn && !vehicleStartCheckStarted(startLog)) {
+        items.push({
+          type: "Vehicle",
+          title: `${worker?.name || "Runner"} missing start vehicle photos`,
+          detail: `Start photos and plate are needed for ${event.name}.`,
+          target: startLog?.id ? `vehicleLogs:${startLog.id}` : "",
+          view: "vehicles"
+        });
+      }
+      if (card?.clockOut && shouldRequireRentalEndPhotos(event, card) && !vehicleEndPhotosComplete(endLog)) {
+        items.push({
+          type: "Vehicle",
+          title: `${worker?.name || "Runner"} missing end vehicle photos`,
+          detail: `End photos and gas gauge are needed for ${event.name}.`,
+          target: endLog?.id ? `vehicleLogs:${endLog.id}` : "",
+          view: "vehicles"
+        });
+      }
+    });
+  });
+  return items;
+}
+
+function uniqueAttentionItems(items = []) {
+  const seen = new Set();
+  return items.filter((item) => {
+    const key = `${item.type || ""}|${item.title || ""}|${item.detail || ""}|${item.target || ""}|${item.view || ""}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
 function dashboardRecentNotes() {
@@ -5679,6 +5820,18 @@ function recentNoteItemHtml(item) {
     </div>
     ${viewButton}
   </div>`;
+}
+
+function dashboardAttentionItemHtml(item) {
+  const attrs = recordTargetAttrs(item.target || item.recordTarget || "", item.view || "");
+  const detail = item.detail || "Open this item to review what needs attention.";
+  return `<button class="compact-item recent-note-item dashboard-attention-item" ${attrs} data-attention-title="${escapeHtml(item.title || "Needs attention")}" data-attention-detail="${escapeHtml(detail)}" type="button">
+    <div>
+      <strong>${escapeHtml(item.title || "Needs attention")}</strong>
+      <span>${escapeHtml(detail)}</span>
+    </div>
+    <em>Needs Attention</em>
+  </button>`;
 }
 
 function openRecentNotesView() {
@@ -6006,7 +6159,7 @@ function dashboardSuiteOverviewCards() {
   const client = activeClientRecord();
   const cards = visibleRecords(state.timecards);
   const liveCards = cards.filter((card) => !card.clockOut);
-  const notes = dashboardRecentNotes();
+  const localAttention = dashboardLocalAttentionItems();
   const result = [];
   if (views.includes("events") && clientHasOfficeSuite(LOCAL_PRODUCTION_SUITE_ID, client)) {
     result.push({
@@ -6019,7 +6172,7 @@ function dashboardSuiteOverviewCards() {
       stats: [
         ["Events", visibleEvents().length],
         ["Clocked In", liveCards.length],
-        ["Needs Attention", notes.length]
+        ["Needs Attention", localAttention.length]
       ]
     });
   }
@@ -15933,6 +16086,7 @@ function bindEvents() {
     const notifyProductionOfficeButton = event.target.closest("[data-notify-production-office]");
     const profileAccessButton = event.target.closest("[data-open-profile-access]");
     const viewRecordButton = event.target.closest("[data-view-record]");
+    const attentionButton = event.target.closest("[data-attention-title]");
     const timecardRow = event.target.closest("[data-timecard-row]");
     const mobileGoViewButton = event.target.closest("[data-mobile-go-view]");
     const dashboardLinkButton = event.target.closest("[data-dashboard-link]");
@@ -16160,7 +16314,9 @@ function bindEvents() {
       return;
     }
     if (dashboardLinkButton && !event.target.closest("select, input, textarea, label")) {
+      setActiveAttentionContextFromElement(attentionButton);
       setView(dashboardLinkButton.dataset.dashboardLink);
+      toastAttentionContext();
       return;
     }
     if (publicRunnerStatusButton) {
@@ -16261,6 +16417,7 @@ function bindEvents() {
       return;
     }
     if (viewRecordButton) {
+      setActiveAttentionContextFromElement(attentionButton);
       const [storeName, id] = viewRecordButton.dataset.viewRecord.split(":");
       openReadOnlyRecord(storeName, id);
       return;
