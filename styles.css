@@ -468,17 +468,17 @@ body {
 }
 
 body[data-access-tone="admin"] {
-  --accent: #b8352d;
-  --accent-dark: #87251f;
-  --accent-soft: #fff0ef;
-  --accent-surface: #f7d8d5;
-}
-
-body[data-access-tone="account"] {
   --accent: #343946;
   --accent-dark: #171a21;
   --accent-soft: #f4f7fb;
   --accent-surface: #d8dde7;
+}
+
+body[data-access-tone="account"] {
+  --accent: #b8352d;
+  --accent-dark: #87251f;
+  --accent-soft: #fff0ef;
+  --accent-surface: #f7d8d5;
 }
 
 body[data-access-tone="client"] {
@@ -518,7 +518,7 @@ body[data-access-tone="crew"] {
 
 body[data-access-tone] {
   --signature-glow: 0 12px 28px color-mix(in srgb, var(--accent) 18%, transparent);
-  --brand-logo-image: url("assets/logo/app-logo-admin.png");
+  --brand-logo-image: url("assets/logo/app-logo-account.png");
 }
 
 body[data-access-tone="client"] {
@@ -526,7 +526,7 @@ body[data-access-tone="client"] {
 }
 
 body[data-access-tone="account"] {
-  --brand-logo-image: url("assets/logo/app-logo-account.png");
+  --brand-logo-image: url("assets/logo/app-logo-admin.png");
 }
 
 body[data-access-tone="accounting"] {
@@ -1685,6 +1685,11 @@ label textarea:focus {
 }
 
 body[data-access-tone="admin"] .desktop-dashboard-hero {
+  --hero-accent: #343946;
+  --hero-soft: #f4f7fb;
+}
+
+body[data-access-tone="account"] .desktop-dashboard-hero {
   --hero-accent: #b8352d;
   --hero-soft: #fff0ef;
 }
