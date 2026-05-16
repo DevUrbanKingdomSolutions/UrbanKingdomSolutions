@@ -38,9 +38,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.06.046",
-  title: "V1.06.046 update installed",
-  body: "The merged dashboard suite cards now open their suite work areas instead of old separate dashboard pages."
+  version: "V1.06.047",
+  title: "V1.06.047 update installed",
+  body: "Suite workspace cards stay visible on the dashboard for every enabled Office Suite the user can access."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -6004,7 +6004,7 @@ function dashboardSuiteOverviewCards() {
   const liveCards = cards.filter((card) => !card.clockOut);
   const notes = dashboardRecentNotes();
   const result = [];
-  if (views.includes("dashboard") && clientHasOfficeSuite(LOCAL_PRODUCTION_SUITE_ID, client)) {
+  if (views.includes("events") && clientHasOfficeSuite(LOCAL_PRODUCTION_SUITE_ID, client)) {
     result.push({
       suiteId: LOCAL_PRODUCTION_SUITE_ID,
       label: "Local",
@@ -6019,7 +6019,7 @@ function dashboardSuiteOverviewCards() {
       ]
     });
   }
-  if (views.includes("touringDashboard") && touringSuiteEnabled(client)) {
+  if (views.includes("tourAdvancing") && touringSuiteEnabled(client)) {
     const stops = touringStops();
     const crew = touringCrewRows(stops);
     const travel = touringTravelRows(crew);
@@ -6038,7 +6038,7 @@ function dashboardSuiteOverviewCards() {
       ]
     });
   }
-  if (views.includes("awardsDashboard") && awardsSuiteEnabled(client)) {
+  if (views.includes("awardsDocuments") && awardsSuiteEnabled(client)) {
     const shows = awardsShowRows();
     const documents = awardsDocumentsRows();
     const staffing = awardsStaffRows();
@@ -6063,11 +6063,11 @@ function dashboardSuiteOverviewCards() {
 
 function dashboardSuiteOverviewHtml() {
   const cards = dashboardSuiteOverviewCards();
-  if (cards.length <= 1) return "";
+  if (!cards.length) return "";
   return `<div class="desktop-suite-overview">
     <div class="desktop-suite-heading">
       <span>Office Suites</span>
-      <strong>Command Center</strong>
+      <strong>Suite Workspaces</strong>
     </div>
     <div class="desktop-suite-grid">
       ${cards.map((card) => `<button class="desktop-suite-card"${suiteStyleVars(card.suiteId)} data-dashboard-link="${escapeHtml(card.view)}" type="button">
