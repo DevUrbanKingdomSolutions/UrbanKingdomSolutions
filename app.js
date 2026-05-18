@@ -38,9 +38,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.06.063",
-  title: "V1.06.063 update installed",
-  body: "Client event views now stay scoped to the logged-in client account."
+  version: "V1.06.064",
+  title: "V1.06.064 update installed",
+  body: "Rental vehicle photo uploads now let runners take a new photo or choose existing photos/files."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",

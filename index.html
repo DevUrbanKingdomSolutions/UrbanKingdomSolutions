@@ -10,7 +10,7 @@
     <title>Production Crew Database</title>
     <link rel="manifest" href="manifest.webmanifest">
     <link rel="icon" href="assets/logo/app-logo-admin.png" type="image/png">
-    <link rel="stylesheet" href="styles.css?v=V1.06.063-client-event-scope">
+    <link rel="stylesheet" href="styles.css?v=V1.06.064-rental-photo-picker">
   </head>
   <body>
     <div id="appLoadingOverlay" class="app-loading-overlay" aria-live="polite">
@@ -1973,20 +1973,20 @@
               </div>
               <div class="photo-fieldset" data-vehicle-photo-section="start">
                 <span>Start photos</span>
-                <label>Front<input name="frontPhoto" type="file" accept="image/*" capture="environment" data-photo-key="startFront"></label>
-                <label>Back<input name="backPhoto" type="file" accept="image/*" capture="environment" data-photo-key="startBack"></label>
-                <label>Driver side<input name="driverSidePhoto" type="file" accept="image/*" capture="environment" data-photo-key="startDriverSide"></label>
-                <label>Passenger side<input name="passengerSidePhoto" type="file" accept="image/*" capture="environment" data-photo-key="startPassengerSide"></label>
-                <label>Gas gauge<input name="gasGaugePhoto" type="file" accept="image/*" capture="environment" data-photo-key="startGasGauge"></label>
-                <label>Prior damages<input name="priorDamagePhotos" type="file" accept="image/*" capture="environment" multiple data-photo-key="priorDamages"></label>
+                <label>Front<input name="frontPhoto" type="file" accept="image/*" data-photo-key="startFront"></label>
+                <label>Back<input name="backPhoto" type="file" accept="image/*" data-photo-key="startBack"></label>
+                <label>Driver side<input name="driverSidePhoto" type="file" accept="image/*" data-photo-key="startDriverSide"></label>
+                <label>Passenger side<input name="passengerSidePhoto" type="file" accept="image/*" data-photo-key="startPassengerSide"></label>
+                <label>Gas gauge<input name="gasGaugePhoto" type="file" accept="image/*" data-photo-key="startGasGauge"></label>
+                <label>Prior damages<input name="priorDamagePhotos" type="file" accept="image/*" multiple data-photo-key="priorDamages"></label>
               </div>
               <div class="photo-fieldset" data-vehicle-photo-section="end">
                 <span>End photos</span>
-                <label>Front<input name="endFrontPhoto" type="file" accept="image/*" capture="environment" data-photo-key="endFront"></label>
-                <label>Back<input name="endBackPhoto" type="file" accept="image/*" capture="environment" data-photo-key="endBack"></label>
-                <label>Driver side<input name="endDriverSidePhoto" type="file" accept="image/*" capture="environment" data-photo-key="endDriverSide"></label>
-                <label>Passenger side<input name="endPassengerSidePhoto" type="file" accept="image/*" capture="environment" data-photo-key="endPassengerSide"></label>
-                <label>Gas gauge<input name="endGasGaugePhoto" type="file" accept="image/*" capture="environment" data-photo-key="endGasGauge"></label>
+                <label>Front<input name="endFrontPhoto" type="file" accept="image/*" data-photo-key="endFront"></label>
+                <label>Back<input name="endBackPhoto" type="file" accept="image/*" data-photo-key="endBack"></label>
+                <label>Driver side<input name="endDriverSidePhoto" type="file" accept="image/*" data-photo-key="endDriverSide"></label>
+                <label>Passenger side<input name="endPassengerSidePhoto" type="file" accept="image/*" data-photo-key="endPassengerSide"></label>
+                <label>Gas gauge<input name="endGasGaugePhoto" type="file" accept="image/*" data-photo-key="endGasGauge"></label>
               </div>
               <div class="vehicle-form-section vehicle-notes-section">
                 <span>Notes</span>
@@ -2435,6 +2435,6 @@
     <div id="modalHost"></div>
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js?v=V1.06.063-client-event-scope"></script>
+    <script src="app.js?v=V1.06.064-rental-photo-picker"></script>
   </body>
 </html>
