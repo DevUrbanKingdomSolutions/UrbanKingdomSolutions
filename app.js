@@ -38,9 +38,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.06.061",
-  title: "V1.06.061 update installed",
-  body: "Currently Clocked In now matches the dashboard Notes section styling."
+  version: "V1.06.062",
+  title: "V1.06.062 update installed",
+  body: "New event setup now uses date-only Start and End fields."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -1747,6 +1747,9 @@ function fillForm(formId, record) {
         option.selected = selectedValues.includes(option.value);
       });
     } else {
+      if (formId === "eventForm" && ["startDate", "endDate"].includes(key)) {
+        value = dateInputValue(value);
+      }
       form.elements[key].value = value || "";
     }
   });
@@ -4207,6 +4210,14 @@ function dateTimeInputValue(value) {
   if (!value) return "";
   const date = value instanceof Date ? value : new Date(value);
   return Number.isNaN(date.getTime()) ? "" : toLocalInputValue(date);
+}
+
+function dateInputValue(value) {
+  if (!value) return "";
+  const text = String(value);
+  if (/^\d{4}-\d{2}-\d{2}/.test(text)) return text.slice(0, 10);
+  const date = value instanceof Date ? value : new Date(value);
+  return Number.isNaN(date.getTime()) ? "" : toLocalInputValue(date).slice(0, 10);
 }
 
 function localDateKey(date = new Date()) {
