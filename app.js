@@ -38,9 +38,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.06.065",
-  title: "V1.06.065 update installed",
-  body: "Rental vehicle photos now save onto the correct Start or End vehicle check and preserve existing uploaded photos."
+  version: "V1.06.066",
+  title: "V1.06.066 update installed",
+  body: "Rental photo uploads are now compressed before saving and verified on the visible vehicle check."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -1712,10 +1712,41 @@ async function formRecord(form) {
 }
 
 function readFileAsDataUrl(file) {
+  if (file?.type?.startsWith("image/")) return readImageFileAsDataUrl(file);
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(reader.result);
     reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
+}
+
+function readImageFileAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(reader.error);
+    reader.onload = () => {
+      const image = new Image();
+      image.onerror = () => resolve(reader.result);
+      image.onload = () => {
+        try {
+          const maxSide = 1600;
+          const scale = Math.min(1, maxSide / Math.max(image.width || maxSide, image.height || maxSide));
+          const width = Math.max(1, Math.round((image.width || maxSide) * scale));
+          const height = Math.max(1, Math.round((image.height || maxSide) * scale));
+          const canvas = document.createElement("canvas");
+          canvas.width = width;
+          canvas.height = height;
+          const context = canvas.getContext("2d");
+          context.drawImage(image, 0, 0, width, height);
+          resolve(canvas.toDataURL("image/jpeg", 0.78));
+        } catch (error) {
+          console.warn("Image compression failed. Saving original image.", error);
+          resolve(reader.result);
+        }
+      };
+      image.src = reader.result;
+    };
     reader.readAsDataURL(file);
   });
 }
