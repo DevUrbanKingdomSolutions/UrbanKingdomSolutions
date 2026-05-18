@@ -38,9 +38,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.06.064",
-  title: "V1.06.064 update installed",
-  body: "Rental vehicle photo uploads now let runners take a new photo or choose existing photos/files."
+  version: "V1.06.065",
+  title: "V1.06.065 update installed",
+  body: "Rental vehicle photos now save onto the correct Start or End vehicle check and preserve existing uploaded photos."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -3975,6 +3975,27 @@ function shouldRequireRentalEndPhotos(event = {}, card = {}, dateKey = "") {
   const workDate = dateKey || timecardWorkDate(card);
   const finalDate = rentalVehicleFinalDateKey(event, workerId);
   return !!finalDate && !!workDate && workDate >= finalDate;
+}
+
+function matchingVehicleLogForDraft(draft = {}, existing = null) {
+  if (existing?.id) return existing;
+  const phase = String(draft.phase || "").toLowerCase();
+  if (!phase) return null;
+  const assignmentId = draft.assignmentId || "";
+  const eventId = draft.eventId || "";
+  const workerId = draft.workerId || "";
+  return state.vehicleLogs.find((log) => {
+    if (String(log.phase || "").toLowerCase() !== phase) return false;
+    if (assignmentId && log.assignmentId === assignmentId) return true;
+    return !!eventId && !!workerId && log.eventId === eventId && log.workerId === workerId;
+  }) || null;
+}
+
+function mergeVehiclePhotos(existingPhotos = {}, newPhotos = {}) {
+  return {
+    ...(existingPhotos || {}),
+    ...(newPhotos || {})
+  };
 }
 
 async function ensureVehicleChecksForAssignment(assignment) {
@@ -13315,6 +13336,16 @@ async function saveForm(event, storeName) {
   }
   if (storeName === "vehicleLogs") {
     const assignment = getEventAssignment(merged.assignmentId) || assignmentForEventWorker(merged.eventId, merged.workerId);
+    const matchingLog = matchingVehicleLogForDraft(merged, existing);
+    if (matchingLog) {
+      merged = {
+        ...matchingLog,
+        ...merged,
+        id: matchingLog.id,
+        vehiclePhotos: mergeVehiclePhotos(matchingLog.vehiclePhotos, merged.vehiclePhotos)
+      };
+      existing = matchingLog;
+    }
     if (!canEditVehicleRentalDetails()) {
       const rentalDetails = vehicleRentalDetailsFor(existing || {
         assignmentId: merged.assignmentId,
