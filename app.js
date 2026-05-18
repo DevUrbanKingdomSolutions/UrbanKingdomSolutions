@@ -38,9 +38,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.06.060",
-  title: "V1.06.060 update installed",
-  body: "Dashboard now uses one Notes / Needs Attention section instead of a duplicate hero notes strip."
+  version: "V1.06.061",
+  title: "V1.06.061 update installed",
+  body: "Currently Clocked In now matches the dashboard Notes section styling."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -5600,7 +5600,13 @@ function renderDashboard() {
     ? liveCards.slice(0, 8).map((card) => {
         const worker = getWorker(card.workerId);
         const event = getEvent(card.eventId);
-        return `<div class="compact-item"><strong>${escapeHtml(worker?.name || "Unknown worker")}</strong><span>${escapeHtml(event?.name || card.eventName)} - ${timecardHours(card).toFixed(2)} hrs</span></div>`;
+        return `<div class="compact-item recent-note-item dashboard-live-item">
+          <div>
+            <strong>${escapeHtml(worker?.name || "Unknown worker")}</strong>
+            <span>${escapeHtml(event?.name || card.eventName)} - ${timecardHours(card).toFixed(2)} hrs</span>
+          </div>
+          <em>Clocked In</em>
+        </div>`;
       }).join("")
     : `<div class="compact-item empty">No one is clocked in right now.</div>`;
 

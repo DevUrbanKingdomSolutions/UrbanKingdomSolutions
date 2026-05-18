@@ -2522,7 +2522,8 @@ body.crew-mode .crew-mobile-home:not([hidden]) {
   color: color-mix(in srgb, var(--accent-dark) 78%, var(--ink));
 }
 
-#recentNotes {
+#recentNotes,
+#liveCrewList {
   max-height: 152px;
   overflow-y: auto;
   overscroll-behavior: contain;
@@ -2531,25 +2532,32 @@ body.crew-mode .crew-mobile-home:not([hidden]) {
 }
 
 #recentNotes:hover,
-#recentNotes:focus-within {
+#recentNotes:focus-within,
+#liveCrewList:hover,
+#liveCrewList:focus-within {
   scrollbar-color: color-mix(in srgb, var(--accent) 34%, transparent) transparent;
 }
 
-#recentNotes::-webkit-scrollbar {
+#recentNotes::-webkit-scrollbar,
+#liveCrewList::-webkit-scrollbar {
   width: 7px;
 }
 
-#recentNotes::-webkit-scrollbar-track {
+#recentNotes::-webkit-scrollbar-track,
+#liveCrewList::-webkit-scrollbar-track {
   background: transparent;
 }
 
-#recentNotes::-webkit-scrollbar-thumb {
+#recentNotes::-webkit-scrollbar-thumb,
+#liveCrewList::-webkit-scrollbar-thumb {
   border-radius: 999px;
   background: transparent;
 }
 
 #recentNotes:hover::-webkit-scrollbar-thumb,
-#recentNotes:focus-within::-webkit-scrollbar-thumb {
+#recentNotes:focus-within::-webkit-scrollbar-thumb,
+#liveCrewList:hover::-webkit-scrollbar-thumb,
+#liveCrewList:focus-within::-webkit-scrollbar-thumb {
   background: color-mix(in srgb, var(--accent) 34%, transparent);
 }
 
@@ -3502,6 +3510,17 @@ td p {
 .recent-note-view {
   align-self: center;
   flex: 0 0 auto;
+}
+
+.dashboard-live-item em {
+  align-self: center;
+  color: color-mix(in srgb, var(--accent-dark) 72%, var(--ink));
+  font-size: 0.68rem;
+  font-style: normal;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
 }
 
 .message-thread-card {

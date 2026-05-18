@@ -10,7 +10,7 @@
     <title>Production Crew Database</title>
     <link rel="manifest" href="manifest.webmanifest">
     <link rel="icon" href="assets/logo/app-logo-admin.png" type="image/png">
-    <link rel="stylesheet" href="styles.css?v=V1.06.060-single-notes-section">
+    <link rel="stylesheet" href="styles.css?v=V1.06.061-clocked-in-notes-style">
   </head>
   <body>
     <div id="appLoadingOverlay" class="app-loading-overlay" aria-live="polite">
@@ -190,8 +190,11 @@
           </section>
           <div class="dashboard-grid">
             <section class="panel">
-              <div class="panel-heading">
-                <h3>Currently Clocked In</h3>
+              <div class="panel-heading intelligence-heading">
+                <div>
+                  <span>Live Status</span>
+                  <h3>Currently Clocked In</h3>
+                </div>
                 <span class="dashboard-heading-spacer" aria-hidden="true"></span>
               </div>
               <div id="liveCrewList" class="compact-list"></div>
@@ -2432,6 +2435,6 @@
     <div id="modalHost"></div>
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js?v=V1.06.060-single-notes-section"></script>
+    <script src="app.js?v=V1.06.061-clocked-in-notes-style"></script>
   </body>
 </html>
