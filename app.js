@@ -38,9 +38,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.06.058",
-  title: "V1.06.058 update installed",
-  body: "Admin system notices now open in the System Updates message thread without requiring Sendbird."
+  version: "V1.06.059",
+  title: "V1.06.059 update installed",
+  body: "User-facing app errors now create Admin system notices with the code, description, user, access level, and page."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -349,6 +349,9 @@ let appInstallState = window.matchMedia?.("(display-mode: standalone)").matches 
 let notificationRefreshPoller = null;
 let notificationRealtimeChannel = null;
 let releaseNoticePoller = null;
+let adminErrorReportingInstalled = false;
+let adminErrorReportInFlight = false;
+const adminErrorReportCache = new Map();
 let mobileClockSecondTimer = null;
 let pendingActivationSession = null;
 let pendingActivationType = "";
@@ -11286,6 +11289,100 @@ async function createAppNotification({ title, body = "", type = "info", viewId =
   return saved;
 }
 
+function simpleHash(value = "") {
+  return Array.from(String(value || "")).reduce((hash, char) => ((hash << 5) - hash + char.charCodeAt(0)) | 0, 0).toString(36).replace("-", "n");
+}
+
+function formatErrorPart(value) {
+  if (value instanceof Error) return value.stack || value.message || value.name || "Error";
+  if (typeof value === "string") return value;
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return String(value || "");
+  }
+}
+
+function errorCodeForReport(error, fallback = "APP_ERROR") {
+  if (error instanceof Error) return String(error.code || error.errorCode || error.status || error.name || fallback);
+  if (error && typeof error === "object") return String(error.code || error.errorCode || error.status || error.name || fallback);
+  return fallback;
+}
+
+function errorDescriptionForReport(error) {
+  if (Array.isArray(error)) return error.map(formatErrorPart).filter(Boolean).join(" ");
+  if (error instanceof Error) return error.message || error.stack || error.name || "Unknown error";
+  if (typeof error === "string") return error;
+  return formatErrorPart(error) || "Unknown error";
+}
+
+function currentErrorReportUserLabel() {
+  const profile = loggedInProfileRecord?.() || activeAdminProfile?.() || activeClientRepRecord?.() || getWorker?.(state.activeWorkerId) || getPromoter?.(state.activePromoterId) || {};
+  return profile.name || profile.contactName || authState.user?.email || "Unknown user";
+}
+
+async function reportErrorToAdmin(error, context = {}) {
+  if (adminErrorReportInFlight) return;
+  if (context.source === "admin-error-report") return;
+  const description = errorDescriptionForReport(error).slice(0, 900);
+  const code = String(context.code || errorCodeForReport(error)).slice(0, 80);
+  const source = String(context.source || "app").slice(0, 80);
+  const view = state.activeView || location.hash.replace("#", "") || "startup";
+  const signature = `${code}|${source}|${view}|${description.slice(0, 160)}`;
+  const now = Date.now();
+  const last = adminErrorReportCache.get(signature) || 0;
+  if (now - last < 60000) return;
+  adminErrorReportCache.set(signature, now);
+  adminErrorReportInFlight = true;
+  try {
+    await createAppNotification({
+      id: `system-error-${simpleHash(signature)}-${Math.floor(now / 60000)}`,
+      title: `App error: ${code}`,
+      body: [
+        `Code: ${code}`,
+        `Description: ${description}`,
+        `Source: ${source}`,
+        `User: ${currentErrorReportUserLabel()}`,
+        `Access: ${effectiveAccessRole?.() || authState.role || ""}`,
+        `View: ${view}`,
+        `URL: ${location.pathname}${location.hash || ""}`
+      ].filter(Boolean).join("\n"),
+      type: "system",
+      viewId: "messages",
+      threadType: "system",
+      threadKey: "system-admin",
+      recipientId: "",
+      clientId: cloudClientId() || authState.roleRecord?.client_id || activeClientRecord()?.id || ""
+    });
+  } catch (reportError) {
+    console.warn("Admin error report failed.", reportError);
+  } finally {
+    adminErrorReportInFlight = false;
+  }
+}
+
+function installAdminErrorReporting() {
+  if (adminErrorReportingInstalled) return;
+  adminErrorReportingInstalled = true;
+  const originalConsoleError = console.error.bind(console);
+  console.error = (...args) => {
+    originalConsoleError(...args);
+    reportErrorToAdmin(args, { source: "console.error" });
+  };
+  window.addEventListener("error", (event) => {
+    reportErrorToAdmin(event.error || event.message, {
+      source: "window.error",
+      code: event.error?.name || "WINDOW_ERROR"
+    });
+  });
+  window.addEventListener("unhandledrejection", (event) => {
+    reportErrorToAdmin(event.reason || "Unhandled promise rejection", {
+      source: "unhandledrejection",
+      code: event.reason?.name || "UNHANDLED_REJECTION"
+    });
+  });
+}
+
 function notificationCloudClientId(notification = {}) {
   if (notification.clientId) return notification.clientId;
   if (notification.threadType === "adminClient" && notification.threadProfileId) return notification.threadProfileId;
@@ -16660,6 +16757,7 @@ function bindEvents() {
 
 async function init() {
   setLoadingOverlay("Checking session...", true);
+  installAdminErrorReporting();
   bindEvents();
   initMobileAppLifecycle();
   initPullToRefresh();
