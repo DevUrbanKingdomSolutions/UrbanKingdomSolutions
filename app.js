@@ -38,9 +38,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.06.062",
-  title: "V1.06.062 update installed",
-  body: "New event setup now uses date-only Start and End fields."
+  version: "V1.06.063",
+  title: "V1.06.063 update installed",
+  body: "Client event views now stay scoped to the logged-in client account."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -4013,6 +4013,39 @@ async function syncVehicleRentalDetails(merged) {
   }
 }
 
+function activeClientScopeIds() {
+  return new Set([
+    authState.roleRecord?.client_id || "",
+    activeClientRecord()?.id || "",
+    cloudClientId() || ""
+  ].filter(Boolean));
+}
+
+function eventBelongsToActiveClient(event = {}) {
+  const clientIds = activeClientScopeIds();
+  if (!clientIds.size) return true;
+  if (event.clientId) return clientIds.has(event.clientId);
+  if (event.client_id) return clientIds.has(event.client_id);
+  return state.clients.length <= 1;
+}
+
+function recordBelongsToActiveClient(record = {}) {
+  const clientIds = activeClientScopeIds();
+  if (!clientIds.size) return true;
+  if (record.clientId) return clientIds.has(record.clientId);
+  if (record.client_id) return clientIds.has(record.client_id);
+  if (record.eventId) return isEventVisible(record.eventId);
+  if (record.workerId) {
+    const worker = getWorker(record.workerId);
+    if (worker?.clientId) return clientIds.has(worker.clientId);
+  }
+  if (record.promoterId) {
+    const promoter = getPromoter(record.promoterId);
+    if (promoter?.clientId) return clientIds.has(promoter.clientId);
+  }
+  return true;
+}
+
 async function ensureDefaultAssignmentsForEvent(eventRecord) {
   for (const workerId of Array.isArray(eventRecord.workerIds) ? eventRecord.workerIds : []) {
     if (assignmentForEventWorker(eventRecord.id, workerId)) continue;
@@ -4049,7 +4082,7 @@ async function ensureDefaultAssignmentsForEvent(eventRecord) {
 
 function visibleEvents() {
   if (isAdminRole()) return [];
-  if (hasDataScope("CLIENT")) return state.events;
+  if (hasDataScope("CLIENT")) return state.events.filter(eventBelongsToActiveClient);
   if (hasDataScope("PROMOTER")) {
     return state.events.filter((event) => !state.activePromoterId || event.promoterId === state.activePromoterId);
   }
@@ -4070,7 +4103,10 @@ function visibleEvents() {
 
 function isEventVisible(eventId) {
   if (isAdminRole()) return false;
-  if (hasDataScope("CLIENT")) return true;
+  if (hasDataScope("CLIENT")) {
+    const event = getEvent(eventId);
+    return !!event && eventBelongsToActiveClient(event);
+  }
   if (hasDataScope("PROMOTER")) {
     const event = getEvent(eventId);
     return !!event && (!state.activePromoterId || event.promoterId === state.activePromoterId);
@@ -4082,7 +4118,7 @@ function isEventVisible(eventId) {
 
 function visibleRecords(records) {
   if (isAdminRole()) return [];
-  if (hasDataScope("CLIENT")) return records;
+  if (hasDataScope("CLIENT")) return records.filter(recordBelongsToActiveClient);
   if (hasDataScope("PROMOTER")) {
     return records.filter((record) => {
       if (record.promoterId && state.activePromoterId && record.promoterId !== state.activePromoterId) return false;
