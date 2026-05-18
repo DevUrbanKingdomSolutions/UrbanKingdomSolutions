@@ -38,9 +38,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.06.059",
-  title: "V1.06.059 update installed",
-  body: "User-facing app errors now create Admin system notices with the code, description, user, access level, and page."
+  version: "V1.06.060",
+  title: "V1.06.060 update installed",
+  body: "Dashboard now uses one Notes / Needs Attention section instead of a duplicate hero notes strip."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -6243,18 +6243,6 @@ function dashboardSuiteOverviewHtml() {
   </div>`;
 }
 
-function dashboardIntelligenceStripHtml() {
-  if (isAdminRole()) return "";
-  const items = dashboardRecentNotes().slice(0, 3);
-  const content = items.length
-    ? items.map((item) => `<span>${escapeHtml(item.type)}: ${escapeHtml(noteDescription(item.text, item.updatedAt))}</span>`).join("")
-    : `<span>No urgent notes right now.</span>`;
-  return `<div class="desktop-intelligence-strip">
-    <strong>Notes</strong>
-    <div>${content}</div>
-  </div>`;
-}
-
 function renderDesktopDashboardHero() {
   const hero = $("#desktopDashboardHero");
   if (!hero) return;
@@ -6274,7 +6262,6 @@ function renderDesktopDashboardHero() {
   <div class="desktop-hero-stats">
     ${config.stats.map((stat) => dashboardHeroStat(stat)).join("")}
   </div>
-  ${dashboardIntelligenceStripHtml()}
   ${dashboardSuiteOverviewHtml()}`;
 }
 

@@ -1873,45 +1873,16 @@ body[data-access-tone="crew"] .desktop-dashboard-hero {
   min-width: 0;
 }
 
-.desktop-intelligence-strip,
 .desktop-suite-overview {
   grid-column: 1 / -1;
 }
 
-.desktop-intelligence-strip {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: 14px;
-  align-items: center;
-  border-top: 1px solid color-mix(in srgb, var(--hero-accent) 18%, var(--line));
-  background:
-    linear-gradient(90deg, color-mix(in srgb, var(--hero-accent) 10%, transparent), transparent 68%),
-    #ffffff;
-  padding: 14px 24px;
-}
-
-.desktop-intelligence-strip strong,
 .desktop-suite-heading span {
   color: var(--hero-accent);
   font-size: 11px;
   font-weight: 900;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-}
-
-.desktop-intelligence-strip div {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.desktop-intelligence-strip span {
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--hero-accent) 8%, #ffffff);
-  padding: 6px 10px;
-  color: var(--muted);
-  font-size: 12px;
-  font-weight: 800;
 }
 
 .desktop-suite-overview {
