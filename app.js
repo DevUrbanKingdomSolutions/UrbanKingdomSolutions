@@ -38,9 +38,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.06.057",
-  title: "V1.06.057 update installed",
-  body: "Needs Attention cards now use a softer treatment without hard button borders."
+  version: "V1.06.058",
+  title: "V1.06.058 update installed",
+  body: "Admin system notices now open in the System Updates message thread without requiring Sendbird."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -11818,6 +11818,10 @@ function clearActiveMessageThread() {
   $("#sendbirdMessageForm")?.setAttribute("hidden", "");
 }
 
+function isLocalSystemMessageThread() {
+  return sendbirdActiveThread?.type === "system" && !sendbirdActiveChannel;
+}
+
 function renderMessageThread(options = {}) {
   const panel = $("#activeMessagePanel");
   const title = $("#activeMessagingTitle");
@@ -11827,10 +11831,11 @@ function renderMessageThread(options = {}) {
   const typing = $("#messageTypingStatus");
   const form = $("#sendbirdMessageForm");
   if (!title || !meta || !thread || !form) return;
-  $("#messages")?.classList.toggle("message-chat-open", !!sendbirdActiveChannel);
-  document.body.classList.toggle("mobile-message-chat-open", state.activeView === "messages" && !!sendbirdActiveChannel && isMobileMessageLayout());
-  if (panel) panel.hidden = state.activeView !== "messages" || (!sendbirdActiveChannel && isMobileMessageLayout());
-  if (!sendbirdActiveChannel) {
+  const hasOpenThread = !!sendbirdActiveChannel || isLocalSystemMessageThread();
+  $("#messages")?.classList.toggle("message-chat-open", hasOpenThread);
+  document.body.classList.toggle("mobile-message-chat-open", state.activeView === "messages" && hasOpenThread && isMobileMessageLayout());
+  if (panel) panel.hidden = state.activeView !== "messages" || (!hasOpenThread && isMobileMessageLayout());
+  if (!hasOpenThread) {
     if (title) title.textContent = "Select a chat";
     if (meta) meta.textContent = "Choose a thread or direct message from the list.";
     if (members) members.innerHTML = "";
@@ -11848,7 +11853,7 @@ function renderMessageThread(options = {}) {
   title.textContent = activeMessageThreadTitle();
   meta.textContent = activeThreadManagementLabel();
   if (members) members.innerHTML = renderActiveThreadMembers();
-  form.hidden = !sendbirdActiveChannel;
+  form.hidden = !sendbirdActiveChannel || sendbirdActiveThread?.type === "system";
   const visibleMessages = activeThreadVisibleMessages();
   renderMessageThreadBubbles(thread, visibleMessages);
   if (typing) {
@@ -12479,12 +12484,12 @@ function typingUserDisplayName(user) {
 
 function activeThreadManagementLabel() {
   const type = sendbirdActiveThread?.type || state.messagingThreadType;
-  if (!sendbirdActiveChannel) return "Open a message thread to send messages.";
   if (["event", "office"].includes(type)) return "Permanent event thread. Eligible members are kept synced from the event.";
   if (type === "crew") return "Crew runner thread. Production team manages event crew access.";
   if (type === "direct") return "Direct message. Members are controlled by the people in this conversation.";
   if (type === "adminClient") return "Permanent admin and client support thread.";
   if (type === "system") return "System notices for admins. Use this for install, error, and health updates.";
+  if (!sendbirdActiveChannel) return "Open a message thread to send messages.";
   return "Created thread. At least one thread admin must remain assigned.";
 }
 
@@ -15034,6 +15039,11 @@ function startSendbirdMessageRefreshPoller() {
   }, SENDBIRD_MESSAGE_REFRESH_MS);
 }
 
+function stopSendbirdMessageRefreshPoller() {
+  window.clearInterval(sendbirdMessageRefreshPoller);
+  sendbirdMessageRefreshPoller = null;
+}
+
 async function syncSendbirdChannelMembers(channel, userIds) {
   if (!channel || !Array.isArray(userIds) || !userIds.length) return;
   const existing = new Set((channel.members || []).map((member) => member.userId).filter(Boolean));
@@ -15145,6 +15155,15 @@ async function openPermanentMessageChannel(type, key) {
   const thread = permanentMessageThreadTargets(type).find((item) => item.key === key);
   if (!thread) {
     toast("That message thread is not available in this access view.");
+    return;
+  }
+  if (type === "system") {
+    sendbirdActiveChannel = null;
+    sendbirdActiveThread = { type, profileId: key };
+    sendbirdMessages = [];
+    sendbirdTypingUsers = [];
+    stopSendbirdMessageRefreshPoller();
+    renderOpenMessageThreadAtBottom();
     return;
   }
   const client = await ensureSendbirdConnected();
