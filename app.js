@@ -38,9 +38,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.06.066",
-  title: "V1.06.066 update installed",
-  body: "Rental photo uploads are now compressed before saving and verified on the visible vehicle check."
+  version: "V1.06.067",
+  title: "V1.06.067 update installed",
+  body: "Runner rental photos now save immediately when selected, before the rest of the vehicle check is saved."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -4027,6 +4027,66 @@ function mergeVehiclePhotos(existingPhotos = {}, newPhotos = {}) {
     ...(existingPhotos || {}),
     ...(newPhotos || {})
   };
+}
+
+function vehicleDraftFromForm(form = $("#vehicleForm")) {
+  if (!form) return {};
+  const assignment = assignmentForForm(form);
+  const draft = {
+    id: form.elements.id?.value || "",
+    assignmentId: form.elements.assignmentId?.value || assignment?.id || "",
+    eventId: form.elements.eventId?.value || assignment?.eventId || "",
+    workerId: isCrewRole() ? state.activeWorkerId : form.elements.workerId?.value || assignment?.workerId || "",
+    phase: form.elements.phase?.value || "Start",
+    vehicleType: form.elements.vehicleType?.value || "",
+    plateNumber: form.elements.plateNumber?.value || "",
+    gasGauge: form.elements.gasGauge?.value || "",
+    scheduledDate: form.elements.scheduledDate?.value || "",
+    rentalCompany: form.elements.rentalCompany?.value || "",
+    rentalPickupLocation: form.elements.rentalPickupLocation?.value || "",
+    rentalPickupDate: form.elements.rentalPickupDate?.value || "",
+    notes: form.elements.notes?.value || ""
+  };
+  if (assignment) {
+    draft.assignmentId = assignment.id;
+    draft.eventId = assignment.eventId;
+    draft.workerId = assignment.workerId;
+    draft.vehicleType = draft.vehicleType || assignment.vehicleType || (assignment.vehicleUse === "Rented Vehicle" ? "Rented Vehicle" : "");
+    draft.scheduledDate = draft.scheduledDate || (draft.phase === "End" ? assignment.endDate : assignment.startDate) || "";
+  }
+  return draft;
+}
+
+async function saveVehiclePhotoInput(input) {
+  const form = input?.closest?.("#vehicleForm");
+  if (!form || !input.files?.length || !input.dataset.photoKey) return;
+  applyVehicleAssignmentLock(form);
+  const draft = vehicleDraftFromForm(form);
+  if (!draft.eventId || !draft.workerId) {
+    toast("Select the vehicle assignment before adding photos.");
+    return;
+  }
+  const images = await Promise.all(Array.from(input.files).map(readFileAsDataUrl));
+  const newPhotos = {
+    [input.dataset.photoKey]: input.multiple ? images : images[0]
+  };
+  const existing = matchingVehicleLogForDraft(draft, draft.id ? state.vehicleLogs.find((log) => log.id === draft.id) : null);
+  const rentalDetails = vehicleRentalDetailsFor(existing || draft);
+  const savedRecord = {
+    ...(existing || {}),
+    ...draft,
+    id: existing?.id || draft.id || crypto.randomUUID(),
+    rentalCompany: canEditVehicleRentalDetails() ? draft.rentalCompany : rentalDetails.rentalCompany,
+    rentalPickupLocation: canEditVehicleRentalDetails() ? draft.rentalPickupLocation : rentalDetails.rentalPickupLocation,
+    rentalPickupDate: canEditVehicleRentalDetails() ? draft.rentalPickupDate : rentalDetails.rentalPickupDate,
+    vehiclePhotos: mergeVehiclePhotos(existing?.vehiclePhotos, newPhotos)
+  };
+  await put("vehicleLogs", savedRecord);
+  await loadState();
+  if (form.elements.id) form.elements.id.value = savedRecord.id;
+  applyVehicleAssignmentLock(form);
+  renderVehicles();
+  toast("Photo saved.");
 }
 
 async function ensureVehicleChecksForAssignment(assignment) {
@@ -16191,7 +16251,19 @@ function bindEvents() {
   $("#reportForm").addEventListener("change", (event) => {
     if (event.target.matches("[data-report-type], select[name='eventId'], select[name='workerId']")) updateReportTypeFields($("#reportForm"));
   });
-  $("#vehicleForm").addEventListener("change", () => applyVehicleAssignmentLock($("#vehicleForm")));
+  $("#vehicleForm").addEventListener("change", (event) => {
+    const photoInput = event.target?.matches?.("input[type='file'][data-photo-key]")
+      ? event.target
+      : null;
+    if (photoInput) {
+      saveVehiclePhotoInput(photoInput).catch((error) => {
+        console.error(error);
+        toast("That photo did not save. Try a smaller photo or check the connection.");
+      });
+      return;
+    }
+    applyVehicleAssignmentLock($("#vehicleForm"));
+  });
   $$("[data-smtp-provider]").forEach((select) => {
     select.addEventListener("change", () => updateSmtpForm(select.form, true));
   });
