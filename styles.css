@@ -3447,8 +3447,16 @@ td p {
 .staffing-schedule-day {
   display: grid;
   gap: 10px;
-  padding-top: 14px;
-  border-top: 1px solid color-mix(in srgb, var(--role-color) 14%, var(--line));
+  padding: 14px 14px 16px;
+  border-radius: 10px;
+  border-top: 1px solid color-mix(in srgb, var(--role-color) 12%, var(--line));
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--role-color) 5%, #ffffff), #ffffff 72%);
+}
+
+.staffing-schedule-day.is-alt {
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--accent-soft) 42%, #ffffff), #ffffff 74%);
 }
 
 .staffing-schedule-day-heading {

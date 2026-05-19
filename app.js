@@ -38,9 +38,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.06.071",
-  title: "V1.06.071 update installed",
-  body: "Staffing Schedule now works as a daily scheduler for assigned runners."
+  version: "V1.06.072",
+  title: "V1.06.072 update installed",
+  body: "Staffing Schedule days now have faint alternating colors so each day is easier to scan."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -7037,7 +7037,8 @@ function staffingScheduleDay(event, assignments, dateKey) {
   const lines = dayAssignments.length
     ? dayAssignments.map((assignment) => staffingScheduleLine(event, assignment, dateKey)).join("")
     : `<div class="compact-item empty">No assigned runners scheduled for this day.</div>`;
-  return `<section class="staffing-schedule-day">
+  const dayIndex = eventScheduleDateKeys(event).indexOf(dateKey);
+  return `<section class="staffing-schedule-day ${dayIndex % 2 ? "is-alt" : ""}">
     <div class="staffing-schedule-day-heading">
       <div>
         <span>Daily Schedule</span>
