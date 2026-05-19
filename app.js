@@ -38,9 +38,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.06.068",
-  title: "V1.06.068 update installed",
-  body: "Saved vehicle photos can now open full-size, and rental end photos only block wrap on the final event or runner schedule day."
+  version: "V1.06.069",
+  title: "V1.06.069 update installed",
+  body: "Rental start photos now trigger only on the first event day or the runner's first scheduled day."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -3993,9 +3993,32 @@ function assignmentHasExplicitScheduleEnd(assignment = {}) {
   return !!(assignment.endDate || assignment.workDate);
 }
 
+function assignmentHasExplicitScheduleStart(assignment = {}) {
+  const notes = String(assignment.notes || "");
+  if (notes.includes("Auto-created from event assigned runner list.")) return false;
+  return !!(assignment.startDate || assignment.workDate);
+}
+
+function assignmentStartDateKey(assignment = {}, event = {}) {
+  if (!assignmentHasExplicitScheduleStart(assignment)) return "";
+  return dateKeyFromValue(assignment.startDate || assignment.workDate || event.startDate || event.endDate);
+}
+
 function assignmentEndDateKey(assignment = {}, event = {}) {
   if (!assignmentHasExplicitScheduleEnd(assignment)) return "";
   return dateKeyFromValue(assignment.endDate || assignment.workDate || assignment.startDate || event.endDate || event.startDate);
+}
+
+function rentalVehicleFirstDateKey(event = {}, workerId = "") {
+  if (!event?.id || !workerId) return "";
+  const eventStartKey = dateKeyFromValue(event.startDate || "");
+  const assignmentStartKeys = rentalVehicleAssignmentsForWorker(event.id, workerId)
+    .map((assignment) => assignmentStartDateKey(assignment, event))
+    .filter(Boolean)
+    .sort();
+  const runnerFirstKey = assignmentStartKeys[0] || "";
+  if (runnerFirstKey && eventStartKey && runnerFirstKey > eventStartKey) return runnerFirstKey;
+  return eventStartKey || runnerFirstKey;
 }
 
 function rentalVehicleFinalDateKey(event = {}, workerId = "") {
@@ -4016,6 +4039,14 @@ function shouldRequireRentalEndPhotos(event = {}, card = {}, dateKey = "") {
   const workDate = dateKey || timecardWorkDate(card);
   const finalDate = rentalVehicleFinalDateKey(event, workerId);
   return !!finalDate && !!workDate && workDate >= finalDate;
+}
+
+function shouldRequireRentalStartPhotos(event = {}, card = {}, dateKey = "") {
+  if (!rentalVehicleRequired(event, card)) return false;
+  const workerId = card.workerId || activeCrewWorkerId();
+  const workDate = dateKey || timecardWorkDate(card) || localDateKey();
+  const firstDate = rentalVehicleFirstDateKey(event, workerId);
+  return !!firstDate && !!workDate && workDate === firstDate;
 }
 
 function matchingVehicleLogForDraft(draft = {}, existing = null) {
@@ -5863,7 +5894,7 @@ function dashboardLocalAttentionItems() {
       const worker = getWorker(workerId);
       const startLog = vehicleLogForEventWorker(event.id, workerId, "Start");
       const endLog = vehicleLogForEventWorker(event.id, workerId, "End");
-      if (card?.clockIn && !vehicleStartCheckStarted(startLog)) {
+      if (card?.clockIn && shouldRequireRentalStartPhotos(event, card) && !vehicleStartCheckStarted(startLog)) {
         items.push({
           type: "Vehicle",
           title: `${worker?.name || "Runner"} missing start vehicle photos`,
@@ -6808,7 +6839,7 @@ function crewRentalTask(event, card) {
   const startLog = vehicleLogForEventWorker(event.id, workerId, "Start");
   const endLog = vehicleLogForEventWorker(event.id, workerId, "End");
   if (card?.clockOut && shouldRequireRentalEndPhotos(event, card) && !vehicleEndPhotosComplete(endLog)) return ["Missing End Vehicle Photos", `Upload the end vehicle photos and gas gauge for ${event.name}.`, "vehicles"];
-  if (card?.clockIn && !vehicleStartCheckStarted(startLog)) return ["Missing Start Vehicle Photos", `Upload the start vehicle photos and plate number for ${event.name}.`, "vehicles"];
+  if (card?.clockIn && shouldRequireRentalStartPhotos(event, card) && !vehicleStartCheckStarted(startLog)) return ["Missing Start Vehicle Photos", `Upload the start vehicle photos and plate number for ${event.name}.`, "vehicles"];
   return null;
 }
 
@@ -9794,6 +9825,7 @@ function punchSummaryItem(label, value, location) {
 }
 
 function rentalClockWarning(event, card) {
+  if (!shouldRequireRentalStartPhotos(event, card || {}, timecardWorkDate(card) || localDateKey())) return "";
   if (!card?.clockIn || card.clockOut) return `<p><span class="status-pill warn">Rental photos required</span></p>`;
   const startLog = vehicleLogForEventWorker(event.id, activeCrewWorkerId(), "Start");
   if (vehicleStartCheckStarted(startLog)) return `<p><span class="status-pill">Rental start check received</span></p>`;
@@ -15633,6 +15665,7 @@ function checkRentalPhotoUrgencies() {
       }
       const event = getEvent(card.eventId);
       if (!rentalVehicleRequired(event, card)) return;
+      if (!shouldRequireRentalStartPhotos(event, card)) return;
       const startLog = vehicleLogForEventWorker(card.eventId, card.workerId, "Start");
       if (vehicleStartCheckStarted(startLog)) return;
       sendRentalUrgentNotification(card).catch((error) => console.error(error));
@@ -15837,7 +15870,7 @@ async function crewPunch(eventId, field) {
   }
   card = await applyVenueDistanceRule(card, event, location, field);
   if (field === "clockIn" && !card.eventName) card.eventName = event?.name || "";
-  if (field === "clockIn" && rentalVehicleRequired(event, card)) {
+  if (field === "clockIn" && shouldRequireRentalStartPhotos(event, card, timecardWorkDate(card))) {
     const assignment = assignmentForEventWorker(eventId, workerId);
     if (assignment?.vehicleUse === "Rented Vehicle") await ensureVehicleChecksForAssignment(assignment);
     const startLog = vehicleLogForEventWorker(eventId, workerId, "Start");
