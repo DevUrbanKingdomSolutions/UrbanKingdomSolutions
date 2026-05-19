@@ -38,9 +38,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.06.070",
-  title: "V1.06.070 update installed",
-  body: "Runner event assignments now use assignment start and end dates instead of call and wrap times."
+  version: "V1.06.071",
+  title: "V1.06.071 update installed",
+  body: "Staffing Schedule now works as a daily scheduler for assigned runners."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -7016,34 +7016,7 @@ function staffingScheduleCard(event) {
   const assignments = eventAssignments(event.id)
     .filter((assignment) => !["Cancelled", "Swapped"].includes(assignment.status))
     .filter((assignment) => !isCrewRole() || assignment.workerId === activeCrewWorkerId());
-  const departments = new Map();
-  assignments.forEach((assignment) => {
-    const department = assignment.department || "Production Office";
-    if (!departments.has(department)) departments.set(department, []);
-    departments.get(department).push(assignment);
-  });
-  const departmentRows = Array.from(departments.entries()).sort(([a], [b]) => a.localeCompare(b)).map(([department, rows]) => {
-    const filled = rows.filter((assignment) => assignment.workerId).length;
-    const lineItems = rows.map((assignment) => {
-      const worker = getWorker(assignment.workerId);
-      return `<div class="compact-item staffing-schedule-line">
-        <strong>${escapeHtml(worker?.name || "Open Position")}</strong>
-        <span>${escapeHtml(assignment.position || "Runner")} - ${escapeHtml(assignmentDateRangeLabel(assignment, event))}</span>
-        <p>${escapeHtml(assignment.locationType || "Venue")}${assignment.callLocation ? `: ${escapeHtml(assignment.callLocation)}` : ""}</p>
-        <div class="row-actions">
-          <button class="tiny-button" data-view-event-assignment="${escapeHtml(assignment.id)}" type="button">View</button>
-          ${canAdminEdit() ? `<button class="tiny-button" data-edit="eventAssignments" data-id="${escapeHtml(assignment.id)}" data-form="eventAssignmentForm" type="button">Edit</button>` : ""}
-        </div>
-      </div>`;
-    }).join("");
-    return `<section class="staffing-schedule-department">
-      <div class="panel-heading compact-heading">
-        <h4>${escapeHtml(department)}</h4>
-        <span class="muted">${filled}/${rows.length} filled</span>
-      </div>
-      <div class="compact-list">${lineItems}</div>
-    </section>`;
-  }).join("");
+  const dayRows = eventScheduleDateKeys(event).map((dateKey) => staffingScheduleDay(event, assignments, dateKey)).join("");
   const addButton = canAdminEdit()
     ? `<button class="tiny-button" data-add-staffing-position="${escapeHtml(event.id)}" type="button">Add Position</button>`
     : "";
@@ -7051,11 +7024,65 @@ function staffingScheduleCard(event) {
     <div class="record-card-main">
       <span>${escapeHtml(venue?.name || "No venue")}</span>
       <strong>${escapeHtml(event.name || "Event")}</strong>
-      <p>${escapeHtml(formatDate(event.startDate))}</p>
+      <p>${escapeHtml(assignmentDateRangeLabel({ startDate: event.startDate, endDate: event.endDate }, event))}</p>
     </div>
     <div class="row-actions">${addButton}</div>
-    <div class="staffing-schedule-departments">${departmentRows || `<div class="compact-item empty">No positions yet. Add positions for each department as the schedule takes shape.</div>`}</div>
+    <div class="staffing-schedule-days">${dayRows || `<div class="compact-item empty">No schedule dates yet. Add event dates first.</div>`}</div>
   </article>`;
+}
+
+function staffingScheduleDay(event, assignments, dateKey) {
+  const dayAssignments = assignments.filter((assignment) => assignmentCoversDate(assignment, dateKey, event));
+  const label = assignmentWorkDateLabel({ workDate: dateKey }, event);
+  const lines = dayAssignments.length
+    ? dayAssignments.map((assignment) => staffingScheduleLine(event, assignment, dateKey)).join("")
+    : `<div class="compact-item empty">No assigned runners scheduled for this day.</div>`;
+  return `<section class="staffing-schedule-day">
+    <div class="staffing-schedule-day-heading">
+      <div>
+        <span>Daily Schedule</span>
+        <h4>${escapeHtml(label)}</h4>
+      </div>
+      <span class="muted">${dayAssignments.length} runner${dayAssignments.length === 1 ? "" : "s"}</span>
+    </div>
+    <div class="staffing-schedule-lines">${lines}</div>
+  </section>`;
+}
+
+function staffingScheduleLine(event, assignment, dateKey) {
+  const worker = getWorker(assignment.workerId);
+  const entry = staffingDayEntry(assignment, dateKey);
+  const canEdit = canAdminEdit() || isProductionRole() || isProductionTeamRole();
+  const disabled = canEdit ? "" : " disabled";
+  const location = entry.location || assignment.callLocation || assignmentCallLocation(assignment, event) || "";
+  return `<div class="staffing-schedule-line">
+    <div class="staffing-schedule-runner">
+      <strong>${escapeHtml(worker?.name || "Open Position")}</strong>
+      <span>${escapeHtml([assignment.department, assignment.position].filter(Boolean).join(" / ") || "Runner")}</span>
+    </div>
+    <label>Call<input data-staffing-schedule-field="callTime" data-assignment-id="${escapeHtml(assignment.id)}" data-schedule-date="${escapeHtml(dateKey)}" type="time" value="${escapeHtml(entry.callTime || "")}"${disabled}></label>
+    <label>Location<input data-staffing-schedule-field="location" data-assignment-id="${escapeHtml(assignment.id)}" data-schedule-date="${escapeHtml(dateKey)}" value="${escapeHtml(location)}" placeholder="Venue, hotel, airport, office"${disabled}></label>
+    <label class="check-label staffing-wrap-toggle"><input data-staffing-schedule-field="hasWrapTime" data-assignment-id="${escapeHtml(assignment.id)}" data-schedule-date="${escapeHtml(dateKey)}" type="checkbox" value="yes" ${entry.hasWrapTime === "yes" ? "checked" : ""}${disabled}> Wrap</label>
+    <label>Wrap<input data-staffing-schedule-field="wrapTime" data-assignment-id="${escapeHtml(assignment.id)}" data-schedule-date="${escapeHtml(dateKey)}" type="time" value="${escapeHtml(entry.wrapTime || "")}" ${entry.hasWrapTime === "yes" ? "" : "disabled"}${disabled}></label>
+    <label>Notes<input data-staffing-schedule-field="notes" data-assignment-id="${escapeHtml(assignment.id)}" data-schedule-date="${escapeHtml(dateKey)}" value="${escapeHtml(entry.notes || "")}" placeholder="Daily instructions"${disabled}></label>
+  </div>`;
+}
+
+async function saveStaffingScheduleField(input) {
+  const assignment = getEventAssignment(input.dataset.assignmentId || "");
+  const dateKey = input.dataset.scheduleDate || "";
+  const field = input.dataset.staffingScheduleField || "";
+  if (!assignment || !dateKey || !field) return;
+  const value = input.type === "checkbox" ? (input.checked ? "yes" : "") : input.value;
+  const dailySchedule = { ...(assignment.dailySchedule || {}) };
+  const entry = { ...(dailySchedule[dateKey] || {}) };
+  entry[field] = value;
+  if (field === "hasWrapTime" && value !== "yes") entry.wrapTime = "";
+  dailySchedule[dateKey] = entry;
+  await put("eventAssignments", { ...assignment, dailySchedule });
+  await loadState();
+  renderStaffingSchedule();
+  toast("Daily schedule saved.");
 }
 
 function renderPublicEventAccess(data) {
@@ -9470,6 +9497,41 @@ function assignmentDateRangeLabel(assignment = {}, event = {}) {
   const startLabel = assignmentWorkDateLabel({ workDate: start }, event);
   const endLabel = end && end !== start ? assignmentWorkDateLabel({ workDate: end }, event) : "";
   return [startLabel, endLabel].filter(Boolean).join(" - ") || "Dates TBD";
+}
+
+function isoDateFromKey(dateKey = "") {
+  const date = new Date(`${dateKey}T12:00:00`);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function dateRangeKeys(startValue = "", endValue = "") {
+  const startKey = dateInputValue(startValue);
+  const endKey = dateInputValue(endValue || startValue);
+  const start = isoDateFromKey(startKey);
+  const end = isoDateFromKey(endKey || startKey);
+  if (!start || !end) return [];
+  const forwardEnd = end < start ? start : end;
+  const keys = [];
+  const cursor = new Date(start);
+  while (cursor <= forwardEnd && keys.length < 120) {
+    keys.push(cursor.toISOString().slice(0, 10));
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  return keys;
+}
+
+function eventScheduleDateKeys(event = {}) {
+  return dateRangeKeys(event.startDate, event.endDate || event.startDate);
+}
+
+function assignmentCoversDate(assignment = {}, dateKey = "", event = {}) {
+  const start = dateInputValue(assignment.startDate || event.startDate || dateKey);
+  const end = dateInputValue(assignment.endDate || event.endDate || start);
+  return !!dateKey && (!start || dateKey >= start) && (!end || dateKey <= end);
+}
+
+function staffingDayEntry(assignment = {}, dateKey = "") {
+  return assignment.dailySchedule?.[dateKey] || {};
 }
 
 function assignmentCallLocation(assignment = {}, event = {}) {
@@ -16092,6 +16154,12 @@ function bindEvents() {
       if (!state.staffingColumnFilters[key]) delete state.staffingColumnFilters[key];
       localStorage.setItem("productionCrewStaffingColumnFilters", JSON.stringify(state.staffingColumnFilters));
       renderStaffingAssignments();
+    }
+    if (event.target?.matches?.("[data-staffing-schedule-field]")) {
+      saveStaffingScheduleField(event.target).catch((error) => {
+        console.error(error);
+        toast("Daily schedule did not save.");
+      });
     }
     if (event.target?.matches?.("[data-vehicle-column-filter]")) {
       const key = event.target.dataset.vehicleColumnFilter;
