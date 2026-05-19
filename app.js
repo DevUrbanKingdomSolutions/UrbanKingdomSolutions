@@ -38,9 +38,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.06.072",
-  title: "V1.06.072 update installed",
-  body: "Staffing Schedule days now have faint alternating colors so each day is easier to scan."
+  version: "V1.06.073",
+  title: "V1.06.073 update installed",
+  body: "Clock-ins more than 2 miles from the scheduled location now ask before continuing and notify client admins."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -6190,6 +6190,13 @@ function venueCoordinates(venue) {
   return latitude === null || longitude === null ? null : { latitude, longitude };
 }
 
+function recordCoordinates(record) {
+  if (!record) return null;
+  const latitude = numericCoordinate(record.latitude ?? record.lat ?? record.location?.latitude ?? record.location?.lat ?? record.coordinates?.latitude ?? record.coordinates?.lat);
+  const longitude = numericCoordinate(record.longitude ?? record.lng ?? record.lon ?? record.location?.longitude ?? record.location?.lng ?? record.location?.lon ?? record.coordinates?.longitude ?? record.coordinates?.lng ?? record.coordinates?.lon);
+  return latitude === null || longitude === null ? null : { latitude, longitude };
+}
+
 function milesBetweenCoordinates(first, second) {
   if (!first || !second) return null;
   const toRadians = (value) => value * Math.PI / 180;
@@ -6210,15 +6217,30 @@ function clientAdminRecipientsForEvent(event) {
   });
 }
 
+function scheduledClockInTarget(card, event) {
+  const assignment = assignmentForEventWorker(event?.id, card?.workerId);
+  const entry = staffingDayEntry(assignment, timecardWorkDate(card));
+  const venue = getVenue(card?.venueId || event?.venueId);
+  const label = entry.location || assignment?.callLocation || venue?.name || venue?.address || "the scheduled location";
+  const coordinates = recordCoordinates(entry) || recordCoordinates(assignment) || venueCoordinates(venue);
+  return {
+    label,
+    coordinates,
+    source: recordCoordinates(entry) ? "dailySchedule" : recordCoordinates(assignment) ? "assignment" : "venue",
+    venueId: venue?.id || ""
+  };
+}
+
 async function applyVenueDistanceRule(card, event, location, field) {
   if (field !== "clockIn" || !card?.id || !event || !location) return card;
-  const venue = getVenue(card.venueId || event.venueId);
-  const venueLocation = venueCoordinates(venue);
-  if (!venueLocation) return card;
-  const miles = milesBetweenCoordinates(location, venueLocation);
+  const target = scheduledClockInTarget(card, event);
+  if (!target.coordinates) return card;
+  const miles = milesBetweenCoordinates(location, target.coordinates);
   if (miles === null || miles <= 2) return card;
   const worker = getWorker(card.workerId);
-  const message = `${worker?.name || "Crew member"} clocked in ${miles.toFixed(1)} miles from ${venue?.name || "the scheduled venue"}.`;
+  const shouldContinue = window.confirm(`${worker?.name || "Crew member"} appears to be ${miles.toFixed(1)} miles from ${target.label}. Do you still want to clock in?`);
+  if (!shouldContinue) return null;
+  const message = `${worker?.name || "Crew member"} attempted to clock in ${miles.toFixed(1)} miles away from ${target.label} and chose to continue.`;
   const updated = {
     ...card,
     adminNotes: appendTimecardAdminNote(card, message),
@@ -6228,7 +6250,10 @@ async function applyVenueDistanceRule(card, event, location, field) {
         type: "clockInVenueDistance",
         miles: Number(miles.toFixed(2)),
         thresholdMiles: 2,
-        venueId: venue?.id || "",
+        venueId: target.venueId,
+        locationLabel: target.label,
+        locationSource: target.source,
+        continuedAfterWarning: true,
         createdAt: new Date().toISOString()
       }
     ]
@@ -15932,6 +15957,10 @@ async function crewPunch(eventId, field) {
     card.punchLocations = { ...(card.punchLocations || {}), [field]: location };
   }
   card = await applyVenueDistanceRule(card, event, location, field);
+  if (!card) {
+    toast("Clock-in was cancelled.");
+    return;
+  }
   if (field === "clockIn" && !card.eventName) card.eventName = event?.name || "";
   if (field === "clockIn" && shouldRequireRentalStartPhotos(event, card, timecardWorkDate(card))) {
     const assignment = assignmentForEventWorker(eventId, workerId);

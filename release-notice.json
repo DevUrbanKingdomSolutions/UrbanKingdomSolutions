@@ -1,5 +1,5 @@
 {
-  "version": "V1.06.038",
-  "title": "V1.06.038 update installed",
-  "body": "ADMIN account access saves now update existing Supabase role rows instead of using an upsert that can trigger RLS insert checks."
+  "version": "V1.06.073",
+  "title": "V1.06.073 update installed",
+  "body": "Clock-ins more than 2 miles from the scheduled location now ask before continuing and notify client admins."
 }
