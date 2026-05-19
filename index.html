@@ -10,7 +10,7 @@
     <title>Production Crew Database</title>
     <link rel="manifest" href="manifest.webmanifest">
     <link rel="icon" href="assets/logo/app-logo-admin.png" type="image/png">
-    <link rel="stylesheet" href="styles.css?v=V1.06.069-rental-start-first-day">
+    <link rel="stylesheet" href="styles.css?v=V1.06.070-assignment-date-range">
   </head>
   <body>
     <div id="appLoadingOverlay" class="app-loading-overlay" aria-live="polite">
@@ -735,13 +735,11 @@
                   <select name="department" data-assignment-department></select>
                 </label>
                 <label>Position<input name="position" placeholder="Runner, lead runner, credentials"></label>
-                <label>Work date<input name="workDate" type="date"></label>
               </div>
               <div class="photo-fieldset assignment-fieldset">
-                <span>Schedule</span>
-                <label>Call<input name="startDate" type="datetime-local"></label>
-                <label class="check-label"><input name="hasWrapTime" type="checkbox" value="yes"> Add scheduled wrap time</label>
-                <label class="wrap-time-field">Scheduled wrap<input name="endDate" type="datetime-local" placeholder="Can stay blank"></label>
+                <span>Assignment Dates</span>
+                <label>Start date<input name="startDate" type="date"></label>
+                <label>End date<input name="endDate" type="date"></label>
               </div>
               <div class="photo-fieldset assignment-fieldset">
                 <span>Location</span>
@@ -2435,6 +2433,6 @@
     <div id="modalHost"></div>
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js?v=V1.06.069-rental-start-first-day"></script>
+    <script src="app.js?v=V1.06.070-assignment-date-range"></script>
   </body>
 </html>

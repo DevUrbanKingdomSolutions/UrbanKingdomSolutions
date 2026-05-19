@@ -38,9 +38,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.06.069",
-  title: "V1.06.069 update installed",
-  body: "Rental start photos now trigger only on the first event day or the runner's first scheduled day."
+  version: "V1.06.070",
+  title: "V1.06.070 update installed",
+  body: "Runner event assignments now use assignment start and end dates instead of call and wrap times."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -1778,7 +1778,7 @@ function fillForm(formId, record) {
         option.selected = selectedValues.includes(option.value);
       });
     } else {
-      if (formId === "eventForm" && ["startDate", "endDate"].includes(key)) {
+      if ((formId === "eventForm" || formId === "eventAssignmentForm") && ["startDate", "endDate"].includes(key)) {
         value = dateInputValue(value);
       }
       form.elements[key].value = value || "";
@@ -1802,7 +1802,6 @@ function fillForm(formId, record) {
   if (formId === "reportForm") delete form.dataset.vehicleDamageConfirmed;
   if (formId === "eventAssignmentForm") updateAssignmentVehicleFields(form);
   if (formId === "eventAssignmentForm") {
-    updateAssignmentScheduleFields(form);
     updateAssignmentLocationFields(form);
   }
 }
@@ -1836,7 +1835,6 @@ function clearForm(formId) {
     form.elements.department.value = "Production Office";
     form.elements.locationType.value = "Venue";
     updateAssignmentVehicleFields(form);
-    updateAssignmentScheduleFields(form);
     updateAssignmentLocationFields(form);
   }
   if (formId === "reportForm") form.elements.reportedAt.value = toLocalInputValue(new Date());
@@ -3862,9 +3860,9 @@ function renderEventAssignmentManager(form = $("#eventForm"), eventId = "") {
     return;
   }
   const eventRecord = getEvent(id) || {};
-  container.innerHTML = `<table class="mini-table"><thead><tr><th>Crew</th><th>Role</th><th>Call</th><th>Location</th><th>Status</th><th></th></tr></thead><tbody>${assignments.map((assignment) => {
+  container.innerHTML = `<table class="mini-table"><thead><tr><th>Crew</th><th>Role</th><th>Assignment Dates</th><th>Location</th><th>Status</th><th></th></tr></thead><tbody>${assignments.map((assignment) => {
     const worker = getWorker(assignment.workerId);
-    return `<tr><td>${escapeHtml(worker?.name || "Crew Member")}</td><td>${escapeHtml(assignmentRoleLine(assignment))}</td><td>${escapeHtml(assignmentWorkDateLabel(assignment, eventRecord))}<p>${escapeHtml(formatTime(assignment.startDate || eventRecord.startDate) || "Call TBD")}${assignment.endDate ? ` / ${escapeHtml(formatTime(assignment.endDate))}` : " / wrap TBD"}</p></td><td>${escapeHtml(assignmentCallLocation(assignment, eventRecord) || "Venue not set")}</td><td>${escapeHtml(assignment.status || "Confirmed")}</td><td><button class="tiny-button" data-edit="eventAssignments" data-id="${assignment.id}" data-form="eventAssignmentForm" type="button">Edit</button></td></tr>`;
+    return `<tr><td>${escapeHtml(worker?.name || "Crew Member")}</td><td>${escapeHtml(assignmentRoleLine(assignment))}</td><td>${escapeHtml(assignmentDateRangeLabel(assignment, eventRecord))}</td><td>${escapeHtml(assignmentCallLocation(assignment, eventRecord) || "Venue not set")}</td><td>${escapeHtml(assignment.status || "Confirmed")}</td><td><button class="tiny-button" data-edit="eventAssignments" data-id="${assignment.id}" data-form="eventAssignmentForm" type="button">Edit</button></td></tr>`;
   }).join("")}</tbody></table>`;
 }
 
@@ -4211,9 +4209,8 @@ async function ensureDefaultAssignmentsForEvent(eventRecord) {
       department: "Production Office",
       position: "Runner",
       workDate: String(eventRecord.startDate || "").slice(0, 10),
-      startDate: eventRecord.startDate || "",
-      endDate: eventRecord.endDate || "",
-      hasWrapTime: eventRecord.endDate ? "yes" : "",
+      startDate: dateInputValue(eventRecord.startDate || ""),
+      endDate: dateInputValue(eventRecord.endDate || eventRecord.startDate || ""),
       locationType: "Venue",
       callLocation: "",
       onSiteContactName: "",
@@ -6930,7 +6927,7 @@ function staffingColumnValue(assignment, key) {
   if (key === "event") return `${event?.name || ""} ${getVenue(event?.venueId)?.name || ""}`;
   if (key === "crew") return `${worker?.name || ""} ${worker?.phone || ""} ${worker?.email || ""} ${assignment.position || ""}`;
   if (key === "department") return assignment.department || "";
-  if (key === "schedule") return `${assignmentWorkDateLabel(assignment, event || {})} ${formatTime(assignment.startDate || event?.startDate)} ${assignment.endDate ? formatTime(assignment.endDate) : ""}`;
+  if (key === "schedule") return assignmentDateRangeLabel(assignment, event || {});
   if (key === "contact") return `${assignment.onSiteContactName || ""} ${assignment.onSiteContactPhone || ""} ${assignment.onSiteContactEmail || ""}`;
   if (key === "notes") return `${assignment.crewNotes || ""} ${assignment.notes || ""}`;
   return "";
@@ -6993,7 +6990,7 @@ function renderStaffingAssignments() {
           <td><strong>${escapeHtml(event?.name || "Event")}</strong><p>${escapeHtml(venue?.name || "No venue")}</p></td>
           <td>${profileCell(worker || { name: "Open Position" }, worker?.hideHeadshot, worker?.phone || "No crew assigned")}<p>${escapeHtml(worker?.email || "Email not set")}</p><p>${escapeHtml(assignment.position || "Staffing assignment")}</p></td>
           <td><strong>${escapeHtml(assignment.department || "Production Office")}</strong><p>${escapeHtml(assignment.locationType || "")}</p></td>
-          <td><strong>${escapeHtml(assignmentWorkDateLabel(assignment, event || {}))}</strong><p>Call: ${escapeHtml(formatTime(assignment.startDate || event?.startDate) || "TBD")}</p><p>Wrap: ${escapeHtml(assignment.endDate ? formatTime(assignment.endDate) : "TBD")}</p></td>
+          <td><strong>${escapeHtml(assignmentDateRangeLabel(assignment, event || {}))}</strong><p>Daily call/wrap is managed in Staffing Schedule.</p></td>
           <td>${contact || "Not set"}<p>${assignment.productionOfficeLinkReady === "yes" ? "Production Office link ready" : ""}</p></td>
           <td>${escapeHtml(noteText || "")}</td>
           <td>${actions}</td>
@@ -7031,7 +7028,7 @@ function staffingScheduleCard(event) {
       const worker = getWorker(assignment.workerId);
       return `<div class="compact-item staffing-schedule-line">
         <strong>${escapeHtml(worker?.name || "Open Position")}</strong>
-        <span>${escapeHtml(assignment.position || "Runner")} - Call ${escapeHtml(formatTime(assignment.startDate || event.startDate) || "TBD")}${assignment.endDate ? ` / Wrap ${escapeHtml(formatTime(assignment.endDate))}` : ""}</span>
+        <span>${escapeHtml(assignment.position || "Runner")} - ${escapeHtml(assignmentDateRangeLabel(assignment, event))}</span>
         <p>${escapeHtml(assignment.locationType || "Venue")}${assignment.callLocation ? `: ${escapeHtml(assignment.callLocation)}` : ""}</p>
         <div class="row-actions">
           <button class="tiny-button" data-view-event-assignment="${escapeHtml(assignment.id)}" type="button">View</button>
@@ -9467,6 +9464,14 @@ function assignmentWorkDateLabel(assignment = {}, event = {}) {
   return date.toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" });
 }
 
+function assignmentDateRangeLabel(assignment = {}, event = {}) {
+  const start = dateInputValue(assignment.startDate || event.startDate || "");
+  const end = dateInputValue(assignment.endDate || event.endDate || start);
+  const startLabel = assignmentWorkDateLabel({ workDate: start }, event);
+  const endLabel = end && end !== start ? assignmentWorkDateLabel({ workDate: end }, event) : "";
+  return [startLabel, endLabel].filter(Boolean).join(" - ") || "Dates TBD";
+}
+
 function assignmentCallLocation(assignment = {}, event = {}) {
   const venue = getVenue(event?.venueId);
   return assignment.callLocation || venue?.address || "";
@@ -9526,12 +9531,8 @@ function renderAssignmentDepartmentOptions(selected = "") {
 
 function updateAssignmentScheduleFields(form = $("#eventAssignmentForm")) {
   if (!form) return;
-  const hasWrap = form.elements.hasWrapTime?.checked || !!form.elements.endDate?.value;
-  if (form.elements.hasWrapTime) form.elements.hasWrapTime.checked = hasWrap;
-  form.querySelectorAll(".wrap-time-field").forEach((field) => {
-    field.hidden = !hasWrap;
-  });
-  if (!hasWrap && form.elements.endDate) form.elements.endDate.value = "";
+  if (form.elements.startDate) form.elements.startDate.value = dateInputValue(form.elements.startDate.value);
+  if (form.elements.endDate) form.elements.endDate.value = dateInputValue(form.elements.endDate.value);
 }
 
 function updateAssignmentLocationFields(form = $("#eventAssignmentForm")) {
@@ -9555,7 +9556,7 @@ function assignmentTable(event) {
       <div class="event-assignment-main">
         <button class="link-button" data-view-event-assignment="${escapeHtml(assignment.id)}" type="button"><strong>${escapeHtml(worker?.name || "Unassigned")}</strong></button>
         <span>${escapeHtml(assignmentRoleLine(assignment))}</span>
-        <span>${escapeHtml([assignmentWorkDateLabel(assignment, event), formatTime(assignment.startDate || event.startDate), assignment.endDate ? `wrap ${formatTime(assignment.endDate)}` : "wrap TBD"].filter(Boolean).join(" - "))}</span>
+        <span>${escapeHtml(assignmentDateRangeLabel(assignment, event))}</span>
         <span>${escapeHtml(assignmentCallLocation(assignment, event) || "Venue location not set")}</span>
       </div>
       ${actions}
@@ -9598,9 +9599,8 @@ function openEventAssignmentDetail(assignmentId) {
       ["Department", assignment.department],
       ["Position", assignment.position],
       ["Status", assignment.status || "Assigned"],
-      ["Work Date", assignmentWorkDateLabel(assignment, event || {})],
-      ["Call", formatTime(assignment.startDate || event?.startDate) || "TBD"],
-      ["Scheduled Wrap", assignment.endDate ? formatTime(assignment.endDate) : "TBD"]
+      ["Assignment Dates", assignmentDateRangeLabel(assignment, event || {})],
+      ["Daily Schedule", "Managed in Staffing Schedule"]
     ]],
     ["Location / Partner", [
       ["Venue", venue?.name],
@@ -13475,9 +13475,10 @@ async function saveForm(event, storeName) {
       return;
     }
     merged.id = merged.id || crypto.randomUUID();
-    merged.startDate = merged.startDate || eventRecord.startDate || "";
-    if (merged.hasWrapTime !== "yes") merged.endDate = "";
-    merged.workDate = merged.workDate || String(merged.startDate || eventRecord.startDate || "").slice(0, 10);
+    merged.startDate = dateInputValue(merged.startDate || eventRecord.startDate || "");
+    merged.endDate = dateInputValue(merged.endDate || eventRecord.endDate || merged.startDate || "");
+    merged.workDate = merged.startDate || String(eventRecord.startDate || "").slice(0, 10);
+    delete merged.hasWrapTime;
     merged.department = merged.department || "Production Office";
     merged.position = merged.position || "Runner";
     merged.locationType = merged.locationType || "Venue";
@@ -13859,9 +13860,8 @@ function openAssignmentForm(eventId, assignment = null) {
     department: "Production Office",
     position: "Runner",
     workDate: String(eventRecord.startDate || "").slice(0, 10),
-    startDate: eventRecord.startDate || "",
-    endDate: eventRecord.endDate || "",
-    hasWrapTime: eventRecord.endDate ? "yes" : "",
+    startDate: dateInputValue(eventRecord.startDate || ""),
+    endDate: dateInputValue(eventRecord.endDate || eventRecord.startDate || ""),
     locationType: "Venue",
     callLocation: "",
     onSiteContactName: "",
@@ -13887,8 +13887,8 @@ function applyAssignmentDefaults(workerId) {
   const worker = getWorker(workerId);
   const client = activeClientRecord();
   if (!form || !eventRecord || !worker) return;
-  form.elements.startDate.value = form.elements.startDate.value || eventRecord.startDate || "";
-  form.elements.endDate.value = form.elements.endDate.value || eventRecord.endDate || "";
+  form.elements.startDate.value = form.elements.startDate.value || dateInputValue(eventRecord.startDate || "");
+  form.elements.endDate.value = form.elements.endDate.value || dateInputValue(eventRecord.endDate || eventRecord.startDate || "");
   if (form.elements.workDate) form.elements.workDate.value = form.elements.workDate.value || String(form.elements.startDate.value || eventRecord.startDate || "").slice(0, 10);
   form.elements.dayRate.value = form.elements.dayRate.value || eventRecord.dayRate || client?.defaultDayRate || worker.defaultDayRate || worker.defaultRate || "";
   form.elements.includedHours.value = form.elements.includedHours.value || eventRecord.includedHours || client?.defaultIncludedHours || worker.defaultIncludedHours || "10";
@@ -16274,7 +16274,7 @@ function bindEvents() {
     clearForm("assignmentDepartmentForm");
     openForm("assignmentDepartmentForm");
   });
-  $("#eventAssignmentForm input[name='hasWrapTime']").addEventListener("change", () => updateAssignmentScheduleFields($("#eventAssignmentForm")));
+  $("#eventAssignmentForm input[name='hasWrapTime']")?.addEventListener("change", () => updateAssignmentScheduleFields($("#eventAssignmentForm")));
   $("#eventAssignmentForm select[name='locationType']").addEventListener("change", () => {
     const form = $("#eventAssignmentForm");
     if (form.elements.locationType.value !== "Venue") form.elements.callLocation.value = "";
