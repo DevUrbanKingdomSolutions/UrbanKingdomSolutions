@@ -38,9 +38,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.06.074",
-  title: "V1.06.074 update installed",
-  body: "Timecard lines now open polished detail profiles with punch editing, admin reset controls, and runner edit notifications."
+  version: "V1.06.075",
+  title: "V1.06.075 update installed",
+  body: "Resolved timecard issue notes now archive from Recent Notes once the related item is satisfied."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -6115,14 +6115,14 @@ function dashboardRecentNotes() {
     return dashboardNoteEntries({
       type: "Timecard",
       name: [worker?.name, event?.name || card.eventName].filter(Boolean).join(" - ") || "Timecard",
-      text: timecardProfileNoteText(card),
+      text: activeTimecardDashboardNotes(card),
       updatedAt: card.updatedAt || card.createdAt,
       storeName: "timecards",
       recordId: card.id
     });
   }) : [];
   const createdNotes = canSeeProductionNotes ? state.profileNotes
-    .filter((note) => note.note && dashboardProfileNoteIsVisible(note))
+    .filter((note) => note.note && !note.archivedAt && dashboardProfileNoteIsVisible(note))
     .flatMap((note) => dashboardNoteEntries({
       type: note.relatedType ? `${titleCase(note.relatedType)} Note` : "Note",
       name: note.title || dashboardProfileNoteName(note) || note.createdByName || "Created note",
@@ -10931,6 +10931,27 @@ function appendTimecardAdminNote(card, message) {
   const existing = String(card.adminNotes || "").trim();
   if (existing.includes(message)) return existing;
   return [existing, `${formatDateWithYear(new Date())} - ${message}`].filter(Boolean).join("\n");
+}
+
+function activeTimecardDashboardNotes(card) {
+  return noteListEntries(card.adminNotes)
+    .filter((note) => !timecardIssueNoteIsArchived(card, note))
+    .join("\n");
+}
+
+function timecardIssueNoteIsArchived(card, note = "") {
+  const text = String(note || "").toLowerCase();
+  const event = getEvent(card.eventId);
+  const workDate = timecardWorkDate(card);
+  if (text.includes("start-photo") || text.includes("start photos") || text.includes("start vehicle photos")) {
+    const startLog = vehicleLogForEventWorker(card.eventId, card.workerId, "Start");
+    return !shouldRequireRentalStartPhotos(event, card, workDate) || vehicleStartCheckStarted(startLog);
+  }
+  if (text.includes("end photos") || text.includes("end vehicle photos") || text.includes("gas gauge") || text.includes("wrap attempt")) {
+    const endLog = vehicleLogForEventWorker(card.eventId, card.workerId, "End");
+    return !shouldRequireRentalEndPhotos(event, card, workDate) || vehicleEndPhotosComplete(endLog);
+  }
+  return false;
 }
 
 function canViewTimecardAdminNotes() {

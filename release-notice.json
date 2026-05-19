@@ -1,5 +1,5 @@
 {
-  "version": "V1.06.074",
-  "title": "V1.06.074 update installed",
-  "body": "Timecard lines now open polished detail profiles with punch editing, admin reset controls, and runner edit notifications."
+  "version": "V1.06.075",
+  "title": "V1.06.075 update installed",
+  "body": "Resolved timecard issue notes now archive from Recent Notes once the related item is satisfied."
 }
