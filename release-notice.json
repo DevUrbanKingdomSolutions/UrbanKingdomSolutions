@@ -1,5 +1,5 @@
 {
-  "version": "V1.06.073",
-  "title": "V1.06.073 update installed",
-  "body": "Clock-ins more than 2 miles from the scheduled location now ask before continuing and notify client admins."
+  "version": "V1.06.074",
+  "title": "V1.06.074 update installed",
+  "body": "Timecard lines now open polished detail profiles with punch editing, admin reset controls, and runner edit notifications."
 }

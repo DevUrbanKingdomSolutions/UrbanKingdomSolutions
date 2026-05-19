@@ -38,9 +38,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.06.073",
-  title: "V1.06.073 update installed",
-  body: "Clock-ins more than 2 miles from the scheduled location now ask before continuing and notify client admins."
+  version: "V1.06.074",
+  title: "V1.06.074 update installed",
+  body: "Timecard lines now open polished detail profiles with punch editing, admin reset controls, and runner edit notifications."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -5420,6 +5420,44 @@ function timecardDetailRows(record) {
   };
 }
 
+function timecardPunchFields() {
+  return [
+    ["clockIn", "Call"],
+    ["lunchOut", "Lunch Out"],
+    ["lunchIn", "Lunch In"],
+    ["clockOut", "Wrap"]
+  ];
+}
+
+function timecardPunchLocationLabel(location) {
+  if (!location?.capturedAt) return location ? "Captured" : "";
+  return `Captured ${formatDateWithYear(location.capturedAt)}`;
+}
+
+function timecardPunchDetailGrid(record) {
+  return `<div class="timecard-punch-grid">
+    ${timecardPunchFields().map(([field, label]) => {
+      const value = record[field];
+      const location = record.punchLocations?.[field];
+      return `<div class="timecard-punch-card ${value ? "is-set" : "is-empty"}">
+        <span>${escapeHtml(label)}</span>
+        <strong>${escapeHtml(formatTime(value) || "Not set")}</strong>
+        <small>${escapeHtml(value ? formatDateWithYear(value) : "")}</small>
+        ${location ? `<em>${escapeHtml(timecardPunchLocationLabel(location))}</em>` : ""}
+      </div>`;
+    }).join("")}
+  </div>`;
+}
+
+function canEditTimecardLine(record) {
+  if (canAdminEdit()) return true;
+  return isCrewRole() && record?.workerId === activeCrewWorkerId();
+}
+
+function canResetTimecardPunch(record) {
+  return canAdminEdit() && !!record?.id;
+}
+
 function timecardProfileNoteText(record) {
   if (!canViewTimecardAdminNotes()) return noteDescription(crewVisibleTimecardNotes(record), record.updatedAt || record.createdAt);
   const notes = [record.notes, record.adminNotes]
@@ -5442,8 +5480,12 @@ function renderTimecardProfile(timecardId, editable = false) {
   }
   const view = timecardDetailRows(record);
   readOnlyProfileCard(view.title, view.subtitle, view.details, view.sections, profileAvatarLarge(getWorker(record.workerId) || { name: view.title }, getWorker(record.workerId)?.hideHeadshot), view.groups);
-  const actions = canAdminEdit()
-    ? `<div class="profile-section profile-actions"><button class="primary-action" data-edit-timecard-detail="${escapeHtml(record.id)}" type="button">Edit Timecard Line</button></div>`
+  $("#recordViewBody").querySelector(".premium-profile-content")?.insertAdjacentHTML("afterbegin", timecardPunchDetailGrid(record));
+  const actions = canEditTimecardLine(record)
+    ? `<div class="profile-section profile-actions">
+        <button class="primary-action" data-edit-timecard-detail="${escapeHtml(record.id)}" type="button">Edit Timecard Line</button>
+        ${canAdminEdit() ? `<button class="secondary-action danger" data-delete-timecard-line="${escapeHtml(record.id)}" type="button">Delete Timecard Line</button>` : ""}
+      </div>`
     : "";
   $("#recordViewBody").querySelector(".profile-page-card")?.insertAdjacentHTML("beforeend", actions);
   openForm("recordView");
@@ -5453,32 +5495,43 @@ function selectOptions(records, selectedId, emptyLabel, labeler) {
   return `<option value="">${escapeHtml(emptyLabel)}</option>${records.map((record) => `<option value="${escapeHtml(record.id)}" ${record.id === selectedId ? "selected" : ""}>${escapeHtml(labeler(record))}</option>`).join("")}`;
 }
 
+function timecardPunchEditor(record, allowReset = false) {
+  return `<div class="timecard-punch-editor">
+    ${timecardPunchFields().map(([field, label]) => `<div class="timecard-punch-edit-row">
+      <label>${escapeHtml(label)}<input name="${escapeHtml(field)}" type="datetime-local" value="${escapeHtml(dateTimeInputValue(record[field]))}" ${field === "clockIn" ? "required" : ""}></label>
+      ${allowReset ? `<button class="tiny-button danger" data-reset-timecard-punch="${escapeHtml(record.id)}" data-punch-field="${escapeHtml(field)}" type="button">Reset</button>` : ""}
+    </div>`).join("")}
+  </div>`;
+}
+
 function renderEditableTimecardProfile(record) {
+  if (!canEditTimecardLine(record)) {
+    toast("You do not have access to edit this timecard.");
+    return;
+  }
   const events = visibleEvents();
   const workers = isAdminRole() ? [] : state.workers;
   const venues = isAdminRole() ? [] : state.venues;
   const promoters = isAdminRole() ? [] : state.promoters;
   const showRates = canViewRates();
+  const adminEdit = canAdminEdit();
   $("#recordViewTitle").textContent = "Edit Timecard";
   $("#recordViewBody").innerHTML = `<form class="profile-page-card profile-edit-form" data-timecard-detail-form>
     <input type="hidden" name="id" value="${escapeHtml(record.id)}">
-    <div class="profile-page-header">
+    <div class="profile-page-header timecard-edit-header">
       ${profileAvatarLarge(getWorker(record.workerId) || { name: "Timecard" }, getWorker(record.workerId)?.hideHeadshot)}
       <div>
         <h3>${escapeHtml(getWorker(record.workerId)?.name || "Timecard")}</h3>
         <p>${escapeHtml(getEvent(record.eventId)?.name || record.eventName || "Timecard")}</p>
+        ${!adminEdit ? `<small>Client admin will be notified when punch times are changed.</small>` : ""}
       </div>
     </div>
-    <div class="profile-edit-grid">
+    ${adminEdit ? `<div class="profile-edit-grid">
       <label>Crew Member<select name="workerId" required>${selectOptions(workers, record.workerId, "Select crew member", (worker) => worker.name)}</select></label>
       <label>Event<select name="eventId">${selectOptions(events, record.eventId, "Select event", (event) => event.name)}</select></label>
       <label>Event or shift<input name="eventName" value="${escapeHtml(record.eventName || getEvent(record.eventId)?.name || "")}" required></label>
       <label>Venue<select name="venueId">${selectOptions(venues, record.venueId, "No venue selected", (venue) => venue.name)}</select></label>
       <label>Promoter<select name="promoterId">${selectOptions(promoters, record.promoterId, "No promoter rep selected", promoterLabel)}</select></label>
-      <label>Clock in<input name="clockIn" type="datetime-local" value="${escapeHtml(dateTimeInputValue(record.clockIn))}" required></label>
-      <label>Clock out<input name="clockOut" type="datetime-local" value="${escapeHtml(dateTimeInputValue(record.clockOut))}"></label>
-      <label>Lunch out<input name="lunchOut" type="datetime-local" value="${escapeHtml(dateTimeInputValue(record.lunchOut))}"></label>
-      <label>Lunch in<input name="lunchIn" type="datetime-local" value="${escapeHtml(dateTimeInputValue(record.lunchIn))}"></label>
       <label>Break minutes<input name="breakMinutes" type="number" min="0" step="5" value="${escapeHtml(record.breakMinutes || "0")}"></label>
       ${showRates ? `<label>Day rate<input name="dayRate" type="number" min="0" step="0.01" value="${escapeHtml(record.dayRate || "")}"></label>
       <label>Included hours<input name="includedHours" type="number" min="0" step="0.25" value="${escapeHtml(record.includedHours || "")}"></label>
@@ -5489,29 +5542,52 @@ function renderEditableTimecardProfile(record) {
         <option ${record.vehicleUse === "Rented Vehicle" ? "selected" : ""}>Rented Vehicle</option>
         <option ${record.vehicleUse === "Personal Vehicle" ? "selected" : ""}>Personal Vehicle</option>
       </select></label>
+    </div>` : `<div class="profile-info-section">
+      <h4>Line Details</h4>
+      <div class="profile-info-grid">
+        <div><span>Date</span><strong>${escapeHtml(timecardDateLabel(record))}</strong></div>
+        <div><span>Event</span><strong>${escapeHtml(getEvent(record.eventId)?.name || record.eventName || "Timecard")}</strong></div>
+        <div><span>Hours</span><strong>${escapeHtml(timecardHours(record).toFixed(2))}</strong></div>
+      </div>
+    </div>`}
+    <div class="profile-info-section">
+      <h4>Time Punches</h4>
+      ${timecardPunchEditor(record, canResetTimecardPunch(record))}
     </div>
     <label>Notes<textarea name="notes" rows="3">${escapeHtml(record.notes || "")}</textarea></label>
     <div class="profile-actions">
       <button class="primary-action" data-save-timecard-detail type="button">Save Timecard Line</button>
       <button class="secondary-action" data-cancel-timecard-detail="${escapeHtml(record.id)}" type="button">Cancel</button>
+      ${adminEdit ? `<button class="secondary-action danger" data-delete-timecard-line="${escapeHtml(record.id)}" type="button">Delete Timecard Line</button>` : ""}
     </div>
   </form>`;
 }
 
 async function saveTimecardDetailForm(button) {
   const form = button.closest("[data-timecard-detail-form]");
-  if (!form || !canAdminEdit()) {
-    toast("Switch to CLIENT or PROMOTER to save this.");
-    return;
-  }
-  const record = await formRecord(form);
-  const existing = state.timecards.find((card) => card.id === record.id);
+  if (!form) return;
+  const existing = state.timecards.find((card) => card.id === form.elements.id?.value);
   if (!existing) {
     toast("Timecard not found.");
     return;
   }
-  let merged = { ...existing, ...record };
-  if (merged.eventId) {
+  if (!canEditTimecardLine(existing)) {
+    toast("You do not have access to edit this timecard.");
+    return;
+  }
+  const record = await formRecord(form);
+  const before = { ...existing };
+  const adminEdit = canAdminEdit();
+  let merged = adminEdit ? { ...existing, ...record } : {
+    ...existing,
+    clockIn: record.clockIn || "",
+    lunchOut: record.lunchOut || "",
+    lunchIn: record.lunchIn || "",
+    clockOut: record.clockOut || "",
+    notes: record.notes || existing.notes || ""
+  };
+  merged.punchLocations = clearPunchLocationsForChangedTimes(existing, merged);
+  if (adminEdit && merged.eventId) {
     const relatedEvent = getEvent(merged.eventId);
     const worker = getWorker(merged.workerId);
     const assignment = assignmentForEventWorker(merged.eventId, merged.workerId);
@@ -5527,11 +5603,86 @@ async function saveTimecardDetailForm(button) {
     if (merged.vehicleUse === "Rented Vehicle") merged.vehicleRate = merged.vehicleRate || relatedEvent?.rentedVehicleRate || client?.defaultRentedVehicleRate || worker?.defaultRentedVehicleRate || "";
     if (merged.vehicleUse === "Personal Vehicle") merged.vehicleRate = merged.vehicleRate || assignment?.personalVehicleRate || relatedEvent?.personalVehicleRate || client?.defaultPersonalVehicleRate || worker?.defaultPersonalVehicleRate || "";
   }
+  if (!adminEdit) {
+    const changeText = timecardPunchChangeText(before, merged);
+    if (changeText) {
+      const event = getEvent(merged.eventId);
+      const worker = getWorker(merged.workerId);
+      const message = `${worker?.name || "Crew member"} edited timecard punches for ${event?.name || merged.eventName || "a timecard"}: ${changeText}.`;
+      merged.adminNotes = appendTimecardAdminNote(merged, message);
+      await notifyClientAdminsAboutTimecard(merged, event, message, {
+        transactionId: `timecard-runner-edit-${merged.id}-${Date.now()}`
+      });
+    }
+  }
+  merged.workDate = merged.workDate || String(merged.clockIn || merged.createdAt || "").slice(0, 10) || localDateKey();
   await put("timecards", merged);
   await loadState();
   setView(state.activeView);
   renderTimecardProfile(merged.id);
-  toast("Timecard line saved.");
+  toast(adminEdit ? "Timecard line saved." : "Timecard edit saved. Client admin was notified.");
+}
+
+function clearPunchLocationsForChangedTimes(existing = {}, merged = {}) {
+  const locations = { ...(existing.punchLocations || {}) };
+  timecardPunchFields().forEach(([field]) => {
+    if (String(existing[field] || "") !== String(merged[field] || "")) delete locations[field];
+  });
+  return locations;
+}
+
+function timecardPunchChangeText(before = {}, after = {}) {
+  return timecardPunchFields()
+    .filter(([field]) => String(before[field] || "") !== String(after[field] || ""))
+    .map(([field, label]) => `${label} ${formatTime(before[field]) || "not set"} to ${formatTime(after[field]) || "not set"}`)
+    .join("; ");
+}
+
+async function resetTimecardPunch(timecardId, field) {
+  const record = state.timecards.find((card) => card.id === timecardId);
+  const punch = timecardPunchFields().find(([key]) => key === field);
+  if (!record || !punch || !canResetTimecardPunch(record)) {
+    toast("Only client admin can reset a punch.");
+    return;
+  }
+  const confirmed = confirm(`Reset ${punch[1]} for this timecard line?`);
+  if (!confirmed) return;
+  const locations = { ...(record.punchLocations || {}) };
+  delete locations[field];
+  const message = `${punch[1]} was reset by ${currentSessionDisplayName() || "client admin"}.`;
+  const updated = {
+    ...record,
+    [field]: "",
+    punchLocations: locations,
+    adminNotes: appendTimecardAdminNote(record, message)
+  };
+  await put("timecards", updated);
+  await loadState();
+  setView(state.activeView);
+  renderTimecardProfile(updated.id, true);
+  toast(`${punch[1]} reset.`);
+}
+
+async function deleteTimecardLine(timecardId) {
+  const record = state.timecards.find((card) => card.id === timecardId);
+  if (!record || !canAdminEdit()) {
+    toast("Only client admin can delete a timecard line.");
+    return;
+  }
+  const confirmed = confirm("Delete this entire timecard line?");
+  if (!confirmed) return;
+  try {
+    await deleteSupabaseRecord("timecards", timecardId);
+  } catch (error) {
+    console.error(error);
+    toast("Could not delete from Supabase. Local timecard was not removed.");
+    return;
+  }
+  await remove("timecards", timecardId);
+  await loadState();
+  closeForm("recordView");
+  setView(state.activeView);
+  toast("Timecard line deleted.");
 }
 
 function activeClientRecord() {
@@ -16548,6 +16699,8 @@ function bindEvents() {
     const viewEventAssignmentButton = event.target.closest("[data-view-event-assignment]");
     const editTimecardDetailButton = event.target.closest("[data-edit-timecard-detail]");
     const saveTimecardDetailButton = event.target.closest("[data-save-timecard-detail]");
+    const resetTimecardPunchButton = event.target.closest("[data-reset-timecard-punch]");
+    const deleteTimecardLineButton = event.target.closest("[data-delete-timecard-line]");
     const openRecentNotesButton = event.target.closest("[data-open-recent-notes]");
     const cancelTimecardDetailButton = event.target.closest("[data-cancel-timecard-detail]");
     const messageReplyButton = event.target.closest("[data-message-reply]");
@@ -16859,6 +17012,14 @@ function bindEvents() {
     }
     if (saveTimecardDetailButton) {
       await saveTimecardDetailForm(saveTimecardDetailButton);
+      return;
+    }
+    if (resetTimecardPunchButton) {
+      await resetTimecardPunch(resetTimecardPunchButton.dataset.resetTimecardPunch, resetTimecardPunchButton.dataset.punchField);
+      return;
+    }
+    if (deleteTimecardLineButton) {
+      await deleteTimecardLine(deleteTimecardLineButton.dataset.deleteTimecardLine);
       return;
     }
     if (cancelTimecardDetailButton) {
