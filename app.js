@@ -38,9 +38,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.06.067",
-  title: "V1.06.067 update installed",
-  body: "Runner rental photos now save immediately when selected, before the rest of the vehicle check is saved."
+  version: "V1.06.068",
+  title: "V1.06.068 update installed",
+  body: "Saved vehicle photos can now open full-size, and rental end photos only block wrap on the final event or runner schedule day."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
@@ -3987,17 +3987,27 @@ function rentalVehicleAssignmentsForWorker(eventId, workerId) {
   });
 }
 
+function assignmentHasExplicitScheduleEnd(assignment = {}) {
+  const notes = String(assignment.notes || "");
+  if (notes.includes("Auto-created from event assigned runner list.")) return false;
+  return !!(assignment.endDate || assignment.workDate);
+}
+
 function assignmentEndDateKey(assignment = {}, event = {}) {
+  if (!assignmentHasExplicitScheduleEnd(assignment)) return "";
   return dateKeyFromValue(assignment.endDate || assignment.workDate || assignment.startDate || event.endDate || event.startDate);
 }
 
 function rentalVehicleFinalDateKey(event = {}, workerId = "") {
   if (!event?.id || !workerId) return "";
+  const eventEndKey = dateKeyFromValue(event.endDate || "");
   const assignmentEndKeys = rentalVehicleAssignmentsForWorker(event.id, workerId)
     .map((assignment) => assignmentEndDateKey(assignment, event))
     .filter(Boolean)
     .sort();
-  return assignmentEndKeys.at(-1) || dateKeyFromValue(event.endDate || event.startDate);
+  const runnerFinalKey = assignmentEndKeys.at(-1) || "";
+  if (runnerFinalKey && eventEndKey && runnerFinalKey < eventEndKey) return runnerFinalKey;
+  return eventEndKey || runnerFinalKey;
 }
 
 function shouldRequireRentalEndPhotos(event = {}, card = {}, dateKey = "") {
@@ -10883,7 +10893,28 @@ function autofillVehicleReport(form = $("#reportForm")) {
 function photoGallery(items) {
   const normalized = items.map((item, index) => Array.isArray(item) ? item : [`Photo ${index + 1}`, item]).filter(([, photo]) => photo);
   if (!normalized.length) return "";
-  return `<div class="photo-gallery">${normalized.map(([label, photo]) => `<figure><img class="photo-thumb" src="${photo}" alt="${escapeHtml(label)}"><figcaption>${escapeHtml(label)}</figcaption></figure>`).join("")}</div>`;
+  return `<div class="photo-gallery">${normalized.map(([label, photo]) => `<figure><button class="photo-thumb-button" data-open-photo-full="${escapeHtml(photo)}" data-photo-label="${escapeHtml(label)}" type="button" aria-label="Open ${escapeHtml(label)}"><img class="photo-thumb" src="${escapeHtml(photo)}" alt="${escapeHtml(label)}"></button><figcaption>${escapeHtml(label)}</figcaption></figure>`).join("")}</div>`;
+}
+
+function openFullPhotoPreview(button) {
+  const photo = button?.dataset?.openPhotoFull || "";
+  const label = button?.dataset?.photoLabel || "Photo";
+  if (!photo) return;
+  $("#recordViewTitle").textContent = label;
+  $("#recordViewBody").innerHTML = `<article class="profile-page-card premium-profile-card photo-preview-card">
+    <div class="premium-profile-hero">
+      <div class="profile-avatar-large placeholder">${escapeHtml(initialsFor(label))}</div>
+      <div class="premium-profile-title">
+        <span>Photo Preview</span>
+        <h3>${escapeHtml(label)}</h3>
+      </div>
+      <div class="premium-profile-actions"></div>
+    </div>
+    <div class="photo-preview-stage">
+      <img src="${escapeHtml(photo)}" alt="${escapeHtml(label)}">
+    </div>
+  </article>`;
+  openForm("recordView");
 }
 
 function renderVenues() {
@@ -16392,7 +16423,12 @@ function bindEvents() {
     const messageEmojiButton = event.target.closest("[data-message-emoji]");
     const openMessageImageButton = event.target.closest("[data-open-message-image]");
     const closeMessageImageButton = event.target.closest("[data-close-message-image-preview]");
+    const openPhotoFullButton = event.target.closest("[data-open-photo-full]");
 
+    if (openPhotoFullButton) {
+      openFullPhotoPreview(openPhotoFullButton);
+      return;
+    }
     if (openMessageImageButton) {
       openMessageImagePreview(openMessageImageButton.dataset.openMessageImage, openMessageImageButton.dataset.messageImageLabel);
       return;
