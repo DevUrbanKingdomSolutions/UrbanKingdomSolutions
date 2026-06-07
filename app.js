@@ -38,9 +38,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.06.075",
-  title: "V1.06.075 update installed",
-  body: "Resolved timecard issue notes now archive from Recent Notes once the related item is satisfied."
+  version: "V1.06.076",
+  title: "V1.06.076 update installed",
+  body: "StageOne Core Standards documentation now defines platform architecture, legal entity rules, data classification, Attention Grace Windows, and suite guidance."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",

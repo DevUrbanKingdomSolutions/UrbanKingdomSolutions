@@ -2,6 +2,12 @@
 
 This is a first working version of a private entertainment production database and user interface.
 
+## StageOne planning standards
+
+StageOne platform architecture, legal entity rules, data classification, Attention Grace Windows, Stage Intelligence, suite scope, and implementation guidance now live in:
+
+- [StageOne Core Standards](docs/STAGEONE_CORE_STANDARDS.md)
+
 ## What it includes
 
 - Worker directory with roles, contact info, skills, status, emergency contact, and notes.
