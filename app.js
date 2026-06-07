@@ -38,9 +38,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.06.076",
-  title: "V1.06.076 update installed",
-  body: "StageOne Core Standards documentation now defines platform architecture, legal entity rules, data classification, Attention Grace Windows, and suite guidance."
+  version: "V1.06.077",
+  title: "V1.06.077 update installed",
+  body: "Urban Kingdom Solutions Office session summary standards now define how major decisions, business rules, and future considerations are preserved."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",

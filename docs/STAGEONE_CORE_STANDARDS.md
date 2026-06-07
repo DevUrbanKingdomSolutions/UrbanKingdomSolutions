@@ -4,6 +4,8 @@ This document is the current implementation guidance for StageOne. It captures t
 
 These standards are planning and implementation context. They do not require an immediate code change unless a task specifically asks to implement them.
 
+For end-of-session knowledge capture, use [Urban Kingdom Solutions Office: Session Summary Standard](SESSION_SUMMARY_STANDARD.md).
+
 ## Legal Entity Standard
 
 StageOne is owned, operated, maintained, and provided by:
