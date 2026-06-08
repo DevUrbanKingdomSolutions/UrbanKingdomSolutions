@@ -4,7 +4,10 @@ This document is the current implementation guidance for StageOne. It captures t
 
 These standards are planning and implementation context. They do not require an immediate code change unless a task specifically asks to implement them.
 
-For end-of-session knowledge capture, use [Urban Kingdom Solutions Office: Session Summary Standard](SESSION_SUMMARY_STANDARD.md).
+For end-of-session knowledge capture, use:
+
+- [Urban Kingdom Solutions Office: Session Summary Standard](SESSION_SUMMARY_STANDARD.md) for planning, strategy, governance, legal, and architecture sessions.
+- [StageOne Development Session Summary Standard](DEVELOPMENT_SESSION_SUMMARY_STANDARD.md) for coding, testing, release, mobile sync, backend, integration, and deployment sessions.
 
 ## Legal Entity Standard
 

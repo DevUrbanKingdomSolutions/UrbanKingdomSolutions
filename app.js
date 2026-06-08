@@ -38,9 +38,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.06.078",
-  title: "V1.06.078 update installed",
-  body: "Project_TED docs now define the boundary between StageOne product implementation and company-wide enterprise systems governance."
+  version: "V1.06.079",
+  title: "V1.06.079 update installed",
+  body: "StageOne Development Session Summary standards now define how coding, testing, release, and mobile sync work is preserved."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",

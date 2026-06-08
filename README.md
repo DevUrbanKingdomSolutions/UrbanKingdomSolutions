@@ -8,6 +8,7 @@ StageOne platform architecture, legal entity rules, data classification, Attenti
 
 - [StageOne Core Standards](docs/STAGEONE_CORE_STANDARDS.md)
 - [Urban Kingdom Solutions Office Session Summary Standard](docs/SESSION_SUMMARY_STANDARD.md)
+- [StageOne Development Session Summary Standard](docs/DEVELOPMENT_SESSION_SUMMARY_STANDARD.md)
 
 ## What it includes
 
