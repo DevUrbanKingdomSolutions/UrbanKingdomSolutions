@@ -37,6 +37,28 @@ Affiliated entities:
 
 Affiliates are not parties to StageOne platform agreements unless explicitly stated.
 
+## Enterprise Systems Boundary
+
+Project_TED owns StageOne product implementation, product-specific documentation, app code, Supabase schema/function files, release files, mobile source files, and feature-specific planning.
+
+Company-wide infrastructure governance lives in:
+
+```text
+/Users/keithrichardsonii/Desktop/Urban-Kingdom-HQ/11-Enterprise-Systems
+```
+
+Use `11-Enterprise-Systems` for company-wide rules and maps involving:
+
+- Supabase ownership, access policy, backups, retention, and cross-project usage
+- GitHub repository ownership, branch/release policy, and review standards
+- Vercel/deployment ownership, environment rules, domains, and promotion policy
+- mobile distribution account ownership, signing, app store, and Google Play rules
+- credential and secret handling
+- cross-project security governance
+- shared system architecture
+
+Do not bury company-wide infrastructure decisions inside the StageOne app workspace unless they are project-specific implementation details.
+
 ## StageOne Platform Rule
 
 StageOne must be built as a clean operational platform, not a collection of disconnected features.
