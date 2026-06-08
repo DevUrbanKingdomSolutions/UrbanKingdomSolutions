@@ -217,6 +217,100 @@ classification: {
 
 Most classifications should be assigned automatically from record type. Users should not have to classify routine records manually.
 
+## Data Classification Starting Matrix
+
+This matrix is the first practical classification map for StageOne Core, Local Production, Touring, and Awards/Broadcast. It is a starting point, not the full final schema.
+
+Each record type should eventually carry classification metadata that helps StageOne decide:
+
+- who can view it
+- who can edit it
+- whether it can create notes
+- whether it can create notifications
+- whether it can be shared outside the system
+- whether it needs audit logging
+- whether it can appear in generated documents
+
+Default rule:
+
+```text
+Data starts private to its owning scope.
+Data becomes broader only through permission, approval, assignment, or publishing.
+```
+
+### Core Platform Records
+
+| Record type | Primary scope | Classification tags | Default visibility | Sensitivity | External sharing | Audit |
+| --- | --- | --- | --- | --- | --- | --- |
+| User account | account / user | account_administrative, worker_personal, system_admin | authorized admin + self | restricted | no | yes |
+| Access roles | account / client | account_administrative, system_admin | authorized admin | restricted | no | yes |
+| Client company | account / client | business_contact, account_administrative, client_confidential | authorized account/client admin | internal | no by default | yes |
+| Client profile/logo | account / client | business_contact, client_confidential | authorized account/client users | internal | approved use only | yes |
+| Office suite access | account / client | account_administrative, system_admin | authorized admin | restricted | no | yes |
+| System error report | system / user / page | system_admin, operational_intelligence | Admin/System access | restricted | no | yes |
+| Audit log | account / system | system_admin, operational_intelligence | authorized admin | restricted | no | yes |
+
+### Local Production Records
+
+| Record type | Primary scope | Classification tags | Default visibility | Sensitivity | External sharing | Audit |
+| --- | --- | --- | --- | --- | --- | --- |
+| Event | client / event | event_operational, client_confidential | assigned client/event users | internal | approved output only | yes |
+| Venue | client / event, sometimes shared | business_contact, event_operational | admin/leads/coordinators; crew only when assigned | internal | approved output only | yes |
+| Crew/runner assignment | client / event / worker | worker_personal, event_operational, client_confidential | authorized admin + assigned worker | restricted | no by default | yes |
+| Timecard line | client / event / worker | timekeeping, worker_personal, client_confidential | authorized admin + assigned worker self view | restricted | no | yes |
+| Time punch location exception | client / event / worker | timekeeping, location, worker_personal, client_confidential | Client Admin + authorized admin | restricted | no | yes |
+| Runner timecard edit | client / event / worker | timekeeping, worker_personal, client_confidential | Client Admin + authorized admin | restricted | no | yes |
+| Pay rates / payroll estimate | client / event / worker | financial_payroll, worker_personal, client_confidential | authorized payroll/admin access only | restricted | no | yes |
+| Vehicle assignment | client / event / worker | vehicle_operational, event_operational, client_confidential | authorized admin + assigned worker when relevant | internal | no by default | yes |
+| Vehicle start photos | client / event / vehicle | media_photo, vehicle_operational, client_confidential | authorized admin + assigned worker workflow | restricted | no | yes |
+| Vehicle end photos/gas gauge | client / event / vehicle | media_photo, vehicle_operational, client_confidential | authorized admin + assigned worker workflow | restricted | no | yes |
+| Incident report | client / event / worker | incident_sensitive, worker_personal, client_confidential | authorized admin only unless explicitly expanded | restricted | no | yes |
+| Notes | scoped to source record | operational_intelligence plus source record tags | based on note visibility | internal or restricted | no by default | yes |
+| Needs Attention item | scoped to source record | operational_intelligence plus source record tags | users who can resolve it | internal or restricted | no | yes |
+
+### Communications Records
+
+| Record type | Primary scope | Classification tags | Default visibility | Sensitivity | External sharing | Audit |
+| --- | --- | --- | --- | --- | --- | --- |
+| Direct message | participants | communications | participants only | internal | no | limited |
+| Group chat | event / client / team | communications, event_operational | thread members | internal | no | limited |
+| Admin thread | account / system | communications, system_admin, operational_intelligence | authorized admin | restricted | no | yes |
+| Notification | target user / source record | operational_intelligence plus source record tags | recipient + authorized admin as needed | follows source record | no | yes |
+
+### Touring Records
+
+| Record type | Primary scope | Classification tags | Default visibility | Sensitivity | External sharing | Audit |
+| --- | --- | --- | --- | --- | --- | --- |
+| Tour | account / client / tour | event_operational, client_confidential | authorized tour/client users | internal | approved output only | yes |
+| Tour city/stop | tour / stop | event_operational, client_confidential | authorized tour users | internal | approved output only | yes |
+| Advance rider source data | tour / stop | event_operational, client_confidential, operational_intelligence | assigned tour/admin users | internal | approved output only | yes |
+| Advance rider generated PDF | tour / stop | external_approved, event_operational | selected recipients after approval | approved external | yes, after approval | yes |
+| Team member profile | tour / team / worker | worker_personal, business_contact, travel | authorized tour/admin + self as needed | restricted | approved output only | yes |
+| Travel itinerary | tour / traveler | travel, worker_personal, client_confidential | traveler + authorized travel/admin | restricted | traveler-approved/send only | yes |
+| Passport/visa/work permit | tour / traveler | travel, legal_compliance, worker_personal | authorized travel/admin + self | restricted | no by default | yes |
+| Hotel/flight accommodation | tour / traveler | travel, worker_personal, client_confidential | traveler + authorized travel/admin | restricted | traveler-approved/send only | yes |
+
+### Awards, Broadcast, And Corporate Event Records
+
+| Record type | Primary scope | Classification tags | Default visibility | Sensitivity | External sharing | Audit |
+| --- | --- | --- | --- | --- | --- | --- |
+| Awards/broadcast event | client / event | event_operational, client_confidential | authorized event users | internal | approved output only | yes |
+| Corporate event | client / event | event_operational, business_contact, client_confidential | authorized event users | internal | approved output only | yes |
+| Production office data | event / production team | event_operational, operational_intelligence | authorized production/admin users | internal | approved output only | yes |
+| Staffing schedule | event / worker / department | worker_personal, event_operational | authorized production/admin + assigned worker as needed | internal | no by default | yes |
+| Published call sheet / approved output | event | external_approved, event_operational | selected recipients | approved external | yes | yes |
+
+### Classification Rules
+
+- Restricted records must never become visible through broad dashboard counts, search results, document output, or notifications unless the user has permission to the source record.
+- Notifications inherit the classification of the source record.
+- Notes inherit the classification of the source record unless the note is explicitly classified more restrictively.
+- Generated documents are not externally shareable until marked approved or published.
+- Mobile views should only expose the field workflow data needed for the user to act.
+- Desktop views may expose management data, but only within the user's permission scope.
+- When a record has multiple tags, the most restrictive tag wins.
+- If classification is unclear, default to restricted and internal.
+
 ## Local Production Classification Starting Points
 
 Start classification work with sensitive Local Production workflows:
