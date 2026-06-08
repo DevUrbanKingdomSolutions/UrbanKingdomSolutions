@@ -38,9 +38,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.06.079",
-  title: "V1.06.079 update installed",
-  body: "StageOne Development Session Summary standards now define how coding, testing, release, and mobile sync work is preserved."
+  version: "V1.06.080",
+  title: "V1.06.080 update installed",
+  body: "StageOne Core Standards now define the first Attention Grace Window trigger catalog for Local Production, Touring, documents, and system exceptions."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",

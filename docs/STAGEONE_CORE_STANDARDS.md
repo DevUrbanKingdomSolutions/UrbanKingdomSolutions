@@ -379,6 +379,149 @@ Escalate: Optional later window
 Archive: When required photos/plate are submitted
 ```
 
+### Starter Attention Grace Window Rules
+
+The following rules are the initial StageOne trigger catalog. They are not every future trigger. Each new workflow that can become Needs Attention should define its own Grace Window before it is allowed to create urgent work.
+
+#### rental_start_photos
+
+Category: Grace Window
+
+Trigger: A runner clocks in and has an assigned rental vehicle with start check requirements.
+
+Initial behavior:
+
+- Pending: start photos, license plate, and required start check details are pending after clock-in.
+- Soft Reminder: immediately or shortly after clock-in.
+- Needs Attention: after 45 minutes by default. This should remain configurable by workflow, client, suite, or event.
+- Notify Client Admin: when Needs Attention begins.
+- Target page: rental vehicle start photo/check workflow.
+- Resolution: required start photos and required start check details are submitted, or the requirement is marked no longer required by authorized access.
+- Archive: when resolved.
+
+#### rental_end_photos_gas
+
+Category: Action-triggered / final-day hybrid
+
+Trigger: A runner attempts to wrap on the last scheduled day, or on the event end day if no earlier runner end date exists, and required end photos or gas gauge details are missing.
+
+Initial behavior:
+
+- Pending: end photos and gas gauge details are pending during the assignment until the final required day.
+- Needs Attention: immediately when a wrap attempt occurs on the required final day and the requirement is unmet.
+- Notify Client Admin: when the user bypasses a warning, cannot complete wrap because of the requirement, or the requirement remains unmet.
+- Target page: rental vehicle end photo/check workflow or related timecard line.
+- Resolution: required end photos and gas gauge details are submitted, or the requirement is marked no longer required by authorized access.
+- Archive: when resolved.
+
+#### missing_wrap_punch
+
+Category: Deadline-based
+
+Trigger: A prior-day timecard line remains open without a wrap punch.
+
+Initial behavior:
+
+- Pending: same-day missing wrap remains pending while the workday may still be active.
+- Needs Attention: next day, not immediately on the same day.
+- Notify Client Admin: when the prior-day missing wrap becomes Needs Attention.
+- Target page: timecard line profile.
+- Resolution: wrap punch is added, the line is corrected, or the line is deleted by authorized access.
+- Archive: when resolved.
+
+#### clockin_distance_exception
+
+Category: Immediate
+
+Trigger: A user attempts to clock in more than 2 miles from the scheduled venue/location and chooses to continue.
+
+Initial behavior:
+
+- Needs Attention: immediate.
+- Notify Client Admin: immediately.
+- Target page: timecard line profile.
+- Classification: timekeeping, location, worker personal, client confidential, restricted.
+- Resolution: authorized admin reviews and accepts the exception, corrects the timecard, or resolves the assignment/location issue.
+- Archive: when resolved.
+
+Geolocation for this rule is only time punch location verification. It is not runner tracking.
+
+#### runner_timecard_edit
+
+Category: Immediate / review required
+
+Trigger: A runner edits their own punch time.
+
+Initial behavior:
+
+- Needs Attention: immediate.
+- Notify Client Admin: immediately.
+- Target page: timecard line profile.
+- Classification: timekeeping, worker personal, client confidential, restricted.
+- Resolution: authorized admin reviews and accepts the edit, corrects the timecard, or resets the punch.
+- Archive: when resolved.
+
+#### system_error
+
+Category: Immediate
+
+Trigger: StageOne captures a user-facing error that affects workflow, data saving, login, permissions, notifications, uploads, document generation, or messaging.
+
+Initial behavior:
+
+- Needs Attention: immediate for Admin/System access.
+- Notify Admin/System thread: immediately.
+- Target page: the page or workflow where the error occurred, when available.
+- Required detail: error code, readable description, user, access level, page/workflow, timestamp, and related record when available.
+- Resolution: issue is marked resolved, release fixes it, or admin dismisses it as non-actionable.
+- Archive: when resolved.
+
+#### document_generation_missing_required_data
+
+Category: Action-triggered
+
+Trigger: A user attempts to generate, send, publish, or approve an output while required fields are missing.
+
+Initial behavior:
+
+- Pending: missing fields may remain pending while the record is being built.
+- Needs Attention: when generation/send/publish/approval is attempted, or when a defined due window begins.
+- Notify: only users who own or can resolve the missing information.
+- Target page: source record or generated document workflow.
+- Resolution: missing required fields are completed or the output requirement is removed.
+- Archive: when resolved.
+
+#### tour_advance_missing_info
+
+Category: Deadline-based / action-triggered
+
+Trigger: a tour stop/city advance record is incomplete.
+
+Initial behavior:
+
+- Pending: begins when the tour stop/city is created.
+- Needs Attention: when the due window begins, when generation/send is attempted, or when an approved output is blocked.
+- Notify: assigned tour/admin users responsible for the missing section.
+- Target page: tour advancing stop/city record.
+- Resolution: required advance section is completed and approved, or the section is marked not required.
+- Archive: when resolved.
+
+#### travel_document_expiration
+
+Category: Deadline-based
+
+Trigger: a passport, visa, work permit, or required travel document expires before the travel requirement window for a tour, city, country, or traveler assignment.
+
+Initial behavior:
+
+- Pending: document exists but has not reached the warning threshold.
+- Soft Reminder: based on the travel requirement window.
+- Needs Attention: when the document is invalid for the travel requirement or enters the defined risk threshold.
+- Notify: traveler and authorized travel/admin users.
+- Target page: travel/accommodations or team member travel profile.
+- Resolution: valid updated document is added, traveler is removed from the international scope, or the requirement is marked not required by authorized access.
+- Archive: when resolved.
+
 The dashboard should not become a wall of panic. It should show operational issues whose timing now matters.
 
 ## Stage Intelligence
