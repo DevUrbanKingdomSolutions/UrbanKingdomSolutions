@@ -38,9 +38,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.06.082",
-  title: "V1.06.082 update installed",
-  body: "StageOne Governance Package v1 is now documented with approved standards for notifications, notes, generated outputs, errors, audit logs, device workflows, suite scope, and permissions."
+  version: "V1.06.083",
+  title: "V1.06.083 update installed",
+  body: "StageOne now has a Document Workspace feature brief for navigable operational packets, published public views, search, print/export behavior, and workspace governance."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",

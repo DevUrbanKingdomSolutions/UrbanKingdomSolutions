@@ -145,6 +145,16 @@ Awards/Broadcast:
 - Credentials Lists
 - Rundowns
 
+Document Workspace:
+
+- Tour Advance Packets
+- Production Books
+- Venue Packets
+- Promoter Packets
+- Event Packets
+
+See [StageOne Document Workspace Brief](STAGEONE_DOCUMENT_WORKSPACE_BRIEF.md) for the core workspace model, published public view, navigation, search, print/export behavior, and classification rules.
+
 Lifecycle:
 
 ```text
