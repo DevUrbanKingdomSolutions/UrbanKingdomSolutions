@@ -6,6 +6,7 @@ These standards are planning and implementation context. They do not require an 
 
 For end-of-session knowledge capture, use:
 
+- [StageOne Governance Package v1](STAGEONE_GOVERNANCE_PACKAGE_V1.md) for approved platform governance decisions covering notifications, notes, generated outputs, errors, audit logs, device workflows, suite scope, permissions, and temporary elevated access.
 - [Urban Kingdom Solutions Office: Session Summary Standard](SESSION_SUMMARY_STANDARD.md) for planning, strategy, governance, legal, and architecture sessions.
 - [StageOne Development Session Summary Standard](DEVELOPMENT_SESSION_SUMMARY_STANDARD.md) for coding, testing, release, mobile sync, backend, integration, and deployment sessions.
 

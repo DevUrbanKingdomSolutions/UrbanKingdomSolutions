@@ -7,6 +7,7 @@ This is a first working version of a private entertainment production database a
 StageOne platform architecture, legal entity rules, data classification, Attention Grace Windows, Stage Intelligence, suite scope, and implementation guidance now live in:
 
 - [StageOne Core Standards](docs/STAGEONE_CORE_STANDARDS.md)
+- [StageOne Governance Package v1](docs/STAGEONE_GOVERNANCE_PACKAGE_V1.md)
 - [Urban Kingdom Solutions Office Session Summary Standard](docs/SESSION_SUMMARY_STANDARD.md)
 - [StageOne Development Session Summary Standard](docs/DEVELOPMENT_SESSION_SUMMARY_STANDARD.md)
 
