@@ -38,9 +38,9 @@ const RELEASE_NOTICE_URL = "./release-notice.json";
 const RELEASE_NOTICE_POLL_MS = 30000;
 const NOTIFICATION_REFRESH_MS = 5000;
 const CURRENT_RELEASE_NOTICE = {
-  version: "V1.06.083",
-  title: "V1.06.083 update installed",
-  body: "StageOne now has a Document Workspace feature brief for navigable operational packets, published public views, search, print/export behavior, and workspace governance."
+  version: "V1.06.084",
+  title: "V1.06.084 update installed",
+  body: "StageOne now has deferred roadmap guidance for operational infrastructure, including future device registry, workstation profiles, credential operations, and rental event technology support."
 };
 const NOVU_WORKFLOWS = {
   rentalPhotoReminder: "rental-photo-reminder",
