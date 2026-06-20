@@ -107,6 +107,10 @@ revoke all on function public.current_app_role() from public;
 revoke all on function public.current_client_id() from public;
 revoke all on function public.current_worker_id() from public;
 revoke all on function public.current_promoter_id() from public;
+revoke all on function public.current_app_role() from anon;
+revoke all on function public.current_client_id() from anon;
+revoke all on function public.current_worker_id() from anon;
+revoke all on function public.current_promoter_id() from anon;
 grant execute on function public.current_app_role() to authenticated;
 grant execute on function public.current_client_id() to authenticated;
 grant execute on function public.current_worker_id() to authenticated;
@@ -117,7 +121,7 @@ create policy "Users can read their own role"
 on public.user_roles
 for select
 to authenticated
-using (auth.uid() = user_id);
+using ((select auth.uid()) = user_id);
 
 create policy "Admins can read user roles"
 on public.user_roles
@@ -264,6 +268,8 @@ create table if not exists public.access_levels (
   updated_at timestamptz not null default now()
 );
 
+create index if not exists access_levels_created_by_idx on public.access_levels (created_by);
+
 alter table public.access_levels enable row level security;
 
 do $$
@@ -329,6 +335,9 @@ create table if not exists public.client_reps (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+create index if not exists client_reps_client_id_idx on public.client_reps (client_id);
+create index if not exists client_reps_auth_user_id_idx on public.client_reps (auth_user_id);
 
 alter table public.client_reps enable row level security;
 
@@ -398,6 +407,9 @@ create table if not exists public.smtp_routes (
   updated_at timestamptz not null default now()
 );
 
+create index if not exists smtp_routes_client_id_idx on public.smtp_routes (client_id);
+create index if not exists smtp_routes_owner_user_id_idx on public.smtp_routes (owner_user_id);
+
 alter table public.smtp_routes enable row level security;
 
 do $$
@@ -417,6 +429,12 @@ $$;
 
 -- SMTP passwords are written/read only by Edge Functions using the service role.
 -- The browser app never selects this table directly.
+create policy "No browser access to SMTP routes"
+on public.smtp_routes
+for all
+to authenticated
+using (false)
+with check (false);
 
 create table if not exists public.event_access_links (
   id uuid primary key default gen_random_uuid(),
@@ -439,6 +457,7 @@ create table if not exists public.event_access_links (
 create index if not exists event_access_links_token_hash_idx on public.event_access_links (token_hash);
 create index if not exists event_access_links_event_id_idx on public.event_access_links (event_id);
 create index if not exists event_access_links_client_id_idx on public.event_access_links (client_id);
+create index if not exists event_access_links_created_by_idx on public.event_access_links (created_by);
 
 alter table public.event_access_links enable row level security;
 
@@ -459,6 +478,12 @@ $$;
 
 -- Event links are created/read by Edge Functions using the service role.
 -- Public visitors only receive data after presenting the secure token.
+create policy "No browser access to event access links"
+on public.event_access_links
+for all
+to authenticated
+using (false)
+with check (false);
 
 -- Future production tables should use the helper functions above instead of
 -- directly querying user_roles inside policies.
@@ -491,6 +516,9 @@ create table if not exists public.app_records (
   updated_at timestamptz not null default now(),
   unique (client_id, store_name, record_id)
 );
+
+create index if not exists app_records_created_by_idx on public.app_records (created_by);
+create index if not exists app_records_updated_by_idx on public.app_records (updated_by);
 
 alter table public.app_records enable row level security;
 
